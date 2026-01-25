@@ -1,28 +1,35 @@
-/*
- * For a detailed explanation regarding each configuration property and type check, visit:
- * https://vitest.dev/config/
+/**
+ * Vitest configuration for DomainLang CLI.
+ *
+ * @module
  */
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-    test: {
-        coverage: {
-            provider: 'v8',
-            reporter: ['text', 'html', 'lcov', 'clover'],
-            include: ['src/**'],
-            exclude: [
-                '**/node_modules/**',
-                '**/*.test.ts',
-                '**/*.spec.ts'
-            ],
-            reportsDirectory: './coverage',
-            thresholds: {
-                lines: 55,
-                functions: 75,
-                branches: 70,
-                statements: 55
-            }
-        },
-        include: ['**/*.test.ts']
-    }
+  test: {
+    globals: false,
+    environment: 'node',
+    include: [
+      'src/**/*.test.{ts,tsx}',
+      'test/**/*.test.{ts,tsx}',
+    ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov', 'clover'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test-utils/**',
+        '**/node_modules/**',
+      ],
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 55,
+        functions: 75,
+        branches: 70,
+        statements: 55
+      }
+    },
+    testTimeout: 30000,
+  },
 });
