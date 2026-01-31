@@ -1,6 +1,6 @@
 {
     "name": "@domainlang/language",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "displayName": "DomainLang Language",
     "description": "Core language library for DomainLang - parse, validate, and query Domain-Driven Design models programmatically",
     "author": "larsbaunwall",
