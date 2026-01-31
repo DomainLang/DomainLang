@@ -52,6 +52,8 @@ jobs:
             echo "🌐 **Site-only deployment** (fast path)" >> $GITHUB_STEP_SUMMARY
           elif [[ "$CODE_CHANGED" == "true" ]]; then
             echo "🔧 **Full pipeline** (code changes detected)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **No deployment needed** (workflow, docs, or config changes only)" >> $GITHUB_STEP_SUMMARY
           fi
 
   # ============================================================================
