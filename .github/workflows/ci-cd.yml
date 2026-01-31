@@ -138,7 +138,7 @@ jobs:
           path: dsl/domain-lang/
       
       - name: Run tests with coverage
-        run: npm test -- --coverage > coverage-output.txt 2>&1 || true
+        run: npm run --workspace packages/language test -- --coverage > coverage-output.txt 2>&1
       
       - name: Display coverage in workflow
         run: |
@@ -147,8 +147,12 @@ jobs:
           tail -80 coverage-output.txt >> $GITHUB_STEP_SUMMARY
           cat coverage-output.txt
       
+      - name: List coverage files
+        run: ls -la packages/language/coverage/ || echo "Coverage directory not found"
+      
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage-reports
           path: dsl/domain-lang/packages/language/coverage/
