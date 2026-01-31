@@ -1,23 +1,26 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+  "include-component-in-tag": false,
   "packages": {
     "dsl/domain-lang": {
-      "release-type": "node",
-      "package-name": "@domainlang/workspace",
-      "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": false,
-      "draft": false,
-      "prerelease": false,
-      "include-component-in-tag": false,
-      "extra-files": [
-        "dsl/domain-lang/packages/language/package.json",
-        "dsl/domain-lang/packages/cli/package.json",
-        "dsl/domain-lang/packages/extension/package.json"
-      ]
+      "component": "domainlang",
+      "changelog-path": "CHANGELOG.md"
     }
   },
-  "release-type": "node",
+  "plugins": [
+    {
+      "type": "node-workspace",
+      "updatePeerDependencies": true
+    },
+    {
+      "type": "linked-versions",
+      "groupName": "domainlang",
+      "components": ["domainlang"]
+    }
+  ],
   "changelog-sections": [
     { "type": "feat", "section": "Features", "hidden": false },
     { "type": "fix", "section": "Bug Fixes", "hidden": false },

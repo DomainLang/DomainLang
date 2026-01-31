@@ -250,13 +250,16 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     environment:
       name: production
       url: https://github.com/${{ github.repository }}/releases
     outputs:
-      release-created: ${{ steps.release.outputs.release_created }}
-      tag-name: ${{ steps.release.outputs.tag_name }}
-      version: ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
+      releases-created: ${{ steps.release.outputs.releases_created }}
+      tag-name: ${{ steps.release.outputs['dsl/domain-lang--tag_name'] }}
+      version: ${{ steps.release.outputs['dsl/domain-lang--version'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -271,7 +274,7 @@ jobs:
   publish-npm:
     name: 📦 Publish NPM packages
     needs: release-please
-    if: needs.release-please.outputs.release-created == 'true'
+    if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.publish.outcome }}
@@ -284,7 +287,10 @@ jobs:
           - language
           - cli
     steps:
+      # Checkout at the release tag - versions are already updated by release-please
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag-name }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -296,11 +302,6 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
-      
-      - name: Sync package versions
-        run: |
-          # Ensure all workspace packages have the same version
-          npm version ${{ needs.release-please.outputs.version }} --no-git-tag-version --workspaces --workspace-no-bail || true
       
       - name: Build
         run: npm run langium:generate && npm run build
@@ -314,13 +315,16 @@ jobs:
   publish-vscode-extension:
     name: 🧩 Publish VS Code extension
     needs: release-please
-    if: needs.release-please.outputs.release-created == 'true'
+    if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: dsl/domain-lang/packages/extension
     steps:
+      # Checkout at the release tag - version is already updated by release-please
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag-name }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -330,7 +334,12 @@ jobs:
           cache-dependency-path: dsl/domain-lang/package-lock.json
       
       - name: Install dependencies
+        working-directory: dsl/domain-lang
         run: npm ci
+      
+      - name: Build all packages
+        working-directory: dsl/domain-lang
+        run: npm run langium:generate && npm run build
       
       - name: Install vsce
         run: npm install -g @vscode/vsce
@@ -344,13 +353,16 @@ jobs:
   publish-site:
     name: 🌐 Publish site
     needs: release-please
-    if: needs.release-please.outputs.release-created == 'true'
+    if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: site
     steps:
+      # Checkout at the release tag
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag-name }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4

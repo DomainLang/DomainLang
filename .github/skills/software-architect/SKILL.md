@@ -286,11 +286,12 @@ Your work is successful when:
 
 **Version Management:**
 - Release-please analyzes conventional commits and creates release PR
+- `node-workspace` plugin keeps all workspace packages in sync
 - `feat:` → Minor bump (0.1.0 → 0.2.0)
 - `fix:` → Patch bump (0.1.0 → 0.1.1)
 - `feat!:` or `BREAKING CHANGE:` → Major bump (0.1.0 → 1.0.0)
-- When release PR merged: GitHub release + git tag created automatically
-- All workspace packages synced to same version before publishing
+- When release PR merged: package.json files updated, GitHub release + git tag created
+- Publishing jobs checkout at the release tag (versions already correct)
 
 **Release Workflow:**
 1. Conventional commits pushed to main

@@ -100,11 +100,12 @@ npm test                  # Run tests
 
 **Version Management:**
 - Release-please creates/updates a release PR based on conventional commits
+- The `node-workspace` plugin keeps all workspace packages in sync
 - When the release PR is merged, it:
+  - Updates all package.json files with the new version
   - Creates a GitHub release with auto-generated changelog
   - Tags the release commit
-  - Triggers publishing workflows
-- All workspace packages synced to same version before publishing
+  - Triggers publishing workflows (checkout at the release tag)
 - Proper semver: 0.1.99 → 0.1.100 → 0.2.0 → 1.0.0
 
 **Fast Paths:**
