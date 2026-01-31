@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/DomainLang/DomainLang/compare/v0.4.1...v0.4.2) (2026-01-31)
+
+
+### Bug Fixes
+
+* update VS Code extension links in documentation and CI configuration ([f360d8f](https://github.com/DomainLang/DomainLang/commit/f360d8f153a89223860d31e2cb19d626481c6fa0))
+
 ## [0.4.1](https://github.com/DomainLang/DomainLang/compare/v0.4.0...v0.4.1) (2026-01-31)
 
 
