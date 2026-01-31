@@ -195,7 +195,7 @@ bc Shipping for Logistics as CoreDomain by ShippingTeam {
 
 ## Next steps
 
-- [Context Maps](/guide/context-maps) — define relationships between bounded contexts
+- [Context Maps](/guide/context-maps) — define relationships between bounded contexts 
 - [Teams & Classifications](/guide/teams-classifications) — organize ownership and strategy
 
 ## See also
