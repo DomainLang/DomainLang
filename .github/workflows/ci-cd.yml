@@ -201,21 +201,28 @@ jobs:
           path: dsl/domain-lang/
       
       - name: Run tests with coverage
-        run: npm run --workspace packages/language test -- --coverage
+        run: |
+          npm run --workspace packages/language test -- --coverage
+          npm run --workspace packages/cli test -- --coverage
       
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-reports
-          path: dsl/domain-lang/packages/language/coverage/
+          path: |
+            dsl/domain-lang/packages/language/coverage/
+            dsl/domain-lang/packages/cli/coverage/
           retention-days: 7
       
       - name: Generate coverage summary
         if: success()
         run: |
+          echo "## 📊 Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           if [ -f "packages/language/coverage/coverage-summary.json" ]; then
-            echo "## 📊 Coverage Summary" >> $GITHUB_STEP_SUMMARY
+            echo "### Language Package" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
             echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
@@ -224,8 +231,21 @@ jobs:
             node -e "const c=require('./packages/language/coverage/coverage-summary.json').total; console.log(\`| Functions | \${c.functions.pct}% (\${c.functions.covered}/\${c.functions.total}) |\`)" >> $GITHUB_STEP_SUMMARY
             node -e "const c=require('./packages/language/coverage/coverage-summary.json').total; console.log(\`| Branches | \${c.branches.pct}% (\${c.branches.covered}/\${c.branches.total}) |\`)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📦 [Download detailed HTML report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
           fi
+          
+          if [ -f "packages/cli/coverage/coverage-summary.json" ]; then
+            echo "### CLI Package" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/cli/coverage/coverage-summary.json').total; console.log(\`| Lines | \${c.lines.pct}% (\${c.lines.covered}/\${c.lines.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/cli/coverage/coverage-summary.json').total; console.log(\`| Statements | \${c.statements.pct}% (\${c.statements.covered}/\${c.statements.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/cli/coverage/coverage-summary.json').total; console.log(\`| Functions | \${c.functions.pct}% (\${c.functions.covered}/\${c.functions.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/cli/coverage/coverage-summary.json').total; console.log(\`| Branches | \${c.branches.pct}% (\${c.branches.covered}/\${c.branches.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "📦 [Download detailed HTML report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
   # ANALYSIS GATE - SonarQube (blocking) + CodeQL (parallel)
@@ -234,29 +254,37 @@ jobs:
     name: 📊 SonarQube Analysis
     needs: test-coverage
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dsl/domain-lang
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for better analysis
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: dsl/domain-lang/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
       - name: Download coverage reports
         uses: actions/download-artifact@v4
         with:
           name: coverage-reports
-          path: dsl/domain-lang/packages/language/coverage/
+          path: dsl/domain-lang/
+      
+      - name: Verify coverage files
+        run: |
+          echo "📁 Coverage files present:"
+          echo "Language package:"
+          ls -la dsl/domain-lang/packages/language/coverage/ || echo "❌ No language coverage"
+          echo ""
+          echo "CLI package:"
+          ls -la dsl/domain-lang/packages/cli/coverage/ || echo "❌ No CLI coverage"
+          echo ""
+          if [ -f "dsl/domain-lang/packages/language/coverage/lcov.info" ]; then
+            echo "✅ Language lcov.info found ($(wc -l < dsl/domain-lang/packages/language/coverage/lcov.info) lines)"
+          else
+            echo "❌ Language lcov.info NOT found"
+            exit 1
+          fi
+          if [ -f "dsl/domain-lang/packages/cli/coverage/lcov.info" ]; then
+            echo "✅ CLI lcov.info found ($(wc -l < dsl/domain-lang/packages/cli/coverage/lcov.info) lines)"
+          else
+            echo "⚠️  CLI lcov.info NOT found (may have no tests)"
+          fi
       
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@master
@@ -295,7 +323,7 @@ jobs:
   # SITE-ONLY PUBLISH - Fast path for documentation changes
   # ============================================================================
   publish-site-fast:
-    name: 🌐 Publish site (fast path)
+    name: 🌐 Build and publish site (fast path)
     needs: detect-changes
     if: |
       needs.detect-changes.outputs.site-only == 'true' &&
@@ -449,14 +477,37 @@ jobs:
 
   publish-site:
     name: 🌐 Publish site
-    needs: [release-please, build-site]
+    needs: release-please
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: write
       id-token: write
+    defaults:
+      run:
+        working-directory: site
     steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build site
+        run: npm run build
+      
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site/.vitepress/dist
+      
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

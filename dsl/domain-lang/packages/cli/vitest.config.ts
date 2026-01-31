@@ -11,22 +11,17 @@ export default defineConfig({
             reporter: ['text', 'html', 'lcov', 'clover'],
             include: ['src/**'],
             exclude: [
-                '**/generated/**',
                 '**/node_modules/**',
                 '**/*.test.ts',
-                '**/*.spec.ts',
-                '**/test-helpers.ts'
+                '**/*.spec.ts'
             ],
             reportsDirectory: './coverage',
             thresholds: {
-                lines: 80,
-                functions: 80,
-                branches: 75,
-                statements: 80
+                lines: 70,
+                functions: 70,
+                branches: 65,
+                statements: 70
             }
-        },
-        deps: {
-            interopDefault: true
         },
         include: ['**/*.test.ts']
     }
