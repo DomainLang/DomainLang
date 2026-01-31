@@ -29,7 +29,7 @@ A beautiful, powerful command-line interface for working with DomainLang models.
 
 **Highlights:**
 
-- Beautiful ASCII art of cause
+- Beautiful ASCII art, of course
 - Interactive prompts for complex operations
 - `--json` and `--quiet` modes for CI/CD integration
 

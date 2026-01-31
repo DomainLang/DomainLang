@@ -157,7 +157,7 @@ Name bounded contexts after the capability they provide, not the team that owns 
 
 ## Examples
 
-### Multiple Contexts in a Domain
+### Multiple contexts in a domain
 
 ```dlang
 Domain Sales {
@@ -177,7 +177,7 @@ bc CustomerService for Sales as SupportingDomain by SupportTeam {
 }
 ```
 
-### Context with Rich Terminology
+### Context with rich terminology
 
 ```dlang
 bc Shipping for Logistics as CoreDomain by ShippingTeam {

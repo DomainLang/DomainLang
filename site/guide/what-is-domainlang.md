@@ -8,7 +8,7 @@ DomainLang is in active development and has not reached v1.0 yet. The language s
 
 ## Why DomainLang?
 
-### The Problem
+### The problem
 
 DDD models are often:
 - **Locked in proprietary tools** — hard to version control or review
@@ -16,7 +16,7 @@ DDD models are often:
 - **Quickly outdated** — disconnected from the codebase they describe
 - **Hard to validate** — no tooling to catch inconsistencies
 
-### The Solution
+### The solution
 
 DomainLang keeps your DDD models:
 - **In the repo** — version controlled alongside code
@@ -84,7 +84,7 @@ Namespace Acme.Sales {
 
 Ready to try DomainLang?
 
-1. [Install the VS Code extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang)
+1. [Install the VS Code extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)
 2. Follow the [Getting Started guide](/guide/getting-started)
 3. Explore the [Examples](/examples/)
 

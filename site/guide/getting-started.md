@@ -8,7 +8,7 @@ DomainLang is in active development and has not reached v1.0 yet. The language s
 
 ## Prerequisites
 
-- VS Code with the [DomainLang extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang)
+- VS Code with the [DomainLang extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)
 - (Optional) Node.js 20+ for CLI and programmatic access
 
 ::: tip

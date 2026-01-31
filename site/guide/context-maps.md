@@ -53,7 +53,7 @@ ContextMap SalesSystem {
 }
 ```
 
-### Available Patterns
+### Available patterns
 
 | Pattern | Keyword | Description |
 |---------|---------|-------------|
@@ -128,7 +128,7 @@ If your context map has too many contexts (more than 7-10), consider breaking it
 
 ## Examples
 
-### E-Commerce System
+### E-commerce system
 
 ```dlang
 ContextMap ECommerceSystem {
@@ -147,7 +147,7 @@ ContextMap ECommerceSystem {
 }
 ```
 
-### Microservices Integration
+### Microservices integration
 
 ```dlang
 ContextMap MicroservicesMap {

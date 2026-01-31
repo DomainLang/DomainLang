@@ -91,7 +91,7 @@ export default defineConfig({
         items: [
           { text: 'Examples', link: '/examples/' },
           { text: 'Roadmap', link: '/roadmap' },
-          { text: 'VS Code Extension', link: 'https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang' },
+          { text: 'VS Code Extension', link: 'https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang' },
           {
             text: 'npm Packages',
             items: [
