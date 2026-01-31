@@ -88,14 +88,26 @@ jobs:
       - name: Build all packages
         run: npm run build
       
+      - name: Install vsce
+        run: npm install -g @vscode/vsce
+      
+      - name: Package VS Code extension
+        working-directory: dsl/domain-lang/packages/extension
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          vsce package --out "domainlang-${VERSION}.vsix"
+      
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-output
           path: |
-            dsl/domain-lang/packages/*/lib/
-            dsl/domain-lang/packages/*/dist/
-          retention-days: 1
+            dsl/domain-lang/packages/language/lib/
+            dsl/domain-lang/packages/language/src/generated/
+            dsl/domain-lang/packages/cli/lib/
+            dsl/domain-lang/packages/extension/dist/
+            dsl/domain-lang/packages/extension/*.vsix
+          retention-days: 7
 
   test-coverage:
     name: 🧪 Test & Coverage
@@ -289,61 +301,13 @@ jobs:
           manifest-file: .github/.release-please-manifest.json
 
   # ============================================================================
-  # BUILD RELEASE - Build once at release tag, reuse artifacts
-  # ============================================================================
-  build-release:
-    name: 🏗️ Build release artifacts
-    needs: release-please
-    if: needs.release-please.outputs.releases-created == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dsl/domain-lang
-    steps:
-      # Checkout at the release tag - versions are already updated by release-please
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.release-please.outputs.tag-name }}
-          fetch-depth: 0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: dsl/domain-lang/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Generate Langium grammar
-        run: npm run langium:generate
-      
-      - name: Build all packages
-        run: npm run build
-      
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-build-${{ needs.release-please.outputs.version }}
-          path: |
-            dsl/domain-lang/packages/language/lib/
-            dsl/domain-lang/packages/language/src/generated/
-            dsl/domain-lang/packages/cli/lib/
-            dsl/domain-lang/packages/extension/dist/
-          retention-days: 7
-          if-no-files-found: error
-
-  # ============================================================================
-  # PUBLISH - NPM packages and site (parallel, reuse artifacts)
+  # PUBLISH - NPM packages, VS Code extension, and site (parallel)
   # ============================================================================
   publish-npm:
     name: 📦 Publish NPM packages
-    needs: [release-please, build-release]
+    needs: release-please
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
-    outputs:
-      published: ${{ steps.publish.outcome }}
     defaults:
       run:
         working-directory: dsl/domain-lang
@@ -353,43 +317,13 @@ jobs:
           - language
           - cli
     steps:
-      # Checkout at the release tag - versions are already updated by release-please
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.release-please.outputs.tag-name }}
-          fetch-depth: 0
       
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-build-${{ needs.release-please.outputs.version }}
-          path: ./
-      
-      - name: Verify checkout and version
-        run: |
-          echo "🔍 Checking out at tag: ${{ needs.release-please.outputs.tag-name }}"
-          echo "📌 Current commit: $(git rev-parse HEAD)"
-          echo "🏷️  Current tags: $(git tag --points-at HEAD)"
-          echo "📦 Expected version: ${{ needs.release-please.outputs.version }}"
-          echo ""
-          echo "📄 Root package.json version:"
-          jq -r '.version' package.json
-          echo ""
-          echo "📄 packages/${{ matrix.package }}/package.json version:"
-          jq -r '.version' packages/${{ matrix.package }}/package.json
-          echo ""
-          # Fail if versions don't match
-          ROOT_VERSION=$(jq -r '.version' package.json)
-          PKG_VERSION=$(jq -r '.version' packages/${{ matrix.package }}/package.json)
-          if [ "$ROOT_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
-            echo "❌ ERROR: Root package.json version ($ROOT_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
-            exit 1
-          fi
-          if [ "$PKG_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
-            echo "❌ ERROR: Package version ($PKG_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
-            exit 1
-          fi
-          echo "✅ All versions match!"
+          name: build-output
+          path: dsl/domain-lang/packages
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -398,10 +332,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       
       - name: Install dependencies
-        run: npm ci --omit=dev
+        run: npm ci --ignore-scripts
       
       - name: Publish ${{ matrix.package }}
-        id: publish
         run: npm publish --workspace packages/${{ matrix.package }} --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -410,73 +343,40 @@ jobs:
 
   publish-vscode-extension:
     name: 🧩 Publish VS Code extension
-    needs: [release-please, build-release]
+    needs: release-please
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dsl/domain-lang/packages/extension
+    permissions:
+      contents: write
     steps:
-      # Checkout at the release tag - version is already updated by release-please
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.release-please.outputs.tag-name }}
-          fetch-depth: 0
-      
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-build-${{ needs.release-please.outputs.version }}
-          path: ./
-      
-      - name: Verify extension version
-        run: |
-          echo "🔍 Checking out at tag: ${{ needs.release-please.outputs.tag-name }}"
-          echo "📦 Expected version: ${{ needs.release-please.outputs.version }}"
-          echo ""
-          echo "📄 extension/package.json version:"
-          jq -r '.version' package.json
-          echo ""
-          # Fail if versions don't match
-          EXT_VERSION=$(jq -r '.version' package.json)
-          if [ "$EXT_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
-            echo "❌ ERROR: Extension version ($EXT_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
-            exit 1
-          fi
-          echo "✅ Extension version matches!"
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install dependencies (production only)
-        working-directory: dsl/domain-lang
-        run: npm ci --omit=dev
+          name: build-output
+          path: artifacts
       
       - name: Install vsce
         run: npm install -g @vscode/vsce
       
-      - name: Package extension
-        working-directory: dsl/domain-lang/packages/extension
-        run: vsce package
-      
-      - name: Verify VSIX version
+      - name: Verify VSIX exists
         run: |
-          VSIX_FILE=$(ls ./*.vsix | head -n 1)
-          echo "📦 VSIX file: $VSIX_FILE"
-          # Extract version from filename (domainlang-X.Y.Z.vsix)
-          VSIX_VERSION=$(echo "$VSIX_FILE" | sed -n 's/.*-\([0-9]*\.[0-9]*\.[0-9]*\)\.vsix/\1/p')
-          echo "📦 VSIX version: $VSIX_VERSION"
-          if [ "$VSIX_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
-            echo "❌ ERROR: VSIX version ($VSIX_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
+          VSIX_FILE=$(ls artifacts/extension/*.vsix 2>/dev/null | head -n 1)
+          if [ -z "$VSIX_FILE" ] || [ ! -f "$VSIX_FILE" ]; then
+            echo "❌ ERROR: No VSIX file found in artifacts/extension/"
+            ls -la artifacts/ || true
+            ls -la artifacts/extension/ || true
             exit 1
           fi
-          echo "✅ VSIX version matches!"
+          echo "✅ Found VSIX: $VSIX_FILE"
+          echo "VSIX_PATH=$VSIX_FILE" >> $GITHUB_ENV
       
       - name: Publish to VS Code Marketplace
-        working-directory: dsl/domain-lang/packages/extension
-        run: vsce publish --pat ${{ secrets.VSCE_PAT }}
+        run: vsce publish --pat ${{ secrets.VSCE_PAT }} --packagePath ${{ env.VSIX_PATH }}
+      
+      - name: Upload VSIX to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ needs.release-please.outputs.tag-name }} ${{ env.VSIX_PATH }}
       
 
 
