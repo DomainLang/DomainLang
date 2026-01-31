@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "domainlang",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "displayName": "DomainLang",
   "description": "A DSL for Domain-Driven Design",
   "publisher": "DomainLang",
