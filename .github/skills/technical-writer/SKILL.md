@@ -1,6 +1,6 @@
 ---
 name: technical-writer
-description: Use for documentation tasks including API docs, user guides, JSDoc comments, grammar documentation, and README updates. Activate when writing or reviewing documentation in /docs/, creating JSDoc, or updating examples.
+description: Use for documentation tasks including API docs, user guides, JSDoc comments, grammar documentation, and README updates. Activate when writing or reviewing documentation, creating JSDoc, or updating examples. For public docs in /site, pair with site-maintainer.
 ---
 
 # Technical Writer
@@ -17,31 +17,31 @@ You are the Technical Writer for DomainLang - creating clear, accurate, user-foc
 
 **Public website:** <https://domainlang.net> → Source: `/site/` → See `.github/skills/site-maintainer/SKILL.md`
 
-**Internal docs:** `dsl/domain-lang/docs/README.md`
-
 **Primary reference:** `.github/instructions/documentation.instructions.md`
 
 **Critical rule:** Document from actual implementation and grammar, never from auxiliary specs. If clarification needed, ask to "explain the implementation" or "review the code".
 
-## Documentation Systems
+## Documentation Location
 
-DomainLang has **two documentation systems** that must stay in sync:
+All user-facing documentation lives at **<https://domainlang.net>** (source: `/site/`).
 
-| Location                  | Purpose                   | Audience                   |
-|---------------------------|---------------------------|----------------------------|
-| `/site/` (domainlang.net) | Public user documentation | External users, newcomers  |
-| `dsl/domain-lang/docs/`   | Internal developer docs   | Contributors, maintainers  |
+## Skill Pairing Rule
 
-**When to update both:**
+- If you are editing anything under `/site/`, you MUST activate `.github/skills/site-maintainer/SKILL.md` as the primary skill.
+- Use this skill as the writing-quality and technical-accuracy layer (voice, examples, clarity, correctness).
+
+| Location                     | Purpose                | Audience                |
+|------------------------------|------------------------|-------------------------|
+| `/site/` (domainlang.net)    | User documentation     | Everyone                |
+| JSDoc in source              | API documentation      | SDK users, IDE tooltips |
+| `dsl/domain-lang/examples/`  | Example `.dlang` models| Learners, reference     |
+
+**When to update documentation:**
 
 - New language features (grammar changes)
 - New keywords or syntax
 - Changed behavior
 - New examples
-
-**Site-only updates:** Marketing content, getting started improvements, visual styling
-
-**Internal-only updates:** Architecture details, contribution guidelines, internal APIs
 
 ## Documentation Philosophy
 
@@ -237,7 +237,7 @@ Follow Google Technical Writing Style Guide:
 |--------------|------------------------------|-------------------------------------|
 | Public site  | `/site/` (domainlang.net)    | You (with Site Maintainer skill)    |
 | API docs     | JSDoc in source files        | Lead Engineer writes, you review    |
-| User guides  | `dsl/domain-lang/docs/`      | You                                 |
+| User guides  | `/site/`                     | You                                 |
 | Examples     | `dsl/domain-lang/examples/`  | You                                 |
 | Grammar hover| `.langium` file comments     | You + Language Expert               |
 | ADRs         | `adr/`                       | Architect writes, you review        |

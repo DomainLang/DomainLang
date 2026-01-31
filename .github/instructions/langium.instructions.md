@@ -15,7 +15,7 @@ You are working with Langium 4.x, a framework for building DSLs with full LSP su
 
 - [Langium Documentation](https://langium.org/docs/)
 - [LSP Specification](https://microsoft.github.io/language-server-protocol/)
-- [DomainLang Grammar](/dsl/domain-lang/packages/language/src/domain-lang.langium)
+- [DomainLang Grammar](../../dsl/domain-lang/packages/language/src/domain-lang.langium)
 
 ## Core Intent
 
@@ -26,7 +26,7 @@ You are working with Langium 4.x, a framework for building DSLs with full LSP su
 
 ## Critical Rules
 
-🔴 **NEVER** edit `packages/language/src/generated/**` - regenerate with `npm run langium:generate`
+🔴 **NEVER** edit `dsl/domain-lang/packages/language/src/generated/**` - regenerate with `npm run langium:generate`
 
 🔴 **ALWAYS** run `npm run langium:generate` after editing `.langium` files
 
@@ -36,8 +36,8 @@ You are working with Langium 4.x, a framework for building DSLs with full LSP su
 
 | File | Purpose |
 |------|---------|
-| `packages/language/src/domain-lang.langium` | Grammar source |
-| `packages/language/src/generated/` | Generated AST (never edit) |
+| `dsl/domain-lang/packages/language/src/domain-lang.langium` | Grammar source |
+| `dsl/domain-lang/packages/language/src/generated/` | Generated AST (never edit) |
 | `packages/language/src/validation/` | Validation rules |
 | `packages/language/src/lsp/` | LSP services |
 | `packages/language/src/services/` | Import resolution, workspace |
@@ -390,10 +390,10 @@ export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices
 - [ ] Add JSDoc comments to grammar rules and generated types
 - [ ] Document any new validation rules in the rule's JSDoc
 
-**Documentation files to update (in `dsl/domain-lang/docs/`):**
-- `language.md` - Full syntax and semantics
-- `quick-reference.md` - Concise examples for quick lookup
-- `examples/*.dlang` - Real-world example models
+**Documentation files to update (source of truth: `/site/`):**
+- `site/reference/language.md` - Full syntax and semantics
+- `site/reference/quick-reference.md` - Concise examples for quick lookup
+- `dsl/domain-lang/examples/*.dlang` - Real-world example models
 
 **Skip documentation for:**
 - Internal refactoring with no syntax changes

@@ -182,8 +182,7 @@ Domain Orders in Sales {}
 
 1. **Grammar hover text:** JSDoc comment on the grammar rule
 2. **Public site:** Update `/site/guide/` and `/site/reference/` pages
-3. **Internal docs:** Update `dsl/domain-lang/docs/` as needed
-4. **Examples:** Add `.dlang` examples to `dsl/domain-lang/examples/`
+3. **Examples:** Add `.dlang` examples to `dsl/domain-lang/examples/`
 
 See `.github/skills/site-maintainer/SKILL.md` for site documentation guidelines.
 
