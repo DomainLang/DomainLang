@@ -36,8 +36,22 @@ jobs:
               - '!dsl/domain-lang/**/*.md'
 
   # ============================================================================
-  # QUALITY GATE (fail-fast) - Lint → Build → Test+Coverage
+  # QUALITY GATE (fail-fast) - Commit Lint → Lint → Build → Test+Coverage
   # ============================================================================
+  commitlint:
+    name: 🔍 Validate commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for commit message validation
+      
+      - name: Validate commit messages
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: dsl/domain-lang/.commitlintrc.json
+
   lint:
     name: 🧹 Lint
     needs: detect-changes
