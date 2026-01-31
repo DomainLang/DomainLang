@@ -8,6 +8,28 @@
     "dsl/domain-lang": {
       "component": "domainlang",
       "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "packages/language/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/cli/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/extension/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/demo/package.json",
+          "jsonpath": "$.version"
+        }
+      ],
       "plugins": [
         {
           "type": "node-workspace",

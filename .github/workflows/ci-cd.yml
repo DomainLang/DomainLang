@@ -309,6 +309,33 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.release-please.outputs.tag-name }}
+          fetch-depth: 0
+      
+      - name: Verify checkout and version
+        run: |
+          echo "🔍 Checking out at tag: ${{ needs.release-please.outputs.tag-name }}"
+          echo "📌 Current commit: $(git rev-parse HEAD)"
+          echo "🏷️  Current tags: $(git tag --points-at HEAD)"
+          echo "📦 Expected version: ${{ needs.release-please.outputs.version }}"
+          echo ""
+          echo "📄 Root package.json version:"
+          jq -r '.version' package.json
+          echo ""
+          echo "📄 packages/${{ matrix.package }}/package.json version:"
+          jq -r '.version' packages/${{ matrix.package }}/package.json
+          echo ""
+          # Fail if versions don't match
+          ROOT_VERSION=$(jq -r '.version' package.json)
+          PKG_VERSION=$(jq -r '.version' packages/${{ matrix.package }}/package.json)
+          if [ "$ROOT_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
+            echo "❌ ERROR: Root package.json version ($ROOT_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
+            exit 1
+          fi
+          if [ "$PKG_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
+            echo "❌ ERROR: Package version ($PKG_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
+            exit 1
+          fi
+          echo "✅ All versions match!"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -345,6 +372,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.release-please.outputs.tag-name }}
+          fetch-depth: 0
+      
+      - name: Verify extension version
+        run: |
+          echo "🔍 Checking out at tag: ${{ needs.release-please.outputs.tag-name }}"
+          echo "📦 Expected version: ${{ needs.release-please.outputs.version }}"
+          echo ""
+          echo "📄 extension/package.json version:"
+          jq -r '.version' package.json
+          echo ""
+          # Fail if versions don't match
+          EXT_VERSION=$(jq -r '.version' package.json)
+          if [ "$EXT_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
+            echo "❌ ERROR: Extension version ($EXT_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
+            exit 1
+          fi
+          echo "✅ Extension version matches!"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -367,6 +411,19 @@ jobs:
       - name: Package extension
         working-directory: dsl/domain-lang/packages/extension
         run: vsce package
+      
+      - name: Verify VSIX version
+        run: |
+          VSIX_FILE=$(ls ./*.vsix | head -n 1)
+          echo "📦 VSIX file: $VSIX_FILE"
+          # Extract version from filename (domainlang-X.Y.Z.vsix)
+          VSIX_VERSION=$(echo "$VSIX_FILE" | sed -n 's/.*-\([0-9]*\.[0-9]*\.[0-9]*\)\.vsix/\1/p')
+          echo "📦 VSIX version: $VSIX_VERSION"
+          if [ "$VSIX_VERSION" != "${{ needs.release-please.outputs.version }}" ]; then
+            echo "❌ ERROR: VSIX version ($VSIX_VERSION) doesn't match release version (${{ needs.release-please.outputs.version }})"
+            exit 1
+          fi
+          echo "✅ VSIX version matches!"
       
       - name: Publish to VS Code Marketplace
         working-directory: dsl/domain-lang/packages/extension
