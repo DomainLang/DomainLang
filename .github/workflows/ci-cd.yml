@@ -272,9 +272,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    environment:
-      name: production
-      url: https://github.com/${{ github.repository }}/releases
+      issues: write
     outputs:
       releases-created: ${{ steps.release.outputs.releases_created }}
       tag-name: ${{ steps.release.outputs['dsl/domain-lang--tag_name'] }}
@@ -286,15 +284,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
-      
-      - name: Report release status
-        if: success()
-        run: |
-          if [ "${{ steps.release.outputs.releases_created }}" == "true" ]; then
-            echo "📦 Released v${{ steps.release.outputs['dsl/domain-lang--version'] }} - Publishing in progress..." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ Quality gates passed. Merge the Release PR to publish." >> $GITHUB_STEP_SUMMARY
-          fi
 
   # ============================================================================
   # PUBLISH - NPM packages and site (parallel)

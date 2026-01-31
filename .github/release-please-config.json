@@ -13,12 +13,8 @@
   "plugins": [
     {
       "type": "node-workspace",
-      "updatePeerDependencies": true
-    },
-    {
-      "type": "linked-versions",
-      "groupName": "domainlang",
-      "components": ["domainlang"]
+      "updatePeerDependencies": true,
+      "merge": false
     }
   ],
   "changelog-sections": [
