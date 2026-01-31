@@ -230,6 +230,8 @@ jobs:
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: site
@@ -287,11 +289,57 @@ jobs:
           manifest-file: .github/.release-please-manifest.json
 
   # ============================================================================
-  # PUBLISH - NPM packages and site (parallel)
+  # BUILD RELEASE - Build once at release tag, reuse artifacts
+  # ============================================================================
+  build-release:
+    name: 🏗️ Build release artifacts
+    needs: release-please
+    if: needs.release-please.outputs.releases-created == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsl/domain-lang
+    steps:
+      # Checkout at the release tag - versions are already updated by release-please
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag-name }}
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dsl/domain-lang/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Langium grammar
+        run: npm run langium:generate
+      
+      - name: Build all packages
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-build-${{ needs.release-please.outputs.version }}
+          path: |
+            dsl/domain-lang/packages/language/lib/
+            dsl/domain-lang/packages/language/src/generated/
+            dsl/domain-lang/packages/cli/lib/
+            dsl/domain-lang/packages/extension/dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  # ============================================================================
+  # PUBLISH - NPM packages and site (parallel, reuse artifacts)
   # ============================================================================
   publish-npm:
     name: 📦 Publish NPM packages
-    needs: release-please
+    needs: [release-please, build-release]
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     outputs:
@@ -310,6 +358,12 @@ jobs:
         with:
           ref: ${{ needs.release-please.outputs.tag-name }}
           fetch-depth: 0
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-build-${{ needs.release-please.outputs.version }}
+          path: ./
       
       - name: Verify checkout and version
         run: |
@@ -344,14 +398,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       
       - name: Install dependencies
-        run: |
-          # Use npm install to regenerate lock file in case versions were updated
-          # This ensures the lock file matches the updated package.json files
-          npm install --package-lock-only
-          npm ci
-      
-      - name: Build
-        run: npm run langium:generate && npm run build
+        run: npm ci --omit=dev
       
       - name: Publish ${{ matrix.package }}
         id: publish
@@ -363,7 +410,7 @@ jobs:
 
   publish-vscode-extension:
     name: 🧩 Publish VS Code extension
-    needs: release-please
+    needs: [release-please, build-release]
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     defaults:
@@ -375,6 +422,12 @@ jobs:
         with:
           ref: ${{ needs.release-please.outputs.tag-name }}
           fetch-depth: 0
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-build-${{ needs.release-please.outputs.version }}
+          path: ./
       
       - name: Verify extension version
         run: |
@@ -397,16 +450,9 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Install dependencies
+      - name: Install dependencies (production only)
         working-directory: dsl/domain-lang
-        run: |
-          # Use npm install to regenerate lock file in case versions were updated
-          npm install --package-lock-only
-          npm ci
-      
-      - name: Build all packages
-        working-directory: dsl/domain-lang
-        run: npm run langium:generate && npm run build
+        run: npm ci --omit=dev
       
       - name: Install vsce
         run: npm install -g @vscode/vsce
@@ -430,7 +476,7 @@ jobs:
       
       - name: Publish to VS Code Marketplace
         working-directory: dsl/domain-lang/packages/extension
-        run: vsce publish -p ${{ secrets.VSCE_TOKEN }}
+        run: vsce publish --pat ${{ secrets.VSCE_PAT }}
       
 
 
@@ -439,6 +485,8 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: site
