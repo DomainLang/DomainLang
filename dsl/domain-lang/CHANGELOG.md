@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.5.0](https://github.com/DomainLang/DomainLang/compare/v0.4.2...v0.5.0) (2026-01-31)
+
+
+### Features
+
+* add syntax diagrams and enhance documentation ([64e7891](https://github.com/DomainLang/DomainLang/commit/64e7891592a60446cbcca101dc6d95f8db0e5ef8))
+
+
+### Bug Fixes
+
+* **ci-cd:** update coverage report path in CI/CD workflow ([b94bce5](https://github.com/DomainLang/DomainLang/commit/b94bce51e885b04adb49e5ab03ff279afa4c7046))
+* **ci-cd:** update coverage report paths in CI/CD workflow ([4957dd5](https://github.com/DomainLang/DomainLang/commit/4957dd5879b445afd09449fd50ba7b62f94ece3a))
+* **ci:** fix SonarQube 0% coverage and add CLI coverage collection ([da0d00a](https://github.com/DomainLang/DomainLang/commit/da0d00ad891314f546646f9363e50df9fc0fde2c))
+* **cli:** correct test import path ([e8a1b02](https://github.com/DomainLang/DomainLang/commit/e8a1b025b6b1dbf282f6d6335305778dbc61f00b))
+* **docs:** add quality gate, security rating, and vulnerabilities badges to README files ([c43f180](https://github.com/DomainLang/DomainLang/commit/c43f180b5330b28c14e0c30b63adda44ae3d34ca))
+* **docs:** correct formatting in README.md for Model Query SDK section ([6b632a6](https://github.com/DomainLang/DomainLang/commit/6b632a6fee6446c32840fdb85ede896018106796))
+* **docs:** correct whitespace in Model Query SDK section of README.md ([6ad68a1](https://github.com/DomainLang/DomainLang/commit/6ad68a185e7fd4fd46aeefbf58b6d32a07c07a73))
+* **docs:** remove trailing whitespace in Model Query SDK section of README.md ([b94bce5](https://github.com/DomainLang/DomainLang/commit/b94bce51e885b04adb49e5ab03ff279afa4c7046))
+* remove extra newline in README.md for improved formatting ([4428baf](https://github.com/DomainLang/DomainLang/commit/4428baf28ecf74003b65c7043e8076dc8349aecc))
+
 ## [0.4.2](https://github.com/DomainLang/DomainLang/compare/v0.4.1...v0.4.2) (2026-01-31)
 
 
