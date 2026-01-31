@@ -231,8 +231,9 @@ jobs:
         with:
           name: coverage-reports
           path: |
-            packages/language/coverage/
-            packages/cli/coverage/
+            ${{ github.workspace }}/dsl/domain-lang/packages/language/coverage/
+            ${{ github.workspace }}/dsl/domain-lang/packages/cli/coverage/
+          if-no-files-found: error
           retention-days: 7
       
       - name: Generate coverage summary
@@ -283,7 +284,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: coverage-reports
-          path: dsl/domain-lang/
+          path: ./
       
       - name: Verify coverage files
         run: |
