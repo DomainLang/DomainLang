@@ -144,6 +144,33 @@ jobs:
             dsl/domain-lang/packages/extension/*.vsix
           retention-days: 7
 
+  build-site:
+    name: 🌐 Build Site
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: site
+        run: npm ci
+      
+      - name: Build site
+        working-directory: site
+        run: npm run build
+      
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site/.vitepress/dist
+
   test-coverage:
     name: 🧪 Test & Coverage
     needs: build
@@ -276,9 +303,10 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: production
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
     defaults:
       run:
         working-directory: site
@@ -295,19 +323,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Clean previous build
-        run: rm -rf .vitepress/dist
-      
       - name: Build site
         run: npm run build
       
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site/.vitepress/dist
-          cname: domainlang.net
-          force_orphan: true
+          path: ./site/.vitepress/dist
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
       
       - name: Report site deployment
         if: success()
@@ -423,38 +449,16 @@ jobs:
 
   publish-site:
     name: 🌐 Publish site
-    needs: release-please
+    needs: [release-please, build-site]
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-    defaults:
-      run:
-        working-directory: site
+      contents: read
+      pages: write
+      id-token: write
     steps:
-      # Checkout at the release tag
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.release-please.outputs.tag-name }}
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: site/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build site
-        run: npm run build
-      
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site/.vitepress/dist
-          cname: domainlang.net
+        id: deployment
+        uses: actions/deploy-pages@v4
       
 
