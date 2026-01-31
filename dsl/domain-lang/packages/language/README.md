@@ -129,7 +129,7 @@ ContextMap SalesIntegration {
 | `src/generated/` | Auto-generated AST (do not edit) |
 | `src/validation/` | Semantic validation rules |
 | `src/lsp/` | LSP features (hover, completion, formatting) |
-| `src/sdk/` | Model Query SDK | 
+| `src/sdk/` | Model Query SDK |
 
 ## Related packages
 
