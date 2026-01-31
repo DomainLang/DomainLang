@@ -3,18 +3,25 @@ description: 'Documentation standards for DomainLang including JSDoc, Markdown, 
 applyTo: "**/*.md"
 ---
 
-# Documentation Standards
+# Documentation standards
 
 > Guidelines for creating effective documentation in DomainLang. Based on Google's Technical Writing Style Guide principles.
 
-## Core Intent
+## Core intent
 
 - Write documentation that helps users accomplish tasks
 - Explain WHY, not just WHAT
 - Keep examples minimal, focused, and tested
 - Update documentation when code changes
+- **Documentation accompanies code:** Grammar, SDK, and CLI changes require site updates
 
-## Writing Style
+## Casing rules
+
+- **Sentence casing for headings:** Use `## Getting started`, not `## Getting Started`
+- **Never use title casing** in headings
+- **Product names retain capitalization:** DomainLang, VS Code, GitHub
+
+## Writing style
 
 - Use **active voice** and **present tense**
 - Write in imperative mood ("Use", "Implement", "Avoid")
@@ -90,12 +97,11 @@ Domain:
 |---------------|-----------------------------------------------------|------------------------------|
 | Public site   | `/site/` → <https://domainlang.net>                 | User-facing documentation    |
 | API docs      | JSDoc in source                                     | IDE hover tooltips           |
-| User guides   | `dsl/domain-lang/docs/`                             | Internal language docs       |
 | Examples      | `dsl/domain-lang/examples/`                         | `.dlang` patterns            |
 | ADRs          | `adr/`                                              | Architecture decisions       |
 | Changelog     | `dsl/domain-lang/CHANGELOG.md` (create if missing) | Version history              |
 
-**⚠️ When documenting new language features:** Update both the public site (`/site/`) AND internal docs. See `.github/skills/site-maintainer/SKILL.md` for site-specific guidelines.
+**⚠️ When documenting new language features:** Update the public site (`/site/`). See `.github/skills/site-maintainer/SKILL.md` for site-specific guidelines.
 
 ## Formatting Guidelines
 
@@ -184,7 +190,7 @@ Implement Git-native imports (like Go modules/Deno).
 
 ## Migration Guides
 
-When introducing breaking changes, provide migration guides in `dsl/domain-lang/docs/migrations/` (create if missing):
+When introducing breaking changes, provide migration guides in `site/guide/migrations/` (create if missing):
 
 ```markdown
 # Migration: v0.x to v1.0
@@ -252,6 +258,6 @@ npm test
 | Documentation Type | Location | Format |
 |-------------------|----------|--------|
 | API reference | JSDoc in source files | `@param`, `@returns`, `@example` |
-| User guides | `dsl/domain-lang/docs/` | Markdown with examples |
+| User guides | `/site/` | Markdown with examples |
 | Architecture decisions | `adr/` | ADR template |
 | Quick reference | README or docs folder | Tables and code snippets |

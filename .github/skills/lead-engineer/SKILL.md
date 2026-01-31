@@ -108,7 +108,7 @@ Every feature flows through three layers:
 - [ ] Linting passes: `npm run lint` shows 0 errors, 0 warnings
 - [ ] Follows `.github/instructions/` standards
 - [ ] Tests are comprehensive (happy path + edge cases)
-- [ ] Documentation updated (site + internal docs for public features)
+- [ ] Documentation updated (`/site/` for user-facing features)
 - [ ] No breaking changes (or documented with migration path)
 - [ ] Performance implications considered
 - [ ] Error messages are user-friendly
@@ -142,10 +142,13 @@ Every feature flows through three layers:
 3. **ALWAYS** add tests for new behavior
 4. **ALWAYS** run `npm run lint` and fix violations before committing
 5. **ALWAYS** add shared types to `services/types.ts` - NEVER scatter type definitions
-6. Use TypeScript strict mode
-7. Use type guards over assertions
+6. **ALWAYS** update `/site/` documentation for user-facing changes (grammar, SDK, CLI)
+7. Use TypeScript strict mode
+8. Use type guards over assertions
 
-**Pre-commit Checklist:**
+**Documentation sync rule:** Any change to grammar keywords, SDK public APIs, or CLI commands **requires** a corresponding update to the public site. Use `.github/skills/site-maintainer/SKILL.md` for guidance.
+
+**Pre-commit checklist:**
 
 ```bash
 npm run lint    # 0 errors, 0 warnings required

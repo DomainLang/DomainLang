@@ -8,6 +8,12 @@
 - Keep the DSL aligned with DDD terminology and concepts
 - Write readable, self-documenting code
 - Every change must have tests
+- **Documentation accompanies code:** Grammar, SDK, and CLI changes require site updates
+
+## Writing style
+
+- **Sentence casing:** Use sentence casing for all headings (`## Getting started`, not `## Getting Started`)
+- **Never use title casing** in documentation headings
 
 ## Critical tools
 
@@ -17,8 +23,12 @@
 
 When a user request clearly matches one of the skill areas below, you MUST consult and follow the corresponding skill file before making changes.
 
-- Documentation work (docs, READMEs, examples-as-docs, JSDoc, grammar hover text) → `.github/skills/technical-writer/SKILL.md`
 - **Website work** (VitePress pages in `/site/`, site config, deployment, user-facing docs at domainlang.net) → `.github/skills/site-maintainer/SKILL.md`
+- Documentation work (READMEs, ADRs, requirements docs, JSDoc, grammar hover text, examples-as-docs) → `.github/skills/technical-writer/SKILL.md`
+
+Rule of thumb:
+
+- If it is intended for end-users and should live on domainlang.net, it is **Website work** (even if the user says "documentation").
 - Language design work (syntax/semantics decisions, grammar authoring strategy, notations/aliases, DDD expressiveness trade-offs) → `.github/skills/language-expert/SKILL.md`
 - Implementation work (TypeScript/Langium code, LSP features, validators, services, SDK, performance) → `.github/skills/lead-engineer/SKILL.md`
 - Testing work (Vitest tests, test strategy, coverage, edge cases) → `.github/skills/tester/SKILL.md`
@@ -36,7 +46,6 @@ If a request spans multiple areas, apply the primary skill first, then the secon
 ## Canonical Docs (Start Here)
 
 - **Public website:** https://domainlang.net (source: `/site/`)
-- Internal docs hub: `dsl/domain-lang/docs/README.md`
 - Examples: `dsl/domain-lang/examples/`
 
 ## Essential Commands
@@ -92,7 +101,7 @@ npm test                  # Run tests
 ### 📚 Documentation Requirements
 
 **For new grammar features, keywords, or DSL constructs:**
-- Update the user docs (start from `dsl/domain-lang/docs/README.md`)
+- Update the public website at `/site/` (guide and reference sections)
 - Create or extend `.dlang` examples under `dsl/domain-lang/examples/`
 - Add/adjust JSDoc on grammar rules and validation functions
 
