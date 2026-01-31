@@ -6,8 +6,12 @@
 
 # A DSL for Domain Driven Design
 
-[![CI](https://github.com/DomainLang/DomainLang/actions/workflows/ci.yml/badge.svg)](https://github.com/DomainLang/DomainLang/actions/workflows/ci.yml)
-[![VS Marketplace](https://vsmarketplacebadges.dev/version/DomainLang.vscode-domainlang.svg)](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)
+[![CI](https://github.com/DomainLang/DomainLang/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/DomainLang/DomainLang/actions/workflows/ci-cd.yml)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
+[![VS Marketplace](https://vsmarketplacebadges.dev/version/DomainLang.vscode-domainlang.svg)](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)![NPM Version](https://img.shields.io/npm/v/%40domainlang%2Flanguage?label=%40domainlang%2Flanguage)![NPM Version](https://img.shields.io/npm/v/%40domainlang%2Fcli?label=%40domainlang%2Fcli)
+
+
+
 
 > [!WARNING]
 > **🚧 Prerelease Software** — DomainLang is in active development and has not reached v1.0 yet. The language syntax and tooling may change. We welcome feedback and contributions—see the [roadmap](https://domainlang.net/roadmap) for planned features.
