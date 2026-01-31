@@ -60,11 +60,7 @@ jobs:
         run: npm ci
       
       - name: Run linter
-        run: |
-          npm run lint
-          echo "## ✅ Linting Passed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All code quality checks passed with zero violations." >> $GITHUB_STEP_SUMMARY
+        run: npm run lint
 
   build:
     name: 🏗️ Build
@@ -90,14 +86,7 @@ jobs:
         run: npm run langium:generate
       
       - name: Build all packages
-        run: |
-          npm run build
-          echo "## 🏗️ Build Successful" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All packages compiled successfully:" >> $GITHUB_STEP_SUMMARY
-          echo "- @domainlang/language" >> $GITHUB_STEP_SUMMARY
-          echo "- @domainlang/cli" >> $GITHUB_STEP_SUMMARY
-          echo "- DomainLang VS Code Extension" >> $GITHUB_STEP_SUMMARY
+        run: npm run build
       
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -138,17 +127,7 @@ jobs:
           path: dsl/domain-lang/
       
       - name: Run tests with coverage
-        run: npm run --workspace packages/language test -- --coverage > coverage-output.txt 2>&1
-      
-      - name: Display coverage in workflow
-        run: |
-          echo "## 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          tail -80 coverage-output.txt >> $GITHUB_STEP_SUMMARY
-          cat coverage-output.txt
-      
-      - name: List coverage files
-        run: ls -la packages/language/coverage/ || echo "Coverage directory not found"
+        run: npm run --workspace packages/language test -- --coverage
       
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
@@ -158,8 +137,21 @@ jobs:
           path: dsl/domain-lang/packages/language/coverage/
           retention-days: 7
       
-      - name: Display coverage summary
-        run: cat dsl/domain-lang/packages/language/coverage/coverage-summary.json | npm run --silent json2table 2>/dev/null || echo "Coverage report generated successfully"
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          if [ -f "packages/language/coverage/coverage-summary.json" ]; then
+            echo "## 📊 Coverage Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/language/coverage/coverage-summary.json').total; console.log(\`| Lines | \${c.lines.pct}% (\${c.lines.covered}/\${c.lines.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/language/coverage/coverage-summary.json').total; console.log(\`| Statements | \${c.statements.pct}% (\${c.statements.covered}/\${c.statements.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/language/coverage/coverage-summary.json').total; console.log(\`| Functions | \${c.functions.pct}% (\${c.functions.covered}/\${c.functions.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            node -e "const c=require('./packages/language/coverage/coverage-summary.json').total; console.log(\`| Branches | \${c.branches.pct}% (\${c.branches.covered}/\${c.branches.total}) |\`)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📦 [Download detailed HTML report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # ============================================================================
   # ANALYSIS GATE - SonarQube (blocking) + CodeQL (parallel)
@@ -204,14 +196,10 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       
-      - name: Report SonarQube Analysis
+      - name: Report SonarQube result
         if: always()
         run: |
-          echo "## 📊 SonarQube Analysis Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Quality Gate Status: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View detailed analysis: [SonarQube Cloud](https://sonarcloud.io/dashboard?id=DomainLang_DomainLang)" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View Quality Analysis](https://sonarcloud.io/dashboard?id=DomainLang_DomainLang)" >> $GITHUB_STEP_SUMMARY
 
   codeql:
     name: 🔒 CodeQL Analysis
@@ -236,14 +224,7 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
       
-      - name: Report CodeQL Analysis
-        if: always()
-        run: |
-          echo "## 🔒 Security Analysis Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "CodeQL security scanning completed successfully." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Check the **Security** tab for detailed vulnerability findings." >> $GITHUB_STEP_SUMMARY
+
 
   # ============================================================================
   # SITE-ONLY PUBLISH - Fast path for documentation changes
@@ -283,14 +264,9 @@ jobs:
           publish_dir: ./site/.vitepress/dist
           cname: domainlang.net
       
-      - name: Report Fast Path Site Deploy
+      - name: Report site deployment
         if: always()
-        run: |
-          echo "## 🌐 Documentation Site Published (Fast Path)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Documentation changes deployed directly to production." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[Visit Site](https://domainlang.net)" >> $GITHUB_STEP_SUMMARY
+        run: echo "🌐 Deployed to [domainlang.net](https://domainlang.net)" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
   # RELEASE - Release Please handles versioning & releases
@@ -320,23 +296,13 @@ jobs:
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
       
-      - name: Report Release Status
+      - name: Report release status
         if: always()
         run: |
           if [ "${{ steps.release.outputs.releases_created }}" == "true" ]; then
-            echo "## 📦 Release Created" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Version:** \`${{ steps.release.outputs['dsl/domain-lang--version'] }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "**Tag:** \`${{ steps.release.outputs['dsl/domain-lang--tag_name'] }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ Publishing jobs will now run in parallel:" >> $GITHUB_STEP_SUMMARY
-            echo "- NPM packages" >> $GITHUB_STEP_SUMMARY
-            echo "- VS Code Extension" >> $GITHUB_STEP_SUMMARY
-            echo "- Documentation Site" >> $GITHUB_STEP_SUMMARY
+            echo "📦 Released v${{ steps.release.outputs['dsl/domain-lang--version'] }} - Publishing in progress..." >> $GITHUB_STEP_SUMMARY
           else
-            echo "## ✅ Quality Gates Passed" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "All code quality checks successful. Waiting for Release PR to be merged to trigger release." >> $GITHUB_STEP_SUMMARY
+            echo "✅ Quality gates passed. Merge the Release PR to publish." >> $GITHUB_STEP_SUMMARY
           fi
 
   # ============================================================================
@@ -383,15 +349,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
-      - name: Report NPM Publish
-        if: always()
-        run: |
-          echo "## 📦 NPM Package Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Package:** \`@domainlang/${{ matrix.package }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ needs.release-please.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[View on npm.js](https://www.npmjs.com/package/@domainlang/${{ matrix.package }}/v/${{ needs.release-please.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+
 
   publish-vscode-extension:
     name: 🧩 Publish VS Code extension
@@ -431,15 +389,7 @@ jobs:
       - name: Publish to VS Code Marketplace
         run: vsce publish -p ${{ secrets.VSCE_TOKEN }}
       
-      - name: Report VS Code Extension Publish
-        if: always()
-        run: |
-          echo "## 🧩 VS Code Extension Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Extension:** DomainLang" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ needs.release-please.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[View on Marketplace](https://marketplace.visualstudio.com/items?itemName=domainlang.vscode-domainlang)" >> $GITHUB_STEP_SUMMARY
+
 
   publish-site:
     name: 🌐 Publish site
@@ -475,11 +425,4 @@ jobs:
           publish_dir: ./site/.vitepress/dist
           cname: domainlang.net
       
-      - name: Report Release Site Deploy
-        if: always()
-        run: |
-          echo "## 🌐 Documentation Site Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ needs.release-please.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[Visit Site](https://domainlang.net)" >> $GITHUB_STEP_SUMMARY
+
