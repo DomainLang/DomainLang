@@ -281,22 +281,22 @@ Your work is successful when:
 - Quality Gate (fail-fast): Lint → Build → Test+Coverage
 - Analysis Gate (parallel): SonarQube (blocking) + CodeQL
 - Production Gate: Manual environment approval
-- Auto-versioning: Conventional commits drive version bumps
+- Auto-versioning: Release-please creates release PRs
 - Parallel deployment: NPM packages, VS Code extension, site
 
 **Version Management:**
-- Versions auto-incremented based on conventional commits since last tag
+- Release-please analyzes conventional commits and creates release PR
 - `feat:` → Minor bump (0.1.0 → 0.2.0)
 - `fix:` → Patch bump (0.1.0 → 0.1.1)
 - `feat!:` or `BREAKING CHANGE:` → Major bump (0.1.0 → 1.0.0)
-- Git tags point to version bump commits for traceability
-- All workspace packages bumped atomically
+- When release PR merged: GitHub release + git tag created automatically
+- All workspace packages synced to same version before publishing
 
 **Release Workflow:**
-1. Push to main triggers quality + analysis gates
-2. Manual approval required in GitHub environment
-3. Workflow bumps version, commits, tags, and pushes
-4. GitHub Release created with package links
+1. Conventional commits pushed to main
+2. Release-please opens/updates release PR with version bumps + changelog
+3. Review and merge release PR
+4. Manual approval required in GitHub environment
 5. NPM packages, VS Code extension, and site deploy in parallel
 
 See `.github/workflows/ci-cd.yml` for implementation details.

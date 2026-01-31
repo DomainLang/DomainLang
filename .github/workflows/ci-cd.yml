@@ -241,10 +241,10 @@ jobs:
           cname: domainlang.net
 
   # ============================================================================
-  # RELEASE - Environment approval required (production gate)
+  # RELEASE - Release Please handles versioning & releases
   # ============================================================================
-  create-release:
-    name: 📦 Create release
+  release-please:
+    name: 📦 Release Please
     needs: [sonarqube, codeql]
     if: |
       github.event_name == 'push' &&
@@ -254,115 +254,24 @@ jobs:
       name: production
       url: https://github.com/${{ github.repository }}/releases
     outputs:
-      version: ${{ steps.bump.outputs.new_version }}
       release-created: ${{ steps.release.outputs.release_created }}
+      tag-name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for conventional commits detection
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      
-      - name: Bump version based on commits
-        id: bump
-        run: |
-          cd dsl/domain-lang
-          
-          # Get current version
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Current version: ${CURRENT_VERSION}"
-          
-          # Analyze commits since last tag to determine bump type
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
-          if [ -z "$LAST_TAG" ]; then
-            # No previous tag, this is first release - use current version
-            NEW_VERSION="${CURRENT_VERSION}"
-            echo "First release, using version from package.json: ${NEW_VERSION}"
-          else
-            # Check commits for conventional commit types
-            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s")
-            
-            # Check for breaking changes (MAJOR bump)
-            if echo "$COMMITS" | grep -qE "^[a-z]+(\(.+\))?!:|BREAKING CHANGE:"; then
-              BUMP_TYPE="major"
-            # Check for features (MINOR bump)
-            elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
-              BUMP_TYPE="minor"
-            # Default to PATCH bump
-            else
-              BUMP_TYPE="patch"
-            fi
-            
-            echo "Bump type determined: ${BUMP_TYPE}"
-            
-            # Perform version bump
-            npm version ${BUMP_TYPE} --no-git-tag-version --workspaces
-            NEW_VERSION=$(node -p "require('./package.json').version")
-          fi
-          
-          echo "New version: ${NEW_VERSION}"
-          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
-          
-          # Validate semver format
-          if ! echo "${NEW_VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Error: Version ${NEW_VERSION} is not valid semver (must be MAJOR.MINOR.PATCH)"
-            exit 1
-          fi
-      
-      - name: Commit version bump
-        run: |
-          cd dsl/domain-lang
-          git add .
-          git commit -m "chore(release): bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
-          git tag -a "v${{ steps.bump.outputs.new_version }}" -m "Release v${{ steps.bump.outputs.new_version }}"
-      
-      - name: Push changes and tags
-        run: |
-          git push origin main --follow-tags
-      
-      - name: Create GitHub Release
+      - uses: googleapis/release-please-action@v4
         id: release
-        uses: ncipollo/release-action@v1
         with:
-          tag: v${{ steps.bump.outputs.new_version }}
-          name: Release v${{ steps.bump.outputs.new_version }}
-          draft: false
-          generateReleaseNotes: true
-          commit: main
           token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            ## 📦 NPM Packages
-            
-            - [@domainlang/language@${{ steps.bump.outputs.new_version }}](https://www.npmjs.com/package/@domainlang/language/v/${{ steps.bump.outputs.new_version }})
-            - [@domainlang/cli@${{ steps.bump.outputs.new_version }}](https://www.npmjs.com/package/@domainlang/cli/v/${{ steps.bump.outputs.new_version }})
-            
-            ## 🧩 VS Code Extension
-            
-            - [DomainLang Extension](https://marketplace.visualstudio.com/items?itemName=domainlang.vscode-domainlang)
-            
-            ## 🌐 Documentation
-            
-            - [Documentation Site](https://domainlang.net)
-            
-            ---
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
 
   # ============================================================================
   # PUBLISH - NPM packages and site (parallel)
   # ============================================================================
   publish-npm:
     name: 📦 Publish NPM packages
-    needs: create-release
-    if: needs.create-release.outputs.release-created == 'true'
+    needs: release-please
+    if: needs.release-please.outputs.release-created == 'true'
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.publish.outcome }}
@@ -388,6 +297,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Sync package versions
+        run: |
+          # Ensure all workspace packages have the same version
+          npm version ${{ needs.release-please.outputs.version }} --no-git-tag-version --workspaces --workspace-no-bail || true
+      
       - name: Build
         run: npm run langium:generate && npm run build
       
@@ -399,8 +313,8 @@ jobs:
 
   publish-vscode-extension:
     name: 🧩 Publish VS Code extension
-    needs: create-release
-    if: needs.create-release.outputs.release-created == 'true'
+    needs: release-please
+    if: needs.release-please.outputs.release-created == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -429,8 +343,8 @@ jobs:
 
   publish-site:
     name: 🌐 Publish site
-    needs: create-release
-    if: needs.create-release.outputs.release-created == 'true'
+    needs: release-please
+    if: needs.release-please.outputs.release-created == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

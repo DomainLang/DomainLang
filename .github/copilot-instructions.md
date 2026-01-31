@@ -94,15 +94,17 @@ npm test                  # Run tests
 - **Quality Gate:** Lint → Build → Test+Coverage (fail-fast)
 - **Analysis Gate:** SonarQube (blocking) + CodeQL (parallel)
 - **Production Gate:** Manual environment approval required
-- **Auto-versioning:** Conventional commits analyzed, version bumped automatically
-- **Git tagging:** Version commit tagged and pushed before release
+- **Auto-versioning:** Release-please analyzes conventional commits and creates release PRs
+- **Git tagging:** Release-please tags releases automatically when PR is merged
 - **Parallel publishing:** NPM packages, VS Code extension, and site deploy concurrently
 
 **Version Management:**
-- Versions auto-incremented based on commit messages since last tag
-- All workspace packages bumped atomically (`npm version --workspaces`)
-- Version commits include `[skip ci]` to prevent workflow loops
-- Tags point to version bump commits for traceability
+- Release-please creates/updates a release PR based on conventional commits
+- When the release PR is merged, it:
+  - Creates a GitHub release with auto-generated changelog
+  - Tags the release commit
+  - Triggers publishing workflows
+- All workspace packages synced to same version before publishing
 - Proper semver: 0.1.99 → 0.1.100 → 0.2.0 → 1.0.0
 
 **Fast Paths:**
