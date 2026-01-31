@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/DomainLang/DomainLang/compare/v0.5.0...v0.5.1) (2026-01-31)
+
+
+### Bug Fixes
+
+* **ci-cd:** remove redundant build-site job and update publish-site job name ([12a2bfa](https://github.com/DomainLang/DomainLang/commit/12a2bfac11ecce7fb698e5a53ffae98db6d1ec71))
+
 ## [0.5.0](https://github.com/DomainLang/DomainLang/compare/v0.4.2...v0.5.0) (2026-01-31)
 
 
