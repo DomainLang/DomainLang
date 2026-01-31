@@ -110,7 +110,7 @@ export default defineConfig({
           text: 'Introduction',
           items: [
             { text: 'What is DomainLang?', link: '/guide/what-is-domainlang' },
-            { text: 'Getting Started', link: '/guide/getting-started' },
+            { text: 'Getting started', link: '/guide/getting-started' },
           ]
         },
         {
@@ -126,7 +126,7 @@ export default defineConfig({
           text: 'Advanced',
           items: [
             { text: 'Namespaces', link: '/guide/namespaces' },
-            { text: 'Import System', link: '/guide/imports' },
+            { text: 'Import system', link: '/guide/imports' },
           ]
         },
         {
@@ -141,8 +141,9 @@ export default defineConfig({
         {
           text: 'Reference',
           items: [
-            { text: 'Language Reference', link: '/reference/language' },
-            { text: 'Quick Reference', link: '/reference/quick-reference' },
+            { text: 'Language reference', link: '/reference/language' },
+            { text: 'Quick reference', link: '/reference/quick-reference' },
+            { text: 'Syntax diagrams', link: '/reference/syntax-diagrams' },
           ]
         }
       ],
@@ -166,7 +167,7 @@ export default defineConfig({
     // Footer
     footer: {
       message: 'Released under the Apache 2.0 License.',
-      copyright: 'Copyright © 2024-present <a href="https://github.com/larsbaunwall">Lars Baunwall</a>. Built with ❤️ in Denmark.'
+      copyright: 'Copyright © 2024-2026 <a href="https://github.com/larsbaunwall">Lars Baunwall</a>. Built with ❤️ in Denmark.'
     },
     
     // Edit link

@@ -5,6 +5,9 @@ node_modules/
 .vitepress/dist/
 .vitepress/cache/
 
+# Copied from language package at build time
+public/syntax-diagram.html
+
 # Local env files
 *.local
 

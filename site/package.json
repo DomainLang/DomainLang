@@ -5,9 +5,10 @@
   "description": "DomainLang documentation site",
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev",
-    "build": "vitepress build",
-    "preview": "vitepress preview"
+    "dev": "npm run copy-diagrams && vitepress dev",
+    "build": "npm run copy-diagrams && vitepress build",
+    "preview": "vitepress preview",
+    "copy-diagrams": "cp ../dsl/domain-lang/packages/language/docs/syntax-diagram.html public/"
   },
   "devDependencies": {
     "vitepress": "^1.6.3",

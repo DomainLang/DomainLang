@@ -96,3 +96,37 @@
 .vp-doc [class*='language-dlang'] code {
   font-family: var(--vp-font-family-mono);
 }
+
+/**
+ * Railroad diagram enhancements
+ * -------------------------------------------------------------------------- */
+
+/* Smooth scrolling within railroad diagrams */
+.railroad-wrapper {
+  transition: border-color 0.2s ease;
+}
+
+.railroad-wrapper:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+/* Add subtle shadow in dark mode */
+.dark .railroad-wrapper {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Info box styling for diagram legend */
+.vp-doc .info.custom-block {
+  border-left-width: 3px;
+}
+
+/* Responsive adjustments for railroad diagrams */
+@media (max-width: 768px) {
+  .railroad-wrapper {
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}

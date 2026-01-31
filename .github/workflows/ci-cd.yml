@@ -138,6 +138,7 @@ jobs:
           path: |
             dsl/domain-lang/packages/language/out/
             dsl/domain-lang/packages/language/src/generated/
+            dsl/domain-lang/packages/language/docs/
             dsl/domain-lang/packages/cli/out/
             dsl/domain-lang/packages/extension/out/
             dsl/domain-lang/packages/extension/syntaxes/
