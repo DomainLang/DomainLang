@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/DomainLang/DomainLang/compare/v0.4.0...v0.4.1) (2026-01-31)
+
+
+### Bug Fixes
+
+* improve CI/CD artifact reuse for releases ([d2065de](https://github.com/DomainLang/DomainLang/commit/d2065dec78cec390b68128bccc0876ae9e369b9a))
+
 ## [0.4.0](https://github.com/DomainLang/DomainLang/compare/v0.3.0...v0.4.0) (2026-01-31)
 
 
