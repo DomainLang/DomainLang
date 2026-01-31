@@ -7,15 +7,15 @@
   "packages": {
     "dsl/domain-lang": {
       "component": "domainlang",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "plugins": [
+        {
+          "type": "node-workspace",
+          "updatePeerDependencies": true
+        }
+      ]
     }
   },
-  "plugins": [
-    {
-      "type": "node-workspace",
-      "updatePeerDependencies": true
-    }
-  ],
   "changelog-sections": [
     { "type": "feat", "section": "Features", "hidden": false },
     { "type": "fix", "section": "Bug Fixes", "hidden": false },

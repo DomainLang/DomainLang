@@ -229,6 +229,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production
     defaults:
       run:
         working-directory: site
@@ -364,9 +365,11 @@ jobs:
         run: npm install -g @vscode/vsce
       
       - name: Package extension
+        working-directory: dsl/domain-lang/packages/extension
         run: vsce package
       
       - name: Publish to VS Code Marketplace
+        working-directory: dsl/domain-lang/packages/extension
         run: vsce publish -p ${{ secrets.VSCE_TOKEN }}
       
 
