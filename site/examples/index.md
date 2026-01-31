@@ -2,9 +2,9 @@
 
 Real-world DomainLang examples to learn from and adapt.
 
-## Featured Examples
+## Featured examples
 
-### Banking System
+### Banking system
 
 A comprehensive banking domain with regulatory compliance, fraud detection, and complex integration patterns.
 
@@ -16,7 +16,7 @@ A comprehensive banking domain with regulatory compliance, fraud detection, and 
 - Rich terminology for financial concepts
 - Integration patterns between core banking and compliance
 
-### Healthcare System
+### Healthcare system
 
 A hospital management system with clinical care, patient records, HIPAA compliance, and pharmacy management.
 
@@ -28,16 +28,16 @@ A hospital management system with clinical care, patient records, HIPAA complian
 - Integration between clinical and administrative contexts
 - Patient safety decision documentation
 
-## Quick Snippets
+## Quick snippets
 
-### Minimal Model
+### Minimal model
 
 ```dlang
 Domain Sales { description: "Sales" }
 bc Orders for Sales { description: "Order lifecycle" }
 ```
 
-### With Teams and Classifications
+### With teams and classifications
 
 ```dlang
 Classification CoreDomain
@@ -50,7 +50,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 }
 ```
 
-### Context Map with Patterns
+### Context map with patterns
 
 ```dlang
 ContextMap Integration {
@@ -61,7 +61,7 @@ ContextMap Integration {
 }
 ```
 
-### Multi-File Structure
+### Multi-file structure
 
 ```text
 project/
@@ -75,10 +75,7 @@ project/
     └── shipping.dlang
 ```
 
-## More Examples
-
-Browse the complete examples in the GitHub repository:
-
+## More examples
 - [Customer-Facing](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/examples/customer-facing.dlang)
 - [Metadata Examples](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/examples/metadata-local-definition.dlang)
 - [Multi-File Project](https://github.com/larsbaunwall/DomainLang/tree/main/dsl/domain-lang/examples/multi-file-project)

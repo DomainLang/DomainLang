@@ -4,7 +4,7 @@ layout: home
 hero:
   name: DomainLang
   text: A DSL for Domain-Driven Design
-  tagline: Keep domains, bounded contexts, ownership, and terminology close to the codebase
+  tagline: Model domains, bounded contexts, context maps, and ubiquitous language in version-controlled text files
   image:
     src: /logo.svg
     alt: DomainLang
@@ -18,30 +18,30 @@ hero:
 
 features:
   - icon: 🎯
-    title: DDD-Aligned Language
+    title: DDD-aligned syntax
     details: Express domains, bounded contexts, context maps, and ubiquitous language in a clean, readable syntax.
   - icon: 🛠️
-    title: First-Class IDE Support
+    title: First-class IDE support
     details: VS Code extension with syntax highlighting, validation, completion, hover, and go-to-definition.
   - icon: 📦
-    title: Version Control Friendly
+    title: Version control friendly
     details: Plain text files that live in your repo—easy to review in pull requests and track changes over time.
   - icon: 🔍
-    title: Built-in Validation
+    title: Built-in validation
     details: Catch common modeling issues early with real-time validation and helpful error messages.
   - icon: 🧩
-    title: Model Query SDK
+    title: Model query SDK
     details: Programmatic access to your DDD models for analysis, documentation generation, and automation.
   - icon: 📚
-    title: Multi-File Support
-    details: Split models across files with imports, namespaces, and dependencies for large codebases.
+    title: Multi-file support
+    details: Split models across files with imports, namespaces, and external dependencies for large codebases.
 ---
 
 ::: warning 🚧 Prerelease Software
 DomainLang is in active development and has not reached v1.0 yet. The language syntax and tooling may change. We welcome feedback and contributions—see the [roadmap](/roadmap) for planned features.
 :::
 
-## Quick Example
+## Quick example
 
 ```dlang
 Classification CoreDomain

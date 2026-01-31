@@ -2,7 +2,7 @@
 
 DomainLang is evolving to become the definitive tool for Domain-Driven Design modeling. Here's what's coming.
 
-## Current Status
+## Current status
 
 DomainLang today provides:
 
@@ -12,9 +12,9 @@ DomainLang today provides:
 - ✅ **Multi-File Support** — Imports, namespaces, and project manifests
 - ✅ **npm Packages** — [`@domainlang/cli`](https://www.npmjs.com/package/@domainlang/cli) and [`@domainlang/language`](https://www.npmjs.com/package/@domainlang/language) published on npm
 
-## What's Next
+## What's next
 
-### Phase 1: Modern CLI Experience
+### Phase 1: Modern CLI experience
 
 **Status:** In Development
 
@@ -33,7 +33,7 @@ A beautiful, powerful command-line interface for working with DomainLang models.
 - Interactive prompts for complex operations
 - `--json` and `--quiet` modes for CI/CD integration
 
-### Phase 2: VS Code UI Enhancements
+### Phase 2: VS Code UI enhancements
 
 **Status:** Planned
 
@@ -67,7 +67,7 @@ Generate beautiful diagrams, canvases, and maps from your models.
 - Mermaid, PlantUML for embedding in docs
 - Interactive HTML for sharing
 
-### Phase 4: Web Explorer
+### Phase 4: Web explorer
 
 **Status:** Future
 
@@ -81,7 +81,7 @@ A web-based interface for exploring and sharing DomainLang models.
 | Embed Widgets | Embed visualizations in wikis, Notion, Confluence |
 | Search | Full-text search across domains, contexts, and terminology |
 
-## Beyond the Roadmap
+## Beyond the roadmap
 
 Ideas we're exploring for the future:
 
@@ -89,7 +89,7 @@ Ideas we're exploring for the future:
 - **Model Diff** — Compare and merge model versions
 - **Metrics Dashboard** — Track model health and coverage
 
-## Get Involved
+## Get involved
 
 DomainLang is open source. We'd love your input!
 

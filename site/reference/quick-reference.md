@@ -1,4 +1,4 @@
-# Quick Reference
+# Quick reference
 
 A syntax cheat sheet for DomainLang. Keep this page open while modeling.
 
@@ -6,7 +6,7 @@ A syntax cheat sheet for DomainLang. Keep this page open while modeling.
 For detailed explanations, see the [Language Reference](/reference/language).
 :::
 
-## Minimal Model
+## Minimal model
 
 ```dlang
 Domain Sales { description: "Sales" }
@@ -30,7 +30,7 @@ bc Orders for Sales {
 | Domain map | `DomainMap`, `dmap` | Domain portfolio |
 | Import | `import`, `Import` | Module system |
 
-## Block Aliases
+## Block aliases
 
 Inside bounded contexts:
 
@@ -41,7 +41,7 @@ Inside bounded contexts:
 | `decisions` | `rules` |
 | `relationships` | `integrations` |
 
-## Assignment Operators
+## Assignment operators
 
 All equivalent: `:`, `=`, `is`
 
@@ -51,7 +51,7 @@ vision = "Using equals"
 team is SalesTeam
 ```
 
-## Bounded Context Shortcuts
+## Bounded context shortcuts
 
 ```dlang
 // Header form (recommended)
@@ -64,7 +64,7 @@ bc Orders for Sales {
 }
 ```
 
-## Full Bounded Context
+## Full bounded context
 
 ```dlang
 Metadata Language
@@ -96,7 +96,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 }
 ```
 
-## Context Map Relationships
+## Context map relationships
 
 ```dlang
 ContextMap System {
@@ -115,7 +115,7 @@ ContextMap System {
 }
 ```
 
-## Integration Patterns
+## Integration patterns
 
 | Pattern | Short | Description |
 |---------|-------|-------------|

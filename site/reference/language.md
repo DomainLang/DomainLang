@@ -1,4 +1,4 @@
-# Language Reference
+# Language reference
 
 This is the authoritative reference for DomainLang syntax and semantics.
 
@@ -6,11 +6,11 @@ This is the authoritative reference for DomainLang syntax and semantics.
 New to DomainLang? Start with the [Getting Started](/guide/getting-started) guide first.
 :::
 
-## Keywords and Aliases
+## Keywords and aliases
 
 DomainLang accepts aliases for common constructs:
 
-### Top-Level Keywords
+### Top-level keywords
 
 | Concept | Keywords |
 | ------- | -------- |
@@ -24,7 +24,7 @@ DomainLang accepts aliases for common constructs:
 | Team | `Team` |
 | Metadata key | `Metadata` |
 
-### Block Keywords (inside Bounded Contexts)
+### Block keywords (inside bounded contexts)
 
 | Block | Alias |
 | ----- | ----- |
@@ -33,7 +33,7 @@ DomainLang accepts aliases for common constructs:
 | `decisions` | `rules` |
 | `relationships` | `integrations` |
 
-### Item Keywords (inside blocks)
+### Item keywords (inside blocks)
 
 | Item | Alias |
 | ---- | ----- |
@@ -42,7 +42,7 @@ DomainLang accepts aliases for common constructs:
 | `policy` | `Policy` |
 | `rule` | `Rule` |
 
-## Comments and Strings
+## Comments and strings
 
 ```dlang
 // Line comment
@@ -56,7 +56,7 @@ Domain Sales {
 }
 ```
 
-## Assignment Operators
+## Assignment operators
 
 Properties accept these equivalent operators:
 
@@ -87,7 +87,7 @@ Domain Sales {
 }
 ```
 
-### Subdomain Hierarchy
+### Subdomain hierarchy
 
 Use `in` to create subdomains:
 
@@ -126,11 +126,11 @@ Team SalesTeam
 Team PlatformTeam
 ```
 
-## Bounded Contexts
+## Bounded contexts
 
 A bounded context defines a model boundary.
 
-### Full Syntax
+### Full syntax
 
 ```dlang
 Metadata Language
@@ -156,7 +156,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 }
 ```
 
-### Header Keywords
+### Header keywords
 
 | Keyword | Purpose | Example |
 |---------|---------|---------|
@@ -164,7 +164,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 | `as` | Classification | `as CoreDomain` |
 | `by` | Owning team | `by SalesTeam` |
 
-### Body Properties
+### Body properties
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -175,7 +175,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 | `archetype` | Classification | Gateway, Execution, Analysis, etc. |
 | `team` | Team | Owning team (alternative to `by`) |
 
-### Block Aliases
+### Block aliases
 
 | Block | Alias |
 |-------|-------|
@@ -198,14 +198,14 @@ terminology {
 }
 ```
 
-### Term Properties
+### Term properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `aka` / `synonyms` | ID list | Alternative names (identifiers, not strings) |
 | `examples` | string list | Example values |
 
-## Decisions, Policies, Rules
+## Decisions, policies, rules
 
 Record governance and constraints. Use `decisions` (or `rules`) blocks with `decision`, `policy`, or `rule` entries:
 
@@ -220,7 +220,7 @@ decisions {
 }
 ```
 
-### Decision Keywords
+### Decision keywords
 
 | Keyword | Alias | Description |
 | ------- | ----- | ----------- |
@@ -255,7 +255,7 @@ bc Orders for Sales {
 | `<->` | Bidirectional |
 | `><` | Separate ways |
 
-### Integration Patterns
+### Integration patterns
 
 | Short | Long Form | Description |
 |-------|-----------|-------------|
@@ -267,7 +267,7 @@ bc Orders for Sales {
 | `P` | `Partnership` | Coordinated development |
 | `BBoM` | `BigBallOfMud` | No clear structure |
 
-### Relationship Types
+### Relationship types
 
 - `Partnership`
 - `SharedKernel`
@@ -287,7 +287,7 @@ bc Orders for Sales {
 }
 ```
 
-## Context Maps
+## Context maps
 
 Visualize bounded context relationships:
 
@@ -301,7 +301,7 @@ ContextMap Integration {
 }
 ```
 
-## Domain Maps
+## Domain maps
 
 High-level domain organization:
 
@@ -343,7 +343,7 @@ import "acme/core"
 import "acme/core" as Core
 ```
 
-### Import Resolution
+### Import resolution
 
 1. Relative paths resolve from the importing file
 2. Package imports resolve from `model.yaml` dependencies

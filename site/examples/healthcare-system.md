@@ -1,4 +1,4 @@
-# Healthcare System
+# Healthcare system
 
 A hospital management system demonstrating DomainLang for clinical care, patient records, HIPAA compliance, and pharmacy management.
 
@@ -11,7 +11,7 @@ This example models a healthcare system with:
 - Rich medical terminology (diagnoses, encounters, treatments)
 - Integration between clinical, administrative, and pharmacy contexts
 
-## The Model
+## The model
 
 ```dlang
 // ============================================================================
@@ -162,9 +162,9 @@ ContextMap HealthcareSystem {
 }
 ```
 
-## Key Patterns Demonstrated
+## Key patterns demonstrated
 
-### Healthcare-Specific Classifications
+### Healthcare-specific classifications
 
 Classifications capture regulatory and safety requirements:
 
@@ -178,7 +178,7 @@ decisions {
 }
 ```
 
-### Medical Terminology
+### Medical terminology
 
 Rich terminology with domain-specific aliases:
 
@@ -190,7 +190,7 @@ terminology {
 }
 ```
 
-### Clinical Integration Patterns
+### Clinical integration patterns
 
 The EHR system provides an Open Host Service that other contexts consume:
 
@@ -202,7 +202,7 @@ The EHR system provides an Open Host Service that other contexts consume:
 - AppointmentScheduling conforms to the EHR API
 - MedicationManagement uses an Anti-Corruption Layer to translate between clinical and pharmacy models
 
-### Policy Documentation
+### Policy documentation
 
 Business rules and compliance policies are captured:
 
@@ -213,7 +213,7 @@ decisions {
 }
 ```
 
-## Full Example
+## Full example
 
 View the complete healthcare system example in the repository:
 

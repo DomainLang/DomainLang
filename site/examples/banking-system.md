@@ -1,4 +1,4 @@
-# Banking System
+# Banking system
 
 A comprehensive banking domain demonstrating real-world DomainLang usage with regulatory compliance, fraud detection, and complex integration patterns.
 
@@ -10,7 +10,7 @@ This example models a banking system with:
 - Rich terminology for financial concepts
 - Complex integration patterns between bounded contexts
 
-## The Model
+## The model
 
 ```dlang
 // ============================================================================
@@ -158,9 +158,9 @@ ContextMap BankingSystem {
 }
 ```
 
-## Key Patterns Demonstrated
+## Key patterns demonstrated
 
-### Domain Hierarchy
+### Domain hierarchy
 
 The banking domain is organized hierarchically using `in`:
 
@@ -171,7 +171,7 @@ Domain Payments in Banking { }
 Domain Compliance in Banking { }
 ```
 
-### Regulatory Classifications
+### Regulatory classifications
 
 Custom classifications capture regulatory requirements:
 
@@ -184,7 +184,7 @@ decisions {
 }
 ```
 
-### Rich Terminology
+### Rich terminology
 
 Financial terminology with aliases and examples:
 
@@ -196,7 +196,7 @@ terminology {
 }
 ```
 
-### Integration Patterns
+### Integration patterns
 
 The context map shows upstream/downstream relationships:
 
@@ -209,7 +209,7 @@ The context map shows upstream/downstream relationships:
 - AccountManagement conforms to the payment API
 - FraudDetection uses an Anti-Corruption Layer to protect its model
 
-## Full Example
+## Full example
 
 View the complete banking system example in the repository:
 
