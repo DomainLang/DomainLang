@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/DomainLang/DomainLang/compare/v0.2.0...v0.3.0) (2026-01-31)
+
+
+### Features
+
+* prepare v0.3.0 release ([fbe8c45](https://github.com/DomainLang/DomainLang/commit/fbe8c458dcf4811d0fa30ec2e256b90c2523bcaf))
+* prepare v0.3.0 release ([3643778](https://github.com/DomainLang/DomainLang/commit/3643778a39d06f1d257d58c8304256b37d9f6053))
+
 ## [0.2.0](https://github.com/DomainLang/DomainLang/compare/v0.1.0...v0.2.0) (2026-01-31)
 
 
