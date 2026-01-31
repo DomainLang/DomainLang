@@ -1,0 +1,28 @@
+name: Setup Node + npm ci
+description: Set up Node.js with npm cache and install dependencies
+
+inputs:
+  node-version:
+    description: Node.js version
+    required: true
+  working-directory:
+    description: Working directory to run npm ci in
+    required: true
+  cache-dependency-path:
+    description: Path(s) to package-lock.json for caching
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci --prefer-offline --no-audit --legacy-peer-deps
