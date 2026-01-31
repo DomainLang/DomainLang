@@ -8,7 +8,7 @@ The import system lets you split your DomainLang model across multiple files, ma
 | -------- | -------- |
 | `Import` | `import` |
 
-## Import Types
+## Import types
 
 DomainLang supports three types of imports:
 
@@ -18,7 +18,7 @@ DomainLang supports three types of imports:
 | Path Alias | `@/path` or `@alias/path` | Project-relative paths configured in model.yaml |
 | External   | `"owner/package"`         | External packages from GitHub                   |
 
-## Relative Imports
+## Relative imports
 
 Import local files using relative paths:
 
@@ -27,7 +27,7 @@ import "./shared/teams.dlang"
 import "../common/classifications.dlang"
 ```
 
-### Directory-First Resolution
+### Directory-first resolution
 
 When importing without an extension, DomainLang uses directory-first resolution:
 
@@ -46,7 +46,7 @@ This means you can organize code into directories with `index.dlang` as the entr
 Use `index.dlang` files as module entry points for cleaner imports. Instead of `import "./domains/sales/sales.dlang"`, you can write `import "./domains/sales"`.
 :::
 
-## Path Aliases
+## Path aliases
 
 Path aliases provide project-root-relative imports. Configure them in `model.yaml`:
 
@@ -67,7 +67,7 @@ import "@domains/sales"
 
 The `@/` alias always maps to the project root (where `model.yaml` is located).
 
-## External Dependencies
+## External dependencies
 
 Import shared models from GitHub repositories:
 
@@ -88,11 +88,11 @@ dependencies:
 External imports require `model.yaml`. Without it, you'll get an error suggesting to create one.
 :::
 
-## Project Manifest (model.yaml)
+## Project manifest (model.yaml)
 
 The manifest file configures your project's identity, path aliases, and dependencies.
 
-### Full Schema
+### Full schema
 
 ```yaml
 # Package identity (required for publishing)
@@ -133,7 +133,7 @@ governance:
   requireStableVersions: true
 ```
 
-### Dependency Refs
+### Dependency refs
 
 The `ref` field accepts any valid git ref:
 
@@ -147,9 +147,9 @@ The `ref` field accepts any valid git ref:
 Tags like `v1.0.0` are immutable and recommended for production. Branch refs like `main` will resolve to different commits over time.
 :::
 
-## Lock File (model.lock)
+## Lock file (model.lock)
 
-When you run `dlang install`, a `model.lock` file is generated that pins exact commit SHAs for all dependencies:
+When you run `domain-lang-cli install`, a `model.lock` file is generated that pins exact commit SHAs for all dependencies:
 
 ```json
 {
@@ -167,21 +167,23 @@ When you run `dlang install`, a `model.lock` file is generated that pins exact c
 
 **Commit this file to version control** for reproducible builds.
 
-## CLI Commands
+## CLI commands
 
 Manage dependencies from the command line:
 
-| Command                           | Description                               |
-| --------------------------------- | ----------------------------------------- |
-| `dlang install`                   | Install dependencies, generate lock file  |
-| `dlang model list`                | List all dependencies                     |
-| `dlang model add <name> <source>` | Add a dependency                          |
-| `dlang model remove <name>`       | Remove a dependency                       |
-| `dlang model status`              | Check dependency status                   |
-| `dlang model update [name]`       | Update dependencies                       |
-| `dlang cache-clear`               | Clear the dependency cache                |
+| Command                                    | Description                              |
+| ------------------------------------------ | ---------------------------------------- |
+| `domain-lang-cli install`                  | Install dependencies, generate lock file |
+| `domain-lang-cli model list`               | List all dependencies                    |
+| `domain-lang-cli model add <name> <source>`| Add a dependency                         |
+| `domain-lang-cli model remove <name>`      | Remove a dependency                      |
+| `domain-lang-cli model status`             | Check dependency status                  |
+| `domain-lang-cli model update [name]`      | Update dependencies                      |
+| `domain-lang-cli cache-clear`              | Clear the dependency cache               |
 
-## File Organization
+See [CLI](/guide/cli) for additional model commands.
+
+## File organization
 
 A typical multi-file project structure:
 
@@ -245,7 +247,7 @@ ContextMap System {
 }
 ```
 
-## What Gets Imported
+## What gets imported
 
 When you import a file, all its top-level elements become available:
 
@@ -256,7 +258,7 @@ When you import a file, all its top-level elements become available:
 - Context Maps and Domain Maps
 - Namespaces and their contents
 
-## Best Practices
+## Best practices
 
 ::: tip One Concept Per File
 Keep files focused. Put related teams in one file, classifications in another, each domain in its own directory.
@@ -274,11 +276,12 @@ File-level cycles are allowed (Order↔Customer references are natural in domain
 Use `index.dlang` as the module entry point for directories. This enables clean imports like `import "./domains/sales"` instead of `import "./domains/sales/sales.dlang"`.
 :::
 
-## Next Steps
+## Next steps
 
+- [CLI](/guide/cli) — manage dependencies from the command line
 - [Browse Examples](/examples/) — see multi-file projects in action
 
-## See Also
+## See also
 
 - [Imports Reference](/reference/language#imports) — complete syntax details
 

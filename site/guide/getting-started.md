@@ -1,4 +1,4 @@
-# Getting Started
+# Getting started
 
 Build a small DomainLang model that includes a domain, bounded contexts, ownership, terminology, and a context map.
 
@@ -19,22 +19,24 @@ Use the VS Code extension for syntax highlighting, validation, and navigation wh
 
 DomainLang is available as npm packages for different use cases:
 
-### CLI (Command Line)
+### CLI (command line)
 
-Install globally to use `dlang` commands from your terminal:
+Install globally to use `domain-lang-cli` commands from your terminal:
 
 ```bash
 npm install -g @domainlang/cli
 ```
 
-Then validate and query your models:
+Then manage dependencies and governance for multi-file models:
 
 ```bash
-dlang validate mymodel.dlang
-dlang query mymodel.dlang --domains
+domain-lang-cli install
+domain-lang-cli model tree
 ```
 
-### Language Library
+See [CLI](/guide/cli) for the full command reference.
+
+### Language library
 
 For programmatic access—parse, validate, and query DomainLang models in your code:
 
@@ -48,14 +50,19 @@ Use the Model Query SDK:
 import { loadModelFromText } from '@domainlang/language/sdk';
 
 const { query } = await loadModelFromText(`
-  Domain Sales { vision: "Sell things" }
-  bc Orders for Sales as Core
+    Classification CoreDomain
+    Team SalesTeam
+
+    Domain Sales { vision: "Sell things" }
+    bc Orders for Sales as CoreDomain by SalesTeam
 `);
 
 const coreContexts = query.boundedContexts()
-  .withRole('Core')
+    .withClassification('CoreDomain')
   .toArray();
 ```
+
+See [Model Query SDK](/guide/sdk) for more examples.
 
 ::: info npm Packages
 
@@ -66,7 +73,7 @@ const coreContexts = query.boundedContexts()
 
 :::
 
-## Step 1: Define a Domain
+## Step 1: Define a domain
 
 Create a new file called `bookstore.dlang` and add your first domain:
 
@@ -79,7 +86,7 @@ Domain Bookstore {
 
 A **domain** represents a sphere of knowledge or activity in your business.
 
-## Step 2: Declare Teams and Classifications
+## Step 2: Declare teams and classifications
 
 Add teams and strategic classifications:
 
@@ -94,9 +101,9 @@ Team OrderTeam
 **Classifications** indicate strategic importance (Core, Supporting, Generic).  
 **Teams** represent the people responsible for bounded contexts.
 
-## Step 3: Add Bounded Contexts
+## Step 3: Add bounded contexts
 
-Use `as` for strategic classification and `by` for ownership:
+A [bounded context](/guide/bounded-contexts) is a boundary within which a domain model applies. Use `as` for strategic classification and `by` for ownership:
 
 ```dlang
 Domain Bookstore { description: "Online bookstore" }
@@ -119,7 +126,7 @@ bc Orders for Bookstore as CoreDomain by OrderTeam {
 `by` assigns the responsible **team**.
 :::
 
-## Step 4: Capture Terminology
+## Step 4: Capture terminology
 
 Document the ubiquitous language within each bounded context:
 
@@ -136,9 +143,9 @@ bc Orders for Bookstore {
 The DDD concept is "ubiquitous language"—the keyword in DomainLang is `terminology { ... }`.
 :::
 
-## Step 5: Map Relationships
+## Step 5: Map relationships
 
-Create a context map to show how bounded contexts relate:
+Create a [context map](/guide/context-maps) to show how bounded contexts integrate:
 
 ```dlang
 ContextMap BookstoreSystem {
@@ -147,7 +154,7 @@ ContextMap BookstoreSystem {
 }
 ```
 
-## Step 6: Add Relationship Patterns (Optional)
+## Step 6: Add relationship patterns (optional)
 
 Annotate relationships with DDD integration patterns:
 
@@ -171,9 +178,9 @@ Common patterns:
 | `[SK]`  | Shared Kernel         |
 | `[P]`   | Partnership           |
 
-## Step 7: Organize with Namespaces (Optional)
+## Step 7: Organize with namespaces (optional)
 
-As your model grows, use namespaces:
+As your model grows, use [namespaces](/guide/namespaces) to avoid name collisions:
 
 ```dlang
 Namespace Bookstore.Core {
@@ -186,7 +193,7 @@ ContextMap System {
 }
 ```
 
-## Complete Example
+## Complete example
 
 Here's the complete model:
 
@@ -226,7 +233,7 @@ ContextMap BookstoreSystem {
 }
 ```
 
-## Next Steps
+## Next steps
 
 - [Learn about Domains](/guide/domains)
 - [Learn about Bounded Contexts](/guide/bounded-contexts)

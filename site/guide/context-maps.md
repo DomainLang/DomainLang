@@ -8,7 +8,7 @@ A **context map** visualizes the relationships between bounded contexts. It show
 | ------- | ----- |
 | `ContextMap` | `cmap` |
 
-## Basic Syntax
+## Basic syntax
 
 ```dlang
 ContextMap SalesSystem {
@@ -16,7 +16,7 @@ ContextMap SalesSystem {
 }
 ```
 
-## Relationship Arrows
+## Relationship arrows
 
 | Arrow | Meaning |
 | ----- | ------- |
@@ -40,7 +40,7 @@ ContextMap SalesSystem {
 
 The arrow shows the direction of dependency or data flow.
 
-## Integration Patterns
+## Integration patterns
 
 Annotate relationships with DDD integration patterns:
 
@@ -64,7 +64,7 @@ ContextMap SalesSystem {
 | Shared Kernel | `[SK]` | Shares a subset of the domain model |
 | Partnership | `[P]` | Two contexts coordinate development together |
 
-## Pattern Combinations
+## Pattern combinations
 
 Patterns can be on either or both sides:
 
@@ -83,7 +83,7 @@ ContextMap Integration {
 }
 ```
 
-## Bidirectional Relationships
+## Bidirectional relationships
 
 Use `<->` for mutual dependencies:
 
@@ -95,7 +95,7 @@ ContextMap Partnership {
 }
 ```
 
-## Multiple Context Maps
+## Multiple context maps
 
 Large systems often have multiple maps for different views:
 
@@ -116,7 +116,7 @@ ContextMap TeamDependencies {
 }
 ```
 
-## Best Practices
+## Best practices
 
 ::: tip Keep Maps Focused
 Create separate context maps for different concerns: technical integration, team dependencies, data flow. Don't try to show everything in one map.
@@ -159,12 +159,13 @@ ContextMap MicroservicesMap {
 }
 ```
 
-## Next Steps
+## Next steps
 
 - [Teams & Classifications](/guide/teams-classifications) — assign ownership and strategic importance
 - [Namespaces](/guide/namespaces) — organize large models
+- [Import System](/guide/imports) — split models across files
 
-## See Also
+## See also
 
 - [Context Maps Reference](/reference/language#context-maps) — complete syntax details
 - [Relationships Reference](/reference/language#relationships) — integration patterns and arrows

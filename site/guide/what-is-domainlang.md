@@ -1,6 +1,6 @@
 # What is DomainLang?
 
-DomainLang is a **domain-specific language (DSL)** for expressing Domain-Driven Design (DDD) architecture models. It provides a clean, readable syntax for defining domains, bounded contexts, context maps, teams, and ubiquitous language—all in plain text files that live in your repository.
+DomainLang is a **domain-specific language (DSL)** for expressing Domain-Driven Design architecture models. It provides a clean, readable syntax for defining [domains](/guide/domains), [bounded contexts](/guide/bounded-contexts), [context maps](/guide/context-maps), [teams](/guide/teams-classifications), and ubiquitous language—all in plain text files that live in your repository.
 
 ::: warning 🚧 Prerelease
 DomainLang is in active development and has not reached v1.0 yet. The language syntax may evolve. See the [roadmap](/roadmap) for planned features.
@@ -22,11 +22,11 @@ DomainLang keeps your DDD models:
 - **In the repo** — version controlled alongside code
 - **Reviewable** — changes visible in pull requests
 - **Validated** — IDE catches issues as you type
-- **Programmable** — query and analyze with the SDK
+- **Programmable** — query and analyze with the [Model Query SDK](/guide/sdk)
 
-## Key Features
+## Key features
 
-### DDD-Aligned Syntax
+### DDD-aligned syntax
 
 Express DDD concepts naturally:
 
@@ -45,7 +45,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 }
 ```
 
-### IDE Support
+### IDE support
 
 The VS Code extension provides:
 - Syntax highlighting for `.dlang` files
@@ -54,7 +54,7 @@ The VS Code extension provides:
 - Hover information and documentation
 - Go-to-definition navigation
 
-### Context Maps
+### Context maps
 
 Model relationships between bounded contexts:
 
@@ -67,9 +67,9 @@ ContextMap SalesSystem {
 }
 ```
 
-### Multi-File Models
+### Multi-file models
 
-Scale to large systems with imports and namespaces:
+Scale to large systems with [imports and namespaces](/guide/imports):
 
 ```dlang
 import "./shared/teams.dlang"
@@ -80,7 +80,7 @@ Namespace Acme.Sales {
 }
 ```
 
-## Getting Started
+## Getting started
 
 Ready to try DomainLang?
 

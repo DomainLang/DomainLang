@@ -8,7 +8,7 @@ A **domain** represents a sphere of knowledge, influence, or activity in your or
 | ------- | ----- |
 | `Domain` | `dom` |
 
-## Basic Syntax
+## Basic syntax
 
 ```dlang
 Domain Sales {
@@ -53,7 +53,7 @@ Domain Marketing in Retail {
 }
 ```
 
-## Domain Types
+## Domain types
 
 Classify domain strategic importance using the `type` property:
 
@@ -75,7 +75,7 @@ Domain Notifications {
 
 See [Teams & Classifications](/guide/teams-classifications) for more on strategic importance.
 
-## Best Practices
+## Best practices
 
 ::: tip Domain Naming
 Use nouns that reflect business capabilities, not technical terms. Good: `Sales`, `Inventory`, `CustomerSupport`. Avoid: `SalesService`, `InventoryDB`.
@@ -87,7 +87,7 @@ Keep vision statements aspirational and business-focused. They should guide stra
 
 ## Examples
 
-### E-Commerce Domains
+### E-commerce domains
 
 ```dlang
 Domain Catalog {
@@ -106,7 +106,7 @@ Domain Customers {
 }
 ```
 
-### Healthcare Domains
+### Healthcare domains
 
 ```dlang
 Domain PatientCare {
@@ -120,11 +120,11 @@ Domain Administration {
 }
 ```
 
-## Next Steps
+## Next steps
 
-- [Learn about Bounded Contexts](/guide/bounded-contexts) — the concrete implementations within domains
+- [Bounded Contexts](/guide/bounded-contexts) — the concrete implementations within domains
 - [Teams & Classifications](/guide/teams-classifications) — assign ownership and strategic importance
 
-## See Also
+## See also
 
 - [Domains Reference](/reference/language#domains) — complete syntax details

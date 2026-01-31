@@ -8,7 +8,7 @@ A **bounded context** is a concrete boundary within which a particular domain mo
 | ------- | ----- |
 | `BoundedContext` | `bc` |
 
-## Basic Syntax
+## Basic syntax
 
 ```dlang
 bc Orders for Sales {
@@ -29,7 +29,7 @@ bc Shipping for Sales as Supporting by ShippingTeam
 This is useful for sketching out your context landscape before adding details.
 :::
 
-## Full Syntax
+## Full syntax
 
 ```dlang
 bc Orders for Sales as CoreDomain by SalesTeam {
@@ -53,7 +53,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 | `evolution` | Classification | Maturity stage (Genesis, Custom, Product, Commodity) |
 | `archetype` | Classification | Domain role (Gateway, Execution, Analysis, etc.) |
 
-## Header Options
+## Header options
 
 Use the short form in the header for common attributes:
 
@@ -67,7 +67,7 @@ bc Orders for Sales as CoreDomain by SalesTeam { }
 | `as` | Strategic classification | `as CoreDomain` |
 | `by` | Owning team | `by SalesTeam` |
 
-## Body Properties
+## Body properties
 
 ```dlang
 // Declare metadata keys first
@@ -91,7 +91,7 @@ bc Orders for Sales {
 }
 ```
 
-## Block Aliases
+## Block aliases
 
 Blocks inside bounded contexts have aliases for readability:
 
@@ -145,7 +145,7 @@ bc Orders for Sales {
 Metadata keys must be declared before use. Put shared metadata definitions in a common file and import them. See [Imports](/guide/imports) for file organization.
 :::
 
-## Best Practices
+## Best practices
 
 ::: warning Context Boundaries
 A bounded context should have a clear, autonomous boundary. If two contexts share too much, consider merging them. If one context does too much, consider splitting it.
@@ -193,12 +193,12 @@ bc Shipping for Logistics as CoreDomain by ShippingTeam {
 }
 ```
 
-## Next Steps
+## Next steps
 
 - [Context Maps](/guide/context-maps) — define relationships between bounded contexts
 - [Teams & Classifications](/guide/teams-classifications) — organize ownership and strategy
 
-## See Also
+## See also
 
 - [Bounded Contexts Reference](/reference/language#bounded-contexts) — complete syntax details
 - [Terminology Reference](/reference/language#terminology) — ubiquitous language syntax

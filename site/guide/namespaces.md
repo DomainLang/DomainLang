@@ -8,7 +8,7 @@ Namespaces organize your model into logical groups and create qualified names fo
 | ------- | ----- |
 | `Namespace` | `ns` |
 
-## Basic Syntax
+## Basic syntax
 
 ```dlang
 Namespace Acme.Sales {
@@ -21,16 +21,16 @@ Namespace Acme.Sales {
 
 Elements inside the namespace get qualified names like `Acme.Sales.Orders`.
 
-## Why Use Namespaces?
+## Why use namespaces?
 
 1. **Avoid name collisions** — Different teams can use the same names
 2. **Organize large models** — Group related concepts together
 3. **Mirror code structure** — Align with package/module organization
 4. **Enable imports** — Reference elements from other namespaces
 
-## Referencing Elements
+## Referencing elements
 
-### Within the Same Namespace
+### Within the same namespace
 
 Use simple names:
 
@@ -45,7 +45,7 @@ Namespace Acme.Sales {
 }
 ```
 
-### Across Namespaces
+### Across namespaces
 
 Use fully qualified names:
 
@@ -64,7 +64,7 @@ ContextMap Integration {
 }
 ```
 
-## Nested Namespaces
+## Nested namespaces
 
 Namespaces can be nested:
 
@@ -92,7 +92,7 @@ Namespace Acme.Shipping {
 }
 ```
 
-## Shared Elements
+## Shared elements
 
 Define reusable elements at a higher namespace level:
 
@@ -116,7 +116,7 @@ Namespace Acme.Platform {
 }
 ```
 
-## Best Practices
+## Best practices
 
 ::: tip Mirror Your Organization
 Align namespace structure with your organizational structure or codebase layout. This makes it easier to find and maintain models.
@@ -178,10 +178,12 @@ Namespace Acme {
 }
 ```
 
-## Next Steps
+## Next steps
 
 - [Import System](/guide/imports) — split models across multiple files
+- [CLI](/guide/cli) — manage multi-file projects
+- [Model Query SDK](/guide/sdk) — query namespaced elements programmatically
 
-## See Also
+## See also
 
 - [Namespaces Reference](/reference/language#namespaces) — complete syntax details

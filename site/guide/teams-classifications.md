@@ -19,7 +19,7 @@ Classification SupportingDomain
 Classification GenericSubdomain
 ```
 
-### Strategic Classification Types
+### Strategic classification types
 
 | Type | Description | Typical Investment |
 |------|-------------|-------------------|
@@ -27,7 +27,7 @@ Classification GenericSubdomain
 | **Supporting** | Necessary but not differentiating | Medium: good solutions, possibly outsourced |
 | **Generic** | Common to many businesses | Low: buy or use commodity solutions |
 
-### Using Classifications
+### Using classifications
 
 Reference classifications with `as` in the bounded context header:
 
@@ -51,7 +51,7 @@ Team PlatformTeam
 Team DataTeam
 ```
 
-### Using Teams
+### Using teams
 
 Reference teams with `by` in the bounded context header:
 
@@ -63,7 +63,7 @@ bc Orders for Sales by OrderTeam { }
 bc UserManagement for Platform by PlatformTeam { }
 ```
 
-## Combined Example
+## Combined example
 
 ```dlang
 // Define organizational elements
@@ -93,7 +93,7 @@ bc Authentication for Platform as GenericSubdomain by PlatformTeam {
 }
 ```
 
-## Best Practices
+## Best practices
 
 ::: tip Start Simple
 Begin with just `CoreDomain`, `SupportingDomain`, and `GenericSubdomain`. Add custom classifications only when needed.
@@ -107,7 +107,7 @@ Classifications should reflect actual strategic importance, not aspirations. If 
 Ideally, team boundaries align with bounded context boundaries. If one team owns multiple contexts, ensure they're closely related.
 :::
 
-## Complete Example
+## Complete example
 
 ```dlang
 // Classifications
@@ -150,12 +150,12 @@ bc EmailService for Platform as GenericSubdomain by PlatformTeam {
 }
 ```
 
-## Next Steps
+## Next steps
 
 - [Namespaces](/guide/namespaces) — organize large models
 - [Import System](/guide/imports) — split models across files
 
-## See Also
+## See also
 
 - [Classifications Reference](/reference/language#classifications) — complete syntax details
 - [Teams Reference](/reference/language#teams) — team declaration syntax
