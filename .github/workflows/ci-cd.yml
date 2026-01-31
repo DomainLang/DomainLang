@@ -41,7 +41,7 @@ jobs:
   lint:
     name: 🧹 Lint
     needs: detect-changes
-    if: needs.detect-changes.outputs.has-code == 'true'
+    if: needs.detect-changes.outputs.has-code == 'true' || (needs.detect-changes.outputs.has-code == 'false' && needs.detect-changes.outputs.site-only == 'false')
     runs-on: ubuntu-latest
     defaults:
       run:
