@@ -1,9 +1,9 @@
 # @domainlang/language
 
 [![npm version](https://img.shields.io/npm/v/@domainlang/language.svg)](https://www.npmjs.com/package/@domainlang/language)
-[![License](https://img.shields.io/npm/l/@domainlang/language.svg)](https://github.com/larsbaunwall/DomainLang/blob/main/LICENSE)
+[![License](https://img.shields.io/npm/l/@domainlang/language.svg)](https://github.com/DomainLang/DomainLang/blob/main/LICENSE)
 
-Core language library for [DomainLang](https://github.com/larsbaunwall/DomainLang) - a Domain-Driven Design modeling language built with [Langium](https://langium.org/).
+Core language library for [DomainLang](https://github.com/DomainLang/DomainLang) - a Domain-Driven Design modeling language built with [Langium](https://langium.org/).
 
 ## Features
 
@@ -141,7 +141,7 @@ ContextMap SalesIntegration {
 - [Getting Started](https://domainlang.net/guide/getting-started)
 - [Language Reference](https://domainlang.net/reference/language)
 - [Quick Reference](https://domainlang.net/reference/quick-reference)
-- [SDK Documentation](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/packages/language/src/sdk/README.md)
+- [SDK Documentation](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/packages/language/src/sdk/README.md)
 
 ## Development
 

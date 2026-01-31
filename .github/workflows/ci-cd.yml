@@ -1,0 +1,373 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # PATH DETECTION - Determine what changed
+  # ============================================================================
+  detect-changes:
+    name: 🔍 Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      site-only: ${{ steps.filter.outputs.site-only }}
+      has-code: ${{ steps.filter.outputs.has-code }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            site-only:
+              - 'site/**'
+            has-code:
+              - 'dsl/domain-lang/**'
+              - '!dsl/domain-lang/**/*.md'
+
+  # ============================================================================
+  # QUALITY GATE (fail-fast) - Lint → Build → Test+Coverage
+  # ============================================================================
+  lint:
+    name: 🧹 Lint
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsl/domain-lang
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dsl/domain-lang/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linter
+        run: npm run lint
+
+  build:
+    name: 🏗️ Build
+    needs: lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsl/domain-lang
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dsl/domain-lang/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Langium grammar
+        run: npm run langium:generate
+      
+      - name: Build all packages
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dsl/domain-lang/packages/*/lib/
+            dsl/domain-lang/packages/*/dist/
+          retention-days: 1
+
+  test-coverage:
+    name: 🧪 Test & Coverage
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsl/domain-lang
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dsl/domain-lang/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dsl/domain-lang/
+      
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: dsl/domain-lang/packages/language/coverage/
+          retention-days: 7
+
+  # ============================================================================
+  # ANALYSIS GATE - SonarQube (blocking) + CodeQL (parallel)
+  # ============================================================================
+  sonarqube:
+    name: 📊 SonarQube Analysis
+    needs: test-coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsl/domain-lang
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dsl/domain-lang/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Download coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: dsl/domain-lang/packages/language/coverage/
+      
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+      
+      - name: SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  codeql:
+    name: 🔒 CodeQL Analysis
+    needs: test-coverage
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+      
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # ============================================================================
+  # SITE-ONLY PUBLISH - Fast path for documentation changes
+  # ============================================================================
+  publish-site-fast:
+    name: 🌐 Publish site (fast path)
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.site-only == 'true' &&
+      needs.detect-changes.outputs.has-code == 'false' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build site
+        run: npm run build
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site/.vitepress/dist
+          cname: domainlang.net
+
+  # ============================================================================
+  # RELEASE - Environment approval required (production gate)
+  # ============================================================================
+  create-release:
+    name: 📦 Create release
+    needs: [sonarqube, codeql]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://github.com/${{ github.repository }}/releases
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release-created: ${{ steps.release.outputs.release_created }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Get version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./dsl/domain-lang/package.json').version")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        id: release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          draft: false
+          generateReleaseNotes: true
+          skipIfReleaseExists: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================================
+  # PUBLISH - NPM packages and site (parallel)
+  # ============================================================================
+  publish-npm:
+    name: 📦 Publish NPM packages
+    needs: create-release
+    if: needs.create-release.outputs.release-created == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsl/domain-lang
+    strategy:
+      matrix:
+        package:
+          - language
+          - cli
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: dsl/domain-lang/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run langium:generate && npm run build
+      
+      - name: Publish ${{ matrix.package }}
+        run: npm publish --workspace packages/${{ matrix.package }} --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-vscode-extension:
+    name: 🧩 Publish VS Code extension
+    needs: create-release
+    if: needs.create-release.outputs.release-created == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsl/domain-lang/packages/extension
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dsl/domain-lang/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install vsce
+        run: npm install -g @vscode/vsce
+      
+      - name: Package extension
+        run: vsce package
+      
+      - name: Publish to VS Code Marketplace
+        run: vsce publish -p ${{ secrets.VSCE_TOKEN }}
+
+  publish-site:
+    name: 🌐 Publish site
+    needs: create-release
+    if: needs.create-release.outputs.release-created == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build site
+        run: npm run build
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site/.vitepress/dist
+          cname: domainlang.net

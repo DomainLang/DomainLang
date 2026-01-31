@@ -76,6 +76,6 @@ project/
 ```
 
 ## More examples
-- [Customer-Facing](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/examples/customer-facing.dlang)
-- [Metadata Examples](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/examples/metadata-local-definition.dlang)
-- [Multi-File Project](https://github.com/larsbaunwall/DomainLang/tree/main/dsl/domain-lang/examples/multi-file-project)
+- [Customer-Facing](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/examples/customer-facing.dlang)
+- [Metadata Examples](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/examples/metadata-local-definition.dlang)
+- [Multi-File Project](https://github.com/DomainLang/DomainLang/tree/main/dsl/domain-lang/examples/multi-file-project)

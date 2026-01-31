@@ -69,7 +69,7 @@ export type IssueCode = typeof IssueCodes[keyof typeof IssueCodes];
 // Documentation Link Utilities
 // ============================================================================
 
-const REPO_BASE = 'https://github.com/larsbaunwall/DomainLang/blob/main';
+const REPO_BASE = 'https://github.com/DomainLang/DomainLang/blob/main';
 const DOCS_BASE = `${REPO_BASE}/dsl/domain-lang/docs`;
 
 /**

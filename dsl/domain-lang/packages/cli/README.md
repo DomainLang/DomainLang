@@ -1,9 +1,9 @@
 # @domainlang/cli
 
 [![npm version](https://img.shields.io/npm/v/@domainlang/cli.svg)](https://www.npmjs.com/package/@domainlang/cli)
-[![License](https://img.shields.io/npm/l/@domainlang/cli.svg)](https://github.com/larsbaunwall/DomainLang/blob/main/LICENSE)
+[![License](https://img.shields.io/npm/l/@domainlang/cli.svg)](https://github.com/DomainLang/DomainLang/blob/main/LICENSE)
 
-Command-line interface for [DomainLang](https://github.com/larsbaunwall/DomainLang) - a Domain-Driven Design modeling language.
+Command-line interface for [DomainLang](https://github.com/DomainLang/DomainLang) - a Domain-Driven Design modeling language.
 
 ## Features
 

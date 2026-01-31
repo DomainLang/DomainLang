@@ -217,4 +217,4 @@ decisions {
 
 View the complete healthcare system example in the repository:
 
-[healthcare-system.dlang on GitHub](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/examples/healthcare-system.dlang)
+[healthcare-system.dlang on GitHub](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/examples/healthcare-system.dlang)

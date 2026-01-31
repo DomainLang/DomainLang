@@ -121,7 +121,7 @@ namespace Acme.Sales {
 - [Getting Started](https://domainlang.net/guide/getting-started)
 - [Quick Reference](https://domainlang.net/reference/quick-reference)
 - [Language Reference](https://domainlang.net/reference/language)
-- [Example Models](https://github.com/larsbaunwall/DomainLang/tree/main/dsl/domain-lang/examples)
+- [Example Models](https://github.com/DomainLang/DomainLang/tree/main/dsl/domain-lang/examples)
 
 ## Requirements
 
@@ -135,12 +135,12 @@ This extension contributes the following settings:
 
 ## Known issues
 
-Report issues at [GitHub Issues](https://github.com/larsbaunwall/DomainLang/issues).
+Report issues at [GitHub Issues](https://github.com/DomainLang/DomainLang/issues).
 
 ## Contributing
 
-Contributions are welcome! See the [repository](https://github.com/larsbaunwall/DomainLang) for development setup.
+Contributions are welcome! See the [repository](https://github.com/DomainLang/DomainLang) for development setup.
 
 ## License
 
-Apache License 2.0 - See [LICENSE](https://github.com/larsbaunwall/DomainLang/blob/main/LICENSE) for details.
+Apache License 2.0 - See [LICENSE](https://github.com/DomainLang/DomainLang/blob/main/LICENSE) for details.

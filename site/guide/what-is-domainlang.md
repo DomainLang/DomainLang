@@ -90,6 +90,6 @@ Ready to try DomainLang?
 
 ## Community
 
-- **Questions & Ideas**: [GitHub Discussions](https://github.com/larsbaunwall/DomainLang/discussions)
-- **Bug Reports**: [GitHub Issues](https://github.com/larsbaunwall/DomainLang/issues)
-- **Source Code**: [GitHub Repository](https://github.com/larsbaunwall/DomainLang)
+- **Questions & Ideas**: [GitHub Discussions](https://github.com/DomainLang/DomainLang/discussions)
+- **Bug Reports**: [GitHub Issues](https://github.com/DomainLang/DomainLang/issues)
+- **Source Code**: [GitHub Repository](https://github.com/DomainLang/DomainLang)

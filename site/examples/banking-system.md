@@ -213,4 +213,4 @@ The context map shows upstream/downstream relationships:
 
 View the complete banking system example in the repository:
 
-[banking-system.dlang on GitHub](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/examples/banking-system.dlang)
+[banking-system.dlang on GitHub](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/examples/banking-system.dlang)
