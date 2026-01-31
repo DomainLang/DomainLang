@@ -78,9 +78,36 @@ npm test                  # Run tests
 ### Git operations
 
 1. **NEVER** commit to git without my explicit approval
-2. **ALWAYS** use conventional commit messages
+2. **ALWAYS** use conventional commit messages (feat:, fix:, chore:, docs:, etc.)
 3. **ALWAYS** divide large changes into smaller commits
 4. **ALWAYS** run tests before committing
+
+**Conventional Commit Types for Releases:**
+- `feat:` → Minor version bump (0.1.0 → 0.2.0)
+- `fix:` → Patch version bump (0.1.0 → 0.1.1)
+- `feat!:` or `BREAKING CHANGE:` → Major version bump (0.1.0 → 1.0.0)
+- `chore:`, `docs:`, `test:`, `refactor:` → No version bump (in release commit only)
+
+### 🚀 Release & Deployment
+
+**CI/CD Pipeline (`.github/workflows/ci-cd.yml`):**
+- **Quality Gate:** Lint → Build → Test+Coverage (fail-fast)
+- **Analysis Gate:** SonarQube (blocking) + CodeQL (parallel)
+- **Production Gate:** Manual environment approval required
+- **Auto-versioning:** Conventional commits analyzed, version bumped automatically
+- **Git tagging:** Version commit tagged and pushed before release
+- **Parallel publishing:** NPM packages, VS Code extension, and site deploy concurrently
+
+**Version Management:**
+- Versions auto-incremented based on commit messages since last tag
+- All workspace packages bumped atomically (`npm version --workspaces`)
+- Version commits include `[skip ci]` to prevent workflow loops
+- Tags point to version bump commits for traceability
+- Proper semver: 0.1.99 → 0.1.100 → 0.2.0 → 1.0.0
+
+**Fast Paths:**
+- Site-only changes (`site/**`) skip quality gates, deploy directly on main push
+- Code changes require full pipeline + manual approval before release
 
 ### 🔴 Grammar Changes
 

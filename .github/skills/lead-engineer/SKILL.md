@@ -145,8 +145,11 @@ Every feature flows through three layers:
 6. **ALWAYS** update `/site/` documentation for user-facing changes (grammar, SDK, CLI)
 7. Use TypeScript strict mode
 8. Use type guards over assertions
+9. **ALWAYS** use conventional commit messages for proper version bumping
 
 **Documentation sync rule:** Any change to grammar keywords, SDK public APIs, or CLI commands **requires** a corresponding update to the public site. Use `.github/skills/site-maintainer/SKILL.md` for guidance.
+
+**Release workflow:** Use conventional commit prefixes (`feat:`, `fix:`, `chore:`) - the CI/CD pipeline automatically determines version bumps based on commits since the last tag. See `.github/workflows/ci-cd.yml` for the complete pipeline.
 
 **Pre-commit checklist:**
 

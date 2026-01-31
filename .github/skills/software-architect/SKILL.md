@@ -274,3 +274,29 @@ Your work is successful when:
 - Delegation is clear and actionable
 - Features ship without major rework
 - Team understands the "why" behind decisions
+
+## Release Strategy
+
+**CI/CD Pipeline Overview:**
+- Quality Gate (fail-fast): Lint → Build → Test+Coverage
+- Analysis Gate (parallel): SonarQube (blocking) + CodeQL
+- Production Gate: Manual environment approval
+- Auto-versioning: Conventional commits drive version bumps
+- Parallel deployment: NPM packages, VS Code extension, site
+
+**Version Management:**
+- Versions auto-incremented based on conventional commits since last tag
+- `feat:` → Minor bump (0.1.0 → 0.2.0)
+- `fix:` → Patch bump (0.1.0 → 0.1.1)
+- `feat!:` or `BREAKING CHANGE:` → Major bump (0.1.0 → 1.0.0)
+- Git tags point to version bump commits for traceability
+- All workspace packages bumped atomically
+
+**Release Workflow:**
+1. Push to main triggers quality + analysis gates
+2. Manual approval required in GitHub environment
+3. Workflow bumps version, commits, tags, and pushes
+4. GitHub Release created with package links
+5. NPM packages, VS Code extension, and site deploy in parallel
+
+See `.github/workflows/ci-cd.yml` for implementation details.
