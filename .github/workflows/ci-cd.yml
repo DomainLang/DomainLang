@@ -138,7 +138,7 @@ jobs:
           retention-days: 7
       
       - name: Generate coverage summary
-        if: always()
+        if: success()
         run: |
           if [ -f "packages/language/coverage/coverage-summary.json" ]; then
             echo "## 📊 Coverage Summary" >> $GITHUB_STEP_SUMMARY
@@ -256,7 +256,7 @@ jobs:
           cname: domainlang.net
       
       - name: Report site deployment
-        if: always()
+        if: success()
         run: echo "🌐 Deployed to [domainlang.net](https://domainlang.net)" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
@@ -288,7 +288,7 @@ jobs:
           manifest-file: .github/.release-please-manifest.json
       
       - name: Report release status
-        if: always()
+        if: success()
         run: |
           if [ "${{ steps.release.outputs.releases_created }}" == "true" ]; then
             echo "📦 Released v${{ steps.release.outputs['dsl/domain-lang--version'] }} - Publishing in progress..." >> $GITHUB_STEP_SUMMARY
