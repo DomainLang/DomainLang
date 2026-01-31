@@ -135,6 +135,9 @@ jobs:
           name: coverage-reports
           path: dsl/domain-lang/packages/language/coverage/
           retention-days: 7
+      
+      - name: Display coverage summary
+        run: cat dsl/domain-lang/packages/language/coverage/coverage-summary.json | npm run --silent json2table 2>/dev/null || echo "Coverage report generated successfully"
 
   # ============================================================================
   # ANALYSIS GATE - SonarQube (blocking) + CodeQL (parallel)

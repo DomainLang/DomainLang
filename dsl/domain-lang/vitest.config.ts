@@ -8,9 +8,10 @@ export default defineConfig({
     test: {
         coverage: {
             provider: 'v8',
-            reporter: ['text', 'html'],
+            reporter: ['text', 'html', 'lcov', 'clover'],
             include: ['src'],
             exclude: ['**/generated'],
+            reportsDirectory: './packages/language/coverage',
             thresholds: {
                 lines: 80,
                 functions: 80,
