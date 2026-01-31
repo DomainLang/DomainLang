@@ -19,20 +19,40 @@ jobs:
     name: 🔍 Detect changes
     runs-on: ubuntu-latest
     outputs:
-      site-only: ${{ steps.filter.outputs.site-only }}
-      has-code: ${{ steps.filter.outputs.has-code }}
+      site-only: ${{ steps.determine.outputs.site_only }}
+      has-code: ${{ steps.determine.outputs.has_code }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Check changed paths
-        id: filter
-        uses: dorny/paths-filter@v3
         with:
-          filters: |
-            site-only:
+          fetch-depth: 0
+      
+      - name: Detect changed files
+        id: changes
+        uses: tj-actions/changed-files@v44
+        with:
+          files_yaml: |
+            site:
               - 'site/**'
-            has-code:
+            code:
               - 'dsl/domain-lang/**'
+              - '!dsl/domain-lang/**/*.md'
+      
+      - name: Determine change type
+        id: determine
+        run: |
+          SITE_CHANGED="${{ steps.changes.outputs.site_any_changed }}"
+          CODE_CHANGED="${{ steps.changes.outputs.code_any_changed }}"
+          
+          # Set outputs
+          echo "has_code=${CODE_CHANGED}" >> $GITHUB_OUTPUT
+          echo "site_only=$([[ "$SITE_CHANGED" == "true" && "$CODE_CHANGED" != "true" ]] && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+          
+          # Report decision to summary
+          if [[ "$SITE_CHANGED" == "true" && "$CODE_CHANGED" != "true" ]]; then
+            echo "🌐 **Site-only deployment** (fast path)" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$CODE_CHANGED" == "true" ]]; then
+            echo "🔧 **Full pipeline** (code changes detected)" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # ============================================================================
   # QUALITY GATE (fail-fast) - Commit Lint → Lint → Build → Test+Coverage
@@ -54,7 +74,7 @@ jobs:
   lint:
     name: 🧹 Lint
     needs: detect-changes
-    if: needs.detect-changes.outputs.has-code == 'true' || (needs.detect-changes.outputs.has-code == 'false' && needs.detect-changes.outputs.site-only == 'false')
+    if: needs.detect-changes.outputs.has-code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -274,6 +294,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Clean previous build
+        run: rm -rf .vitepress/dist
+      
       - name: Build site
         run: npm run build
       
@@ -283,6 +306,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site/.vitepress/dist
           cname: domainlang.net
+          force_orphan: true
       
       - name: Report site deployment
         if: success()
