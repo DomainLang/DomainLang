@@ -264,6 +264,12 @@ jobs:
         run: |
           VERSION=$(node -p "require('./dsl/domain-lang/package.json').version")
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          
+          # Validate semver format
+          if ! echo "${VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Error: Version ${VERSION} is not valid semver (must be MAJOR.MINOR.PATCH)"
+            exit 1
+          fi
       
       - name: Create GitHub Release
         id: release
@@ -275,6 +281,21 @@ jobs:
           generateReleaseNotes: true
           skipIfReleaseExists: true
           token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## 📦 NPM Packages
+            
+            - [@domainlang/language@${{ steps.version.outputs.version }}](https://www.npmjs.com/package/@domainlang/language/v/${{ steps.version.outputs.version }})
+            - [@domainlang/cli@${{ steps.version.outputs.version }}](https://www.npmjs.com/package/@domainlang/cli/v/${{ steps.version.outputs.version }})
+            
+            ## 🧩 VS Code Extension
+            
+            - [DomainLang Extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang)
+            
+            ## 🌐 Documentation
+            
+            - [Documentation Site](https://domainlang.net)
+            
+            ---
 
   # ============================================================================
   # PUBLISH - NPM packages and site (parallel)
@@ -284,6 +305,8 @@ jobs:
     needs: create-release
     if: needs.create-release.outputs.release-created == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.publish.outcome }}
     defaults:
       run:
         working-directory: dsl/domain-lang
@@ -310,6 +333,7 @@ jobs:
         run: npm run langium:generate && npm run build
       
       - name: Publish ${{ matrix.package }}
+        id: publish
         run: npm publish --workspace packages/${{ matrix.package }} --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
