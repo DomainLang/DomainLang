@@ -75,6 +75,126 @@ Every feature flows through three layers:
 5. **Write tests:** Ask to "design test strategy" for test collaboration
 6. **Run linting:** `npm run lint` - must pass with 0 violations
 7. **Verify:** `npm run build && npm test`
+8. **Commit with conventional format:** Choose the right commit type for proper versioning
+
+## Release Process & Commit Messages
+
+**The project uses release-please for automated versioning.** Your commit messages directly control version bumps and changelog generation.
+
+### Commit Message Format
+
+```text
+type(scope): subject
+
+body (optional)
+
+footer (optional)
+```
+
+**Choose the Right Type:**
+
+| Type | Version Bump | When to Use |
+|------|--------------|-------------|
+| `feat:` | Minor (0.1.0 → 0.2.0) | New LSP features, validators, SDK methods, grammar constructs |
+| `fix:` | Patch (0.1.0 → 0.1.1) | Bug fixes, validation corrections, error handling |
+| `feat!:` | Major (0.1.0 → 1.0.0) | Breaking API changes, grammar syntax changes |
+| `perf:` | Patch | Performance optimizations without behavior change |
+| `refactor:` | None | Code improvements, no user-facing changes |
+| `test:` | None | Test additions, no production code changes |
+| `chore:` | None | Dependencies, tooling, build config |
+
+**Recommended Scopes:**
+
+- `grammar` - Langium grammar changes
+- `validation` - Validation rules
+- `lsp` - LSP features (hover, completion, formatting)
+- `sdk` - Model Query SDK
+- `cli` - CLI implementation
+- `services` - Langium services (scoping, linking, etc.)
+
+**Implementation Examples:**
+
+```bash
+# New feature (minor bump)
+feat(lsp): add hover support for domain vision
+
+# Bug fix (patch bump)
+fix(validation): prevent duplicate FQN registration
+
+# Breaking change (major bump)
+feat(grammar)!: remove legacy import syntax
+
+BREAKING CHANGE: Import statements now require explicit version
+specifier. Old syntax 'import "repo"' no longer supported.
+
+# Performance improvement (patch bump)
+perf(sdk): cache FQN lookups using Map instead of array search
+
+# Refactor (no bump)
+refactor(services): consolidate types in types.ts
+
+# Test addition (no bump)
+test(parser): add edge cases for nested domain parsing
+```
+
+### Two-Phase Release Workflow
+
+**Understanding what happens when you commit:**
+
+1. **Your commit pushed to main:**
+   - CI/CD runs: lint → build → test → quality checks
+   - release-please analyzes conventional commits
+   - Creates/updates a Release PR with:
+     - Version bumps in all package.json files
+     - CHANGELOG.md updates
+   - **Nothing publishes yet**
+
+2. **When Release PR is merged:**
+   - release-please creates GitHub release + tag
+   - Publishing jobs activate:
+     - NPM packages publish
+     - VS Code extension publishes
+     - Documentation site deploys
+   - All artifacts have synchronized versions
+
+**Your responsibility:**
+
+- Use correct commit type for appropriate versioning
+- Write clear, descriptive commit subjects
+- Document breaking changes in footer
+- One logical change per commit
+
+### Breaking Change Guidelines
+
+**When is it breaking?**
+
+- Grammar syntax changes (keywords, structure)
+- AST type changes that affect SDK users
+- Removal of public API methods
+- Changed validation rules that reject previously valid models
+- Changed error message formats (if documented)
+
+**When is it NOT breaking?**
+
+- Internal refactoring
+- New optional grammar features
+- Additional validation (stricter, but was undefined before)
+- Performance improvements
+- Bug fixes that correct wrong behavior
+
+**How to mark as breaking:**
+
+```bash
+# Option 1: Exclamation mark
+feat(grammar)!: change import syntax to require version
+
+# Option 2: Footer (more detail)
+feat(grammar): change import syntax
+
+BREAKING CHANGE: Import statements must now include a version
+specifier. Change 'import "owner/repo"' to 'import "owner/repo@v1.0.0"'.
+See migration guide at https://domainlang.net/guide/migration
+```
 
 ## Code Quality Standards
 

@@ -43,6 +43,25 @@ All user-facing documentation lives at **<https://domainlang.net>** (source: `/s
 - Changed behavior
 - New examples
 
+## Commit Message Guidelines
+
+**When committing documentation, use the `docs:` type:**
+
+```bash
+# Documentation-only commits (no version bump)
+docs(guide): add examples for context map patterns
+docs(sdk): clarify FQN lookup behavior
+docs(grammar): document deprecated modifier syntax
+docs(readme): update installation instructions
+
+# Feature with docs (minor bump - use feat:)
+feat(grammar): add lifecycle states for bounded contexts
+```
+
+**The `docs:` type does NOT trigger version bumps** - it's for documentation-only changes without code modifications.
+
+**Note:** Documentation on the public website (domainlang.net) is owned by the site-maintainer skill, not technical-writer.
+
 ## Documentation Philosophy
 
 ### User-Centered Writing

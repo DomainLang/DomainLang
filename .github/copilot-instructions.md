@@ -82,18 +82,103 @@ npm test                  # Run tests
 3. **ALWAYS** divide large changes into smaller commits
 4. **ALWAYS** run tests before committing
 
+### 📝 Conventional Commits & Release Process
+
+**The project uses [release-please](https://github.com/googleapis/release-please) for automated versioning and releases.**
+
+**Commit Format:**
+```
+type(scope): subject
+
+body (optional, detailed explanation)
+
+footer (optional, BREAKING CHANGE: description)
+```
+
+**Commit Types and Their Effect on Versioning:**
+
+| Type | Version Bump | When to Use | Example |
+|------|--------------|-------------|----------|
+| `feat:` | Minor (0.1.0 → 0.2.0) | New features, capabilities | `feat(grammar): add deprecated modifier` |
+| `fix:` | Patch (0.1.0 → 0.1.1) | Bug fixes, corrections | `fix(validation): handle missing domain vision` |
+| `feat!:` or `BREAKING CHANGE:` | Major (0.1.0 → 1.0.0) | Breaking changes | `feat!: remove legacy import syntax` |
+| `chore:` | None | Maintenance, tooling | `chore: update dependencies` |
+| `docs:` | None | Documentation only | `docs: clarify bounded context syntax` |
+| `test:` | None | Test additions/fixes | `test: add edge case for domain parsing` |
+| `refactor:` | None | Code improvements, no behavior change | `refactor: simplify validation logic` |
+| `ci:` | None | CI/CD changes | `ci: add coverage reporting` |
+| `style:` | None | Formatting, whitespace | `style: fix indentation` |
+| `perf:` | Patch (0.1.0 → 0.1.1) | Performance improvements | `perf(sdk): optimize FQN lookups` |
+
+**Scopes (Optional but Recommended):**
+- `grammar` - Changes to `.langium` files
+- `validation` - Validation rules
+- `lsp` - LSP features (hover, completion)
+- `sdk` - Model Query SDK
+- `cli` - CLI tooling
+- `extension` - VS Code extension
+- `site` - Documentation website
+- `ci` - CI/CD workflows
+
+**Breaking Change Examples:**
+```bash
+# Option 1: ! suffix
+git commit -m "feat!: remove 'aka' keyword in favor of multiple names"
+
+# Option 2: Footer notation
+git commit -m "feat(grammar): change import syntax" -m "" -m "BREAKING CHANGE: Import syntax now requires explicit version specifier"
+```
+
+**Good Commit Messages:**
+✅ `feat(grammar): add lifecycle states for bounded contexts`
+✅ `fix(validation): prevent duplicate FQN registration`
+✅ `docs(guide): add examples for context map patterns`
+✅ `refactor(sdk): consolidate type definitions in types.ts`
+✅ `test(parser): add edge cases for nested domains`
+
+**Bad Commit Messages:**
+❌ `update stuff` - No type, vague
+❌ `Fixed bug` - No type, lacks detail
+❌ `WIP` - Not descriptive
+❌ `feat: various improvements` - Too vague
+
 **Conventional Commit Types for Releases:**
 - `feat:` → Minor version bump (0.1.0 → 0.2.0)
 - `fix:` → Patch version bump (0.1.0 → 0.1.1)
 - `feat!:` or `BREAKING CHANGE:` → Major version bump (0.1.0 → 1.0.0)
-- `chore:`, `docs:`, `test:`, `refactor:` → No version bump (in release commit only)
+- `chore:`, `docs:`, `test:`, `refactor:` → No version bump
 
 ### 🚀 Release & Deployment
+
+**Two-Phase Release Workflow:**
+
+release-please operates in two distinct phases:
+
+**Phase 1: Release PR Creation (Continuous)**
+- Every push to `main` with conventional commits triggers analysis
+- release-please creates/updates a single Release PR containing:
+  - Updated `package.json` versions across all workspace packages
+  - Auto-generated `CHANGELOG.md` from conventional commits
+  - Updated `.release-please-manifest.json`
+- The PR can accumulate multiple commits (feat, fix, etc.)
+- **No publishing happens** - this is just preparation
+- Review the PR to verify version bump and changelog
+
+**Phase 2: Release & Publish (On PR Merge)**
+- Merge the Release PR to trigger the release
+- release-please creates a GitHub release and tags it (e.g., `v0.2.0`)
+- The tag points to the commit with updated versions
+- Publishing jobs activate (`releases_created: true`):
+  - All jobs checkout at the release tag
+  - NPM packages publish in parallel (@domainlang/language, @domainlang/cli)
+  - VS Code extension publishes to marketplace
+  - Documentation site deploys to domainlang.net
+- All artifacts have matching, synchronized versions
 
 **CI/CD Pipeline (`.github/workflows/ci-cd.yml`):**
 - **Quality Gate:** Lint → Build → Test+Coverage (fail-fast)
 - **Analysis Gate:** SonarQube (blocking) + CodeQL (parallel)
-- **Production Gate:** Manual environment approval required
+- **Production Gate:** Manual environment approval required for all deployments
 - **Auto-versioning:** Release-please analyzes conventional commits and creates release PRs
 - **Git tagging:** Release-please tags releases automatically when PR is merged
 - **Parallel publishing:** NPM packages, VS Code extension, and site deploy concurrently
@@ -109,8 +194,15 @@ npm test                  # Run tests
 - Proper semver: 0.1.99 → 0.1.100 → 0.2.0 → 1.0.0
 
 **Fast Paths:**
-- Site-only changes (`site/**`) skip quality gates, deploy directly on main push
+- Site-only changes (`site/**`) require manual approval but skip quality gates
 - Code changes require full pipeline + manual approval before release
+
+**Release Triggers:**
+- `feat:` commits → Create/update Release PR with minor version bump
+- `fix:` commits → Create/update Release PR with patch version bump  
+- `feat!:` or `BREAKING CHANGE:` → Create/update Release PR with major version bump
+- Multiple commits accumulate in one Release PR
+- Merge Release PR → Immediate publishing to all channels
 
 ### 🔴 Grammar Changes
 

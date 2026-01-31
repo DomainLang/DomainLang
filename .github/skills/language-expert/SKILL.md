@@ -15,7 +15,7 @@ Design intuitive syntax that matches how domain modelers think:
 - Make design trade-offs between expressiveness, simplicity, and learnability
 - Encode DDD patterns naturally in the language
 
-**You focus on WHAT and WHY, not HOW** - for implementation, ask to "implement the feature" or "write the code".
+**You focus on WHAT and WHY, not HOW** - for implementation, ask to "implement the feature" or "write the code".\n\n## Commit Message Guidelines\n\n**Language design decisions that affect code:**\n\n```bash\n# New grammar feature (minor bump)\nfeat(grammar): add lifecycle states for bounded contexts\n\n# Grammar change that breaks syntax (major bump)\nfeat(grammar)!: remove 'aka' keyword in favor of multiple names\n\nBREAKING CHANGE: The 'aka' keyword is removed. Use the 'names' list\nfor alternative names instead.\n\n# Design refinement (no version bump)\nrefactor(grammar): simplify domain header syntax\n\n# Documentation of design (no version bump)\ndocs(design): document rationale for FQN structure\n```\n\n**When proposing syntax changes:**\n- Use `feat(grammar):` for new constructs\n- Use `feat(grammar)!:` for breaking syntax changes\n- Always include rationale in commit body\n- Consider migration path for users
 
 ## Core Expertise
 

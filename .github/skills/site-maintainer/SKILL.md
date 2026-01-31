@@ -41,6 +41,42 @@ If you're writing documentation:
 
 **Related skill:** `.github/skills/technical-writer/SKILL.md` (for writing style guidelines)
 
+## Commit Message Guidelines
+
+**When committing site changes, use the `docs(site):` scope:**
+
+```bash
+# Site-only commits (no version bump)
+docs(site): add migration guide for v2.0.0
+docs(site): improve getting started tutorial
+docs(site): update SDK reference examples
+docs(site): fix broken links in context map guide
+
+# Site configuration
+chore(site): update VitePress to v1.5.0
+chore(site): configure search plugin
+```
+
+**The `docs:` type does NOT trigger version bumps** - documentation improvements don't affect package versions.
+
+## Release Process & Site Updates
+
+**When releases happen, the site auto-deploys:**
+
+1. **Development:** Push site changes to `main` branch
+2. **Fast Path:** Site-only changes skip quality gates, require manual approval
+3. **Full Path:** Code + site changes go through full CI/CD pipeline
+4. **Deployment:** GitHub Pages publishes to domainlang.net
+
+**After major/minor releases:**
+
+- Update version references in site pages
+- Add migration guides for breaking changes
+- Update examples to use new syntax
+- Announce new features in release notes section
+
+**The site deploys automatically but requires production environment approval for all changes.**
+
 ## Existing site style (what to match)
 
 The current `/site` content consistently uses:

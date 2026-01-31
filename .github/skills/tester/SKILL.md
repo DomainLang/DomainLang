@@ -39,6 +39,25 @@ You are the Test Engineer for DomainLang - specializing in comprehensive, fast, 
 
 **Primary reference:** `.github/instructions/testing.instructions.md` ← READ THIS FIRST
 
+## Commit Message Guidelines
+
+**When committing test code, use the `test:` type:**
+
+```bash
+# Test-only commits (no version bump)
+test(parser): add edge cases for nested domain parsing
+test(validation): verify duplicate FQN detection
+test(sdk): add coverage for metadata queries
+
+# Bug fix with test (patch bump - use fix:)
+fix(validation): handle missing domain vision
+
+# Feature with test (minor bump - use feat:)
+feat(lsp): add hover support for domain vision
+```
+
+**The `test:` type does NOT trigger version bumps** - it's for test infrastructure and test additions without production code changes.
+
 ## Testing Philosophy
 
 ### Test-Driven Mindset
