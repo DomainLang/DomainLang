@@ -26,14 +26,13 @@ Make DomainLang delightful through better error messages and VS Code snippets. G
 
 ### Documentation (Complete)
 
-Location: `dsl/domain-lang/docs/`
+Location: `site/`
 
 | File | Lines | Purpose |
 | ---- | ----- | ------- |
-| getting-started.md | ~80 | Hands-on tutorial |
-| language.md | ~170 | Language reference |
-| quick-reference.md | ~120 | Syntax cheat sheet |
-| README.md | ~30 | Navigation hub |
+| guide/getting-started.md | ~80 | Hands-on tutorial |
+| reference/language.md | ~170 | Language reference |
+| reference/quick-reference.md | ~120 | Syntax cheat sheet |
 
 Plus 8 example `.dlang` files covering banking, healthcare, e-commerce domains.
 

@@ -1,11 +1,11 @@
-# DomainLang workspace
+# DomainLang Workspace
 
-This folder contains the DomainLang implementation (language, CLI, VS Code extension, demo) and the end-user documentation.
+This folder contains the DomainLang implementation (language, CLI, VS Code extension, demo).
 
-## Start here
+## Start Here
 
-- docs/README.md (documentation hub)
-- examples/ (example models)
+- **Documentation:** <https://domainlang.net>
+- **Examples:** `examples/` (example `.dlang` models)
 
 ## Packages
 

@@ -6,7 +6,7 @@
 
 # A DSL for Domain Driven Design
 
-[![Build](https://github.com/larsbaunwall/DomainLang/actions/workflows/build.yml/badge.svg)](https://github.com/larsbaunwall/DomainLang/actions/workflows/build.yml)
+[![CI](https://github.com/larsbaunwall/DomainLang/actions/workflows/ci.yml/badge.svg)](https://github.com/larsbaunwall/DomainLang/actions/workflows/ci.yml)
 [![VS Marketplace](https://vsmarketplacebadges.dev/version/thinkability.domain-lang.svg)](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang)
 
 > [!WARNING]
@@ -18,11 +18,11 @@ Use DomainLang to keep domains, bounded contexts, ownership, terminology, and co
 
 <img alt="DomainLang CLI" src="images/terminal-window.png">
 
-## Quick start
+## Quick Start
 
 1. Install the VS Code extension: <https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang>
-2. Create a `.dlang` file and start modeling.
-3. Use the docs hub for the learning path: [dsl/domain-lang/docs/README.md](dsl/domain-lang/docs/README.md)
+2. Create a `.dlang` file and start modeling
+3. Read the documentation: <https://domainlang.net/guide/getting-started>
 
 ```dlang
 Classification CoreDomain
@@ -61,15 +61,16 @@ ContextMap SalesLandscape {
 
 ## Documentation
 
-- Docs hub: [dsl/domain-lang/docs/README.md](dsl/domain-lang/docs/README.md)
-- Getting started: [dsl/domain-lang/docs/getting-started.md](dsl/domain-lang/docs/getting-started.md)
-- Quick reference: [dsl/domain-lang/docs/quick-reference.md](dsl/domain-lang/docs/quick-reference.md)
-- Language reference: [dsl/domain-lang/docs/language.md](dsl/domain-lang/docs/language.md)
-- Web docs: <https://larsbaunwall.github.io/DomainLang/index.html>
+Full documentation is available at **<https://domainlang.net>**:
 
-## Build from source
+- [Getting Started](https://domainlang.net/guide/getting-started) — Build your first model
+- [Language Reference](https://domainlang.net/reference/language) — Complete syntax and semantics
+- [Quick Reference](https://domainlang.net/reference/quick-reference) — Syntax cheat sheet
+- [Examples](https://domainlang.net/examples/) — Real-world model examples
 
-Development uses Node.js 20 (Volta is configured).
+## Build from Source
+
+Development uses Node.js 20+ (Volta is configured).
 
 ```bash
 cd dsl/domain-lang
@@ -79,14 +80,17 @@ npm run build
 npm test
 ```
 
-## Contributing and feedback
+See [dsl/domain-lang/README.md](dsl/domain-lang/README.md) for workspace commands and package layout.
 
-Ideas, bug reports, and pull requests are welcome.
+## Contributing
 
-- Ask questions and share ideas in Discussions: <https://github.com/larsbaunwall/DomainLang/discussions>
-- Report bugs or propose features in Issues: <https://github.com/larsbaunwall/DomainLang/issues>
-- Want to contribute code? Start with docs/examples, then run `npm test` and `npm run lint` from `dsl/domain-lang/`.
-- Workspace commands and package layout: [dsl/domain-lang/README.md](dsl/domain-lang/README.md)
+Ideas, bug reports, and pull requests are welcome!
+
+- 💬 [Discussions](https://github.com/larsbaunwall/DomainLang/discussions) — Ask questions and share ideas
+- 🐛 [Issues](https://github.com/larsbaunwall/DomainLang/issues) — Report bugs or propose features
+- 📖 [Contributing Guide](https://domainlang.net/guide/getting-started) — Get started contributing
+
+Before submitting code, run `npm test` and `npm run lint` from `dsl/domain-lang/`.
 
 ## License
 
