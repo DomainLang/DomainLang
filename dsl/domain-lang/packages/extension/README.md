@@ -11,7 +11,7 @@ A Domain-Driven Design modeling language with first-class VS Code support. Defin
 - **Real-time validation** with helpful error messages
 - **Code formatting** to keep models consistent
 
-## Quick Start
+## Quick start
 
 1. Install the extension from the VS Code Marketplace
 2. Create a file with the `.dlang` extension
@@ -46,9 +46,9 @@ ContextMap BookstoreIntegration {
 }
 ```
 
-## Language Highlights
+## Language highlights
 
-### Domains and Subdomains
+### Domains and subdomains
 
 ```dlang
 Domain Enterprise { description: "Company-wide" }
@@ -59,7 +59,7 @@ Domain Sales in Enterprise {
 }
 ```
 
-### Bounded Contexts with Ownership
+### Bounded contexts with ownership
 
 ```dlang
 bc Checkout for Sales as CoreDomain by PaymentsTeam {
@@ -67,7 +67,7 @@ bc Checkout for Sales as CoreDomain by PaymentsTeam {
 }
 ```
 
-### Context Maps and Relationships
+### Context maps and relationships
 
 ```dlang
 ContextMap Integration {
@@ -81,7 +81,7 @@ ContextMap Integration {
 
 Supported DDD patterns: `OHS` (Open Host Service), `ACL` (Anti-Corruption Layer), `CF` (Conformist), `PL` (Published Language), `SK` (Shared Kernel), `P` (Partnership).
 
-### Terminology (Ubiquitous Language)
+### Terminology (ubiquitous language)
 
 ```dlang
 bc Orders for Sales {
@@ -94,7 +94,7 @@ bc Orders for Sales {
 }
 ```
 
-### Decisions and Policies
+### Decisions and policies
 
 ```dlang
 bc Orders for Sales {
@@ -106,7 +106,7 @@ bc Orders for Sales {
 }
 ```
 
-### Namespaces and Imports
+### Namespaces and imports
 
 ```dlang
 import "./shared-definitions.dlang"
@@ -118,22 +118,22 @@ namespace Acme.Sales {
 
 ## Documentation
 
-- [Getting Started Guide](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/getting-started.md)
-- [Quick Reference](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/quick-reference.md)
-- [Full Language Reference](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/language.md)
+- [Getting Started](https://domainlang.net/guide/getting-started)
+- [Quick Reference](https://domainlang.net/reference/quick-reference)
+- [Language Reference](https://domainlang.net/reference/language)
 - [Example Models](https://github.com/larsbaunwall/DomainLang/tree/main/dsl/domain-lang/examples)
 
 ## Requirements
 
 - VS Code 1.67.0 or later
 
-## Extension Settings
+## Extension settings
 
 This extension contributes the following settings:
 
 - Language support for `.dlang` files
 
-## Known Issues
+## Known issues
 
 Report issues at [GitHub Issues](https://github.com/larsbaunwall/DomainLang/issues).
 

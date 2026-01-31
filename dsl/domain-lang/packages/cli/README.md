@@ -24,7 +24,7 @@ Or use with npx:
 npx @domainlang/cli --help
 ```
 
-## Quick Start
+## Quick start
 
 ```bash
 # Validate a DomainLang model
@@ -39,7 +39,7 @@ domain-lang-cli model tree
 
 ## Commands
 
-### Dependency Management
+### Dependency management
 
 DomainLang supports a git-native model dependency workflow via `model.yaml` and a lock file.
 
@@ -55,7 +55,7 @@ domain-lang-cli model remove <name>
 domain-lang-cli install
 ```
 
-### Analysis & Validation
+### Analysis and validation
 
 ```bash
 # Validate model structure and references
@@ -80,23 +80,23 @@ domain-lang-cli cache-clear
 domain-lang-cli --help
 ```
 
-### Code Generation (Experimental)
+### Code generation (experimental)
 
 ```bash
 # Generate code from a model (currently produces stub output)
 domain-lang-cli generate <file>
 ```
 
-## Related Packages
+## Related packages
 
 - [@domainlang/language](https://www.npmjs.com/package/@domainlang/language) - Core language library and SDK
 - [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang) - IDE support with syntax highlighting and validation
 
 ## Documentation
 
-- [Getting Started](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/getting-started.md)
-- [Language Reference](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/language.md)
-- [Quick Reference](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/quick-reference.md)
+- [Getting Started](https://domainlang.net/guide/getting-started)
+- [Language Reference](https://domainlang.net/reference/language)
+- [Quick Reference](https://domainlang.net/reference/quick-reference)
 
 ## License
 
