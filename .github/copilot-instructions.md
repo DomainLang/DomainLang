@@ -385,3 +385,7 @@ const coreContexts = query.boundedContexts()
 - Commit messages: imperative title, detailed body
 - No trailing punctuation in commit titles
 - One logical change per commit
+- **CRITICAL: Always commit package.json and package-lock.json together** in the same atomic commit
+  - Never split dependency changes across multiple commits
+  - This ensures `npm ci` works on any commit and prevents CI failures
+  - When adding/updating dependencies: modify package.json, run `npm install`, commit both files together
