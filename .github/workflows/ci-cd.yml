@@ -185,21 +185,12 @@ jobs:
           path: dsl/domain-lang/packages/language/coverage/
       
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarcloud-github-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: SonarQube Quality Gate
-        uses: SonarSource/sonarqube-quality-gate-action@master
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      
-      - name: Report SonarQube result
-        if: always()
-        run: |
-          echo "📊 [View Quality Analysis](https://sonarcloud.io/dashboard?id=DomainLang_DomainLang)" >> $GITHUB_STEP_SUMMARY
+
 
   codeql:
     name: 🔒 CodeQL Analysis
