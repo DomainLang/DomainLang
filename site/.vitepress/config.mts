@@ -10,7 +10,7 @@ const domainLangGrammar: LanguageRegistration = {
     { include: '#comments' },
     {
       name: 'keyword.control.domain-lang',
-      match: '\\b(ACL|AntiCorruptionLayer|BBoM|BigBallOfMud|BoundedContext|CF|Classification|Conformist|ContextMap|CustomerSupplier|Decision|Domain|DomainMap|Import|Metadata|Namespace|OHS|OpenHostService|P|PL|Partnership|Policy|PublishedLanguage|Rule|SK|SeparateWays|SharedKernel|Team|Term|UpstreamDownstream|aka|archetype|as|bc|businessModel|by|classification|cmap|contains|decision|decisions|description|dmap|dom|evolution|examples|for|glossary|import|in|integrations|is|meta|metadata|ns|policy|relationships|rule|rules|synonyms|team|term|terminology|this|type|vision)\\b'
+      match: String.raw`\b(ACL|AntiCorruptionLayer|BBoM|BigBallOfMud|BoundedContext|CF|Classification|Conformist|ContextMap|CustomerSupplier|Decision|Domain|DomainMap|Import|Metadata|Namespace|OHS|OpenHostService|P|PL|Partnership|Policy|PublishedLanguage|Rule|SK|SeparateWays|SharedKernel|Team|Term|UpstreamDownstream|aka|archetype|as|bc|businessModel|by|classification|cmap|contains|decision|decisions|description|dmap|dom|evolution|examples|for|glossary|import|in|integrations|is|meta|metadata|ns|policy|relationships|rule|rules|synonyms|team|term|terminology|this|type|vision)\b`
     },
     {
       name: 'string.quoted.double.domain-lang',
@@ -30,8 +30,8 @@ const domainLangGrammar: LanguageRegistration = {
       patterns: [
         {
           name: 'comment.block.domain-lang',
-          begin: '/\\*',
-          end: '\\*/'
+          begin: String.raw`/\*`,
+          end: String.raw`\*/`
         },
         {
           name: 'comment.line.domain-lang',
@@ -42,7 +42,7 @@ const domainLangGrammar: LanguageRegistration = {
     },
     'string-character-escape': {
       name: 'constant.character.escape.domain-lang',
-      match: '\\\\.'
+      match: String.raw`\\.`
     }
   }
 }
@@ -127,6 +127,13 @@ export default defineConfig({
           items: [
             { text: 'Namespaces', link: '/guide/namespaces' },
             { text: 'Import System', link: '/guide/imports' },
+          ]
+        },
+        {
+          text: 'Tooling',
+          items: [
+            { text: 'CLI', link: '/guide/cli' },
+            { text: 'Model Query SDK', link: '/guide/sdk' },
           ]
         }
       ],

@@ -1,4 +1,4 @@
-# DomainLang Documentation Site
+# DomainLang documentation site
 
 This folder contains the VitePress-powered documentation site for DomainLang.
 
@@ -34,11 +34,11 @@ site/
 
 ## Deployment
 
-The site is automatically deployed to GitHub Pages when changes are pushed to the `main` branch via the `.github/workflows/deploy-docs.yml` workflow.
+The site is automatically deployed to GitHub Pages from the `main` branch via the `deploy-docs` job in `.github/workflows/ci.yml`.
 
 The live site is available at: https://domainlang.net
 
-## Adding Content
+## Adding content
 
 1. Create or edit `.md` files in the appropriate directory
 2. Update the sidebar in `.vitepress/config.mts` if adding new pages
@@ -52,7 +52,7 @@ The live site is available at: https://domainlang.net
    ```
    ````
 
-## Custom Theme
+## Custom theme
 
 The site uses a customized default VitePress theme with:
 
