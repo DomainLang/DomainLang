@@ -6,8 +6,8 @@
 
 # A DSL for Domain Driven Design
 
-[![CI](https://github.com/larsbaunwall/DomainLang/actions/workflows/ci.yml/badge.svg)](https://github.com/larsbaunwall/DomainLang/actions/workflows/ci.yml)
-[![VS Marketplace](https://vsmarketplacebadges.dev/version/thinkability.domain-lang.svg)](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang)
+[![CI](https://github.com/DomainLang/DomainLang/actions/workflows/ci.yml/badge.svg)](https://github.com/DomainLang/DomainLang/actions/workflows/ci.yml)
+[![VS Marketplace](https://vsmarketplacebadges.dev/version/DomainLang.vscode-domainlang.svg)](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)
 
 > [!WARNING]
 > **🚧 Prerelease Software** — DomainLang is in active development and has not reached v1.0 yet. The language syntax and tooling may change. We welcome feedback and contributions—see the [roadmap](https://domainlang.net/roadmap) for planned features.
@@ -20,7 +20,7 @@ Use DomainLang to keep domains, bounded contexts, ownership, terminology, and co
 
 ## Quick Start
 
-1. Install the VS Code extension: <https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang>
+1. Install the VS Code extension: <https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang>
 2. Create a `.dlang` file and start modeling
 3. Read the documentation: <https://domainlang.net/guide/getting-started>
 
@@ -86,8 +86,8 @@ See [dsl/domain-lang/README.md](dsl/domain-lang/README.md) for workspace command
 
 Ideas, bug reports, and pull requests are welcome!
 
-- 💬 [Discussions](https://github.com/larsbaunwall/DomainLang/discussions) — Ask questions and share ideas
-- 🐛 [Issues](https://github.com/larsbaunwall/DomainLang/issues) — Report bugs or propose features
+- 💬 [Discussions](https://github.com/DomainLang/DomainLang/discussions) — Ask questions and share ideas
+- 🐛 [Issues](https://github.com/DomainLang/DomainLang/issues) — Report bugs or propose features
 - 📖 [Contributing Guide](https://domainlang.net/guide/getting-started) — Get started contributing
 
 Before submitting code, run `npm test` and `npm run lint` from `dsl/domain-lang/`.

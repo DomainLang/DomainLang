@@ -134,7 +134,7 @@ ContextMap SalesIntegration {
 ## Related packages
 
 - [@domainlang/cli](https://www.npmjs.com/package/@domainlang/cli) - Command-line interface
-- [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang) - IDE support
+- [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang) - IDE support
 
 ## Documentation
 

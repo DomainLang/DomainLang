@@ -33,7 +33,6 @@ jobs:
               - 'site/**'
             has-code:
               - 'dsl/domain-lang/**'
-              - '!dsl/domain-lang/**/*.md'
 
   # ============================================================================
   # QUALITY GATE (fail-fast) - Commit Lint → Lint → Build → Test+Coverage

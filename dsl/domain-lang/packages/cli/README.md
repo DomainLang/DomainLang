@@ -90,7 +90,7 @@ domain-lang-cli generate <file>
 ## Related packages
 
 - [@domainlang/language](https://www.npmjs.com/package/@domainlang/language) - Core language library and SDK
-- [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang) - IDE support with syntax highlighting and validation
+- [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang) - IDE support with syntax highlighting and validation
 
 ## Documentation
 

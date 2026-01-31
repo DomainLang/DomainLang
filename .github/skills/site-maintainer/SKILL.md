@@ -369,7 +369,7 @@ Hidden content
 - **External links:** Include full URL
 
   ```markdown
-  [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang)
+  [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)
   ```
 
 ## Deployment
