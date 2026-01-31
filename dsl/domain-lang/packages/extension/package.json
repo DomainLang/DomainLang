@@ -1,6 +1,6 @@
 {
     "name": "vscode-domainlang",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "displayName": "DomainLang",
     "description": "A DSL for Domain-Driven Design",
     "publisher": "DomainLang",
@@ -29,17 +29,26 @@
         "Programming Languages"
     ],
     "contributes": {
-        "languages": [{
-            "id": "domain-lang",
-            "aliases": ["DomainLang", "domain-lang"],
-            "extensions": [".dlang"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "domain-lang",
-            "scopeName": "source.domain-lang",
-            "path": "syntaxes/domain-lang.tmLanguage.json"
-        }]
+        "languages": [
+            {
+                "id": "domain-lang",
+                "aliases": [
+                    "DomainLang",
+                    "domain-lang"
+                ],
+                "extensions": [
+                    ".dlang"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "domain-lang",
+                "scopeName": "source.domain-lang",
+                "path": "syntaxes/domain-lang.tmLanguage.json"
+            }
+        ]
     },
     "activationEvents": [
         "onLanguage:domain-lang"
@@ -68,6 +77,6 @@
         "typescript": "~5.8.3"
     },
     "vsce": {
-      "dependencies": false
+        "dependencies": false
     }
 }
