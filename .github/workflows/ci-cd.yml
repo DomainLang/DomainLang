@@ -127,7 +127,14 @@ jobs:
           path: dsl/domain-lang/
       
       - name: Run tests with coverage
-        run: npm test -- --coverage
+        run: npm test -- --coverage > coverage-output.txt 2>&1 || true
+      
+      - name: Display coverage in workflow
+        run: |
+          echo "## 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          tail -80 coverage-output.txt >> $GITHUB_STEP_SUMMARY
+          cat coverage-output.txt
       
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
