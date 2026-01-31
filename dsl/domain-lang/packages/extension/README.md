@@ -1,5 +1,7 @@
 # DomainLang for VS Code
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
+
 A Domain-Driven Design modeling language with first-class VS Code support. Define domains, bounded contexts, context maps, and team ownership in a concise, readable syntax.
 
 ## Features

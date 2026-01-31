@@ -1,6 +1,6 @@
 # @domainlang/cli
 
-[![npm version](https://img.shields.io/npm/v/@domainlang/cli.svg)](https://www.npmjs.com/package/@domainlang/cli)
+[![npm version](https://img.shields.io/npm/v/@domainlang/cli.svg)](https://www.npmjs.com/package/@domainlang/cli)[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
 [![License](https://img.shields.io/npm/l/@domainlang/cli.svg)](https://github.com/DomainLang/DomainLang/blob/main/LICENSE)
 
 Command-line interface for [DomainLang](https://github.com/DomainLang/DomainLang) - a Domain-Driven Design modeling language.
