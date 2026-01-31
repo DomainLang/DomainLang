@@ -19,9 +19,9 @@ Core language library for [DomainLang](https://github.com/larsbaunwall/DomainLan
 npm install @domainlang/language
 ```
 
-## Quick Start
+## Quick start
 
-### Parse and Query Models
+### Parse and query models
 
 ```typescript
 import { loadModelFromText } from '@domainlang/language/sdk';
@@ -38,13 +38,13 @@ const { query } = await loadModelFromText(`
 
 // Query bounded contexts
 const coreContexts = query.boundedContexts()
-  .withRole('Core')
+  .withClassification('Core')
   .toArray();
 
 console.log(coreContexts[0].name); // 'OrderContext'
 ```
 
-### Load from File (Node.js)
+### Load from file (Node.js)
 
 ```typescript
 import { loadModel } from '@domainlang/language/sdk/loader-node';
@@ -57,9 +57,9 @@ for (const domain of query.domains()) {
 }
 ```
 
-## API Overview
+## API overview
 
-### Entry Points
+### Entry points
 
 | Function | Environment | Use Case |
 | -------- | ----------- | -------- |
@@ -68,7 +68,7 @@ for (const domain of query.domains()) {
 | `fromDocument(doc)` | LSP integration | Zero-copy from Langium document |
 | `fromModel(model)` | Advanced | Direct AST wrapping |
 
-### Query Builder
+### Query builder
 
 The SDK provides fluent query builders with lazy evaluation:
 
@@ -84,7 +84,7 @@ const maps = query.contextMaps()
   .toArray();
 ```
 
-### Direct Property Access
+### Direct property access
 
 ```typescript
 // Direct AST properties
@@ -92,11 +92,11 @@ const desc = boundedContext.description;
 const vision = domain.vision;
 
 // SDK-augmented properties (with precedence resolution)
-const role = boundedContext.effectiveRole;  // Header 'as' wins over body 'role:'
+const classification = boundedContext.effectiveClassification;  // Header 'as' wins over body 'classification:'
 const team = boundedContext.effectiveTeam;  // Header 'by' wins over body 'team:'
 ```
 
-## DomainLang Syntax
+## DomainLang syntax
 
 DomainLang models Domain-Driven Design concepts:
 
@@ -121,7 +121,7 @@ ContextMap SalesIntegration {
 }
 ```
 
-## Package Structure
+## Package structure
 
 | Path | Purpose |
 | ---- | ------- |
@@ -131,16 +131,16 @@ ContextMap SalesIntegration {
 | `src/lsp/` | LSP features (hover, completion, formatting) |
 | `src/sdk/` | Model Query SDK |
 
-## Related Packages
+## Related packages
 
 - [@domainlang/cli](https://www.npmjs.com/package/@domainlang/cli) - Command-line interface
 - [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=thinkability.domain-lang) - IDE support
 
 ## Documentation
 
-- [Getting Started](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/getting-started.md)
-- [Language Reference](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/language.md)
-- [Quick Reference](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/docs/quick-reference.md)
+- [Getting Started](https://domainlang.net/guide/getting-started)
+- [Language Reference](https://domainlang.net/reference/language)
+- [Quick Reference](https://domainlang.net/reference/quick-reference)
 - [SDK Documentation](https://github.com/larsbaunwall/DomainLang/blob/main/dsl/domain-lang/packages/language/src/sdk/README.md)
 
 ## Development
