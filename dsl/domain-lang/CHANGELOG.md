@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.0](https://github.com/DomainLang/DomainLang/compare/v0.5.2...v0.6.0) (2026-02-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **language:** Package management services removed from @domainlang/language exports. Applications using GitUrlResolver, DependencyResolver, GovernanceValidator, or semver utilities must migrate to @domainlang/cli package.
+
+### Documentation
+
+* **skill:** add keyword dictionary sync requirement to technical-writer ([2a6fcc5](https://github.com/DomainLang/DomainLang/commit/2a6fcc5d3e89159848f5189f391df68c38a09b85))
+
+
+### Code Refactoring
+
+* **cli:** improve code quality and ES module compliance ([4c5ff2b](https://github.com/DomainLang/DomainLang/commit/4c5ff2b1e9b9ea619ecf9a5b7a0959d25b4e27ab))
+* **language:** move dependency management to CLI package ([cb47592](https://github.com/DomainLang/DomainLang/commit/cb475922eebc8df850354462bd7d5fb66a8dd75a))
+
 ## [0.5.2](https://github.com/DomainLang/DomainLang/compare/v0.5.1...v0.5.2) (2026-02-01)
 
 
