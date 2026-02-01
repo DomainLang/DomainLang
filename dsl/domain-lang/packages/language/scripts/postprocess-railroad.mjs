@@ -13,12 +13,32 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { GrammarAST } from 'langium';
-import { DomainLangGrammar } from '../src/generated/grammar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAILROAD_DIR = path.join(__dirname, '../docs/railroad');
+const GENERATED_GRAMMAR_CANDIDATES = [
+  path.join(__dirname, '../src/generated/grammar.js'),
+  path.join(__dirname, '../out/generated/grammar.js'),
+];
+
+async function loadGrammarModule() {
+  for (const candidate of GENERATED_GRAMMAR_CANDIDATES) {
+    try {
+      await fs.access(candidate);
+      return await import(pathToFileURL(candidate).href);
+    } catch {
+      // continue
+    }
+  }
+
+  const attempted = GENERATED_GRAMMAR_CANDIDATES.map(candidate => `- ${candidate}`).join('\n');
+  throw new Error(
+    `Could not find generated grammar.js. Tried:\n${attempted}\n` +
+    'Run "npm run langium:generate" first.'
+  );
+}
 
 // Rule categories for organizing diagrams (matches grammar structure)
 // The order of keys determines the display order in the UI
@@ -148,6 +168,7 @@ function extractRuleReferences(ruleName, grammar) {
 console.log('🎨 Post-processing railroad diagrams...\n');
 
 // Load grammar to extract references
+const { DomainLangGrammar } = await loadGrammarModule();
 const grammar = DomainLangGrammar();
 
 // Read the .langium source file to extract JSDoc comments
