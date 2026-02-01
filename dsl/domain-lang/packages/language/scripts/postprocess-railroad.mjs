@@ -13,32 +13,14 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { GrammarAST } from 'langium';
+import { fileURLToPath } from 'node:url';
+import { GrammarAST, URI } from 'langium';
+import { createLangiumGrammarServices } from 'langium/grammar';
+import { NodeFileSystem } from 'langium/node';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAILROAD_DIR = path.join(__dirname, '../docs/railroad');
-const GENERATED_GRAMMAR_CANDIDATES = [
-  path.join(__dirname, '../src/generated/grammar.js'),
-  path.join(__dirname, '../out/generated/grammar.js'),
-];
-
-async function loadGrammarModule() {
-  for (const candidate of GENERATED_GRAMMAR_CANDIDATES) {
-    try {
-      await fs.access(candidate);
-      return await import(pathToFileURL(candidate).href);
-    } catch {
-      // continue
-    }
-  }
-
-  const attempted = GENERATED_GRAMMAR_CANDIDATES.map(candidate => `- ${candidate}`).join('\n');
-  throw new Error(
-    `Could not find generated grammar.js. Tried:\n${attempted}\n` +
-    'Run "npm run langium:generate" first.'
-  );
-}
+const GRAMMAR_PATH = path.join(__dirname, '../src/domain-lang.langium');
 
 // Rule categories for organizing diagrams (matches grammar structure)
 // The order of keys determines the display order in the UI
@@ -168,8 +150,15 @@ function extractRuleReferences(ruleName, grammar) {
 console.log('🎨 Post-processing railroad diagrams...\n');
 
 // Load grammar to extract references
-const { DomainLangGrammar } = await loadGrammarModule();
-const grammar = DomainLangGrammar();
+const { shared } = createLangiumGrammarServices(NodeFileSystem);
+const documents = shared.workspace.LangiumDocuments;
+const documentBuilder = shared.workspace.DocumentBuilder;
+const grammarDocument = await documents.getOrCreateDocument(URI.file(GRAMMAR_PATH));
+await documentBuilder.build([grammarDocument], { validation: false });
+const grammar = grammarDocument.parseResult.value;
+if (!GrammarAST.isGrammar(grammar)) {
+  throw new Error(`Failed to parse grammar at ${GRAMMAR_PATH}`);
+}
 
 // Read the .langium source file to extract JSDoc comments
 const langiumPath = path.join(__dirname, '../src/domain-lang.langium');
