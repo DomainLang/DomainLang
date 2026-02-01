@@ -86,6 +86,20 @@ npm test
 
 See [dsl/domain-lang/README.md](dsl/domain-lang/README.md) for workspace commands and package layout.
 
+## GitHub Copilot Integration
+
+This repository includes MCP (Model Context Protocol) server configuration for enhanced GitHub Copilot capabilities.
+
+### Perplexity Web Search
+
+Enable web search in GitHub Copilot:
+
+1. Copy `.env.example` to `.env` and add your [Perplexity API key](https://www.perplexity.ai/settings/api)
+2. Restart VS Code to load the MCP server configuration
+3. GitHub Copilot can now search the web using Perplexity
+
+See [`.copilot/README.md`](.copilot/README.md) for detailed setup instructions.
+
 ## Contributing
 
 Ideas, bug reports, and pull requests are welcome!

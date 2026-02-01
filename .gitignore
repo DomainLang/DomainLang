@@ -313,7 +313,9 @@ site/public/railroad
 
 # End of https://www.toptal.com/developers/gitignore/api/node
 
-
+# MCP Server logs and runtime data
+.copilot/*.log
+.copilot/logs/
 
 # End of https://www.toptal.com/developers/gitignore/api/eclipse,xtext,visualstudiocode,macos,windows
 **/*.vsix
