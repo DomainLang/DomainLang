@@ -15,7 +15,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GrammarAST } from 'langium';
-import { DomainLangGrammar } from '../out/generated/grammar.js';
+import { DomainLangGrammar } from '../src/generated/grammar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAILROAD_DIR = path.join(__dirname, '../docs/railroad');
