@@ -19,7 +19,7 @@ class FakeGitUrlResolver {
         await fs.writeFile(entry, 'Domain Dummy {}', 'utf-8');
         return entry;
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     async resolveCommit(_gitInfo: unknown): Promise<string> {
         // Return a fake commit hash for testing
         return 'deadbeef';

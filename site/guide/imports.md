@@ -121,6 +121,39 @@ import "core" as Core
 External imports require `model.yaml`. Without it, you'll get an error suggesting to create one.
 :::
 
+## Mixed workspaces
+
+DomainLang supports mixing standalone files with modular packages:
+
+```text
+workspace/
+├── standalone.dlang        # Standalone file (relative imports only)
+├── utils.dlang             # Another standalone file
+├── core-domain/
+│   ├── model.yaml          # Module with dependencies
+│   ├── index.dlang
+│   └── domains/
+│       └── sales.dlang
+└── support-domain/
+    ├── model.yaml          # Another independent module
+    ├── index.dlang
+    └── shared/
+        └── teams.dlang
+```
+
+**Behavior:**
+
+- **Standalone files** (`standalone.dlang`, `utils.dlang`): Loaded on-demand, use relative imports only
+- **Module folders** (`core-domain/`, `support-domain/`): Each `model.yaml` defines an independent module with its own dependencies and path aliases
+- **Multiple modules**: Each module's entry point + import graph pre-loaded when workspace opens
+- **Performance**: Modules load eagerly (instant LSP), standalone files load lazily (on open)
+
+This allows you to organize code as:
+
+- Quick prototypes or examples as standalone files
+- Production domains as properly versioned modules
+- Shared utilities that don't need dependency management
+
 ## Project manifest (model.yaml)
 
 The manifest file configures your project's identity, path aliases, and dependencies.
