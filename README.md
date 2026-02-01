@@ -88,15 +88,21 @@ See [dsl/domain-lang/README.md](dsl/domain-lang/README.md) for workspace command
 
 ## GitHub Copilot Integration
 
-This repository includes MCP (Model Context Protocol) server configuration for enhanced GitHub Copilot capabilities.
+This repository includes MCP (Model Context Protocol) server configurations for enhanced GitHub Copilot capabilities.
 
-### Perplexity Web Search
+### MCP Servers Included
 
-Enable web search in GitHub Copilot:
+Three MCP servers are configured to provide comprehensive documentation and web search:
 
-1. Copy `.env.example` to `.env` and add your [Perplexity API key](https://www.perplexity.ai/settings/api)
-2. Restart VS Code to load the MCP server configuration
-3. GitHub Copilot can now search the web using Perplexity
+1. **Microsoft Docs** - Search official Microsoft/Azure documentation (no API key required)
+2. **Context7** - Search library documentation and code examples ([get API key](https://context7.com))
+3. **Perplexity** - Web search using Perplexity AI ([get API key](https://www.perplexity.ai/settings/api))
+
+### Quick Setup
+
+1. Copy `.env.example` to `.env` and add your API keys (Perplexity and Context7)
+2. Restart VS Code to load the MCP server configurations
+3. GitHub Copilot can now use all three servers for enhanced context
 
 See [`.copilot/README.md`](.copilot/README.md) for detailed setup instructions.
 

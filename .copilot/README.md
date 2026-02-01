@@ -2,66 +2,158 @@
 
 This directory contains Model Context Protocol (MCP) server configurations for GitHub Copilot Workspace.
 
-## Perplexity MCP Server
+## Configured MCP Servers
 
-The Perplexity MCP server enables GitHub Copilot to perform web searches using Perplexity AI's search capabilities.
+This repository includes three MCP servers to enhance GitHub Copilot capabilities:
 
-### Setup Instructions
+1. **Microsoft Docs** - Search official Microsoft/Azure documentation
+2. **Context7** - Search library documentation and code examples
+3. **Perplexity** - Search the web using Perplexity AI
 
-1. **Get a Perplexity API Key**
-   - Visit [Perplexity AI Settings](https://www.perplexity.ai/settings/api)
-   - Sign up or log in to your account
-   - Generate an API key
+## Setup Instructions
 
-2. **Configure Environment Variable**
-   - Copy `.env.example` to `.env` in the repository root:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit `.env` and replace `your_api_key_here` with your actual Perplexity API key:
-     ```bash
-     PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-     ```
+### 1. Copy Environment Template
 
-3. **Restart GitHub Copilot**
-   - In VS Code, open the Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
-   - Run "Developer: Reload Window" or restart VS Code
-   - GitHub Copilot will automatically load the MCP server configuration
+```bash
+cp .env.example .env
+```
 
-4. **Verify Setup**
-   - Open GitHub Copilot chat
-   - Try asking: "Search the web for the latest TypeScript features"
-   - Copilot should now be able to use Perplexity to search the web
+### 2. Configure API Keys
 
-### Configuration Details
+Edit `.env` and add your API keys:
 
-The `mcp-config.json` file configures the Perplexity MCP server with:
-- **Command**: `npx` to run the server package
-- **Package**: `@modelcontextprotocol/server-perplexity-ask`
-- **Environment**: `PERPLEXITY_API_KEY` loaded from your environment
+```bash
+# Perplexity API Key (required for web search)
+# Get your API key from: https://www.perplexity.ai/settings/api
+PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-### Troubleshooting
+# Context7 API Key (required for library documentation)
+# Get your API key from: https://context7.com
+CONTEXT7_API_KEY=your_context7_api_key_here
+```
 
-**Issue**: Copilot doesn't show web search capabilities
+**Note**: Microsoft Docs server doesn't require an API key.
+
+### 3. Restart GitHub Copilot
+
+- In VS Code, open the Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
+- Run "Developer: Reload Window" or restart VS Code
+- GitHub Copilot will automatically load all MCP server configurations
+
+### 4. Verify Setup
+
+Test each server in GitHub Copilot chat:
+
+- **Microsoft Docs**: "Search Microsoft documentation for Azure Functions"
+- **Context7**: "Find documentation for React hooks"
+- **Perplexity**: "Search the web for the latest TypeScript features"
+
+## MCP Server Details
+
+### Microsoft Docs (HTTP)
+
+- **Type**: HTTP-based MCP server
+- **Purpose**: Search official Microsoft Learn documentation
+- **URL**: https://learn.microsoft.com/api/mcp
+- **Authentication**: None required
+- **Tools**: All available (`*`)
+
+### Context7 (HTTP)
+
+- **Type**: HTTP-based MCP server
+- **Purpose**: Search library documentation and code examples
+- **URL**: https://mcp.context7.com/mcp
+- **Authentication**: API key via `CONTEXT7_API_KEY` header
+- **Tools**: All available (`*`)
+- **API Key**: Required (get from [context7.com](https://context7.com))
+
+### Perplexity (stdio)
+
+- **Type**: stdio-based MCP server
+- **Purpose**: Web search using Perplexity AI
+- **Command**: `npx -y @perplexity-ai/mcp-server`
+- **Authentication**: API key via `PERPLEXITY_API_KEY` environment variable
+- **Tools**: All available (`*`)
+- **API Key**: Required (get from [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api))
+
+## Configuration Structure
+
+The `mcp-config.json` file contains:
+
+```json
+{
+  "mcpServers": {
+    "microsoft-docs": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "tools": ["*"]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "tools": ["*"],
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      }
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "tools": ["*"],
+      "env": {
+        "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
+      },
+      "type": "stdio"
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Issue: Copilot doesn't show MCP capabilities
+
 - Ensure your `.env` file is in the repository root
-- Verify the API key is valid
-- Check that the environment variable is properly set
-- Restart VS Code completely
+- Verify API keys are valid and properly formatted
+- Check that environment variables are set correctly
+- Restart VS Code completely (not just reload)
 
-**Issue**: "PERPLEXITY_API_KEY is not set" error
+### Issue: "API_KEY is not set" error
+
 - Make sure you copied `.env.example` to `.env`
-- Verify the key is correctly formatted in `.env`
+- Verify the keys are correctly formatted in `.env`
 - Ensure there are no extra spaces around the `=` sign
+- Check that variable names match exactly
 
-### Security Notes
+### Issue: HTTP servers not responding
 
-⚠️ **Important**: Never commit your `.env` file or expose your API key
+- Check your internet connection
+- Verify the server URLs are accessible
+- For Context7, ensure API key is valid
+- Try accessing URLs directly in a browser
+
+### Issue: stdio server fails to start
+
+- Ensure Node.js and npx are installed
+- Try running `npx -y @perplexity-ai/mcp-server` manually
+- Check for network issues blocking npm registry
+- Clear npm cache if needed: `npm cache clean --force`
+
+## Security Notes
+
+⚠️ **Important**: Never commit your `.env` file or expose your API keys
+
 - The `.env` file is already in `.gitignore`
 - Only commit `.env.example` with placeholder values
-- Rotate your API key immediately if accidentally exposed
+- Rotate your API keys immediately if accidentally exposed
+- Use different API keys for development and production
+- Store production keys in secure environment variable systems
 
-### Additional MCP Servers
+## Additional Resources
 
-You can add more MCP servers to `mcp-config.json`. For examples, see:
 - [MCP Servers Directory](https://github.com/modelcontextprotocol/servers)
 - [GitHub Copilot MCP Documentation](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-command-line)
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
+- [Perplexity AI Documentation](https://docs.perplexity.ai/)
+- [Context7 Documentation](https://context7.com/docs)
+- [Microsoft Learn MCP API](https://learn.microsoft.com/)

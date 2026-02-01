@@ -1,11 +1,29 @@
 {
   "mcpServers": {
-    "perplexity-ask": {
+    "microsoft-docs": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "tools": ["*"]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "tools": ["*"],
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      }
+    },
+    "perplexity": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-perplexity-ask"],
+      "args": [
+        "-y",
+        "@perplexity-ai/mcp-server"
+      ],
+      "tools": ["*"],
       "env": {
         "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
-      }
+      },
+      "type": "stdio"
     }
   }
 }
