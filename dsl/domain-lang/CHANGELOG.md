@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.2](https://github.com/DomainLang/DomainLang/compare/v0.5.1...v0.5.2) (2026-02-01)
+
+
+### Bug Fixes
+
+* **railroad:** load grammar from langium output ([2e79164](https://github.com/DomainLang/DomainLang/commit/2e79164c7c6490250c8bdbfbebc22603e0d1768a))
+* **railroad:** load grammar via langium services ([0c1d51c](https://github.com/DomainLang/DomainLang/commit/0c1d51c3ce77f9f0a06476922a562e7b5dba3ea9))
+* **railroad:** resolve generated grammar dynamically ([105b340](https://github.com/DomainLang/DomainLang/commit/105b34090e80114bffc0d5d2c154f70bf79cfcbf))
+
 ## [0.5.1](https://github.com/DomainLang/DomainLang/compare/v0.5.0...v0.5.1) (2026-01-31)
 
 
