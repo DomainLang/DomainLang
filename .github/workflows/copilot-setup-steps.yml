@@ -1,0 +1,29 @@
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6.2.0
+        with:
+          node-version: "22"  # Or your preferred version (22, 18)
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci  # Or yarn install --frozen-lockfile
+
+      # Optional: Global tools via npx (runs on-demand)
+      - name: Verify npx works
+        run: npx --version
