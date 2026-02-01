@@ -44,7 +44,8 @@
         "clean": "shx rm -fr *.tsbuildinfo out",
         "build": "tsc -b tsconfig.json",
         "build:clean": "npm run clean && npm run build",
-        "test": "vitest run"
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
         "@domainlang/language": "0.1.0",
