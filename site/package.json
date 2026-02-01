@@ -8,7 +8,7 @@
     "dev": "npm run copy-diagrams && vitepress dev",
     "build": "npm run copy-diagrams && vitepress build",
     "preview": "vitepress preview",
-    "copy-diagrams": "cp ../dsl/domain-lang/packages/language/docs/syntax-diagram.html public/"
+    "copy-diagrams": "rm -rf public/railroad && cp -r ../dsl/domain-lang/packages/language/docs/railroad public/"
   },
   "devDependencies": {
     "vitepress": "^1.6.3",

@@ -1,0 +1,35 @@
+<svg data-rule="Assignment" class="railroad-diagram railroad-svg" xmlns="http://www.w3.org/2000/svg" width="157" height="122" viewBox="0 0 157 122">
+
+<g transform="translate(.5 .5)">
+<path d="M 20 21 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 31h0"></path>
+<path d="M116 31h0"></path>
+<path d="M40 31h20"></path>
+<g>
+<path d="M60 31h4"></path>
+<path d="M92 31h4"></path>
+<rect x="64" y="20" width="28" height="22" rx="10" ry="10"></rect>
+<text x="78" y="35">:</text>
+</g>
+<path d="M96 31h20"></path>
+<path d="M40 31a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 61h0"></path>
+<path d="M96 61h0"></path>
+<rect x="60" y="50" width="36" height="22" rx="10" ry="10"></rect>
+<text x="78" y="65">is</text>
+</g>
+<path d="M96 61a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v40a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 91h4"></path>
+<path d="M92 91h4"></path>
+<rect x="64" y="80" width="28" height="22" rx="10" ry="10"></rect>
+<text x="78" y="95">=</text>
+</g>
+<path d="M96 91a10 10 0 0 0 10 -10v-40a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M 116 31 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

@@ -1,0 +1,74 @@
+<svg data-rule="ImportStatement" class="railroad-diagram railroad-svg" xmlns="http://www.w3.org/2000/svg" width="429" height="102" viewBox="0 0 429 102">
+
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M388 41h0"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M148 41h0"></path>
+<path d="M40 41h20"></path>
+<g>
+<path d="M60 41h0"></path>
+<path d="M128 41h0"></path>
+<rect x="60" y="30" width="68" height="22" rx="10" ry="10"></rect>
+<text x="94" y="45">Import</text>
+</g>
+<path d="M128 41h20"></path>
+<path d="M40 41a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 71h0"></path>
+<path d="M128 71h0"></path>
+<rect x="60" y="60" width="68" height="22" rx="10" ry="10"></rect>
+<text x="94" y="75">import</text>
+</g>
+<path d="M128 71a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M148 41h10"></path>
+<g>
+<path d="M158 41h0"></path>
+<path d="M226 41h0"></path>
+<rect x="158" y="30" width="68" height="22"></rect>
+<text x="192" y="45">STRING</text>
+</g>
+<path d="M226 41h10"></path>
+<g>
+<path d="M236 41h0"></path>
+<path d="M388 41h0"></path>
+<path d="M236 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M256 21h112"></path>
+</g>
+<path d="M368 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M236 41h20"></path>
+<g>
+<path d="M256 41h0"></path>
+<path d="M368 41h0"></path>
+<g>
+<path d="M256 41h0"></path>
+<path d="M368 41h0"></path>
+<path d="M256 41h10"></path>
+<g>
+<path d="M266 41h0"></path>
+<path d="M302 41h0"></path>
+<rect x="266" y="30" width="36" height="22" rx="10" ry="10"></rect>
+<text x="284" y="45">as</text>
+</g>
+<path d="M302 41h10"></path>
+<path d="M312 41h10"></path>
+<g>
+<path d="M322 41h0"></path>
+<path d="M358 41h0"></path>
+<rect x="322" y="30" width="36" height="22"></rect>
+<text x="340" y="45">ID</text>
+</g>
+<path d="M358 41h10"></path>
+</g>
+</g>
+<path d="M368 41h20"></path>
+</g>
+</g>
+<path d="M 388 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

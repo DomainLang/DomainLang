@@ -11,7 +11,8 @@
             "out": "src/syntaxes/domain-lang.monarch.ts"
         },
         "railroad": {
-            "out": "docs/syntax-diagram.html"
+            "out": "docs/railroad",
+            "mode": "svg"
         }
     }],
     "out": "src/generated"

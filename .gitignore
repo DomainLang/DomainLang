@@ -297,6 +297,20 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# VitePress cache and build output
+.vitepress/cache
+.vitepress/dist
+site/.vitepress/cache
+site/dist
+
+# Build outputs and artifacts
+dsl/domain-lang/packages/*/dist
+dsl/domain-lang/packages/*/coverage
+dsl/domain-lang/out
+
+# Generated documentation
+site/public/railroad
+
 # End of https://www.toptal.com/developers/gitignore/api/node
 
 

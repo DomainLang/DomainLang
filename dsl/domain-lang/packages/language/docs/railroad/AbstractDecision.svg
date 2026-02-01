@@ -1,0 +1,35 @@
+<svg data-rule="AbstractDecision" class="railroad-diagram railroad-svg" xmlns="http://www.w3.org/2000/svg" width="237" height="122" viewBox="0 0 237 122">
+
+<g transform="translate(.5 .5)">
+<path d="M 20 21 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 31h0"></path>
+<path d="M196 31h0"></path>
+<path d="M40 31h20"></path>
+<g>
+<path d="M60 31h16"></path>
+<path d="M160 31h16"></path>
+<rect x="76" y="20" width="84" height="22"></rect>
+<text x="118" y="35">Decision</text>
+</g>
+<path d="M176 31h20"></path>
+<path d="M40 31a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 61h24"></path>
+<path d="M152 61h24"></path>
+<rect x="84" y="50" width="68" height="22"></rect>
+<text x="118" y="65">Policy</text>
+</g>
+<path d="M176 61a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+<path d="M40 31a10 10 0 0 1 10 10v40a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 91h0"></path>
+<path d="M176 91h0"></path>
+<rect x="60" y="80" width="116" height="22"></rect>
+<text x="118" y="95">BusinessRule</text>
+</g>
+<path d="M176 91a10 10 0 0 0 10 -10v-40a10 10 0 0 1 10 -10"></path>
+</g>
+<path d="M 196 31 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

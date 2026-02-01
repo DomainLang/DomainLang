@@ -1,0 +1,312 @@
+{
+  "generatedAt": "2026-02-01T12:16:44.893Z",
+  "version": "1.0.0",
+  "categoryOrder": [
+    "Model Structure",
+    "Strategic Design",
+    "Teams & Classifications",
+    "Architecture Mapping",
+    "Relationships",
+    "Domain Knowledge",
+    "Module System",
+    "Expressions"
+  ],
+  "categoryDescriptions": {
+    "Model Structure": "Core model elements and type definitions",
+    "Strategic Design": "DDD strategic design building blocks",
+    "Teams & Classifications": "Team assignments and element categorization",
+    "Architecture Mapping": "Visualization constructs for architecture",
+    "Relationships": "Context and domain relationships",
+    "Domain Knowledge": "Ubiquitous language and business rules",
+    "Module System": "Imports and namespaces",
+    "Expressions": "Low-level syntax constructs"
+  },
+  "categories": {
+    "Domain Knowledge": [
+      "AbstractDecision",
+      "BusinessRule",
+      "Decision",
+      "DomainTerm",
+      "Policy"
+    ],
+    "Expressions": [
+      "Assignment",
+      "QualifiedName"
+    ],
+    "Strategic Design": [
+      "BoundedContext",
+      "Domain"
+    ],
+    "Relationships": [
+      "BoundedContextRef",
+      "IntegrationPattern",
+      "Relationship",
+      "RelationshipArrow",
+      "RelationshipType"
+    ],
+    "Teams & Classifications": [
+      "Classification",
+      "Metadata",
+      "MetadataEntry",
+      "Team"
+    ],
+    "Architecture Mapping": [
+      "ContextMap",
+      "DomainMap",
+      "ObjectMap"
+    ],
+    "Module System": [
+      "ImportStatement",
+      "NamespaceDeclaration"
+    ],
+    "Model Structure": [
+      "Model",
+      "StructureElement",
+      "Type"
+    ]
+  },
+  "rules": {
+    "AbstractDecision": {
+      "name": "AbstractDecision",
+      "category": "Domain Knowledge",
+      "file": "AbstractDecision.svg",
+      "description": "Decisions, Policies, and Business Rules.",
+      "references": [
+        "Decision",
+        "Policy",
+        "BusinessRule"
+      ]
+    },
+    "Assignment": {
+      "name": "Assignment",
+      "category": "Expressions",
+      "file": "Assignment.svg",
+      "description": "",
+      "references": []
+    },
+    "BoundedContext": {
+      "name": "BoundedContext",
+      "category": "Strategic Design",
+      "file": "BoundedContext.svg",
+      "description": "Bounded Context - A boundary within which a domain model is defined.",
+      "references": [
+        "QualifiedName",
+        "Assignment",
+        "MetadataEntry",
+        "Relationship",
+        "DomainTerm",
+        "AbstractDecision"
+      ]
+    },
+    "BoundedContextRef": {
+      "name": "BoundedContextRef",
+      "category": "Relationships",
+      "file": "BoundedContextRef.svg",
+      "description": "Context reference - can be 'this' (self-reference) or a qualified name.",
+      "references": [
+        "QualifiedName"
+      ]
+    },
+    "BusinessRule": {
+      "name": "BusinessRule",
+      "category": "Domain Knowledge",
+      "file": "BusinessRule.svg",
+      "description": "",
+      "references": [
+        "QualifiedName",
+        "Assignment"
+      ]
+    },
+    "Classification": {
+      "name": "Classification",
+      "category": "Teams & Classifications",
+      "file": "Classification.svg",
+      "description": "Classification - Reusable label for categorizing elements.",
+      "references": []
+    },
+    "ContextMap": {
+      "name": "ContextMap",
+      "category": "Architecture Mapping",
+      "file": "ContextMap.svg",
+      "description": "Context Map - Visualizes relationships between Bounded Contexts.",
+      "references": [
+        "QualifiedName",
+        "Relationship"
+      ]
+    },
+    "Decision": {
+      "name": "Decision",
+      "category": "Domain Knowledge",
+      "file": "Decision.svg",
+      "description": "",
+      "references": [
+        "QualifiedName",
+        "Assignment"
+      ]
+    },
+    "Domain": {
+      "name": "Domain",
+      "category": "Strategic Design",
+      "file": "Domain.svg",
+      "description": "Domain - A sphere of knowledge or activity in DDD.",
+      "references": [
+        "QualifiedName",
+        "Assignment"
+      ]
+    },
+    "DomainMap": {
+      "name": "DomainMap",
+      "category": "Architecture Mapping",
+      "file": "DomainMap.svg",
+      "description": "Domain Map - Visualizes relationships between Domains.",
+      "references": [
+        "QualifiedName"
+      ]
+    },
+    "DomainTerm": {
+      "name": "DomainTerm",
+      "category": "Domain Knowledge",
+      "file": "DomainTerm.svg",
+      "description": "Relationship arrows - symbolic and named types.",
+      "references": [
+        "Assignment"
+      ]
+    },
+    "ImportStatement": {
+      "name": "ImportStatement",
+      "category": "Module System",
+      "file": "ImportStatement.svg",
+      "description": "Import Statement - Manifest-centric import system per PRS-010.",
+      "references": []
+    },
+    "IntegrationPattern": {
+      "name": "IntegrationPattern",
+      "category": "Relationships",
+      "file": "IntegrationPattern.svg",
+      "description": "",
+      "references": []
+    },
+    "Metadata": {
+      "name": "Metadata",
+      "category": "Teams & Classifications",
+      "file": "Metadata.svg",
+      "description": "Metadata - Defines a key that can be used in metadata blocks.",
+      "references": []
+    },
+    "MetadataEntry": {
+      "name": "MetadataEntry",
+      "category": "Teams & Classifications",
+      "file": "MetadataEntry.svg",
+      "description": "",
+      "references": [
+        "QualifiedName",
+        "Assignment"
+      ]
+    },
+    "Model": {
+      "name": "Model",
+      "category": "Model Structure",
+      "file": "Model.svg",
+      "description": "Root AST node - aggregates all top-level DDD elements.",
+      "references": [
+        "ImportStatement",
+        "StructureElement"
+      ]
+    },
+    "NamespaceDeclaration": {
+      "name": "NamespaceDeclaration",
+      "category": "Module System",
+      "file": "NamespaceDeclaration.svg",
+      "description": "Namespace Declaration - Hierarchical namespacing for organizing models.",
+      "references": [
+        "QualifiedName",
+        "StructureElement"
+      ]
+    },
+    "ObjectMap": {
+      "name": "ObjectMap",
+      "category": "Architecture Mapping",
+      "file": "ObjectMap.svg",
+      "description": "Union of mapping constructs for visualizing architecture.",
+      "references": [
+        "ContextMap",
+        "DomainMap"
+      ]
+    },
+    "Policy": {
+      "name": "Policy",
+      "category": "Domain Knowledge",
+      "file": "Policy.svg",
+      "description": "",
+      "references": [
+        "QualifiedName",
+        "Assignment"
+      ]
+    },
+    "QualifiedName": {
+      "name": "QualifiedName",
+      "category": "Expressions",
+      "file": "QualifiedName.svg",
+      "description": "",
+      "references": []
+    },
+    "Relationship": {
+      "name": "Relationship",
+      "category": "Relationships",
+      "file": "Relationship.svg",
+      "description": "Relationship - Connection between two Bounded Contexts.",
+      "references": [
+        "IntegrationPattern",
+        "BoundedContextRef",
+        "RelationshipArrow",
+        "Assignment",
+        "RelationshipType"
+      ]
+    },
+    "RelationshipArrow": {
+      "name": "RelationshipArrow",
+      "category": "Relationships",
+      "file": "RelationshipArrow.svg",
+      "description": "",
+      "references": []
+    },
+    "RelationshipType": {
+      "name": "RelationshipType",
+      "category": "Relationships",
+      "file": "RelationshipType.svg",
+      "description": "",
+      "references": []
+    },
+    "StructureElement": {
+      "name": "StructureElement",
+      "category": "Model Structure",
+      "file": "StructureElement.svg",
+      "description": "Top-level elements that can appear in the model.",
+      "references": [
+        "Type",
+        "ObjectMap",
+        "NamespaceDeclaration"
+      ]
+    },
+    "Team": {
+      "name": "Team",
+      "category": "Teams & Classifications",
+      "file": "Team.svg",
+      "description": "Team - People responsible for a Bounded Context or Domain.",
+      "references": []
+    },
+    "Type": {
+      "name": "Type",
+      "category": "Model Structure",
+      "file": "Type.svg",
+      "description": "Union of all main DDD type constructs.",
+      "references": [
+        "Domain",
+        "BoundedContext",
+        "Team",
+        "Classification",
+        "Metadata"
+      ]
+    }
+  }
+}

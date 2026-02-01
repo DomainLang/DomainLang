@@ -80,7 +80,7 @@
         "clean": "shx rm -fr *.tsbuildinfo out",
         "build": "tsc -b tsconfig.src.json",
         "build:clean": "npm run clean && npm run build",
-        "langium:generate": "langium generate",
+        "langium:generate": "langium generate && node scripts/postprocess-railroad.mjs",
         "langium:watch": "langium generate --watch",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage"

@@ -1,0 +1,98 @@
+<svg data-rule="BusinessRule" class="railroad-diagram railroad-svg" xmlns="http://www.w3.org/2000/svg" width="717" height="102" viewBox="0 0 717 102">
+
+<g transform="translate(.5 .5)">
+<path d="M 20 31 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M676 41h0"></path>
+<g>
+<path d="M40 41h0"></path>
+<path d="M132 41h0"></path>
+<path d="M40 41h20"></path>
+<g>
+<path d="M60 41h0"></path>
+<path d="M112 41h0"></path>
+<rect x="60" y="30" width="52" height="22" rx="10" ry="10"></rect>
+<text x="86" y="45">Rule</text>
+</g>
+<path d="M112 41h20"></path>
+<path d="M40 41a10 10 0 0 1 10 10v10a10 10 0 0 0 10 10"></path>
+<g>
+<path d="M60 71h0"></path>
+<path d="M112 71h0"></path>
+<rect x="60" y="60" width="52" height="22" rx="10" ry="10"></rect>
+<text x="86" y="75">rule</text>
+</g>
+<path d="M112 71a10 10 0 0 0 10 -10v-10a10 10 0 0 1 10 -10"></path>
+</g>
+<g>
+<path d="M132 41h0"></path>
+<path d="M412 41h0"></path>
+<path d="M132 41a10 10 0 0 0 10 -10v0a10 10 0 0 1 10 -10"></path>
+<g>
+<path d="M152 21h240"></path>
+</g>
+<path d="M392 21a10 10 0 0 1 10 10v0a10 10 0 0 0 10 10"></path>
+<path d="M132 41h20"></path>
+<g>
+<path d="M152 41h0"></path>
+<path d="M392 41h0"></path>
+<g>
+<path d="M152 41h0"></path>
+<path d="M392 41h0"></path>
+<path d="M152 41h10"></path>
+<g>
+<path d="M162 41h0"></path>
+<path d="M190 41h0"></path>
+<rect x="162" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="176" y="45">&#91;</text>
+</g>
+<path d="M190 41h10"></path>
+<path d="M200 41h10"></path>
+<g>
+<path d="M210 41h0"></path>
+<path d="M334 41h0"></path>
+<rect x="210" y="30" width="124" height="22"></rect>
+<text x="272" y="45">QualifiedName</text>
+</g>
+<path d="M334 41h10"></path>
+<path d="M344 41h10"></path>
+<g>
+<path d="M354 41h0"></path>
+<path d="M382 41h0"></path>
+<rect x="354" y="30" width="28" height="22" rx="10" ry="10"></rect>
+<text x="368" y="45">&#93;</text>
+</g>
+<path d="M382 41h10"></path>
+</g>
+</g>
+<path d="M392 41h20"></path>
+</g>
+<path d="M412 41h10"></path>
+<g>
+<path d="M422 41h0"></path>
+<path d="M458 41h0"></path>
+<rect x="422" y="30" width="36" height="22"></rect>
+<text x="440" y="45">ID</text>
+</g>
+<path d="M458 41h10"></path>
+<path d="M468 41h10"></path>
+<g>
+<path d="M478 41h0"></path>
+<path d="M578 41h0"></path>
+<rect x="478" y="30" width="100" height="22"></rect>
+<text x="528" y="45">Assignment</text>
+</g>
+<path d="M578 41h10"></path>
+<path d="M588 41h10"></path>
+<g>
+<path d="M598 41h0"></path>
+<path d="M666 41h0"></path>
+<rect x="598" y="30" width="68" height="22"></rect>
+<text x="632" y="45">STRING</text>
+</g>
+<path d="M666 41h10"></path>
+</g>
+<path d="M 676 41 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
+</g>
+</svg>

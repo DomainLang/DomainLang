@@ -6,7 +6,7 @@ node_modules/
 .vitepress/cache/
 
 # Copied from language package at build time
-public/syntax-diagram.html
+public/railroad/
 
 # Local env files
 *.local
