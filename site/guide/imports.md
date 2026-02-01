@@ -16,7 +16,7 @@ DomainLang supports three types of imports:
 | ---------- | ------------------------- | ----------------------------------------------- |
 | Relative   | `./path` or `../path`     | Local files relative to the importing file      |
 | Path Alias | `@/path` or `@alias/path` | Project-relative paths configured in model.yaml |
-| External   | `"owner/package"`         | External packages from GitHub                   |
+| External   | `"owner/package"`         | External packages declared in model.yaml        |
 
 ## Relative imports
 
@@ -52,9 +52,9 @@ Path aliases provide project-root-relative imports. Configure them in `model.yam
 
 ```yaml
 paths:
-  "@/": "./"
-  "@shared/": "./shared/"
-  "@domains/": "./domains/"
+  "@": "./"
+  "@shared": "./shared"
+  "@domains": "./domains"
 ```
 
 Then use them in imports:
@@ -65,7 +65,7 @@ import "@shared/teams"
 import "@domains/sales"
 ```
 
-The `@/` alias always maps to the project root (where `model.yaml` is located).
+The `@` alias always maps to the project root (where `model.yaml` is located).
 
 ## External dependencies
 
@@ -84,6 +84,39 @@ dependencies:
   ddd-community/patterns: "v2.3.1"
 ```
 
+### Dependency keys and aliases
+
+By default, the import specifier matches the dependency key in `model.yaml`.
+
+You can use either:
+
+- An `owner/package` key (recommended) and import that directly.
+- A short alias key (for readability) that maps to a `source`.
+
+#### Recommended: key is `owner/package`
+
+```yaml
+dependencies:
+  acme/ddd-core: "v1.0.0"
+```
+
+```dlang
+import "acme/ddd-core" as Core
+```
+
+#### Optional: key is an alias
+
+```yaml
+dependencies:
+  core:
+    source: acme/ddd-core
+    ref: v1.0.0
+```
+
+```dlang
+import "core" as Core
+```
+
 ::: warning
 External imports require `model.yaml`. Without it, you'll get an error suggesting to create one.
 :::
@@ -95,6 +128,8 @@ The manifest file configures your project's identity, path aliases, and dependen
 ### Full schema
 
 ```yaml
+# yaml-language-server: $schema=https://domainlang.net/schema/model.schema.json
+
 # Package identity (required for publishing)
 model:
   name: my-company/domain-model
@@ -103,9 +138,9 @@ model:
 
 # Path aliases for @ imports
 paths:
-  "@/": "./"
-  "@shared/": "./shared/"
-  "@lib/": "./packages/lib/"
+  "@": "./"
+  "@shared": "./shared"
+  "@lib": "./packages/lib"
 
 # External dependencies
 dependencies:
@@ -133,6 +168,8 @@ governance:
   requireStableVersions: true
 ```
 
+For the full schema (used by YAML editors), see [model.yaml schema](/reference/model-yaml-schema).
+
 ### Dependency refs
 
 The `ref` field accepts any valid git ref:
@@ -149,7 +186,7 @@ Tags like `v1.0.0` are immutable and recommended for production. Branch refs lik
 
 ## Lock file (model.lock)
 
-When you run `domain-lang-cli install`, a `model.lock` file is generated that pins exact commit SHAs for all dependencies:
+When you run `dlang install`, a `model.lock` file is generated that pins exact commit SHAs for all dependencies:
 
 ```json
 {
@@ -173,13 +210,13 @@ Manage dependencies from the command line:
 
 | Command                                    | Description                              |
 | ------------------------------------------ | ---------------------------------------- |
-| `domain-lang-cli install`                  | Install dependencies, generate lock file |
-| `domain-lang-cli model list`               | List all dependencies                    |
-| `domain-lang-cli model add <name> <source>`| Add a dependency                         |
-| `domain-lang-cli model remove <name>`      | Remove a dependency                      |
-| `domain-lang-cli model status`             | Check dependency status                  |
-| `domain-lang-cli model update [name]`      | Update dependencies                      |
-| `domain-lang-cli cache-clear`              | Clear the dependency cache               |
+| `dlang install`                            | Install dependencies, generate lock file |
+| `dlang model list`                         | List all dependencies                    |
+| `dlang model add <name> <source>`          | Add a dependency                         |
+| `dlang model remove <name>`                | Remove a dependency                      |
+| `dlang model status`                       | Check dependency status                  |
+| `dlang model update [name]`                | Update dependencies                      |
+| `dlang cache-clear`                        | Clear the dependency cache               |
 
 See [CLI](/guide/cli) for additional model commands.
 
@@ -265,7 +302,7 @@ Keep files focused. Put related teams in one file, classifications in another, e
 :::
 
 ::: tip Use Path Aliases
-Configure `@shared/` and `@domains/` aliases in `model.yaml` for cleaner imports that don't break when files move.
+Configure `@shared` and `@domains` aliases in `model.yaml` for cleaner imports that don't break when files move.
 :::
 
 ::: warning Circular Imports

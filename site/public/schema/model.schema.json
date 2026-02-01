@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domainlang.net/schema/model.schema.json",
+  "title": "DomainLang model.yaml",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON schema reference. Prefer the YAML language server directive comment instead."
+    },
+    "model": {
+      "$ref": "#/$defs/packageIdentity"
+    },
+    "paths": {
+      "$ref": "#/$defs/pathAliases"
+    },
+    "dependencies": {
+      "$ref": "#/$defs/dependencies"
+    },
+    "overrides": {
+      "type": "object",
+      "description": "Override transitive dependency refs by package key (owner/package).",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "governance": {
+      "$ref": "#/$defs/governance"
+    }
+  },
+  "patternProperties": {
+    "^x-": {
+      "description": "Extension keys for tooling. Ignored by DomainLang.",
+      "type": ["object", "array", "string", "number", "boolean", "null"]
+    }
+  },
+  "$defs": {
+    "packageIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Package name in owner/repo format.",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "description": "SemVer version string.",
+          "minLength": 1
+        },
+        "entry": {
+          "type": "string",
+          "description": "Entry point file for the package (default: index.dlang).",
+          "minLength": 1
+        }
+      }
+    },
+    "pathAliases": {
+      "type": "object",
+      "description": "Path aliases for @ imports. Keys should start with '@' (e.g., '@', '@shared'). Values are paths relative to model.yaml.",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^@[^\\s]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Dependencies keyed by owner/package or a local alias.",
+      "additionalProperties": {
+        "$ref": "#/$defs/dependencySpec"
+      }
+    },
+    "dependencySpec": {
+      "description": "Dependency spec: either a short string ref, or an extended object.",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Short form: ref only (tag/branch/commit). The key is treated as the source.",
+          "minLength": 1
+        },
+        {
+          "$ref": "#/$defs/remoteDependencySpec"
+        },
+        {
+          "$ref": "#/$defs/localDependencySpec"
+        }
+      ]
+    },
+    "remoteDependencySpec": {
+      "type": "object",
+      "description": "Remote git dependency.",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Git coordinates (owner/repo). Required when the dependency key is an alias.",
+          "minLength": 1
+        },
+        "ref": {
+          "type": "string",
+          "description": "Git ref (tag, branch, or commit SHA).",
+          "minLength": 1
+        },
+        "integrity": {
+          "type": "string",
+          "description": "Optional integrity hash.",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description.",
+          "minLength": 1
+        }
+      },
+      "required": ["ref"],
+      "not": {
+        "required": ["path"]
+      }
+    },
+    "localDependencySpec": {
+      "type": "object",
+      "description": "Local path dependency (monorepo support).",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Local filesystem path relative to model.yaml.",
+          "minLength": 1
+        },
+        "integrity": {
+          "type": "string",
+          "description": "Optional integrity hash.",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description.",
+          "minLength": 1
+        }
+      },
+      "required": ["path"],
+      "not": {
+        "required": ["source"]
+      }
+    },
+    "governance": {
+      "type": "object",
+      "description": "Governance policy configuration.",
+      "additionalProperties": false,
+      "properties": {
+        "allowedSources": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Allowed git domains (e.g., github.com/acme)."
+        },
+        "blockedPackages": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Blocked packages or patterns."
+        },
+        "requireStableVersions": {
+          "type": "boolean",
+          "description": "Require stable versions only (no pre-release)."
+        },
+        "requireTeamOwnership": {
+          "type": "boolean",
+          "description": "Require team ownership metadata."
+        },
+        "allowedLicenses": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Allowed licenses."
+        }
+      }
+    }
+  }
+}
