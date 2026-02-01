@@ -48,22 +48,28 @@ export class DomainLangScopeComputation extends DefaultScopeComputation {
      * @returns A promise resolving to an array of AstNodeDescription
      */
     override async collectExportedSymbols(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
-        const descr: AstNodeDescription[] = [];
-        for (const modelNode of AstUtils.streamAllContents(document.parseResult.value)) {
-            await interruptAndCheck(cancelToken);
-            if (isType(modelNode)) {
-                let name = this.nameProvider.getName(modelNode);
-                if (!name) {
-                    // Defensive: skip unnamed types
-                    continue;
+        try {
+            const descr: AstNodeDescription[] = [];
+            for (const modelNode of AstUtils.streamAllContents(document.parseResult.value)) {
+                await interruptAndCheck(cancelToken);
+                if (isType(modelNode)) {
+                    let name = this.nameProvider.getName(modelNode);
+                    if (!name) {
+                        // Defensive: skip unnamed types
+                        continue;
+                    }
+                    if (isNamespaceDeclaration(modelNode.$container)) {
+                        name = this.qualifiedNameProvider.getQualifiedName(modelNode.$container, name);
+                    }
+                    descr.push(this.descriptions.createDescription(modelNode, name, document));
                 }
-                if (isNamespaceDeclaration(modelNode.$container)) {
-                    name = this.qualifiedNameProvider.getQualifiedName(modelNode.$container as NamespaceDeclaration, name);
-                }
-                descr.push(this.descriptions.createDescription(modelNode, name, document));
             }
+            return descr;
+        } catch (error) {
+            console.error('Error in collectExportedSymbols:', error);
+            // Return empty array on error to prevent crash
+            return [];
         }
-        return descr;
     }
 
     /**
@@ -73,10 +79,16 @@ export class DomainLangScopeComputation extends DefaultScopeComputation {
      * @returns A promise resolving to a LocalSymbols map
      */
     override async collectLocalSymbols(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<LocalSymbols> {
-        const model = document.parseResult.value as Model;
-        const scopes = new MultiMap<AstNode, AstNodeDescription>();
-        await this.processContainer(model, scopes, document, cancelToken);
-        return scopes;
+        try {
+            const model = document.parseResult.value as Model;
+            const scopes = new MultiMap<AstNode, AstNodeDescription>();
+            await this.processContainer(model, scopes, document, cancelToken);
+            return scopes;
+        } catch (error) {
+            console.error('Error in collectLocalSymbols:', error);
+            // Return empty multimap on error to prevent crash
+            return new MultiMap<AstNode, AstNodeDescription>();
+        }
     }
 
     /**

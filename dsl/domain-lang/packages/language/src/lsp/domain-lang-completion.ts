@@ -8,6 +8,7 @@
  * - Maintainable: Clear mapping from grammar to completions
  */
 
+import type { AstNode } from 'langium';
 import { CompletionAcceptor, CompletionContext, DefaultCompletionProvider, NextFeature } from 'langium/lsp';
 import { CompletionItemKind, InsertTextFormat } from 'vscode-languageserver';
 import * as ast from '../generated/ast.js';
@@ -122,6 +123,20 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         next: NextFeature,
         acceptor: CompletionAcceptor
     ): void {
+        try {
+            this.safeCompletionFor(context, next, acceptor);
+        } catch (error) {
+            console.error('Error in completionFor:', error);
+            // Fall back to default completion on error
+            super.completionFor(context, next, acceptor);
+        }
+    }
+
+    private safeCompletionFor(
+        context: CompletionContext,
+        next: NextFeature,
+        acceptor: CompletionAcceptor
+    ): void {
         const node = context.node;
         if (!node) {
             super.completionFor(context, next, acceptor);
@@ -143,84 +158,117 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
             return;
         }
         
+        // Handle node-level completions
+        if (this.handleNodeCompletions(node, acceptor, context, next)) {
+            return;
+        }
+
+        // Handle container-level completions
+        const container = node.$container;
+        if (this.handleContainerCompletions(container, node, acceptor, context, next)) {
+            return;
+        }
+
+        // Let Langium handle default completions
+        super.completionFor(context, next, acceptor);
+    }
+
+    private handleNodeCompletions(
+        node: AstNode,
+        acceptor: CompletionAcceptor,
+        context: CompletionContext,
+        next: NextFeature
+    ): boolean {
         // If we're AT a BoundedContext node: only BC documentation blocks
         if (ast.isBoundedContext(node)) {
             this.addBoundedContextCompletions(node, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // If we're AT a Domain node: only Domain documentation blocks
         if (ast.isDomain(node)) {
             this.addDomainCompletions(node, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // If we're AT a ContextMap node: relationships and contains
         if (ast.isContextMap(node)) {
             this.addContextMapCompletions(node, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // If we're AT a DomainMap node: contains
         if (ast.isDomainMap(node)) {
             this.addDomainMapCompletions(node, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // If we're AT the Model or NamespaceDeclaration level: all top-level constructs
         if (ast.isModel(node) || ast.isNamespaceDeclaration(node)) {
             this.addTopLevelSnippets(acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
-        const container = node.$container;
+        return false;
+    }
+
+    private handleContainerCompletions(
+        container: AstNode | undefined,
+        node: AstNode,
+        acceptor: CompletionAcceptor,
+        context: CompletionContext,
+        next: NextFeature
+    ): boolean {
+        if (!container) {
+            return false;
+        }
 
         // Inside BoundedContext body: suggest missing scalar properties and collections
         if (ast.isBoundedContext(container)) {
             this.addBoundedContextCompletions(container, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // Inside Domain body: suggest missing scalar properties
         if (ast.isDomain(container)) {
             this.addDomainCompletions(container, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // Inside ContextMap body: relationships and contains
         if (ast.isContextMap(container)) {
             this.addContextMapCompletions(container, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // Inside DomainMap body: contains
         if (ast.isDomainMap(container)) {
             this.addDomainMapCompletions(container, acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         if (ast.isRelationship(node) || ast.isRelationship(container)) {
             this.addRelationshipCompletions(acceptor, context);
             super.completionFor(context, next, acceptor);
-            return;
+            return true;
         }
 
         // Top level container (Model or NamespaceDeclaration): all top-level constructs
         if (ast.isModel(container) || ast.isNamespaceDeclaration(container)) {
             this.addTopLevelSnippets(acceptor, context);
+            return true;
         }
 
-        // Let Langium handle default completions
-        super.completionFor(context, next, acceptor);
+        return false;
     }
 
     private addTopLevelSnippets(acceptor: CompletionAcceptor, context: CompletionContext): void {

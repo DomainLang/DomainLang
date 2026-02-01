@@ -18,6 +18,7 @@ import { DomainLangCodeActionProvider } from './lsp/domain-lang-code-actions.js'
 import { ImportResolver } from './services/import-resolver.js';
 import { WorkspaceManager } from './services/workspace-manager.js';
 import { DomainLangWorkspaceManager } from './lsp/domain-lang-workspace-manager.js';
+import { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -46,7 +47,8 @@ export type DomainLangServices = LangiumServices & DomainLangAddedServices
 
 const DomainLangSharedModule: Module<LangiumSharedServices, PartialLangiumSharedServices> = {
     workspace: {
-        WorkspaceManager: (services: LangiumSharedServices) => new DomainLangWorkspaceManager(services)
+        WorkspaceManager: (services: LangiumSharedServices) => new DomainLangWorkspaceManager(services),
+        IndexManager: (services: LangiumSharedServices) => new DomainLangIndexManager(services)
     }
 };
 
@@ -103,6 +105,7 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
     );
     shared.ServiceRegistry.register(DomainLang);
     registerValidationChecks(DomainLang);
+    
     if (!context.connection) {
         // We don't run inside a language server
         // Therefore, initialize the configuration provider instantly

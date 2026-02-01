@@ -15,6 +15,9 @@ export * from './services/import-resolver.js';
 export * from './services/relationship-inference.js';
 export * from './services/performance-optimizer.js';
 
+// Export shared utilities
+export * from './utils/manifest-utils.js';
+
 // Note: The following services have been moved to CLI package:
 // - git-url-resolver.ts → @domainlang/cli/services
 // - dependency-resolver.ts → @domainlang/cli/services
@@ -24,3 +27,4 @@ export * from './services/performance-optimizer.js';
 
 // Export LSP services
 export * from './lsp/manifest-diagnostics.js';
+export { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';

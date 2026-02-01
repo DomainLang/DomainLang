@@ -46,16 +46,21 @@ export class DomainLangCodeActionProvider implements CodeActionProvider {
         document: LangiumDocument, 
         params: CodeActionParams
     ): MaybePromise<Array<Command | CodeAction> | undefined> {
-        const result: CodeAction[] = [];
-        const acceptor = (ca: CodeAction | undefined): void => {
-            if (ca) result.push(ca);
-        };
+        try {
+            const result: CodeAction[] = [];
+            const acceptor = (ca: CodeAction | undefined): void => {
+                if (ca) result.push(ca);
+            };
 
-        for (const diagnostic of params.context.diagnostics) {
-            this.createCodeActions(diagnostic, document, acceptor);
+            for (const diagnostic of params.context.diagnostics) {
+                this.createCodeActions(diagnostic, document, acceptor);
+            }
+
+            return result.length > 0 ? result : undefined;
+        } catch (error) {
+            console.error('Error in getCodeActions:', error);
+            return undefined;
         }
-
-        return result.length > 0 ? result : undefined;
     }
 
     /**

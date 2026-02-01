@@ -9,29 +9,34 @@ import * as ast from '../generated/ast.js';
 export class DomainLangFormatter extends AbstractFormatter {
 
     protected format(node: AstNode): void {
-    // Namespace declarations
-    if (ast.isNamespaceDeclaration(node)) {
-            this.formatBlock(node);
-        }
-        
-        // Domain declarations
-        if (ast.isDomain(node)) {
-            this.formatBlock(node);
-        }
-        
-        // Bounded contexts
-        if (ast.isBoundedContext(node)) {
-            this.formatBlock(node);
-        }
-        
-        // Context maps
-        if (ast.isContextMap(node)) {
-            this.formatBlock(node);
-        }
-        
-        // Domain maps
-        if (ast.isDomainMap(node)) {
-            this.formatBlock(node);
+        try {
+            // Namespace declarations
+            if (ast.isNamespaceDeclaration(node)) {
+                this.formatBlock(node);
+            }
+            
+            // Domain declarations
+            if (ast.isDomain(node)) {
+                this.formatBlock(node);
+            }
+            
+            // Bounded contexts
+            if (ast.isBoundedContext(node)) {
+                this.formatBlock(node);
+            }
+            
+            // Context maps
+            if (ast.isContextMap(node)) {
+                this.formatBlock(node);
+            }
+            
+            // Domain maps
+            if (ast.isDomainMap(node)) {
+                this.formatBlock(node);
+            }
+        } catch (error) {
+            console.error('Error in format:', error);
+            // Continue - don't crash formatting
         }
     }
     

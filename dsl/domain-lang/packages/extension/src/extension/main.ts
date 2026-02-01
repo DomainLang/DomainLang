@@ -1,21 +1,42 @@
 import type { LanguageClientOptions, ServerOptions} from 'vscode-languageclient/node.js';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 
 let client: LanguageClient;
+let outputChannel: vscode.OutputChannel;
 
 // This function is called when the extension is activated.
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    client = await startLanguageClient(context);
+    // Create output channel for diagnostics
+    outputChannel = vscode.window.createOutputChannel('DomainLang');
+    context.subscriptions.push(outputChannel);
+
+    try {
+        client = await startLanguageClient(context);
+        outputChannel.appendLine('DomainLang language server started successfully');
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        outputChannel.appendLine(`Failed to start language server: ${message}`);
+        vscode.window.showErrorMessage(
+            'DomainLang: Failed to start language server. Check output for details.'
+        );
+        throw error; // Re-throw so VS Code knows activation failed
+    }
 }
 
 // This function is called when the extension is deactivated.
-export function deactivate(): Thenable<void> | undefined {
+export async function deactivate(): Promise<void> {
     if (client) {
-        return client.stop();
+        try {
+            await client.stop();
+            outputChannel?.appendLine('DomainLang language server stopped');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            outputChannel?.appendLine(`Error stopping language server: ${message}`);
+            // Don't throw - we're shutting down anyway
+        }
     }
-    return undefined;
 }
 
 async function startLanguageClient(context: vscode.ExtensionContext): Promise<LanguageClient> {
@@ -35,16 +56,19 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
     // File watchers for manifest and lock files (PRS-010)
     // The LSP server will handle these notifications to invalidate caches
     const fileWatchers = [
-        { globPattern: '**/model.yaml', kind: 7 },  // WatchKind: Create | Change | Delete
-        { globPattern: '**/model.lock', kind: 7 }
+        vscode.workspace.createFileSystemWatcher('**/model.yaml'),
+        vscode.workspace.createFileSystemWatcher('**/model.lock')
     ];
+
+    // Register watchers for disposal when extension deactivates
+    fileWatchers.forEach(watcher => context.subscriptions.push(watcher));
 
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: '*', language: 'domain-lang' }],
         synchronize: {
             // Register file watchers for config files
-            fileEvents: fileWatchers as unknown as vscode.FileSystemWatcher[]
+            fileEvents: fileWatchers
         }
     };
 
@@ -57,6 +81,30 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
     );
 
     // Start the client. This will also launch the server
-    client.start();
+    // CRITICAL: await the promise to ensure server is ready before returning
+    try {
+        await client.start();
+        outputChannel.appendLine('Language client connected to server');
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        outputChannel.appendLine(`Failed to start language client: ${message}`);
+        throw error;
+    }
+
+    // Register server crash handler
+    client.onDidChangeState((event) => {
+        if (event.newState === 3) { // State.Stopped
+            outputChannel.appendLine('Language server stopped unexpectedly');
+            vscode.window.showWarningMessage(
+                'DomainLang language server stopped. Reload window to restart.',
+                'Reload Window'
+            ).then((selection) => {
+                if (selection === 'Reload Window') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            });
+        }
+    });
+
     return client;
 }

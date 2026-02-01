@@ -151,6 +151,30 @@ The Model Query SDK requires special documentation attention:
 
 ### 3. Grammar Documentation (Hover Tooltips)
 
+**CRITICAL:** DomainLang uses a keyword dictionary for hover documentation, NOT grammar JSDoc.
+
+**Location:** `packages/language/src/lsp/hover/domain-lang-keywords.ts`
+
+**Maintenance rule:** When adding/modifying keywords in the grammar, you MUST update the dictionary:
+
+```typescript
+export const keywordExplanations: Record<string, string> = {
+    domain: `**Domain** - A sphere of knowledge or activity. Can be nested.${DOMAIN_LINK}`,
+    dom: `**Domain** - A sphere of knowledge or activity. Can be nested.${DOMAIN_LINK}`,
+    // ... more keywords
+};
+```
+
+**Requirements:**
+
+- All keywords from grammar must have entries (including aliases)
+- Aliases show the SAME hover as their primary keyword (e.g., `dom` shows Domain hover)
+- Use exact casing from grammar in the hover text bold heading
+- Keep descriptions short (1-2 sentences max for hover)
+- Include appropriate `[Read more]` link to domainlang.net
+
+**Grammar JSDoc (still useful for code documentation):**
+
 ```langium
 /**
  * A Domain represents a sphere of knowledge or activity in DDD.
@@ -165,6 +189,8 @@ The Model Query SDK requires special documentation attention:
 Domain:
     'Domain' name=ID ('in' parentDomain=[Domain:QualifiedName])?;
 ```
+
+**Note:** Grammar JSDoc is useful for developers reading the grammar, but hover tooltips come from the dictionary.
 
 ### 3. User Guides
 

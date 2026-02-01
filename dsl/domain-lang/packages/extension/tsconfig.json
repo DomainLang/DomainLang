@@ -2,7 +2,10 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "noEmit": true,
-        "rootDir": "."
+        "rootDir": ".",
+        "paths": {
+            "@domainlang/language": ["../language/src/index.ts"]
+        }
     },
     "references": [
         {

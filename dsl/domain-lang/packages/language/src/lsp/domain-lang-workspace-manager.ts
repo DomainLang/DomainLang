@@ -1,21 +1,60 @@
-import path from 'node:path';
-import YAML from 'yaml';
 import { DefaultWorkspaceManager, URI, UriUtils, type FileSystemNode, type LangiumDocument, type LangiumSharedCoreServices, type WorkspaceFolder } from 'langium';
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
+import { findManifestsInDirectories } from '../utils/manifest-utils.js';
 
 /**
  * Langium WorkspaceManager override implementing manifest-centric import loading per PRS-010.
  *
- * Behavior:
- * - Skips pre-loading *.dlang during workspace scan (only entry graph is loaded when manifest exists).
- * - Mode A (with manifest): find nearest model.yaml in folder, load entry (default index.dlang) and its import graph.
- * - Mode B (no manifest): no pre-loading; imports resolved on-demand when a document is opened.
- * - Never performs network fetches; relies on cached dependencies/lock files. Missing cache produces diagnostics upstream.
+ * **Three Operational Modes:**
+ * 
+ * **Mode A (Pure Workspace with model.yaml):**
+ * - model.yaml exists at workspace root
+ * - Loads entry file (default: index.dlang, or custom via model.entry)
+ * - Pre-builds entry and follows import graph
+ * - All imported documents built to Validated state before workspace ready
+ * - LSP features have immediate access to complete reference information
+ * 
+ * **Mode B (Pure Standalone files):**
+ * - No model.yaml anywhere in workspace
+ * - No pre-loading of .dlang files during workspace scan
+ * - Documents loaded on-demand when user opens them
+ * - Imports resolved lazily via ImportResolver
+ * - Each document built individually when opened
+ * - Works with relative imports only (no path aliases or external deps)
+ * 
+ * **Mode C (Mixed - Standalone + Module folders):**
+ * - Workspace contains both standalone .dlang files AND folders with model.yaml
+ * - Each model.yaml folder treated as a module/package:
+ *   - Module entry + import graph pre-loaded
+ *   - Path aliases and external deps work within module
+ * - Standalone files outside modules loaded on-demand
+ * - Example structure:
+ *   ```
+ *   workspace/
+ *   ├── standalone.dlang        ← Mode B (on-demand)
+ *   ├── core/
+ *   │   ├── model.yaml          ← Module root
+ *   │   ├── index.dlang         ← Pre-loaded
+ *   │   └── domains/
+ *   │       └── sales.dlang     ← Pre-loaded via imports
+ *   └── util.dlang              ← Mode B (on-demand)
+ *   ```
+ * 
+ * **Performance Characteristics:**
+ * - Mode A/C modules: Slower initial load, instant LSP features afterward
+ * - Mode B/C standalone: Instant workspace init, per-file build on open
+ * - All modes cache import resolution for subsequent access
+ * 
+ * **Never performs network fetches** - relies on cached dependencies/lock files.
+ * Missing cache produces diagnostics upstream via ImportValidator.
  */
 export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
+    private readonly sharedServices: LangiumSharedCoreServices;
+
     constructor(services: LangiumSharedCoreServices) {
         super(services);
+        this.sharedServices = services;
     }
 
     override shouldIncludeEntry(entry: FileSystemNode): boolean {
@@ -32,73 +71,57 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     protected override async loadAdditionalDocuments(folders: WorkspaceFolder[], collector: (document: LangiumDocument) => void): Promise<void> {
-        const manifestInfo = await this.findManifestInFolders(folders);
-        if (!manifestInfo) {
-            return; // Mode B: no manifest
+        // Find ALL model.yaml files in workspace (supports mixed mode)
+        const manifestInfos = await this.findAllManifestsInFolders(folders);
+        
+        if (manifestInfos.length === 0) {
+            return; // Pure Mode B: no manifests, all files loaded on-demand
         }
 
-        const entryUri = URI.file(manifestInfo.entryPath);
-        const entryDoc = await this.langiumDocuments.getOrCreateDocument(entryUri);
-        collector(entryDoc);
+        // Mode A or Mode C: Load each module's entry + import graph
+        for (const manifestInfo of manifestInfos) {
+            try {
+                const entryUri = URI.file(manifestInfo.entryPath);
+                const entryDoc = await this.langiumDocuments.getOrCreateDocument(entryUri);
+                collector(entryDoc);
 
-        const uris = await ensureImportGraphFromDocument(entryDoc, this.langiumDocuments);
-        for (const uriString of uris) {
-            const uri = URI.parse(uriString);
-            const doc = await this.langiumDocuments.getOrCreateDocument(uri);
-            collector(doc);
+                // Build entry document first to ensure it's ready for import resolution
+                await this.sharedServices.workspace.DocumentBuilder.build([entryDoc], {
+                    validation: true
+                });
+
+                const uris = await ensureImportGraphFromDocument(entryDoc, this.langiumDocuments);
+                const importedDocs: LangiumDocument[] = [];
+                for (const uriString of uris) {
+                    const uri = URI.parse(uriString);
+                    const doc = await this.langiumDocuments.getOrCreateDocument(uri);
+                    collector(doc);
+                    importedDocs.push(doc);
+                }
+
+                // Build all imported documents in batch for performance
+                if (importedDocs.length > 0) {
+                    await this.sharedServices.workspace.DocumentBuilder.build(importedDocs, {
+                        validation: true
+                    });
+                }
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.error(`Failed to load import graph from ${manifestInfo.manifestPath}: ${message}`);
+                // Continue with other modules - partial failure is acceptable
+            }
         }
     }
 
-    private async findManifestInFolders(folders: WorkspaceFolder[]): Promise<{ manifestPath: string; entryPath: string } | undefined> {
-        for (const folder of folders) {
-            const manifestPath = await this.findNearestManifest(folder.uri);
-            if (manifestPath) {
-                const entry = await this.readEntryFromManifest(manifestPath) ?? 'index.dlang';
-                const entryPath = path.resolve(path.dirname(manifestPath), entry);
-                return { manifestPath, entryPath };
-            }
-        }
-        return undefined;
-    }
-
-    private async findNearestManifest(startUri: string): Promise<string | undefined> {
-        let current = path.resolve(URI.parse(startUri).fsPath);
-        const { root } = path.parse(current);
-
-        while (true) {
-            const candidate = path.join(current, 'model.yaml');
-            if (await this.pathExists(candidate)) {
-                return candidate;
-            }
-
-            if (current === root) {
-                return undefined;
-            }
-
-            const parent = path.dirname(current);
-            if (parent === current) {
-                return undefined;
-            }
-            current = parent;
-        }
-    }
-
-    private async readEntryFromManifest(manifestPath: string): Promise<string | undefined> {
-        try {
-            const content = await this.fileSystemProvider.readFile(URI.file(manifestPath));
-            const manifest = (YAML.parse(content) ?? {}) as { model?: { entry?: string } };
-            return manifest.model?.entry;
-        } catch {
-            return undefined;
-        }
-    }
-
-    private async pathExists(target: string): Promise<boolean> {
-        try {
-            await this.fileSystemProvider.stat(URI.file(target));
-            return true;
-        } catch {
-            return false;
-        }
+    /**
+     * Finds ALL model.yaml files in the workspace.
+     * Delegates to shared manifest utilities.
+     * 
+     * @param folders - Workspace folders to search
+     * @returns Array of manifest info (one per model.yaml found)
+     */
+    private async findAllManifestsInFolders(folders: WorkspaceFolder[]): Promise<Array<{ manifestPath: string; entryPath: string }>> {
+        const directories = folders.map(f => URI.parse(f.uri).fsPath);
+        return findManifestsInDirectories(directories);
     }
 }

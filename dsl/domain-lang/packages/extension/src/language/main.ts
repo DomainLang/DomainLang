@@ -3,7 +3,7 @@ import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { FileChangeType } from 'vscode-languageserver-protocol';
-import { createDomainLangServices, getManifestDiagnosticsService } from '@domainlang/language';
+import { createDomainLangServices, getManifestDiagnosticsService, DomainLangIndexManager } from '@domainlang/language';
 import fs from 'node:fs/promises';
 
 // Create a connection to the client
@@ -34,6 +34,7 @@ async function validateManifestAtUri(uri: string): Promise<void> {
 // This enables LSP to detect when CLI commands (dlang install/update/add/remove) modify config files
 shared.lsp.DocumentUpdateHandler.onWatchedFilesChange(async params => {
     const workspaceManager = DomainLang.imports.WorkspaceManager;
+    const indexManager = shared.workspace.IndexManager as DomainLangIndexManager;
     let manifestChanged = false;
     let lockChanged = false;
 
@@ -58,10 +59,13 @@ shared.lsp.DocumentUpdateHandler.onWatchedFilesChange(async params => {
     // Invalidate caches based on what changed
     if (manifestChanged && lockChanged) {
         workspaceManager.invalidateCache();
+        indexManager.clearImportDependencies();
     } else if (manifestChanged) {
         workspaceManager.invalidateManifestCache();
+        indexManager.clearImportDependencies();
     } else if (lockChanged) {
         workspaceManager.invalidateLockCache();
+        indexManager.clearImportDependencies();
     }
 
     // After cache invalidation, the next document build will pick up new config

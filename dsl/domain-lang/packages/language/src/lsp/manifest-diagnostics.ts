@@ -14,7 +14,7 @@
 
 import type { Connection } from 'vscode-languageserver';
 import { Diagnostic, DiagnosticSeverity, Position, Range } from 'vscode-languageserver-types';
-import YAML, { type Document as YAMLDocument, type YAMLMap, type Pair, isMap, isPair, isScalar } from 'yaml';
+import YAML, { type Document as YAMLDocument, type Pair, isMap, isPair, isScalar } from 'yaml';
 import { ManifestValidator, type ManifestDiagnostic, type ManifestSeverity } from '../validation/manifest.js';
 import type { ModelManifest } from '../services/types.js';
 
@@ -45,16 +45,32 @@ export class ManifestDiagnosticsService {
         content: string,
         options?: { requirePublishable?: boolean }
     ): Promise<void> {
-        if (!this.connection) {
-            return; // No connection, skip diagnostics
-        }
+        try {
+            if (!this.connection) {
+                return; // No connection, skip diagnostics
+            }
 
-        const diagnostics = this.validate(content, options);
-        
-        await this.connection.sendDiagnostics({
-            uri: manifestUri,
-            diagnostics
-        });
+            const diagnostics = this.validate(content, options);
+            
+            await this.connection.sendDiagnostics({
+                uri: manifestUri,
+                diagnostics
+            });
+        } catch (error) {
+            console.error('Error in validateAndSendDiagnostics:', error);
+            // Send minimal error diagnostic instead of crashing
+            if (this.connection) {
+                await this.connection.sendDiagnostics({
+                    uri: manifestUri,
+                    diagnostics: [{
+                        severity: DiagnosticSeverity.Error,
+                        range: Range.create(Position.create(0, 0), Position.create(0, 1)),
+                        message: 'Internal error validating manifest file',
+                        source: 'domainlang'
+                    }]
+                });
+            }
+        }
     }
 
     /**
@@ -68,42 +84,53 @@ export class ManifestDiagnosticsService {
         content: string,
         options?: { requirePublishable?: boolean }
     ): Diagnostic[] {
-        // Parse YAML to get both the manifest object and source map
-        let yamlDoc: YAMLDocument.Parsed;
-        let manifest: ModelManifest;
-        
         try {
-            yamlDoc = YAML.parseDocument(content);
+            // Parse YAML to get both the manifest object and source map
+            let yamlDoc: YAMLDocument.Parsed;
+            let manifest: ModelManifest;
             
-            // Check for YAML parse errors (they're in the errors array, not thrown)
-            if (yamlDoc.errors && yamlDoc.errors.length > 0) {
-                return yamlDoc.errors.map(err => ({
+            try {
+                yamlDoc = YAML.parseDocument(content);
+                
+                // Check for YAML parse errors (they're in the errors array, not thrown)
+                if (yamlDoc.errors && yamlDoc.errors.length > 0) {
+                    return yamlDoc.errors.map(err => ({
+                        severity: DiagnosticSeverity.Error,
+                        range: this.yamlErrorToRange(err, content),
+                        message: `YAML parse error: ${err.message}`,
+                        source: 'domainlang'
+                    }));
+                }
+                
+                manifest = (yamlDoc.toJSON() ?? {}) as ModelManifest;
+            } catch (error) {
+                // Fallback for unexpected errors
+                const message = error instanceof Error ? error.message : 'Invalid YAML syntax';
+                return [{
                     severity: DiagnosticSeverity.Error,
-                    range: this.yamlErrorToRange(err, content),
-                    message: `YAML parse error: ${err.message}`,
+                    range: Range.create(Position.create(0, 0), Position.create(0, 1)),
+                    message: `YAML parse error: ${message}`,
                     source: 'domainlang'
-                }));
+                }];
             }
+
+            // Run manifest validation
+            const result = this.validator.validate(manifest, options);
             
-            manifest = (yamlDoc.toJSON() ?? {}) as ModelManifest;
+            // Convert to LSP diagnostics with source locations
+            return result.diagnostics.map(diag => 
+                this.toVSCodeDiagnostic(diag, yamlDoc)
+            );
         } catch (error) {
-            // Fallback for unexpected errors
-            const message = error instanceof Error ? error.message : 'Invalid YAML syntax';
+            console.error('Error in validate:', error);
+            // Return minimal error diagnostic
             return [{
                 severity: DiagnosticSeverity.Error,
                 range: Range.create(Position.create(0, 0), Position.create(0, 1)),
-                message: `YAML parse error: ${message}`,
+                message: 'Internal error during validation',
                 source: 'domainlang'
             }];
         }
-
-        // Run manifest validation
-        const result = this.validator.validate(manifest, options);
-        
-        // Convert to LSP diagnostics with source locations
-        return result.diagnostics.map(diag => 
-            this.toVSCodeDiagnostic(diag, yamlDoc)
-        );
     }
 
     /**
@@ -130,14 +157,19 @@ export class ManifestDiagnosticsService {
      * Call this when the file is closed or deleted.
      */
     async clearDiagnostics(manifestUri: string): Promise<void> {
-        if (!this.connection) {
-            return;
-        }
+        try {
+            if (!this.connection) {
+                return;
+            }
 
-        await this.connection.sendDiagnostics({
-            uri: manifestUri,
-            diagnostics: []
-        });
+            await this.connection.sendDiagnostics({
+                uri: manifestUri,
+                diagnostics: []
+            });
+        } catch (error) {
+            console.error('Error in clearDiagnostics:', error);
+            // Ignore - don't crash on cleanup
+        }
     }
 
     /**
@@ -147,20 +179,32 @@ export class ManifestDiagnosticsService {
         diag: ManifestDiagnostic,
         yamlDoc: YAMLDocument.Parsed
     ): Diagnostic {
-        const range = this.findRangeForPath(diag.path, yamlDoc);
-        
-        let message = diag.message;
-        if (diag.hint) {
-            message += `\nHint: ${diag.hint}`;
-        }
+        try {
+            const range = this.findRangeForPath(diag.path, yamlDoc);
+            
+            let message = diag.message;
+            if (diag.hint) {
+                message += `\nHint: ${diag.hint}`;
+            }
 
-        return {
-            severity: this.toVSCodeSeverity(diag.severity),
-            range,
-            message,
-            source: 'domainlang',
-            code: diag.code
-        };
+            return {
+                severity: this.toVSCodeSeverity(diag.severity),
+                range,
+                message,
+                source: 'domainlang',
+                code: diag.code
+            };
+        } catch (error) {
+            console.error('Error converting diagnostic:', error);
+            // Return minimal diagnostic at file start
+            return {
+                severity: DiagnosticSeverity.Error,
+                range: Range.create(Position.create(0, 0), Position.create(0, 1)),
+                message: diag.message,
+                source: 'domainlang',
+                code: diag.code
+            };
+        }
     }
 
     /**
@@ -198,8 +242,7 @@ export class ManifestDiagnosticsService {
                 return fallback;
             }
             
-            const mapNode = currentNode as YAMLMap;
-            const item = mapNode.items.find((pair): pair is Pair => 
+            const item = currentNode.items.find((pair): pair is Pair => 
                 isPair(pair) && isScalar(pair.key) && String(pair.key.value) === part
             );
 
@@ -208,7 +251,7 @@ export class ManifestDiagnosticsService {
             }
 
             // If this is the last part, return the range of the key
-            if (part === parts[parts.length - 1]) {
+            if (part === parts.at(-1)) {
                 const keyNode = item.key;
                 if (isScalar(keyNode) && keyNode.range) {
                     const [start, end] = keyNode.range;
@@ -269,9 +312,7 @@ let manifestDiagnosticsService: ManifestDiagnosticsService | undefined;
  * Gets or creates the manifest diagnostics service singleton.
  */
 export function getManifestDiagnosticsService(): ManifestDiagnosticsService {
-    if (!manifestDiagnosticsService) {
-        manifestDiagnosticsService = new ManifestDiagnosticsService();
-    }
+    manifestDiagnosticsService ??= new ManifestDiagnosticsService();
     return manifestDiagnosticsService;
 }
 

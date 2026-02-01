@@ -64,9 +64,11 @@ Type:
  * Can be nested via `in` to show subdomain hierarchy.
  * The `type` property indicates strategic importance (Core, Supporting, Generic) per Bounded Context Canvas.
  * Body is optional - allows header-only Domain definitions.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#domains)
  */
 Domain:
-    (/** A Domain represents a sphere of knowledge, influence, or activity. In DDD, it is the subject area to which the user applies a program. Example: Sales, Shipping, Accounting. */ 'Domain' | 'dom') name=ID ('in' parent=[Domain:QualifiedName])?
+    ('Domain' | 'dom') name=ID ('in' parent=[Domain:QualifiedName])?
     ('{'
         (
             ('description' Assignment description=STRING) |
@@ -84,9 +86,11 @@ Domain:
  * The `classification` property indicates strategic importance per Bounded Context Canvas.
  * The `evolution` property indicates maturity stage per Wardley Maps/BC Canvas.
  * The `archetype` property indicates behavioral role per DDD archetypes (Gateway, Execution, etc).
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#bounded-contexts)
  */
 BoundedContext:
-    (/** A Bounded Context defines the boundary within which a particular domain model is defined and applicable. It is a central pattern in DDD for managing complexity. Example: SalesContext, SupportContext. */ 'BoundedContext' | 'bc') name=ID 
+    ('BoundedContext' | 'bc') name=ID 
     ('for' domain=[Domain:QualifiedName])?
     (
         ('as' classification+=[Classification:QualifiedName])?
@@ -101,7 +105,7 @@ BoundedContext:
             ('evolution' Assignment evolution=[Classification:QualifiedName]) |
             ('archetype' Assignment archetype=[Classification:QualifiedName]) |
             (('metadata' | 'meta') '{' (metadata+=MetadataEntry)* '}') |
-            (('relationships' | 'integrations') '{' 
+            (('relationships' | 'integrations') '{'
                 (relationships += Relationship ((",")? relationships += Relationship)*)*
             '}') |
             (('terminology' | 'glossary') '{' 
@@ -126,26 +130,32 @@ MetadataEntry:
 /**
  * Team - People responsible for a Bounded Context or Domain.
  * Represents organizational boundaries in DDD.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#teams)
  */
 Team:
-    (/** A Team represents the people responsible for a Bounded Context or Domain. */ 'Team') name=ID
+    'Team' name=ID
 ;
 
 /**
  * Classification - Reusable label for categorizing elements.
  * Examples: Core, Supporting, Generic, Strategic, Commodity, Architectural, Business, Technical.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#classifications)
  */
 Classification:
-    (/** A Classification is a reusable label for categorizing domains, contexts, patterns, and decisions (e.g., Core, Supporting, Generic, Architectural, Business, Technical). */ 'Classification') name=ID
+    'Classification' name=ID
 ;
 
 /**
  * Metadata - Defines a key that can be used in metadata blocks.
  * Examples: Language, Framework, Database, Repository.
  * Can be defined locally or imported from stdlib.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#metadata)
  */
 Metadata:
-    (/** A Metadata defines a key that can be used in metadata blocks. Examples: Language, Framework, Database, Repository. Can be defined locally or imported from stdlib. */ 'Metadata') name=ID
+    'Metadata' name=ID
 ;
 
 
@@ -164,9 +174,11 @@ ObjectMap:
 /**
  * Context Map - Visualizes relationships between Bounded Contexts.
  * Shows integration patterns and team interactions.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#context-maps)
  */
 ContextMap:
-    (/** A Context Map visualizes and documents the relationships between Bounded Contexts, including their integration patterns. */ 'ContextMap' | 'cmap') name=ID
+    ('ContextMap' | 'cmap') name=ID
     '{'
         ('contains' boundedContexts += [+BoundedContext:QualifiedName] ((",")? boundedContexts += [+BoundedContext:QualifiedName])*)*
         (relationships += Relationship ((",")? relationships += Relationship)*)*
@@ -176,9 +188,11 @@ ContextMap:
 /**
  * Domain Map - Visualizes relationships between Domains.
  * Shows high-level domain organization and subdomain structure.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#domain-maps)
  */
 DomainMap:
-    (/** A Domain Map visualizes and documents the relationships between Domains. */ 'DomainMap' | 'dmap') name=ID
+    ('DomainMap' | 'dmap') name=ID
     '{'
         ('contains' domains += [+Domain:QualifiedName] ((",")? domains += [+Domain:QualifiedName])*)*
     '}'
@@ -191,6 +205,8 @@ DomainMap:
 /**
  * Relationship - Connection between two Bounded Contexts.
  * Supports DDD integration patterns (ACL, OHS, PL, etc.) and relationship types.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#relationships)
  */
 Relationship:
     ('[' leftPatterns+=IntegrationPattern (',' leftPatterns+=IntegrationPattern)* ']')? 
@@ -252,6 +268,8 @@ RelationshipType returns string:
 /**
  * Domain Terminology - Ubiquitous language terms with definitions.
  * Supports synonyms and examples for richer glossaries.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#terminology)
  */
 DomainTerm:
     ('Term' | 'term') name=ID (Assignment meaning=STRING)?
@@ -262,6 +280,8 @@ DomainTerm:
 /**
  * Decisions, Policies, and Business Rules.
  * All types are interchangeable - use what reads best for your domain.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#decisions-policies-rules)
  */
 AbstractDecision: 
     Decision | 
@@ -270,19 +290,19 @@ AbstractDecision:
 ;
 
 Decision:
-    (/** A documented choice or rule that affects the model or process. */ 'Decision' | 'decision') 
+    ('Decision' | 'decision') 
     ('[' classification=[Classification:QualifiedName] ']')?
     name=ID Assignment value=STRING
 ;
 
 Policy:
-    (/** A business rule or guideline that governs behavior within a context. */ 'Policy' | 'policy') 
+    ('Policy' | 'policy') 
     ('[' classification=[Classification:QualifiedName] ']')?
     name=ID Assignment value=STRING
 ;
 
 BusinessRule:
-    (/** A business rule or guideline that governs behavior within a context. */ 'Rule' | 'rule') 
+    ('Rule' | 'rule') 
     ('[' classification=[Classification:QualifiedName] ']')?
     name=ID Assignment value=STRING
 ;
@@ -301,17 +321,21 @@ BusinessRule:
  * 
  * All resolution details (source, version, integrity) live in model.yaml manifest.
  * Named imports and inline integrity checks have been removed per PRS-010.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#imports)
  */
 ImportStatement:
-    /** Imports types or namespaces from another file or module, enabling reuse and modularity. */ ('Import' | 'import') uri=STRING ('as' alias=ID)?
+    ('Import' | 'import') uri=STRING ('as' alias=ID)?
 ;
 
 /**
  * Namespace Declaration - Hierarchical namespacing for organizing models.
  * Combines package modularity with group-style nesting.
+ * 
+ * [Read more on domainlang.net](https://domainlang.net/reference/language#namespaces)
  */
 NamespaceDeclaration:
-    (/** Namespaces organize large models into hierarchical qualified names for symbol resolution. */ 'Namespace' | 'ns') name=QualifiedName '{'
+    ('Namespace' | 'ns') name=QualifiedName '{'
         (children+=StructureElement)*
     '}'
 ;

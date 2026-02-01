@@ -1,10 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { ValidationAcceptor, ValidationChecks } from 'langium';
+import type { ValidationAcceptor, ValidationChecks, LangiumDocument } from 'langium';
 import { Cancellation } from 'langium';
 import type { DomainLangAstType, ImportStatement } from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
-import type { LangiumDocument } from 'langium';
 import type { WorkspaceManager } from '../services/workspace-manager.js';
 import type { ExtendedDependencySpec, ModelManifest, LockFile } from '../services/types.js';
 import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
@@ -200,17 +199,23 @@ export class ImportValidator {
             return;
         }
 
-        const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
-        const resolvedPath = path.resolve(workspaceRoot, dependencyPath);
-        const relativeToWorkspace = path.relative(workspaceRoot, resolvedPath);
+        try {
+            const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
+            const resolvedPath = path.resolve(workspaceRoot, dependencyPath);
+            const relativeToWorkspace = path.relative(workspaceRoot, resolvedPath);
 
-        if (relativeToWorkspace.startsWith('..') || path.isAbsolute(relativeToWorkspace)) {
-            accept('error', ValidationMessages.IMPORT_ESCAPES_WORKSPACE(alias), {
-                node: imp,
-                property: 'uri',
-                codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportEscapesWorkspace, alias }
-            });
+            if (relativeToWorkspace.startsWith('..') || path.isAbsolute(relativeToWorkspace)) {
+                accept('error', ValidationMessages.IMPORT_ESCAPES_WORKSPACE(alias), {
+                    node: imp,
+                    property: 'uri',
+                    codeDescription: buildCodeDescription('language.md', 'imports'),
+                    data: { code: IssueCodes.ImportEscapesWorkspace, alias }
+                });
+            }
+        } catch (error) {
+            // WorkspaceManager not initialized - skip workspace boundary check
+            // This can happen for standalone files without model.yaml
+            console.warn(`Could not validate workspace boundary for path dependency: ${error}`);
         }
     }
 
@@ -238,17 +243,22 @@ export class ImportValidator {
             return;
         }
 
-        const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
-        const cacheDir = this.getCacheDirectory(workspaceRoot, packageKey, lockedDep.commit);
+        try {
+            const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
+            const cacheDir = this.getCacheDirectory(workspaceRoot, packageKey, lockedDep.commit);
 
-        const cacheExists = await this.directoryExists(cacheDir);
-        if (!cacheExists) {
-            accept('error', ValidationMessages.IMPORT_NOT_INSTALLED(alias), {
-                node: imp,
-                property: 'uri',
-                codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportNotInstalled, alias }
-            });
+            const cacheExists = await this.directoryExists(cacheDir);
+            if (!cacheExists) {
+                accept('error', ValidationMessages.IMPORT_NOT_INSTALLED(alias), {
+                    node: imp,
+                    property: 'uri',
+                    codeDescription: buildCodeDescription('language.md', 'imports'),
+                    data: { code: IssueCodes.ImportNotInstalled, alias }
+                });
+            }
+        } catch (error) {
+            // WorkspaceManager not initialized - log warning but continue
+            console.warn(`Could not validate cached package for ${alias}: ${error}`);
         }
     }
 

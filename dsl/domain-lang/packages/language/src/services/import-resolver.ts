@@ -16,20 +16,44 @@ import type { LockFile } from './types.js';
  * Directory-First Resolution:
  * - ./types → ./types/index.dlang → ./types.dlang
  * - Module entry defaults to index.dlang (no model.yaml required)
+ * 
+ * Performance:
+ * - Resolution results are cached per (document URI + specifier) pair
+ * - Cache is invalidated when model.yaml or model.lock changes
  */
 export class ImportResolver {
     private readonly workspaceManager: WorkspaceManager;
+    private readonly resolverCache = new Map<string, URI>();
 
     constructor(services: DomainLangServices) {
         this.workspaceManager = services.imports.WorkspaceManager;
     }
 
     /**
+     * Clears the import resolution cache.
+     * Call this when model.yaml or model.lock changes.
+     */
+    clearCache(): void {
+        this.resolverCache.clear();
+    }
+
+    /**
      * Resolve an import specifier relative to a Langium document.
+     * Results are cached for performance.
      */
     async resolveForDocument(document: LangiumDocument, specifier: string): Promise<URI> {
+        // Check cache first (key: document URI + specifier)
+        const cacheKey = `${document.uri.toString()}|${specifier}`;
+        const cached = this.resolverCache.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
+
+        // Resolve and cache
         const baseDir = path.dirname(document.uri.fsPath);
-        return this.resolveFrom(baseDir, specifier);
+        const result = await this.resolveFrom(baseDir, specifier);
+        this.resolverCache.set(cacheKey, result);
+        return result;
     }
 
     /**

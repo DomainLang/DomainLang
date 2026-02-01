@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import YAML from 'yaml';
 import { getGlobalOptimizer } from './performance-optimizer.js';
+import { fileExists as checkFileExists, findWorkspaceRoot as findWorkspaceRootUtil } from '../utils/manifest-utils.js';
 import type { 
     LockFile, 
     LockedDependency, 
@@ -100,7 +101,7 @@ export class WorkspaceManager {
 
         for (const manifest of this.manifestFiles) {
             const candidate = path.join(root, manifest);
-            if (await this.fileExists(candidate)) {
+            if (await checkFileExists(candidate)) {
                 return candidate;
             }
         }
@@ -489,7 +490,17 @@ export class WorkspaceManager {
         return { version, dependencies };
     }
 
+    /**
+     * Finds workspace root by walking up from startPath looking for model.yaml.
+     * Uses configurable manifest files if specified in constructor options.
+     */
     private async findWorkspaceRoot(startPath: string): Promise<string | undefined> {
+        // Use shared utility for default case (single manifest file)
+        if (this.manifestFiles.length === 1 && this.manifestFiles[0] === 'model.yaml') {
+            return findWorkspaceRootUtil(startPath);
+        }
+
+        // Custom logic for multiple or non-default manifest files
         let current = path.resolve(startPath);
         const { root } = path.parse(current);
 
@@ -513,22 +524,10 @@ export class WorkspaceManager {
 
     private async containsManifest(dir: string): Promise<boolean> {
         for (const manifest of this.manifestFiles) {
-            if (await this.fileExists(path.join(dir, manifest))) {
+            if (await checkFileExists(path.join(dir, manifest))) {
                 return true;
             }
         }
         return false;
-    }
-
-    private async fileExists(targetPath: string): Promise<boolean> {
-        try {
-            await fs.access(targetPath);
-            return true;
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
-                return false;
-            }
-            throw error;
-        }
     }
 }
