@@ -71,7 +71,7 @@ export type GenerateOptions = {
     profile?: boolean;
 }
 
-export default function(): void {
+export default function setupCli(): void {
     const program = new Command();
 
     program.version(JSON.parse(packageContent).version);

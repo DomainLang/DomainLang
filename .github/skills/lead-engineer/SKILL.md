@@ -71,11 +71,56 @@ Every feature flows through three layers:
 1. **Review inputs:** ADR/PRS requirements, grammar sketch from language-designer
 2. **Implement grammar:** Edit `.langium` file
 3. **Regenerate:** `npm run langium:generate`
-4. **Implement services:** Validation, scoping, LSP features
+4. **Implement services:** Validation, scoping, LSP features with error handling
 5. **Write tests:** Ask to "design test strategy" for test collaboration
 6. **Run linting:** `npm run lint` - must pass with 0 violations
 7. **Verify:** `npm run build && npm test`
 8. **Commit with conventional format:** Choose the right commit type for proper versioning
+
+## LSP Feature Development - Critical Rules
+
+### Error Handling is MANDATORY
+
+**Every LSP provider method MUST have try-catch error handling.**
+
+**See `.github/instructions/typescript.instructions.md` section "Error Handling & Resilience" for complete patterns.**
+
+**Quick summary:**
+
+- Wrap all LSP entry points in try-catch
+- Return safe defaults: undefined, [], minimal object
+- Log with console.error (server) or OutputChannel (extension)
+- Never show technical errors to users
+- Keep cognitive complexity < 15 (extract helpers)
+
+### VS Code Extension Requirements
+
+**Required patterns** (see typescript.instructions.md for details):
+
+1. **OutputChannel** - User-visible logging in Output panel
+2. **Server crash recovery** - Detect stopped state, offer window reload
+3. **Resource disposal** - All watchers in context.subscriptions
+4. **Async deactivate** - Proper cleanup on shutdown
+
+**Minimal example:**
+
+```typescript
+let outputChannel: vscode.OutputChannel;
+
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+    outputChannel = vscode.window.createOutputChannel('DomainLang');
+    context.subscriptions.push(outputChannel);
+    
+    try {
+        client = await startLanguageClient(context);
+        outputChannel.appendLine('✓ Server started');
+    } catch (error) {
+        outputChannel.appendLine(`✗ Error: ${error}`);
+        vscode.window.showErrorMessage('DomainLang: Failed to start. Check output.');
+        throw error;
+    }
+}
+```
 
 ## Release Process & Commit Messages
 
@@ -495,6 +540,183 @@ test('validates large file in < 100ms', async () => {
     expect(performance.now() - start).toBeLessThan(100);
 });
 ```
+
+### LSP Performance - Critical Patterns
+
+**The Problem:** LSP features (hover, validation) may execute before documents are fully linked, causing:
+
+- References return `undefined` (imports not resolved yet)
+- Incomplete hover information
+- Missing validation errors
+- User must open document twice for squiggles to appear
+
+**Root Cause:** Document lifecycle states matter. References only available after `Linked` state.
+
+**Document States:**
+
+1. `Parsed` - AST available, **no references**
+2. `IndexedContent` - Exports computed
+3. `ComputedScopes` - Local scopes computed
+4. **`Linked`** - References available ← Critical for imports
+5. `IndexedReferences` - Reference tracking
+6. `Validated` - Validation complete
+
+#### Solution Pattern 1: Explicit Document Building
+
+```typescript
+// ❌ BAD: Document may not be linked yet
+const doc = await langiumDocuments.getOrCreateDocument(uri);
+const domain = bc.domain?.ref; // May be undefined!
+
+// ✅ GOOD: Build document first
+const doc = await langiumDocuments.getOrCreateDocument(uri);
+await documentBuilder.build([doc], { validation: true });
+const domain = bc.domain?.ref; // Now guaranteed resolved
+```
+
+#### Solution Pattern 2: Wait for State
+
+```typescript
+import { waitForState } from '../utils/document-utils.js';
+import { DocumentState } from 'langium';
+
+// Wait for linking before accessing references
+await waitForState(document, DocumentState.Linked);
+const importedSymbol = ref?.ref; // Safe to access
+```
+
+#### Solution Pattern 3: Cache Import Resolution
+
+```typescript
+export class ImportResolver {
+    private readonly resolverCache = new Map<string, URI>();
+    
+    async resolveForDocument(document: LangiumDocument, specifier: string): Promise<URI> {
+        const cacheKey = `${document.uri.toString()}|${specifier}`;
+        
+        // Check cache first
+        const cached = this.resolverCache.get(cacheKey);
+        if (cached) return cached;
+        
+        // Resolve and cache
+        const result = await this.resolveFrom(baseDir, specifier);
+        this.resolverCache.set(cacheKey, result);
+        return result;
+    }
+    
+    clearCache(): void {
+        this.resolverCache.clear();
+    }
+}
+```
+
+**Invalidate caches on config changes:**
+
+```typescript
+// main.ts - file watcher handler
+if (fileName === 'model.yaml' || fileName === 'model.lock') {
+    workspaceManager.invalidateManifestCache();
+    importResolver.clearCache(); // Critical: clear import cache
+}
+```
+
+#### Solution Pattern 4: Incremental Workspace Updates
+
+```typescript
+// ❌ BAD: Full rebuild on any config change
+async function rebuildWorkspace(): Promise<void> {
+    const uris = allDocuments.map(doc => doc.uri);
+    await documentBuilder.update([], uris); // Expensive!
+}
+
+// ✅ GOOD: Only rebuild if dependencies changed
+async function rebuildWorkspace(manifestChanged: boolean): Promise<void> {
+    // Lock file changes: caches already invalidated, no rebuild needed
+    if (!manifestChanged) {
+        console.warn('Lock file changed - caches invalidated, no rebuild needed');
+        return;
+    }
+    
+    // Check if dependencies section changed
+    const manifest = await workspaceManager.getManifest();
+    const hasDependencies = manifest?.dependencies && Object.keys(manifest.dependencies).length > 0;
+    
+    if (!hasDependencies) {
+        console.warn('Manifest changed but has no dependencies - skipping rebuild');
+        return;
+    }
+    
+    // Only now do full rebuild
+    const uris = allDocuments.map(doc => doc.uri);
+    await documentBuilder.update([], uris);
+}
+```
+
+#### Solution Pattern 5: Workspace Mode vs Standalone Files
+
+DomainLang supports **three** operational modes - understand which you're in:
+
+```typescript
+/**
+ * Mode A (Pure Workspace with model.yaml):
+ * - model.yaml at workspace root
+ * - Entry file (index.dlang) loaded and built immediately
+ * - Import graph followed and all imported docs built
+ * - LSP features have complete information from start
+ * 
+ * Mode B (Pure Standalone files, no model.yaml):
+ * - No model.yaml anywhere in workspace
+ * - No pre-loading during workspace init
+ * - Documents loaded on-demand when opened
+ * - Imports resolved lazily via ImportResolver
+ * - Each file works independently (relative imports only)
+ * 
+ * Mode C (Mixed - Standalone + Module folders):
+ * - CRITICAL: Workspace contains BOTH standalone files AND folders with model.yaml
+ * - Each model.yaml folder = independent module/package:
+ *   - Module entry + import graph pre-loaded
+ *   - Path aliases (@/) and external deps work within module
+ * - Standalone files outside modules loaded on-demand
+ * - Example structure:
+ *   workspace/
+ *   ├── standalone.dlang        ← Mode B (on-demand)
+ *   ├── core/
+ *   │   ├── model.yaml          ← Module root
+ *   │   ├── index.dlang         ← Pre-loaded
+ *   │   └── domains/
+ *   │       └── sales.dlang     ← Pre-loaded via imports
+ *   └── util.dlang              ← Mode B (on-demand)
+ */
+```
+
+**When implementing LSP features:**
+
+```typescript
+// ALWAYS assume document might not be linked yet
+async getHover(document: LangiumDocument): Promise<Hover | undefined> {
+    try {
+        // Wait for document to be ready
+        await waitForState(document, DocumentState.Linked);
+        
+        // Now safe to access references
+        const domain = bc.domain?.ref;
+        return { contents: domain?.vision ?? '' };
+    } catch (error) {
+        console.error('Error in getHover:', error);
+        return undefined; // Graceful degradation
+    }
+}
+```
+
+**Performance Checklist for LSP Features:**
+
+- [ ] Document built to `Linked` state before accessing references
+- [ ] Import resolution results cached (clear on config changes)
+- [ ] Workspace rebuilds only when dependencies actually change
+- [ ] Standalone files work without model.yaml
+- [ ] Error handling prevents crashes (try-catch with safe defaults)
+
+**See:** `packages/language/docs/PERFORMANCE_ANALYSIS.md` for complete analysis and patterns.
 
 ## Communication Style
 

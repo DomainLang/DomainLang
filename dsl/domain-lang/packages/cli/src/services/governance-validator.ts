@@ -25,6 +25,13 @@ import fs from 'node:fs/promises';
 import YAML from 'yaml';
 import { isPreRelease } from './semver.js';
 
+/** Locked dependency entry from lock file */
+interface LockedDependency {
+    resolved: string;
+    ref: string;
+    commit: string;
+}
+
 /**
  * Validates dependencies against organizational governance policies.
  */
@@ -39,49 +46,11 @@ export class GovernanceValidator {
 
         // Validate each dependency
         for (const [packageKey, locked] of Object.entries(lockFile.dependencies)) {
-            // Check allowed sources
-            if (this.policy.allowedSources && this.policy.allowedSources.length > 0) {
-                const isAllowed = this.policy.allowedSources.some(pattern => 
-                    locked.resolved.includes(pattern) || packageKey.startsWith(pattern)
-                );
-
-                if (!isAllowed) {
-                    violations.push({
-                        type: 'blocked-source',
-                        packageKey,
-                        message: `Package from unauthorized source: ${locked.resolved}`,
-                        severity: 'error',
-                    });
-                }
-            }
-
-            // Check blocked packages
-            if (this.policy.blockedPackages) {
-                const isBlocked = this.policy.blockedPackages.some(pattern =>
-                    packageKey.includes(pattern)
-                );
-
-                if (isBlocked) {
-                    violations.push({
-                        type: 'blocked-source',
-                        packageKey,
-                        message: `Package is blocked by governance policy`,
-                        severity: 'error',
-                    });
-                }
-            }
-
-            // Check version stability
-            if (this.policy.requireStableVersions) {
-                if (isPreRelease(locked.ref)) {
-                    violations.push({
-                        type: 'unstable-version',
-                        packageKey,
-                        message: `Pre-release ref not allowed: ${locked.ref}`,
-                        severity: 'error',
-                    });
-                }
-            }
+            violations.push(
+                ...this.validateAllowedSources(packageKey, locked),
+                ...this.validateBlockedPackages(packageKey),
+                ...this.validateVersionStability(packageKey, locked)
+            );
         }
 
         // Validate workspace metadata
@@ -101,6 +70,80 @@ export class GovernanceValidator {
     }
 
     /**
+     * Checks if package source is allowed by policy.
+     */
+    private validateAllowedSources(
+        packageKey: string,
+        locked: LockedDependency
+    ): GovernanceViolation[] {
+        if (!this.policy.allowedSources || this.policy.allowedSources.length === 0) {
+            return [];
+        }
+
+        const isAllowed = this.policy.allowedSources.some(
+            pattern => locked.resolved.includes(pattern) || packageKey.startsWith(pattern)
+        );
+
+        if (!isAllowed) {
+            return [{
+                type: 'blocked-source',
+                packageKey,
+                message: `Package from unauthorized source: ${locked.resolved}`,
+                severity: 'error',
+            }];
+        }
+
+        return [];
+    }
+
+    /**
+     * Checks if package is explicitly blocked by policy.
+     */
+    private validateBlockedPackages(packageKey: string): GovernanceViolation[] {
+        if (!this.policy.blockedPackages) {
+            return [];
+        }
+
+        const isBlocked = this.policy.blockedPackages.some(
+            pattern => packageKey.includes(pattern)
+        );
+
+        if (isBlocked) {
+            return [{
+                type: 'blocked-source',
+                packageKey,
+                message: `Package is blocked by governance policy`,
+                severity: 'error',
+            }];
+        }
+
+        return [];
+    }
+
+    /**
+     * Checks if package version meets stability requirements.
+     */
+    private validateVersionStability(
+        packageKey: string,
+        locked: Pick<LockedDependency, 'ref'>
+    ): GovernanceViolation[] {
+        if (!this.policy.requireStableVersions) {
+            return [];
+        }
+
+        if (isPreRelease(locked.ref)) {
+            return [{
+                type: 'unstable-version',
+                packageKey,
+                message: `Pre-release ref not allowed: ${locked.ref}`,
+                severity: 'error',
+            }];
+        }
+
+        return [];
+    }
+
+    /**
      * Loads governance metadata from model.yaml.
      */
     async loadGovernanceMetadata(workspaceRoot: string): Promise<GovernanceMetadata> {
@@ -112,7 +155,7 @@ export class GovernanceValidator {
                 metadata?: GovernanceMetadata;
             };
 
-            return manifest.metadata || {};
+            return manifest.metadata ?? {};
         } catch {
             return {};
         }
@@ -125,34 +168,40 @@ export class GovernanceValidator {
         const metadata = await this.loadGovernanceMetadata(workspaceRoot);
         const violations = await this.validate(lockFile, workspaceRoot);
 
-        const lines: string[] = [];
-        lines.push('=== Dependency Audit Report ===');
-        lines.push('');
-        lines.push(`Workspace: ${workspaceRoot}`);
-        lines.push(`Team: ${metadata.team || 'N/A'}`);
-        lines.push(`Contact: ${metadata.contact || 'N/A'}`);
-        lines.push(`Domain: ${metadata.domain || 'N/A'}`);
-        lines.push('');
-        lines.push('Dependencies:');
+        // Build header section
+        const headerLines = [
+            '=== Dependency Audit Report ===',
+            '',
+            `Workspace: ${workspaceRoot}`,
+            `Team: ${metadata.team ?? 'N/A'}`,
+            `Contact: ${metadata.contact ?? 'N/A'}`,
+            `Domain: ${metadata.domain ?? 'N/A'}`,
+            '',
+            'Dependencies:',
+        ];
 
+        // Build dependencies section
+        const depLines: string[] = [];
         for (const [packageKey, locked] of Object.entries(lockFile.dependencies)) {
-            lines.push(`  - ${packageKey}@${locked.ref}`);
-            lines.push(`    Source: ${locked.resolved}`);
-            lines.push(`    Commit: ${locked.commit}`);
+            depLines.push(
+                `  - ${packageKey}@${locked.ref}`,
+                `    Source: ${locked.resolved}`,
+                `    Commit: ${locked.commit}`
+            );
         }
 
-        if (violations.length > 0) {
-            lines.push('');
-            lines.push('Violations:');
-            for (const violation of violations) {
-                lines.push(`  [${violation.severity.toUpperCase()}] ${violation.packageKey}: ${violation.message}`);
-            }
-        } else {
-            lines.push('');
-            lines.push('\u2713 No policy violations detected');
-        }
+        // Build violations section
+        const violationLines = violations.length > 0
+            ? [
+                '',
+                'Violations:',
+                ...violations.map(v => 
+                    `  [${v.severity.toUpperCase()}] ${v.packageKey}: ${v.message}`
+                )
+            ]
+            : ['', '\u2713 No policy violations detected'];
 
-        return lines.join('\n');
+        return [...headerLines, ...depLines, ...violationLines].join('\n');
     }
 }
 
@@ -169,7 +218,7 @@ export async function loadGovernancePolicy(workspaceRoot: string): Promise<Gover
         };
         
         // Return governance section or empty policy if not defined
-        return manifest.governance || {};
+        return manifest.governance ?? {};
     } catch {
         // No manifest or parse error = permissive defaults
         return {};

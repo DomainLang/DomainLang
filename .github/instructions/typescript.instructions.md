@@ -40,6 +40,207 @@ applyTo: "**/*.ts,**/*.tsx,**/*.mts,**/*.cts"
 - Use type guards over type assertions
 - Separate type imports using `import type`
 
+## Error Handling & Resilience
+
+### LSP Features - Defensive Coding
+
+**Every LSP feature method MUST have error handling:**
+
+```typescript
+// ✅ Correct: Entry point wrapped in try-catch
+export class MyLspProvider {
+    async provideSomething(document: LangiumDocument): Promise<Result | undefined> {
+        try {
+            // Feature logic here
+            return result;
+        } catch (error) {
+            console.error('Error in provideSomething:', error);
+            return undefined; // Safe default
+        }
+    }
+}
+
+// ❌ Avoid: No error handling - will crash extension
+export class MyLspProvider {
+    async provideSomething(document: LangiumDocument): Promise<Result> {
+        // Unprotected logic - any error crashes the server
+        return riskyOperation();
+    }
+}
+```
+
+### Safe Defaults on Error
+
+**Return type-appropriate safe defaults:**
+
+```typescript
+// Arrays → []
+async collectSymbols(): Promise<Symbol[]> {
+    try {
+        return await expensiveComputation();
+    } catch (error) {
+        console.error('Error collecting symbols:', error);
+        return []; // Empty array is safe
+    }
+}
+
+// Optional values → undefined
+getHoverContent(): Hover | undefined {
+    try {
+        return computeHover();
+    } catch (error) {
+        console.error('Error in hover:', error);
+        return undefined; // No hover is fine
+    }
+}
+
+// Objects → minimal valid object or undefined
+getDiagnostics(): Diagnostic[] {
+    try {
+        return validate();
+    } catch (error) {
+        console.error('Error in diagnostics:', error);
+        // Return minimal error diagnostic
+        return [{
+            severity: DiagnosticSeverity.Error,
+            range: Range.create(0, 0, 0, 1),
+            message: 'Internal validation error',
+            source: 'domainlang'
+        }];
+    }
+}
+```
+
+### Avoid Over-Engineering
+
+**❌ Don't nest try-catch unnecessarily:**
+
+```typescript
+// ❌ Over-engineered: Nested try-catch
+try {
+    doSomething();
+} catch (error) {
+    console.error('Error:', error);
+    try {
+        fallback();
+    } catch (fallbackError) {
+        console.error('Fallback failed:', fallbackError);
+    }
+}
+
+// ✅ Trust framework error handling
+try {
+    doSomething();
+} catch (error) {
+    console.error('Error:', error);
+    fallback(); // Let Langium handle fallback errors
+}
+```
+
+### Error Messages - User vs Developer
+
+**Silent degradation for transient errors:**
+
+```typescript
+// ✅ Don't show error messages to users unless actionable
+getHoverContent(): Hover | undefined {
+    try {
+        return computeHover();
+    } catch (error) {
+        console.error('Hover error:', error);
+        return undefined; // User sees no hover - that's fine
+    }
+}
+
+// ❌ Don't show technical errors to users
+getHoverContent(): Hover | undefined {
+    try {
+        return computeHover();
+    } catch (error) {
+        return {
+            contents: 'Error: Unable to compute hover' // ❌ Not helpful to user
+        };
+    }
+}
+```
+
+### VS Code Extension Error Handling
+
+**Use OutputChannel for debugging:**
+
+```typescript
+// ✅ Proper OutputChannel usage
+let outputChannel: vscode.OutputChannel;
+
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+    outputChannel = vscode.window.createOutputChannel('DomainLang');
+    context.subscriptions.push(outputChannel);
+    
+    try {
+        client = await startLanguageClient(context);
+        outputChannel.appendLine('Language server started');
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        outputChannel.appendLine(`Failed to start: ${message}`);
+        vscode.window.showErrorMessage(
+            'DomainLang: Failed to start. Check output for details.'
+        );
+        throw error; // Let VS Code know activation failed
+    }
+}
+
+// ✅ Detect server crashes and offer recovery
+client.onDidChangeState((event) => {
+    if (event.newState === 3) { // State.Stopped
+        outputChannel.appendLine('Server stopped unexpectedly');
+        vscode.window.showWarningMessage(
+            'DomainLang server stopped. Reload window to restart.',
+            'Reload Window'
+        ).then((selection) => {
+            if (selection === 'Reload Window') {
+                vscode.commands.executeCommand('workbench.action.reloadWindow');
+            }
+        });
+    }
+});
+```
+
+### Cognitive Complexity Limits
+
+**Keep methods under 15 complexity - extract helpers:**
+
+```typescript
+// ❌ Too complex (17 complexity)
+function complexMethod() {
+    if (a) {
+        if (b) {
+            if (c) {
+                // Many nested conditions
+            }
+        }
+    }
+    // More conditions...
+}
+
+// ✅ Refactored with helpers
+function complexMethod() {
+    if (shouldProcessA()) {
+        handleA();
+    }
+    if (shouldProcessB()) {
+        handleB();
+    }
+}
+
+function shouldProcessA(): boolean {
+    return a && b && c;
+}
+
+function handleA(): void {
+    // Extracted logic
+}
+```
+
 ## Naming Conventions
 
 | Element | Convention | Example |

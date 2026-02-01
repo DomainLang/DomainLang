@@ -41,7 +41,59 @@ You are working with Langium 4.x, a framework for building DSLs with full LSP su
 | `packages/language/src/validation/` | Validation rules |
 | `packages/language/src/lsp/` | LSP services |
 | `packages/language/src/services/` | Import resolution, workspace |
+## LSP Service Development
 
+### Error Handling - MANDATORY Pattern
+
+**Every LSP provider method MUST have try-catch error handling.**
+
+**See `.github/instructions/typescript.instructions.md` section "Error Handling & Resilience" for:**
+- Complete error handling patterns with examples
+- Safe defaults by return type
+- VS Code extension requirements (OutputChannel, crash recovery)
+- Common pitfalls to avoid
+- Cognitive complexity management
+
+**Quick Reference:**
+
+```typescript
+// ✅ Required pattern for all LSP providers
+export class MyLspProvider {
+    async myFeature(params: Params): Promise<Result | undefined> {
+        try {
+            // Your logic here
+            return result;
+        } catch (error) {
+            console.error('Error in myFeature:', error);
+            return undefined; // Safe default
+        }
+    }
+}
+```
+
+**Safe Defaults:**
+- Hover → `undefined`
+- CompletionItem[] → `[]` or call `super.method()`
+- CodeAction[] → `undefined`
+- Diagnostic[] → `[]` or minimal diagnostic
+- Symbol[] → `[]`
+
+**Validation with Workspace:**
+
+```typescript
+// Gracefully handle missing workspace (standalone files)
+export class ImportValidator {
+    validate(importStmt: ImportStatement, accept: ValidationAcceptor): void {
+        try {
+            const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
+            // Workspace-dependent validation
+        } catch (error) {
+            console.warn('No workspace - skipping workspace validation');
+            return; // Degrade gracefully
+        }
+    }
+}
+```
 ## DomainLang Language Design
 
 ### Core Constructs
