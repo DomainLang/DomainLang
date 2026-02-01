@@ -11,7 +11,7 @@ import type { LockFile } from './types.js';
  * Import Types (PRS-010):
  * - Local relative: ./path, ../path → Directory-first resolution
  * - Path aliases: @/path, @alias/path → Configurable in model.yaml paths section
- * - External: owner/package → Manifest dependencies
+ * - External: dependency key → Manifest dependencies (key can be owner/package or an alias that maps to source)
  *
  * Directory-First Resolution:
  * - ./types → ./types/index.dlang → ./types.dlang
@@ -121,7 +121,10 @@ export class ImportResolver {
     /**
      * Resolves an external dependency via manifest.
      * 
-     * NEW FORMAT (PRS-010): Import specifier is owner/package format.
+        * Import specifier is a dependency key from model.yaml.
+        * - Recommended: key is owner/package.
+        * - Optional: key is an alias with an explicit source.
+     * The LSP only resolves to cached packages - no network calls.
      */
     private async resolveExternalDependency(specifier: string): Promise<URI> {
         const manifest = await this.workspaceManager.getManifest();
@@ -143,19 +146,20 @@ export class ImportResolver {
             );
         }
 
-        const mapped = await this.workspaceManager.resolveDependencyImport(specifier);
-        if (!mapped) {
+        // Use WorkspaceManager to resolve from cache (read-only, no network)
+        const resolved = await this.workspaceManager.resolveDependencyPath(specifier);
+        if (!resolved) {
             throw new Error(
-                `Dependency '${specifier}' not found in model.yaml.\n` +
+                `Dependency '${specifier}' not found in model.yaml or not installed.\n` +
                 `Hint: Add it to your dependencies:\n` +
                 `  dependencies:\n` +
                 `    ${specifier}:\n` +
-                `      ref: v1.0.0`
+                `      ref: v1.0.0\n` +
+                `Then run 'dlang install' to fetch it.`
             );
         }
 
-        const git = await this.workspaceManager.getGitResolver();
-        return git.resolve(mapped, { allowNetwork: false });
+        return URI.file(resolved);
     }
 
     /**
@@ -284,8 +288,8 @@ async function assertFileExists(filePath: string, original: string): Promise<voi
         await fs.access(filePath);
     } catch {
         throw new Error(
-            `Import file not found: '${original}'.\\n` +
-            `Resolved path: ${filePath}\\n` +
+            `Import file not found: '${original}'.\n` +
+            `Resolved path: ${filePath}\n` +
             `Hint: Check that the file exists and the path is correct.`
         );
     }

@@ -9,16 +9,18 @@ export * from './ast-augmentation.js';
 // Export centralized types (canonical source for all service types)
 export * from './services/types.js';
 
-// Export services
+// Export services (read-only for LSP - no network operations)
 export * from './services/workspace-manager.js';
-export * from './services/dependency-resolver.js';
-export * from './services/dependency-analyzer.js';
-export * from './services/governance-validator.js';
 export * from './services/import-resolver.js';
 export * from './services/relationship-inference.js';
-export * from './services/git-url-resolver.js';
 export * from './services/performance-optimizer.js';
-export * from './services/semver.js';
+
+// Note: The following services have been moved to CLI package:
+// - git-url-resolver.ts → @domainlang/cli/services
+// - dependency-resolver.ts → @domainlang/cli/services
+// - dependency-analyzer.ts → @domainlang/cli/services
+// - governance-validator.ts → @domainlang/cli/services
+// - semver.ts → @domainlang/cli/services
 
 // Export LSP services
 export * from './lsp/manifest-diagnostics.js';

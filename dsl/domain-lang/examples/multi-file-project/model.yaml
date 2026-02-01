@@ -1,5 +1,6 @@
+# yaml-language-server: $schema=https://domainlang.net/schema/model.schema.json
 # Package manifest for multi-file-project example
-# See: docs/imports.md for full documentation
+# See: https://domainlang.net/guide/imports
 
 # Package identity (required for publishing)
 model:
@@ -9,9 +10,9 @@ model:
 
 # Path aliases for @ imports
 paths:
-  "@/": "./"
-  "@shared/": "./shared/"
-  "@domains/": "./domains/"
+  "@": "./"
+  "@shared": "./shared"
+  "@domains": "./domains"
 
 # External package dependencies
 dependencies:

@@ -38,7 +38,7 @@
         "src"
     ],
     "bin": {
-        "domain-lang-cli": "./bin/cli.js"
+        "dlang": "./bin/cli.js"
     },
     "scripts": {
         "clean": "shx rm -fr *.tsbuildinfo out",

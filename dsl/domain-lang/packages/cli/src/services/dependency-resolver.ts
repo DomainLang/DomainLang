@@ -1,5 +1,5 @@
 /**
- * Dependency Resolution Service
+ * Dependency Resolution Service (CLI-only)
  * 
  * Discovers and resolves transitive dependencies for DomainLang packages.
  * Generates lock files for reproducible builds.
@@ -18,6 +18,8 @@
  * - Commit pins: Error (explicit pins are intentional)
  * - Major version mismatch: Error
  * - Tag vs Branch: Error (incompatible intent)
+ * 
+ * This module contains network operations and should ONLY be used in CLI contexts.
  */
 
 import path from 'node:path';
@@ -25,7 +27,7 @@ import fs from 'node:fs/promises';
 import YAML from 'yaml';
 import { GitUrlParser, GitUrlResolver } from './git-url-resolver.js';
 import { parseSemVer, pickLatestSemVer, detectRefType } from './semver.js';
-import type { SemVer, ResolvingPackage, LockFile, LockedDependency, DependencyGraph } from './types.js';
+import type { SemVer, ResolvingPackage, LockFile, LockedDependency, DependencyGraph, GitImportInfo } from './types.js';
 
 export class DependencyResolver {
     private gitResolver: GitUrlResolver;
@@ -158,8 +160,8 @@ export class DependencyResolver {
             const gitInfo = GitUrlParser.parse(packageKey);
             
             // Download package to get its model.yaml
-            const packageUri = await this.gitResolver.resolve(packageKey);
-            const packageDir = path.dirname(packageUri.fsPath);
+            const packagePath = await this.gitResolver.resolve(packageKey);
+            const packageDir = path.dirname(packagePath);
 
             // Load package config
             const packageConfig = await this.loadPackageConfig(packageDir);
@@ -205,7 +207,7 @@ export class DependencyResolver {
             const refType = detectRefType(ref);
             
             // Resolve ref to commit hash
-            const commitHash = await this.resolveCommitHash(gitInfo.repoUrl, ref);
+            const commitHash = await this.resolveCommitHash(gitInfo.repoUrl, ref, gitInfo);
 
             node.resolvedRef = ref;
             node.refType = refType;
@@ -237,19 +239,12 @@ export class DependencyResolver {
     }
 
     /**
-     * Resolves a version (tag/branch) to a commit hash using git ls-remote.
+     * Resolves a version (tag/branch) to a commit hash.
      */
-    private async resolveCommitHash(repoUrl: string, version: string): Promise<string> {
-        // This is a placeholder - the actual implementation is in GitUrlResolver
-        // We need to extract it or call the resolver
-        const gitInfo = GitUrlParser.parse(`${repoUrl}@${version}`);
-        const uri = await this.gitResolver.resolve(gitInfo.original);
-        
-        // Extract commit hash from cache path
-        // Per PRS-010: Project-local cache at .dlang/packages/{owner}/{repo}/{commit}/
-        const pathParts = uri.fsPath.split(path.sep);
-        const commitHashIndex = pathParts.length - 2; // Second to last segment
-        return pathParts[commitHashIndex];
+    private async resolveCommitHash(_repoUrl: string, _version: string, gitInfo: GitImportInfo): Promise<string> {
+        // Use GitUrlResolver to resolve the commit
+        const commitHash = await this.gitResolver.resolveCommit(gitInfo);
+        return commitHash;
     }
 
     /**

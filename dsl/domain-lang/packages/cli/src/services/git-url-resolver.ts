@@ -1,5 +1,5 @@
 /**
- * Git Repository Resolver Service
+ * Git Repository Resolver Service (CLI-only)
  * 
  * Resolves git-based package imports to local cached repositories.
  * Supports simplified GitHub syntax (owner/repo@version) and full URLs.
@@ -8,9 +8,11 @@
  * - Imports load entire package
  * - Package entry point defined in model.yaml
  * - Version pinning at repository level
+ * 
+ * This module contains network operations (git clone, git ls-remote) and
+ * should ONLY be used in CLI contexts, never in the LSP.
  */
 
-import { URI } from 'langium';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { exec } from 'node:child_process';
@@ -203,7 +205,7 @@ export class GitUrlParser {
  * - Cache key: {owner}/{repo}/{commit-hash}
  * - Downloads entire repository on first use
  * - Reads model.yaml to find entry point
- * - Returns URI to entry point file
+ * - Returns path to entry point file
  */
 export class GitUrlResolver {
     private cacheDir: string;
@@ -234,7 +236,7 @@ export class GitUrlResolver {
     }
 
     /**
-     * Resolves a git import URL to the package's entry point file.
+     * Resolves a git import URL to the package's entry point file path.
      * 
      * Process:
      * 1. Parse git URL
@@ -243,12 +245,12 @@ export class GitUrlResolver {
      * 4. Check cache
      * 5. Download repository if not cached
      * 6. Read model.yaml to find entry point
-     * 7. Return URI to entry point file
+     * 7. Return path to entry point file
      * 
      * @param importUrl - The git import URL
-     * @returns URI to the package's entry point file
+     * @returns Path to the package's entry point file
      */
-    async resolve(importUrl: string, options: { allowNetwork?: boolean } = {}): Promise<URI> {
+    async resolve(importUrl: string): Promise<string> {
         const gitInfo = GitUrlParser.parse(importUrl);
 
         // Check lock file for pinned version (handles transitive dependencies)
@@ -259,15 +261,7 @@ export class GitUrlResolver {
             // Use locked commit hash (reproducible build)
             commitHash = this.lockFile.dependencies[packageKey].commit;
         } else {
-            // No lock file entry - need to resolve dynamically
-            if (options.allowNetwork === false) {
-                // LSP mode: cannot perform network operations
-                throw new Error(
-                    `Dependency '${packageKey}' not installed.\n` +
-                    `Hint: Run 'dlang install' to fetch dependencies and generate model.lock.`
-                );
-            }
-            // CLI/dev mode: resolve version via network
+            // No lock file entry - resolve version via network
             commitHash = await this.resolveCommit(gitInfo);
         }
 
@@ -275,13 +269,6 @@ export class GitUrlResolver {
         const cachedPath = this.getCachePath(gitInfo, commitHash);
 
         if (!(await this.existsInCache(cachedPath))) {
-            if (options.allowNetwork === false) {
-                throw new Error(
-                    `Dependency '${packageKey}' not installed.\n` +
-                    `Hint: Run 'dlang install' to fetch dependencies.`
-                );
-            }
-
             // Download repository
             await this.downloadRepo(gitInfo, commitHash, cachedPath);
         }
@@ -298,7 +285,7 @@ export class GitUrlResolver {
             );
         }
 
-        return URI.file(entryFile);
+        return entryFile;
     }
 
     /**
@@ -344,7 +331,7 @@ export class GitUrlResolver {
     /**
      * Resolves a version (tag/branch) to a commit hash using git ls-remote.
      */
-    private async resolveCommit(gitInfo: GitImportInfo): Promise<string> {
+    async resolveCommit(gitInfo: GitImportInfo): Promise<string> {
         try {
             // Try to resolve as tag or branch
             const { stdout } = await execAsync(
@@ -382,7 +369,7 @@ export class GitUrlResolver {
      * Per PRS-010: Project-local cache structure mirrors the Design Considerations
      * section showing `.dlang/packages/{owner}/{repo}/{version}/` layout.
      */
-    private getCachePath(gitInfo: GitImportInfo, commitHash: string): string {
+    getCachePath(gitInfo: GitImportInfo, commitHash: string): string {
         return path.join(
             this.cacheDir,
             gitInfo.owner,
@@ -408,7 +395,7 @@ export class GitUrlResolver {
      * 
      * Uses shallow clone for efficiency (only downloads the specific commit).
      */
-    private async downloadRepo(
+    async downloadRepo(
         gitInfo: GitImportInfo,
         commitHash: string,
         cachePath: string

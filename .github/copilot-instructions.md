@@ -227,6 +227,11 @@ release-please operates in two distinct phases:
 - Create or extend `.dlang` examples under `dsl/domain-lang/examples/`
 - Add/adjust JSDoc on grammar rules and validation functions
 
+**For model manifest (`model.yaml`) changes:**
+- Update `/site/public/schema/model.schema.json` to match the new manifest structure
+- Update `/site/guide/imports.md` if the change affects user-facing documentation
+- The schema provides IntelliSense/validation for YAML editors - keep it synchronized
+
 ### Code Quality & Linting
 
 **Linting is mandatory and non-negotiable:**

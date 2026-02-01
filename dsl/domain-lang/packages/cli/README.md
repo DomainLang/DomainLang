@@ -28,13 +28,13 @@ npx @domainlang/cli --help
 
 ```bash
 # Validate a DomainLang model
-domain-lang-cli model validate
+dlang model validate
 
 # Install model dependencies
-domain-lang-cli install
+dlang install
 
 # View dependency tree
-domain-lang-cli model tree
+dlang model tree
 ```
 
 ## Commands
@@ -45,46 +45,46 @@ DomainLang supports a git-native model dependency workflow via `model.yaml` and 
 
 ```bash
 # List dependencies (from lock file)
-domain-lang-cli model list
+dlang model list
 
 # Add/remove dependencies in model.yaml
-domain-lang-cli model add <name> <owner/repo> [version]
-domain-lang-cli model remove <name>
+dlang model add <name> <owner/repo> [version]
+dlang model remove <name>
 
 # Install and lock dependencies
-domain-lang-cli install
+dlang install
 ```
 
 ### Analysis and validation
 
 ```bash
 # Validate model structure and references
-domain-lang-cli model validate
+dlang model validate
 
 # See dependency tree and impact analysis
-domain-lang-cli model tree [--commits]
-domain-lang-cli model deps <owner/repo>
+dlang model tree [--commits]
+dlang model deps <owner/repo>
 
 # Audit and compliance checks
-domain-lang-cli model audit
-domain-lang-cli model compliance
+dlang model audit
+dlang model compliance
 ```
 
 ### Utilities
 
 ```bash
 # Clear dependency cache
-domain-lang-cli cache-clear
+dlang cache-clear
 
 # Get help
-domain-lang-cli --help
+dlang --help
 ```
 
 ### Code generation (experimental)
 
 ```bash
 # Generate code from a model (currently produces stub output)
-domain-lang-cli generate <file>
+dlang generate <file>
 ```
 
 ## Related packages

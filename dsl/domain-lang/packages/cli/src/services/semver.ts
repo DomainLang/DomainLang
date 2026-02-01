@@ -1,5 +1,5 @@
 /**
- * Semantic Versioning Utilities
+ * Semantic Versioning Utilities (CLI-only)
  * 
  * Centralized SemVer parsing, comparison, and validation for the dependency system.
  * All version-related logic should use these utilities to ensure consistency.

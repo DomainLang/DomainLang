@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { URI, type LangiumDocument, type LangiumDocuments } from 'langium';
 import type { Model } from '../generated/ast.js';
-import type { GitUrlResolver } from '../services/git-url-resolver.js';
 import { WorkspaceManager } from '../services/workspace-manager.js';
 import { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
@@ -27,7 +26,7 @@ let lastInitializedDir: string | undefined;
 async function getStandaloneImportResolver(startDir: string): Promise<ImportResolver> {
   // Re-initialize if directory changed (workspace boundary)
   if (lastInitializedDir !== startDir || !standaloneImportResolver) {
-    standaloneWorkspaceManager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+    standaloneWorkspaceManager = new WorkspaceManager();
     try {
       await standaloneWorkspaceManager.initialize(startDir);
     } catch (error) {
@@ -40,18 +39,6 @@ async function getStandaloneImportResolver(startDir: string): Promise<ImportReso
     lastInitializedDir = startDir;
   }
   return standaloneImportResolver;
-}
-
-/**
- * Gets the git URL resolver from a workspace manager.
- *
- * @param startDir - Directory to start workspace search from
- * @returns Promise resolving to the git URL resolver
- */
-async function getGitResolver(startDir: string): Promise<GitUrlResolver> {
-  const workspaceManager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
-  await workspaceManager.initialize(startDir);
-  return workspaceManager.getGitResolver();
 }
 
 /**
@@ -115,7 +102,7 @@ export async function ensureImportGraphFromDocument(
     for (const imp of model.imports ?? []) {
       if (!imp.uri) continue;
       
-      // Use new resolveImportPath that supports git URLs
+      // Use new resolveImportPath that supports external dependencies
       const resolvedUri = await resolveImportPath(doc, imp.uri);
       const childDoc = await langiumDocuments.getOrCreateDocument(resolvedUri);
       await visit(childDoc);
@@ -124,29 +111,4 @@ export async function ensureImportGraphFromDocument(
 
   await visit(document);
   return visited;
-}
-
-/**
- * Gets cache statistics for git imports.
- * 
- * @returns Cache statistics including size and number of cached repositories
- */
-export async function getGitCacheStats(startDir: string = process.cwd()): Promise<{
-  totalSize: number;
-  repoCount: number;
-  cacheDir: string;
-}> {
-  const resolver = await getGitResolver(startDir);
-  return await resolver.getCacheStats();
-}
-
-/**
- * Clears the git import cache.
- * 
- * @param startDir - Starting directory for workspace resolution
- * @returns Promise that resolves when cache is cleared
- */
-export async function clearGitCache(startDir: string = process.cwd()): Promise<void> {
-  const resolver = await getGitResolver(startDir);
-  return await resolver.clearCache();
 }

@@ -2,14 +2,13 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import { describe, test, beforeEach, afterEach, expect } from 'vitest';
-import { URI } from 'langium';
 import { DependencyResolver } from '../../src/services/dependency-resolver.js';
 
 class FakeGitUrlResolver {
     constructor(private readonly base: string) {}
-    async resolve(importUrl: string): Promise<URI> {
+    async resolve(importUrl: string): Promise<string> {
         // importUrl is expected as owner/repo or full URL; normalize to owner/repo
-        const m = importUrl.match(/([^/]+)\/([^/@]+)(?:@([^/]+))?$/);
+        const m = /([^/]+)\/([^/@]+)(?:@([^/]+))?$/.exec(importUrl);
         if (!m) throw new Error(`Invalid import: ${importUrl}`);
         const owner = m[1];
         const repo = m[2];
@@ -18,7 +17,12 @@ class FakeGitUrlResolver {
         await fs.mkdir(dir, { recursive: true });
         const entry = path.join(dir, 'index.dlang');
         await fs.writeFile(entry, 'Domain Dummy {}', 'utf-8');
-        return URI.file(entry);
+        return entry;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async resolveCommit(_gitInfo: unknown): Promise<string> {
+        // Return a fake commit hash for testing
+        return 'deadbeef';
     }
 }
 

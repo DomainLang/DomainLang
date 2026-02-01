@@ -1,4 +1,5 @@
-import { WorkspaceManager, DependencyAnalyzer, GovernanceValidator, loadGovernancePolicy } from '@domainlang/language';
+import { WorkspaceManager } from '@domainlang/language';
+import { DependencyAnalyzer, GovernanceValidator, loadGovernancePolicy, GitUrlResolver, DependencyResolver } from './services/index.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -25,7 +26,7 @@ export async function listModels(workspaceRoot: string): Promise<void> {
     await manager.initialize(workspaceRoot);
     const lock = await manager.getLockFile();
     if (!lock) {
-        console.log('No lock file found. Run `domain-lang-cli install` to generate dependencies.');
+        console.log('No lock file found. Run `dlang install` to generate dependencies.');
         return;
     }
     console.log('Model dependencies:');
@@ -53,9 +54,7 @@ export async function addModel(workspaceRoot: string, name: string, source: stri
     }
 
     // Add dependency
-    if (!manifest.dependencies) {
-        manifest.dependencies = {};
-    }
+    manifest.dependencies ??= {};
 
     manifest.dependencies[name] = {
         source,
@@ -67,7 +66,7 @@ export async function addModel(workspaceRoot: string, name: string, source: stri
     await fs.writeFile(manifestPath, yamlContent, 'utf-8');
     
     console.log(`Added ${name}: ${source}@${version}`);
-    console.log('Run `domain-lang-cli install` to download dependencies.');
+    console.log('Run `dlang install` to download dependencies.');
 }
 
 export async function removeModel(workspaceRoot: string, name: string): Promise<void> {
@@ -88,14 +87,14 @@ export async function removeModel(workspaceRoot: string, name: string): Promise<
         await fs.writeFile(manifestPath, yamlContent, 'utf-8');
         
         console.log(`Removed ${name}`);
-        console.log('Run `domain-lang-cli install` to update lock file.');
+        console.log('Run `dlang install` to update lock file.');
     } catch (error) {
         console.error('Failed to remove dependency:', error);
     }
 }
 
 export async function statusModels(workspaceRoot: string): Promise<void> {
-    const manager = new WorkspaceManager({ autoResolve: false });
+    const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
     
     const manifestPath = await manager.getManifestPath();
@@ -125,17 +124,33 @@ export async function statusModels(workspaceRoot: string): Promise<void> {
     }
 
     if (!lock || Object.keys(lock.dependencies).length === 0) {
-        console.log('\nRun `domain-lang-cli install` to lock dependencies.');
+        console.log('\nRun `dlang install` to lock dependencies.');
     }
 }
 
-export async function updateModel(workspaceRoot: string, name?: string): Promise<void> {
-    console.log(name ? `Updating ${name}...` : 'Updating all dependencies...');
+export async function updateModel(workspaceRoot: string, _name?: string): Promise<void> {
+    console.log(_name ? `Updating ${_name}...` : 'Updating all dependencies...');
     
-    // For now, just regenerate the lock file
+    // Use CLI services to regenerate the lock file
     const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
-    await manager.regenerateLockFile();
+    
+    const manifest = await manager.getManifest();
+    if (!manifest?.dependencies) {
+        console.log('No dependencies found in model.yaml');
+        return;
+    }
+
+    // Resolve dependencies using CLI services
+    const cacheDir = path.join(workspaceRoot, '.dlang', 'packages');
+    const gitResolver = new GitUrlResolver(cacheDir);
+    const resolver = new DependencyResolver(workspaceRoot, gitResolver);
+    const lock = await resolver.resolveDependencies();
+    
+    // Write the lock file
+    const lockPath = path.join(workspaceRoot, 'model.lock');
+    const lockContent = JSON.stringify(lock, null, 2);
+    await fs.writeFile(lockPath, lockContent, 'utf-8');
     
     console.log('Dependencies updated and lock file regenerated.');
 }
@@ -143,7 +158,27 @@ export async function updateModel(workspaceRoot: string, name?: string): Promise
 export async function installModels(workspaceRoot: string): Promise<void> {
     const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
-    const lock = await manager.ensureLockFile();
+    
+    const manifest = await manager.getManifest();
+    if (!manifest?.dependencies) {
+        console.log('No dependencies found in model.yaml');
+        return;
+    }
+
+    // Check if lock file exists
+    let lock = await manager.getLockFile();
+    
+    if (!lock) {
+        // Generate lock file
+        const cacheDir = path.join(workspaceRoot, '.dlang', 'packages');
+        const gitResolver = new GitUrlResolver(cacheDir);
+        const resolver = new DependencyResolver(workspaceRoot, gitResolver);
+        lock = await resolver.resolveDependencies();
+        
+        const lockPath = path.join(workspaceRoot, 'model.lock');
+        const lockContent = JSON.stringify(lock, null, 2);
+        await fs.writeFile(lockPath, lockContent, 'utf-8');
+    }
     
     const count = Object.keys(lock.dependencies).length;
     console.log(`Dependencies installed: ${count} package(s) locked.`);
@@ -161,12 +196,12 @@ export async function cacheClear(): Promise<void> {
 }
 
 export async function showDependencyTree(workspaceRoot: string, options: { commits?: boolean } = {}): Promise<void> {
-    const manager = new WorkspaceManager({ autoResolve: false });
+    const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
     const lock = await manager.getLockFile();
     
     if (!lock || Object.keys(lock.dependencies).length === 0) {
-        console.log('No dependencies found. Run `domain-lang-cli install` first.');
+        console.log('No dependencies found. Run `dlang install` first.');
         return;
     }
 
@@ -183,12 +218,12 @@ export async function showDependencyTree(workspaceRoot: string, options: { commi
 }
 
 export async function showImpactAnalysis(workspaceRoot: string, packageName: string): Promise<void> {
-    const manager = new WorkspaceManager({ autoResolve: false });
+    const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
     const lock = await manager.getLockFile();
     
     if (!lock) {
-        console.log('No lock file found. Run `domain-lang-cli install` first.');
+        console.log('No lock file found. Run `dlang install` first.');
         return;
     }
 
@@ -208,12 +243,12 @@ export async function showImpactAnalysis(workspaceRoot: string, packageName: str
 }
 
 export async function validateModel(workspaceRoot: string): Promise<void> {
-    const manager = new WorkspaceManager({ autoResolve: false });
+    const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
     const lock = await manager.getLockFile();
     
     if (!lock) {
-        console.log('No lock file found. Run `domain-lang-cli install` first.');
+        console.log('No lock file found. Run `dlang install` first.');
         return;
     }
 
@@ -233,12 +268,12 @@ export async function validateModel(workspaceRoot: string): Promise<void> {
 }
 
 export async function auditDependencies(workspaceRoot: string): Promise<void> {
-    const manager = new WorkspaceManager({ autoResolve: false });
+    const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
     const lock = await manager.getLockFile();
     
     if (!lock) {
-        console.log('No lock file found. Run `domain-lang-cli install` first.');
+        console.log('No lock file found. Run `dlang install` first.');
         return;
     }
 
@@ -250,12 +285,12 @@ export async function auditDependencies(workspaceRoot: string): Promise<void> {
 }
 
 export async function checkCompliance(workspaceRoot: string): Promise<void> {
-    const manager = new WorkspaceManager({ autoResolve: false });
+    const manager = new WorkspaceManager();
     await manager.initialize(workspaceRoot);
     const lock = await manager.getLockFile();
     
     if (!lock) {
-        console.log('No lock file found. Run `domain-lang-cli install` first.');
+        console.log('No lock file found. Run `dlang install` first.');
         return;
     }
 

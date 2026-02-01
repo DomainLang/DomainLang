@@ -1,8 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import YAML from 'yaml';
-import { DependencyResolver } from './dependency-resolver.js';
-import { GitUrlResolver } from './git-url-resolver.js';
 import { getGlobalOptimizer } from './performance-optimizer.js';
 import type { 
     LockFile, 
@@ -22,8 +20,6 @@ const DEFAULT_LOCK_FILES = [
     'model.lock'
 ] as const;
 
-const JSON_SPACE = 2;
-
 interface ManifestCache {
     readonly manifest: ModelManifest;
     readonly path: string;
@@ -36,31 +32,37 @@ interface LoadedLockFile {
 }
 
 /**
- * Coordinates workspace discovery, lock file lifecycle management, and git resolver configuration.
+ * Coordinates workspace discovery and manifest/lock file reading.
+ * 
+ * This is a read-only service for the LSP - it does NOT:
+ * - Generate lock files (use CLI: `dlang install`)
+ * - Download packages (use CLI: `dlang install`)
+ * - Make network requests
+ * 
+ * The LSP uses this to:
+ * - Find the workspace root (where model.yaml is)
+ * - Read manifest configuration (path aliases, dependencies)
+ * - Read lock file (to resolve cached package locations)
  */
 export class WorkspaceManager {
     private readonly manifestFiles: readonly string[];
     private readonly lockFiles: readonly string[];
     private workspaceRoot: string | undefined;
     private lockFile: LockFile | undefined;
-    private gitResolver: GitUrlResolver | undefined;
-    private dependencyResolver: DependencyResolver | undefined;
     private initializePromise: Promise<void> | undefined;
     private manifestCache: ManifestCache | undefined;
 
-    constructor(private readonly options: WorkspaceManagerOptions = {}) {
+    constructor(options: WorkspaceManagerOptions = {}) {
         this.manifestFiles = options.manifestFiles ?? [...DEFAULT_MANIFEST_FILES];
         this.lockFiles = options.lockFiles ?? [...DEFAULT_LOCK_FILES];
     }
 
     /**
-     * Finds the workspace root, loads any existing lock file, and prepares the git resolver.
+     * Finds the workspace root and loads any existing lock file.
      * Repeated calls await the same initialization work.
      */
     async initialize(startPath: string): Promise<void> {
-        if (!this.initializePromise) {
-            this.initializePromise = this.performInitialization(startPath);
-        }
+        this.initializePromise ??= this.performInitialization(startPath);
         await this.initializePromise;
     }
 
@@ -73,6 +75,17 @@ export class WorkspaceManager {
             throw new Error('WorkspaceManager not initialized. Call initialize() first.');
         }
         return this.workspaceRoot;
+    }
+
+    /**
+     * Returns the project-local package cache directory.
+     * Per PRS-010: .dlang/packages/
+     */
+    getCacheDir(): string {
+        if (!this.workspaceRoot) {
+            throw new Error('WorkspaceManager not initialized. Call initialize() first.');
+        }
+        return path.join(this.workspaceRoot, '.dlang', 'packages');
     }
 
     /**
@@ -105,41 +118,8 @@ export class WorkspaceManager {
     }
 
     /**
-     * Returns the cached lock file or triggers resolution when missing.
-     */
-    async ensureLockFile(): Promise<LockFile> {
-        await this.ensureInitialized();
-
-        if (!this.lockFile) {
-            // Try loading from cache first
-            const optimizer = getGlobalOptimizer();
-            const cached = await optimizer.getCachedLockFile(this.workspaceRoot || '');
-            
-            if (cached) {
-                this.lockFile = cached;
-            } else {
-                if (this.options.allowNetwork === false) {
-                    throw new Error(
-                        'Lock file (model.lock) not found and network access is disabled.\n' +
-                        'Hint: Run \'dlang install\' to generate the lock file.'
-                    );
-                }
-                await this.generateLockFile();
-            }
-        }
-
-        if (!this.lockFile) {
-            throw new Error(
-                'Unable to resolve workspace lock file.\n' +
-                'Hint: Ensure model.yaml exists and run \'dlang install\' to generate model.lock.'
-            );
-        }
-
-        return this.lockFile;
-    }
-
-    /**
-     * Gets the currently cached lock file without refreshing from disk.
+     * Gets the currently cached lock file.
+     * Returns undefined if no lock file exists (run `dlang install` to create one).
      */
     async getLockFile(): Promise<LockFile | undefined> {
         await this.ensureInitialized();
@@ -147,12 +127,16 @@ export class WorkspaceManager {
     }
 
     /**
-     * Reloads the lock file from disk, updating the git resolver.
+     * Reloads the lock file from disk.
      */
     async refreshLockFile(): Promise<LockFile | undefined> {
         await this.ensureInitialized();
         const loaded = await this.loadLockFileFromDisk();
-        this.applyLockFile(loaded);
+        if (loaded) {
+            this.lockFile = loaded.lockFile;
+        } else {
+            this.lockFile = undefined;
+        }
         return this.lockFile;
     }
 
@@ -166,10 +150,6 @@ export class WorkspaceManager {
     invalidateCache(): void {
         this.manifestCache = undefined;
         this.lockFile = undefined;
-        // Re-apply undefined to git resolver to clear its lock file
-        if (this.gitResolver) {
-            this.gitResolver.setLockFile(undefined);
-        }
     }
 
     /**
@@ -186,32 +166,6 @@ export class WorkspaceManager {
      */
     invalidateLockCache(): void {
         this.lockFile = undefined;
-        if (this.gitResolver) {
-            this.gitResolver.setLockFile(undefined);
-        }
-    }
-
-    /**
-     * Provides the shared git URL resolver configured with the current lock file.
-     */
-    async getGitResolver(): Promise<GitUrlResolver> {
-        await this.ensureInitialized();
-        if (!this.gitResolver) {
-            throw new Error('GitUrlResolver not available. Workspace initialization failed.');
-        }
-        return this.gitResolver;
-    }
-
-    /**
-     * Forces dependency resolution and regenerates lock files on disk.
-     */
-    async regenerateLockFile(): Promise<LockFile> {
-        await this.ensureInitialized();
-        await this.generateLockFile(true);
-        if (!this.lockFile) {
-            throw new Error('Failed to regenerate workspace lock file.');
-        }
-        return this.lockFile;
     }
 
     /**
@@ -229,7 +183,7 @@ export class WorkspaceManager {
      * In the new format, the key IS the owner/package, so source is derived from key
      * ONLY for git dependencies (not for path-based local dependencies).
      */
-    private normalizeDependency(key: string, dep: DependencySpec): ExtendedDependencySpec {
+    normalizeDependency(key: string, dep: DependencySpec): ExtendedDependencySpec {
         if (typeof dep === 'string') {
             // Short form: "owner/package": "v1.0.0" or "main"
             // Key is the source (owner/package format)
@@ -246,14 +200,18 @@ export class WorkspaceManager {
     }
 
     /**
-     * Resolves a manifest dependency to its git import string.
+     * Resolves a dependency import specifier to its cached package path.
      * 
-     * NEW FORMAT (PRS-010): Dependencies are keyed by owner/package directly
      * @param specifier - Import specifier (owner/package format, may include subpaths)
-     * @returns Resolved git import string or undefined when not found
+     * @returns Path to the cached package entry point, or undefined if not found
      */
-    async resolveDependencyImport(specifier: string): Promise<string | undefined> {
+    async resolveDependencyPath(specifier: string): Promise<string | undefined> {
         await this.ensureInitialized();
+        
+        if (!this.lockFile) {
+            return undefined;
+        }
+
         const manifest = await this.loadManifest();
         const dependencies = manifest?.dependencies;
 
@@ -261,8 +219,7 @@ export class WorkspaceManager {
             return undefined;
         }
 
-        // NEW: Dependencies are keyed by owner/package (e.g., "domainlang/core")
-        // Import specifier is also owner/package, potentially with subpath
+        // Find matching dependency
         for (const [key, dep] of Object.entries(dependencies)) {
             const normalized = this.normalizeDependency(key, dep);
             
@@ -277,29 +234,51 @@ export class WorkspaceManager {
 
             // Match if specifier equals key or starts with key/
             if (specifier === key || specifier.startsWith(`${key}/`)) {
+                // Find in lock file
+                const locked = this.lockFile.dependencies[normalized.source];
+                if (!locked) {
+                    return undefined;
+                }
+
+                // Compute cache path
+                const [owner, repo] = normalized.source.split('/');
+                const packageDir = path.join(this.getCacheDir(), owner, repo, locked.commit);
+
+                // Handle subpaths
                 const suffix = specifier.slice(key.length);
-                const ref = normalized.ref ?? '';
-                const refSegment = ref
-                    ? (ref.startsWith('@') ? ref : `@${ref}`)
-                    : '';
-                return `${normalized.source}${refSegment}${suffix}`;
+                if (suffix) {
+                    // Import with subpath: owner/package/subpath
+                    return path.join(packageDir, suffix);
+                }
+
+                // Read entry point from package's model.yaml
+                const entryPoint = await this.readPackageEntry(packageDir);
+                return path.join(packageDir, entryPoint);
             }
         }
 
         return undefined;
     }
 
+    /**
+     * Reads the entry point from a cached package's model.yaml.
+     */
+    private async readPackageEntry(packageDir: string): Promise<string> {
+        const manifestPath = path.join(packageDir, 'model.yaml');
+        try {
+            const content = await fs.readFile(manifestPath, 'utf-8');
+            const manifest = YAML.parse(content) as { model?: { entry?: string } };
+            return manifest?.model?.entry ?? 'index.dlang';
+        } catch {
+            return 'index.dlang';
+        }
+    }
+
     private async performInitialization(startPath: string): Promise<void> {
         this.workspaceRoot = await this.findWorkspaceRoot(startPath) ?? path.resolve(startPath);
-
-        // Per PRS-010: Project-local cache at .dlang/packages/ (like node_modules)
-        const cacheDir = path.join(this.workspaceRoot, '.dlang', 'packages');
-        this.gitResolver = new GitUrlResolver(cacheDir);
         const loaded = await this.loadLockFileFromDisk();
-        this.applyLockFile(loaded);
-
-        if (!this.lockFile && this.options.autoResolve !== false && this.options.allowNetwork !== false) {
-            await this.generateLockFile();
+        if (loaded) {
+            this.lockFile = loaded.lockFile;
         }
     }
 
@@ -311,72 +290,21 @@ export class WorkspaceManager {
         }
     }
 
-    private applyLockFile(loaded: LoadedLockFile | undefined): void {
-        if (!this.gitResolver) {
-            return;
-        }
-
-        if (loaded) {
-            this.lockFile = loaded.lockFile;
-            this.gitResolver.setLockFile(this.lockFile);
-        } else {
-            this.lockFile = undefined;
-            this.gitResolver.setLockFile(undefined);
-        }
-    }
-
-    private async generateLockFile(force = false): Promise<void> {
-        if (!this.workspaceRoot || !this.gitResolver) {
-            throw new Error('WorkspaceManager not initialized.');
-        }
-
-        const resolver = this.ensureDependencyResolver();
-        if (!force && this.lockFile) {
-            return;
-        }
-
-        const lockFile = await resolver.resolveDependencies();
-        this.lockFile = lockFile;
-        this.gitResolver.setLockFile(lockFile);
-
-        // Write JSON lock file
-        await this.writeJsonLockFile(lockFile);
-    }
-
-    private ensureDependencyResolver(): DependencyResolver {
-        if (!this.workspaceRoot || !this.gitResolver) {
-            throw new Error('WorkspaceManager not initialized.');
-        }
-
-        if (!this.dependencyResolver) {
-            this.dependencyResolver = new DependencyResolver(this.workspaceRoot, this.gitResolver);
-        }
-
-        return this.dependencyResolver;
-    }
-
-    private async writeJsonLockFile(lockFile: LockFile): Promise<void> {
-        if (!this.workspaceRoot) {
-            return;
-        }
-
-        const jsonPath = path.join(this.workspaceRoot, 'model.lock');
-        const payload = {
-            version: lockFile.version,
-            dependencies: lockFile.dependencies,
-        } satisfies LockFile;
-
-        await fs.writeFile(jsonPath, JSON.stringify(payload, undefined, JSON_SPACE), 'utf-8');
-    }
-
     private async loadLockFileFromDisk(): Promise<LoadedLockFile | undefined> {
         if (!this.workspaceRoot) {
             return undefined;
         }
 
+        // Try performance optimizer cache first
+        const optimizer = getGlobalOptimizer();
+        const cached = await optimizer.getCachedLockFile(this.workspaceRoot);
+        if (cached) {
+            return { lockFile: cached, filePath: path.join(this.workspaceRoot, 'model.lock') };
+        }
+
         for (const filename of this.lockFiles) {
             const filePath = path.join(this.workspaceRoot, filename);
-            const lockFile = await this.tryReadLockFile(filePath, filename);
+            const lockFile = await this.tryReadLockFile(filePath);
             if (lockFile) {
                 return { lockFile, filePath };
             }
@@ -385,7 +313,7 @@ export class WorkspaceManager {
         return undefined;
     }
 
-    private async tryReadLockFile(filePath: string, _filename: string): Promise<LockFile | undefined> {
+    private async tryReadLockFile(filePath: string): Promise<LockFile | undefined> {
         try {
             const content = await fs.readFile(filePath, 'utf-8');
             return this.parseJsonLockFile(content);
@@ -406,8 +334,7 @@ export class WorkspaceManager {
 
         try {
             const stat = await fs.stat(manifestPath);
-            if (this.manifestCache &&
-                this.manifestCache.path === manifestPath &&
+            if (this.manifestCache?.path === manifestPath &&
                 this.manifestCache.mtimeMs === stat.mtimeMs) {
                 return this.manifestCache.manifest;
             }

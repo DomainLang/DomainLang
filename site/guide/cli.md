@@ -17,7 +17,7 @@ npm install -g @domainlang/cli
 Verify the installation:
 
 ```bash
-domain-lang-cli --help
+dlang --help
 ```
 
 ::: tip
@@ -41,7 +41,7 @@ For background on the manifest and import syntax, see the [Import System](/guide
 From your project root (the directory containing `model.yaml`):
 
 ```bash
-domain-lang-cli install
+dlang install
 ```
 
 This resolves dependencies and writes/updates `model.lock`.
@@ -49,17 +49,17 @@ This resolves dependencies and writes/updates `model.lock`.
 ### Check dependency status
 
 ```bash
-domain-lang-cli model status
+dlang model status
 ```
 
 ### Update dependencies
 
 ```bash
 # Update all dependencies
-domain-lang-cli model update
+dlang model update
 
 # Update one dependency
-domain-lang-cli model update acme/ddd-core
+dlang model update acme/ddd-core
 ```
 
 ## Command reference
@@ -69,7 +69,7 @@ domain-lang-cli model update acme/ddd-core
 Install all model dependencies and generate/update the lock file:
 
 ```bash
-domain-lang-cli install
+dlang install
 ```
 
 ### `model list`
@@ -77,7 +77,7 @@ domain-lang-cli install
 List model dependencies:
 
 ```bash
-domain-lang-cli model list
+dlang model list
 ```
 
 ### `model add`
@@ -85,13 +85,13 @@ domain-lang-cli model list
 Add a dependency to `model.yaml`:
 
 ```bash
-domain-lang-cli model add <name> <owner/repo> [version]
+dlang model add <name> <owner/repo> [version]
 ```
 
 Example:
 
 ```bash
-domain-lang-cli model add acme/ddd-core acme/ddd-core v1.2.0
+dlang model add acme/ddd-core acme/ddd-core v1.2.0
 ```
 
 ### `model remove`
@@ -99,7 +99,7 @@ domain-lang-cli model add acme/ddd-core acme/ddd-core v1.2.0
 Remove a dependency from `model.yaml`:
 
 ```bash
-domain-lang-cli model remove <name>
+dlang model remove <name>
 ```
 
 ### `model tree`
@@ -107,13 +107,13 @@ domain-lang-cli model remove <name>
 Show the dependency tree:
 
 ```bash
-domain-lang-cli model tree
+dlang model tree
 ```
 
 Include commit SHAs:
 
 ```bash
-domain-lang-cli model tree --commits
+dlang model tree --commits
 ```
 
 ### `model deps`
@@ -121,7 +121,7 @@ domain-lang-cli model tree --commits
 Show packages that depend on a given package:
 
 ```bash
-domain-lang-cli model deps <owner/repo>
+dlang model deps <owner/repo>
 ```
 
 ### `model validate`
@@ -129,7 +129,7 @@ domain-lang-cli model deps <owner/repo>
 Validate model structure and dependency setup:
 
 ```bash
-domain-lang-cli model validate
+dlang model validate
 ```
 
 ### `model audit`
@@ -137,7 +137,7 @@ domain-lang-cli model validate
 Generate a governance audit report:
 
 ```bash
-domain-lang-cli model audit
+dlang model audit
 ```
 
 ### `model compliance`
@@ -145,7 +145,7 @@ domain-lang-cli model audit
 Check compliance with governance policies:
 
 ```bash
-domain-lang-cli model compliance
+dlang model compliance
 ```
 
 ### `cache-clear`
@@ -153,7 +153,7 @@ domain-lang-cli model compliance
 Clear the dependency cache:
 
 ```bash
-domain-lang-cli cache-clear
+dlang cache-clear
 ```
 
 ## Code generation (experimental)
@@ -161,7 +161,7 @@ domain-lang-cli cache-clear
 The CLI currently exposes a `generate` command, but it is still experimental:
 
 ```bash
-domain-lang-cli generate <file>
+dlang generate <file>
 ```
 
 Expect this area to change significantly.

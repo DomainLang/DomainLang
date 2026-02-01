@@ -1,5 +1,5 @@
 /**
- * Governance and Compliance Validation Service
+ * Governance and Compliance Validation Service (CLI-only)
  * 
  * Enforces organizational policies and best practices:
  * - Allowed/blocked dependency sources

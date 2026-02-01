@@ -76,7 +76,7 @@ describe('Import Validation (Phase 3)', () => {
             // Create minimal mock services
             const mockServices = {
                 imports: {
-                    WorkspaceManager: new WorkspaceManager({ autoResolve: false, allowNetwork: false })
+                    WorkspaceManager: new WorkspaceManager()
                 }
             };
 
@@ -90,18 +90,36 @@ describe('Import Validation (Phase 3)', () => {
         });
     });
 
-    describe('network boundary (LSP never fetches)', () => {
-        test('GitUrlResolver respects allowNetwork: false', async () => {
-            // The ImportResolver calls git.resolve(mapped, { allowNetwork: false })
-            // This test verifies the resolver throws when network is disabled and cache is missing
-            const { GitUrlResolver } = await import('../../src/services/git-url-resolver.js');
-            const tempCacheDir = '/tmp/dlang-test-cache';
-            const resolver = new GitUrlResolver(tempCacheDir);
+    describe('network boundary (architecture enforcement)', () => {
+        test('GitUrlResolver is not available in language package', async () => {
+            // Per PRS-010: The LSP must never perform network operations.
+            // GitUrlResolver has been moved to CLI package and is NOT exported from language.
+            // This test verifies the architectural boundary by attempting to import it.
+            const languageExports = await import('../../src/index.js');
+            
+            // GitUrlResolver should NOT be exported from language package
+            expect('GitUrlResolver' in languageExports).toBe(false);
+            
+            // Only read-only services should be available
+            expect('WorkspaceManager' in languageExports).toBe(true);
+            expect('ImportResolver' in languageExports).toBe(true);
+        });
 
-            // Attempting to resolve a non-cached dependency with network disabled should throw
-            await expect(
-                resolver.resolve('domainlang/core@v1.0.0', { allowNetwork: false })
-            ).rejects.toThrow(/not installed|Run 'dlang install'/i);
+        test('WorkspaceManager does not have network methods', async () => {
+            // WorkspaceManager should be read-only and not expose any network functionality
+            const { WorkspaceManager } = await import('../../src/services/workspace-manager.js');
+            const manager = new WorkspaceManager();
+            
+            // These methods should NOT exist
+            expect('getGitResolver' in manager).toBe(false);
+            expect('generateLockFile' in manager).toBe(false);
+            expect('ensureLockFile' in manager).toBe(false);
+            expect('regenerateLockFile' in manager).toBe(false);
+            
+            // Only read-only methods should exist
+            expect('getManifest' in manager).toBe(true);
+            expect('getLockFile' in manager).toBe(true);
+            expect('resolveDependencyPath' in manager).toBe(true);
         });
     });
 });

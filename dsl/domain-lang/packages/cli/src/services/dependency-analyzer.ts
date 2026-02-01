@@ -1,5 +1,5 @@
 /**
- * Dependency Analysis Service
+ * Dependency Analysis Service (CLI-only)
  * 
  * Provides tools for visualizing and analyzing dependency relationships:
  * - Dependency tree visualization
@@ -89,7 +89,7 @@ export class DependencyAnalyzer {
         visited.add(packageKey);
 
         // Load package dependencies from cache
-        const cacheDir = this.getCacheDir(packageKey, locked.commit);
+        const cacheDir = this.getCacheDir(packageKey, locked.commit, workspaceRoot);
         const packageDeps = await this.loadPackageDependencies(cacheDir);
 
         // Build child nodes
@@ -154,7 +154,7 @@ export class DependencyAnalyzer {
                 continue;
             }
 
-            const cacheDir = this.getCacheDir(packageKey, locked.commit);
+            const cacheDir = this.getCacheDir(packageKey, locked.commit, workspaceRoot);
             const packageDeps = await this.loadPackageDependencies(cacheDir);
 
             if (packageDeps[targetPackage]) {
@@ -200,17 +200,17 @@ export class DependencyAnalyzer {
     /**
      * Detects circular dependencies in a dependency graph.
      */
-    async detectCircularDependencies(lockFile: LockFile): Promise<string[][]> {
+    async detectCircularDependencies(lockFile: LockFile, workspaceRoot?: string): Promise<string[][]> {
         const cycles: string[][] = [];
         const visiting = new Set<string>();
         const completed = new Set<string>();
 
-        const dfs = async (packageKey: string, path: string[]): Promise<void> => {
+        const dfs = async (packageKey: string, pathStack: string[]): Promise<void> => {
             if (visiting.has(packageKey)) {
-                const cycleStart = path.indexOf(packageKey);
+                const cycleStart = pathStack.indexOf(packageKey);
                 const cycle = cycleStart >= 0
-                    ? [...path.slice(cycleStart), packageKey]
-                    : [...path, packageKey];
+                    ? [...pathStack.slice(cycleStart), packageKey]
+                    : [...pathStack, packageKey];
                 cycles.push(cycle);
                 return;
             }
@@ -223,11 +223,11 @@ export class DependencyAnalyzer {
 
             const locked = lockFile.dependencies[packageKey];
             if (locked) {
-                const cacheDir = this.getCacheDir(packageKey, locked.commit);
+                const cacheDir = this.getCacheDir(packageKey, locked.commit, workspaceRoot);
                 const deps = await this.loadPackageDependencies(cacheDir);
 
                 for (const depKey of Object.keys(deps)) {
-                    await dfs(depKey, [...path, packageKey]);
+                    await dfs(depKey, [...pathStack, packageKey]);
                 }
             }
 
@@ -280,9 +280,17 @@ export class DependencyAnalyzer {
 
     /**
      * Gets the cache directory for a package.
+     * Uses project-local cache per PRS-010: .dlang/packages/{owner}/{repo}/{commit}
      */
-    private getCacheDir(packageKey: string, commit: string): string {
+    private getCacheDir(packageKey: string, commit: string, workspaceRoot?: string): string {
         const [owner, repo] = packageKey.split('/');
+        
+        // Prefer project-local cache if workspaceRoot is provided
+        if (workspaceRoot) {
+            return path.join(workspaceRoot, '.dlang', 'packages', owner, repo, commit);
+        }
+        
+        // Fallback to global cache (legacy behavior)
         return path.join(
             os.homedir(),
             '.dlang',

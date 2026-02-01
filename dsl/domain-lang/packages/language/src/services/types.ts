@@ -187,8 +187,8 @@ export interface LockedDependency {
  * @example
  * ```yaml
  * paths:
- *   "@/": "./src/"
- *   "@shared/": "./libs/shared/"
+ *   "@": "./src"
+ *   "@shared": "./libs/shared"
  * ```
  */
 export type PathAliases = Readonly<Record<string, string>>;

@@ -21,7 +21,7 @@ DomainLang is available as npm packages for different use cases:
 
 ### CLI (command line)
 
-Install globally to use `domain-lang-cli` commands from your terminal:
+Install globally to use `dlang` commands from your terminal:
 
 ```bash
 npm install -g @domainlang/cli
@@ -30,8 +30,8 @@ npm install -g @domainlang/cli
 Then manage dependencies and governance for multi-file models:
 
 ```bash
-domain-lang-cli install
-domain-lang-cli model tree
+dlang install
+dlang model tree
 ```
 
 See [CLI](/guide/cli) for the full command reference.

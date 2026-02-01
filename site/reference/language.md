@@ -102,7 +102,7 @@ Domain Sales in Enterprise {
 ### Properties
 
 | Property | Type | Description |
-|----------|------|-------------|
+| -------- | ---- | ----------- |
 | `description` | string | Description of the domain |
 | `vision` | string | Strategic vision statement |
 | `type` | Classification | Strategic importance |
@@ -159,7 +159,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 ### Header keywords
 
 | Keyword | Purpose | Example |
-|---------|---------|---------|
+| ------- | ------- | ------- |
 | `for` | Parent domain | `for Sales` |
 | `as` | Classification | `as CoreDomain` |
 | `by` | Owning team | `by SalesTeam` |
@@ -167,7 +167,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 ### Body properties
 
 | Property | Type | Description |
-|----------|------|-------------|
+| -------- | ---- | ----------- |
 | `description` | string | Purpose/business value |
 | `classification` | Classification | Strategic importance |
 | `businessModel` | Classification | Revenue, Engagement, Compliance |
@@ -178,7 +178,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 ### Block aliases
 
 | Block | Alias |
-|-------|-------|
+| ----- | ----- |
 | `metadata` | `meta` |
 | `terminology` | `glossary` |
 | `decisions` | `rules` |
@@ -249,7 +249,7 @@ bc Orders for Sales {
 ### Arrows
 
 | Arrow | Meaning |
-|-------|---------|
+| ----- | ------- |
 | `->` | Upstream to downstream |
 | `<-` | Downstream to upstream |
 | `<->` | Bidirectional |
@@ -258,7 +258,7 @@ bc Orders for Sales {
 ### Integration patterns
 
 | Short | Long Form | Description |
-|-------|-----------|-------------|
+| ----- | --------- | ----------- |
 | `OHS` | `OpenHostService` | Well-defined protocol for consumers |
 | `CF` | `Conformist` | Adopts upstream model |
 | `ACL` | `AntiCorruptionLayer` | Translates between models |
@@ -341,12 +341,16 @@ import "./shared.dlang" as Shared
 // Package imports (from model.yaml)
 import "acme/core"
 import "acme/core" as Core
+
+// Dependency aliases (optional)
+// If model.yaml contains: dependencies: { core: { source: acme/core, ref: v1.0.0 } }
+import "core" as Core
 ```
 
 ### Import resolution
 
 1. Relative paths resolve from the importing file
-2. Package imports resolve from `model.yaml` dependencies
+2. Package imports resolve from `model.yaml` dependencies (key is `owner/package` or an alias key with `source`)
 3. Directory imports try `index.dlang` first
 
 ```dlang
