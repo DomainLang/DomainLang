@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { DefaultWorkspaceManager, URI, UriUtils, type FileSystemNode, type LangiumDocument, type LangiumSharedCoreServices, type WorkspaceFolder } from 'langium';
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
@@ -74,9 +76,10 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
         // Find ALL model.yaml files in workspace (supports mixed mode)
         const manifestInfos = await this.findAllManifestsInFolders(folders);
         
-        if (manifestInfos.length === 0) {
-            return; // Pure Mode B: no manifests, all files loaded on-demand
-        }
+        // Track directories covered by manifests to avoid loading their files as standalone
+        const moduleDirectories = new Set(
+            manifestInfos.map(m => path.dirname(m.manifestPath))
+        );
 
         // Mode A or Mode C: Load each module's entry + import graph
         for (const manifestInfo of manifestInfos) {
@@ -110,6 +113,128 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
                 console.error(`Failed to load import graph from ${manifestInfo.manifestPath}: ${message}`);
                 // Continue with other modules - partial failure is acceptable
             }
+        }
+
+        // Load standalone .dlang files in workspace root folders
+        // These are files NOT covered by any module's import graph
+        await this.loadStandaloneFiles(folders, moduleDirectories, collector);
+    }
+
+    /**
+     * Loads standalone .dlang files from workspace folders recursively.
+     * 
+     * Skips:
+     * - Module directories (directories with model.yaml) - loaded via import graph
+     * - `.dlang/cache` directory - package cache managed by CLI
+     * 
+     * @param folders - Workspace folders to scan
+     * @param moduleDirectories - Set of directories containing model.yaml (to skip)
+     * @param collector - Document collector callback
+     */
+    private async loadStandaloneFiles(
+        folders: WorkspaceFolder[],
+        moduleDirectories: Set<string>,
+        collector: (document: LangiumDocument) => void
+    ): Promise<void> {
+        const standaloneDocs: LangiumDocument[] = [];
+
+        for (const folder of folders) {
+            const folderPath = URI.parse(folder.uri).fsPath;
+            const docs = await this.loadDlangFilesRecursively(folderPath, moduleDirectories, collector);
+            standaloneDocs.push(...docs);
+        }
+
+        // Build all standalone documents in batch for performance
+        if (standaloneDocs.length > 0) {
+            await this.sharedServices.workspace.DocumentBuilder.build(standaloneDocs, {
+                validation: true
+            });
+        }
+    }
+
+    /**
+     * Recursively loads .dlang files from a directory.
+     * Skips module directories and the .dlang/cache package cache.
+     */
+    private async loadDlangFilesRecursively(
+        dirPath: string,
+        moduleDirectories: Set<string>,
+        collector: (document: LangiumDocument) => void
+    ): Promise<LangiumDocument[]> {
+        // Skip module directories - they're loaded via import graph
+        if (moduleDirectories.has(dirPath)) {
+            return [];
+        }
+
+        // Skip .dlang/cache - package cache managed by CLI
+        const baseName = path.basename(dirPath);
+        const parentName = path.basename(path.dirname(dirPath));
+        if (baseName === 'cache' && parentName === '.dlang') {
+            return [];
+        }
+        // Also skip the .dlang directory itself if it contains cache
+        if (baseName === '.dlang') {
+            return [];
+        }
+
+        const docs: LangiumDocument[] = [];
+
+        try {
+            const entries = await fs.readdir(dirPath, { withFileTypes: true });
+            
+            for (const entry of entries) {
+                const entryPath = path.join(dirPath, entry.name);
+
+                if (entry.isDirectory()) {
+                    // Recurse into subdirectories
+                    const subDocs = await this.loadDlangFilesRecursively(entryPath, moduleDirectories, collector);
+                    docs.push(...subDocs);
+                } else if (this.isDlangFile(entry)) {
+                    const doc = await this.tryLoadDocument(dirPath, entry.name, collector);
+                    if (doc) {
+                        docs.push(doc);
+                    }
+                }
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`Failed to read directory ${dirPath}: ${message}`);
+        }
+
+        return docs;
+    }
+
+    /**
+     * Checks if a directory entry is a .dlang file.
+     */
+    private isDlangFile(entry: { isFile(): boolean; name: string }): boolean {
+        return entry.isFile() && entry.name.toLowerCase().endsWith('.dlang');
+    }
+
+    /**
+     * Attempts to load a document, returning undefined on failure.
+     */
+    private async tryLoadDocument(
+        folderPath: string,
+        fileName: string,
+        collector: (document: LangiumDocument) => void
+    ): Promise<LangiumDocument | undefined> {
+        const filePath = path.join(folderPath, fileName);
+        const uri = URI.file(filePath);
+        
+        // Skip if already loaded (e.g., through imports)
+        if (this.langiumDocuments.hasDocument(uri)) {
+            return undefined;
+        }
+
+        try {
+            const doc = await this.langiumDocuments.getOrCreateDocument(uri);
+            collector(doc);
+            return doc;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`Failed to load standalone file ${filePath}: ${message}`);
+            return undefined;
         }
     }
 

@@ -11,6 +11,7 @@ import { DomainLangGeneratedModule, DomainLangGeneratedSharedModule } from './ge
 import { registerValidationChecks } from './validation/domain-lang-validator.js';
 import { QualifiedNameProvider } from './lsp/domain-lang-naming.js';
 import { DomainLangScopeComputation } from './lsp/domain-lang-scope.js';
+import { DomainLangScopeProvider } from './lsp/domain-lang-scope-provider.js';
 import { DomainLangFormatter } from './lsp/domain-lang-formatter.js';
 import { DomainLangHoverProvider } from './lsp/hover/domain-lang-hover.js';
 import { DomainLangCompletionProvider } from './lsp/domain-lang-completion.js';
@@ -64,6 +65,7 @@ export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices
     },
     references: {
         ScopeComputation: (services) => new DomainLangScopeComputation(services),
+        ScopeProvider: (services) => new DomainLangScopeProvider(services),
         QualifiedNameProvider: () => new QualifiedNameProvider()
     },
     lsp: {

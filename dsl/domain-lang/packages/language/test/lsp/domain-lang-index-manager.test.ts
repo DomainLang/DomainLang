@@ -231,4 +231,67 @@ describe('DomainLangIndexManager', () => {
             expect(doc2.parseResult.value).toBeDefined();
         });
     });
+
+    describe('Import dependency tracking', () => {
+        test('getDependentDocuments returns empty set for unknown URI', () => {
+            const indexManager = testServices.services.shared.workspace.IndexManager as import('../../src/lsp/domain-lang-index-manager.js').DomainLangIndexManager;
+            const result = indexManager.getDependentDocuments('file:///unknown/path.dlang');
+            expect(result.size).toBe(0);
+        });
+
+        test('getAllAffectedDocuments returns empty set for empty input', () => {
+            const indexManager = testServices.services.shared.workspace.IndexManager as import('../../src/lsp/domain-lang-index-manager.js').DomainLangIndexManager;
+            const result = indexManager.getAllAffectedDocuments([]);
+            expect(result.size).toBe(0);
+        });
+
+        test('getAllAffectedDocuments handles single URI without dependents', () => {
+            const indexManager = testServices.services.shared.workspace.IndexManager as import('../../src/lsp/domain-lang-index-manager.js').DomainLangIndexManager;
+            const result = indexManager.getAllAffectedDocuments(['file:///unknown/path.dlang']);
+            expect(result.size).toBe(0);
+        });
+
+        test('getAllAffectedDocuments accumulates multiple URIs', () => {
+            const indexManager = testServices.services.shared.workspace.IndexManager as import('../../src/lsp/domain-lang-index-manager.js').DomainLangIndexManager;
+            
+            // Note: Without real documents with imports, we're testing the algorithm
+            // When a URI has no dependents, the result is empty
+            const result = indexManager.getAllAffectedDocuments([
+                'file:///a.dlang',
+                'file:///b.dlang'
+            ]);
+            
+            // No actual import dependencies tracked, so result is empty
+            expect(result.size).toBe(0);
+        });
+
+        test('getDocumentsWithPotentiallyAffectedImports returns empty for no matches', () => {
+            const indexManager = testServices.services.shared.workspace.IndexManager as import('../../src/lsp/domain-lang-index-manager.js').DomainLangIndexManager;
+            
+            // With no documents tracked, should return empty
+            const result = indexManager.getDocumentsWithPotentiallyAffectedImports([
+                'file:///project/domains/index.dlang'
+            ]);
+            
+            expect(result.size).toBe(0);
+        });
+
+        test('getDocumentsWithPotentiallyAffectedImports handles empty input', () => {
+            const indexManager = testServices.services.shared.workspace.IndexManager as import('../../src/lsp/domain-lang-index-manager.js').DomainLangIndexManager;
+            const result = indexManager.getDocumentsWithPotentiallyAffectedImports([]);
+            expect(result.size).toBe(0);
+        });
+
+        test('getDocumentsWithPotentiallyAffectedImports handles invalid URIs gracefully', () => {
+            const indexManager = testServices.services.shared.workspace.IndexManager as import('../../src/lsp/domain-lang-index-manager.js').DomainLangIndexManager;
+            
+            // Should not throw on invalid URIs
+            const result = indexManager.getDocumentsWithPotentiallyAffectedImports([
+                'not-a-valid-uri',
+                ':::invalid:::'
+            ]);
+            
+            expect(result.size).toBe(0);
+        });
+    });
 });

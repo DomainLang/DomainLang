@@ -40,7 +40,7 @@ shared.lsp.LanguageServer.onInitialize((params) => {
 // This invalidates caches when config files change externally
 shared.lsp.DocumentUpdateHandler?.onWatchedFilesChange(async (params) => {
     try {
-        await handleConfigFileChanges(params, DomainLang.imports.WorkspaceManager, shared);
+        await handleFileChanges(params, DomainLang.imports.WorkspaceManager, shared, DomainLang);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`Error handling file change notification: ${message}`);
@@ -48,41 +48,174 @@ shared.lsp.DocumentUpdateHandler?.onWatchedFilesChange(async (params) => {
     }
 });
 
+/** Categorized file changes */
+interface CategorizedChanges {
+    manifestChanged: boolean;
+    lockFileChanged: boolean;
+    changedDlangUris: Set<string>;
+    deletedDlangUris: Set<string>;
+    createdDlangUris: Set<string>;
+}
+
 /**
- * Handles changes to model.yaml and model.lock files.
- * Invalidates caches and rebuilds workspace as needed.
- * Uses incremental updates: only rebuilds if dependencies actually changed.
+ * Categorizes file changes by type.
  */
-async function handleConfigFileChanges(
+function categorizeChanges(
     params: { changes: Array<{ uri: string; type: number }> },
     workspaceManager: typeof DomainLang.imports.WorkspaceManager,
-    sharedServices: typeof shared
-): Promise<void> {
-    let manifestChanged = false;
-    let lockFileChanged = false;
+    langServices: typeof DomainLang,
+    indexManager: DomainLangIndexManager
+): CategorizedChanges {
+    const result: CategorizedChanges = {
+        manifestChanged: false,
+        lockFileChanged: false,
+        changedDlangUris: new Set(),
+        deletedDlangUris: new Set(),
+        createdDlangUris: new Set()
+    };
 
     for (const change of params.changes) {
         const uri = URI.parse(change.uri);
         const fileName = uri.path.split('/').pop() ?? '';
+        const uriString = change.uri;
 
         if (fileName === 'model.yaml') {
-            console.warn(`model.yaml changed: ${change.uri}`);
+            console.warn(`model.yaml changed: ${uriString}`);
             workspaceManager.invalidateManifestCache();
-            DomainLang.imports.ImportResolver.clearCache();
-            // Clear IndexManager import dependencies - resolved paths may have changed
-            const indexManager = sharedServices.workspace.IndexManager as DomainLangIndexManager;
+            langServices.imports.ImportResolver.clearCache();
             indexManager.clearImportDependencies();
-            manifestChanged = true;
+            result.manifestChanged = true;
         } else if (fileName === 'model.lock') {
-            await handleLockFileChange(change, workspaceManager);
-            DomainLang.imports.ImportResolver.clearCache();
-            lockFileChanged = true;
+            console.warn(`model.lock changed: ${uriString}`);
+            langServices.imports.ImportResolver.clearCache();
+            result.lockFileChanged = true;
+        } else if (fileName.endsWith('.dlang')) {
+            if (change.type === FileChangeType.Deleted) {
+                result.deletedDlangUris.add(uriString);
+                console.warn(`DomainLang file deleted: ${uriString}`);
+            } else if (change.type === FileChangeType.Created) {
+                result.createdDlangUris.add(uriString);
+                console.warn(`DomainLang file created: ${uriString}`);
+            } else {
+                result.changedDlangUris.add(uriString);
+                console.warn(`DomainLang file changed: ${uriString}`);
+            }
         }
     }
 
-    // Only rebuild if dependencies changed, not just any manifest change
-    if (manifestChanged || lockFileChanged) {
-        await rebuildWorkspace(sharedServices, workspaceManager, manifestChanged);
+    return result;
+}
+
+/**
+ * Rebuilds documents that depend on changed/deleted/created .dlang files.
+ */
+async function rebuildAffectedDocuments(
+    changes: CategorizedChanges,
+    indexManager: DomainLangIndexManager,
+    sharedServices: typeof shared,
+    langServices: typeof DomainLang
+): Promise<void> {
+    const hasChanges = changes.changedDlangUris.size > 0 || 
+                       changes.deletedDlangUris.size > 0 || 
+                       changes.createdDlangUris.size > 0;
+    if (!hasChanges) {
+        return;
+    }
+
+    // CRITICAL: Clear ImportResolver cache BEFORE rebuilding.
+    // The WorkspaceCache only clears AFTER linking, but resolution happens
+    // DURING linking. Without this, stale cached resolutions would be used.
+    langServices.imports.ImportResolver.clearCache();
+
+    const affectedUris = collectAffectedDocuments(changes, indexManager);
+
+    if (affectedUris.size === 0) {
+        return;
+    }
+
+    console.warn(`Rebuilding ${affectedUris.size} documents affected by file changes`);
+
+    const langiumDocuments = sharedServices.workspace.LangiumDocuments;
+    const affectedDocs: URI[] = [];
+
+    for (const uriString of affectedUris) {
+        const uri = URI.parse(uriString);
+        if (langiumDocuments.hasDocument(uri)) {
+            affectedDocs.push(uri);
+            indexManager.markForReprocessing(uriString);
+        }
+    }
+
+    const deletedUriObjects = [...changes.deletedDlangUris].map(u => URI.parse(u));
+    if (affectedDocs.length > 0 || deletedUriObjects.length > 0) {
+        await sharedServices.workspace.DocumentBuilder.update(affectedDocs, deletedUriObjects);
+    }
+}
+
+/**
+ * Collects all document URIs that should be rebuilt based on the changes.
+ * 
+ * Uses targeted matching to avoid expensive full rebuilds:
+ * - For edits: rebuild documents that import the changed file (by resolved URI)
+ * - For all changes: rebuild documents whose import specifiers match the path
+ * 
+ * The specifier matching handles renamed/moved/created files by comparing
+ * import specifiers against path segments (filename, parent/filename, etc.).
+ */
+function collectAffectedDocuments(
+    changes: CategorizedChanges,
+    indexManager: DomainLangIndexManager
+): Set<string> {
+    const allChangedUris = new Set([
+        ...changes.changedDlangUris, 
+        ...changes.deletedDlangUris,
+        ...changes.createdDlangUris
+    ]);
+    
+    // Get documents affected by resolved URI changes (edits to imported files)
+    const affectedByUri = indexManager.getAllAffectedDocuments(allChangedUris);
+    
+    // Get documents with import specifiers that match changed paths
+    // This catches:
+    // - File moves/renames: specifiers that previously resolved but now won't
+    // - File creations: specifiers that previously failed but might now resolve
+    // Uses fuzzy matching on path segments rather than rebuilding all imports
+    const affectedBySpecifier = indexManager.getDocumentsWithPotentiallyAffectedImports(allChangedUris);
+    
+    return new Set([...affectedByUri, ...affectedBySpecifier]);
+}
+
+/**
+ * Handles all file changes including .dlang files, model.yaml, and model.lock.
+ * 
+ * For .dlang files: rebuilds all documents that import the changed file.
+ * For config files: invalidates caches and rebuilds workspace as needed.
+ */
+async function handleFileChanges(
+    params: { changes: Array<{ uri: string; type: number }> },
+    workspaceManager: typeof DomainLang.imports.WorkspaceManager,
+    sharedServices: typeof shared,
+    langServices: typeof DomainLang
+): Promise<void> {
+    const indexManager = sharedServices.workspace.IndexManager as DomainLangIndexManager;
+
+    // Categorize and process changes
+    const changes = categorizeChanges(params, workspaceManager, langServices, indexManager);
+
+    // Handle lock file changes
+    if (changes.lockFileChanged) {
+        const lockChange = params.changes.find(c => c.uri.endsWith('model.lock'));
+        if (lockChange) {
+            await handleLockFileChange(lockChange, workspaceManager);
+        }
+    }
+
+    // Rebuild documents affected by .dlang file changes
+    await rebuildAffectedDocuments(changes, indexManager, sharedServices, langServices);
+
+    // Handle config file changes
+    if (changes.manifestChanged || changes.lockFileChanged) {
+        await rebuildWorkspace(sharedServices, workspaceManager, changes.manifestChanged);
     }
 }
 
@@ -93,8 +226,6 @@ async function handleLockFileChange(
     change: { uri: string; type: number },
     workspaceManager: typeof DomainLang.imports.WorkspaceManager
 ): Promise<void> {
-    console.warn(`model.lock changed: ${change.uri}`);
-    
     if (change.type === FileChangeType.Changed || change.type === FileChangeType.Created) {
         await workspaceManager.refreshLockFile();
     } else if (change.type === FileChangeType.Deleted) {
