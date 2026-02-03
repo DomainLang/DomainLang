@@ -5,6 +5,7 @@ import { Cancellation } from 'langium';
 import type { DomainLangAstType, ImportStatement } from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { WorkspaceManager } from '../services/workspace-manager.js';
+import type { ImportResolver } from '../services/import-resolver.js';
 import type { ExtendedDependencySpec, ModelManifest, LockFile } from '../services/types.js';
 import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
 
@@ -15,15 +16,18 @@ import { ValidationMessages, buildCodeDescription, IssueCodes } from './constant
  * the shared WorkspaceManager service with its cached manifest/lock file reading.
  *
  * Checks:
+ * - All import URIs resolve to existing files
  * - External imports require manifest + alias
  * - Local path dependencies stay inside workspace  
  * - Lock file exists for external dependencies
  */
 export class ImportValidator {
     private readonly workspaceManager: WorkspaceManager;
+    private readonly importResolver: ImportResolver;
 
     constructor(services: DomainLangServices) {
         this.workspaceManager = services.imports.WorkspaceManager;
+        this.importResolver = services.imports.ImportResolver;
     }
 
     /**
@@ -46,6 +50,13 @@ export class ImportValidator {
                 data: { code: IssueCodes.ImportMissingUri }
             });
             return;
+        }
+
+        // First, verify the import resolves to a valid file
+        // This catches renamed/moved/deleted files immediately
+        const resolveError = await this.validateImportResolves(imp, document, accept);
+        if (resolveError) {
+            return; // Don't continue with other validations if can't resolve
         }
 
         if (!this.isExternalImport(imp.uri)) {
@@ -115,6 +126,63 @@ export class ImportValidator {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Validates that an import URI resolves to an existing file.
+     * Returns true if there was an error (import doesn't resolve).
+     */
+    private async validateImportResolves(
+        imp: ImportStatement,
+        document: LangiumDocument,
+        accept: ValidationAcceptor
+    ): Promise<boolean> {
+        if (!imp.uri) {
+            return true; // Error already reported
+        }
+
+        const docDir = path.dirname(document.uri.fsPath);
+        
+        try {
+            const resolvedUri = await this.importResolver.resolveFrom(docDir, imp.uri);
+            
+            // Check if the resolved file actually exists
+            const filePath = resolvedUri.fsPath;
+            const exists = await this.fileExists(filePath);
+            
+            if (!exists) {
+                accept('error', ValidationMessages.IMPORT_UNRESOLVED(imp.uri), {
+                    node: imp,
+                    property: 'uri',
+                    codeDescription: buildCodeDescription('language.md', 'imports'),
+                    data: { code: IssueCodes.ImportUnresolved, uri: imp.uri }
+                });
+                return true;
+            }
+            
+            return false;
+        } catch {
+            // Resolution failed - report as unresolved import
+            accept('error', ValidationMessages.IMPORT_UNRESOLVED(imp.uri), {
+                node: imp,
+                property: 'uri',
+                codeDescription: buildCodeDescription('language.md', 'imports'),
+                data: { code: IssueCodes.ImportUnresolved, uri: imp.uri }
+            });
+            return true;
+        }
+    }
+
+    /**
+     * Checks if a file exists (async).
+     */
+    private async fileExists(filePath: string): Promise<boolean> {
+        try {
+            const stat = await fs.stat(filePath);
+            return stat.isFile();
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -296,8 +364,13 @@ export function createImportChecks(services: DomainLangServices): ValidationChec
     return {
         // Langium 4.x supports async validators via MaybePromise<void>
         ImportStatement: async (imp, accept, cancelToken) => {
-            const document = imp.$document;
-            if (!document) return;
+            // Get document from root (Model), not from ImportStatement
+            // Langium sets $document only on the root AST node
+            const root = imp.$container;
+            const document = root?.$document;
+            if (!document) {
+                return;
+            }
 
             await validator.checkImportPath(imp, accept, document, cancelToken);
         }

@@ -1,9 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { URI, type LangiumDocument } from 'langium';
+import { DocumentState, SimpleCache, WorkspaceCache, URI, type LangiumDocument, type LangiumSharedCoreServices } from 'langium';
 import { WorkspaceManager } from './workspace-manager.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { LockFile } from './types.js';
+
+/**
+ * Cache interface for import resolution.
+ * Uses WorkspaceCache in LSP mode (clears on ANY document change) or SimpleCache in standalone mode.
+ */
+type ResolverCache = WorkspaceCache<string, URI> | SimpleCache<string, URI>;
 
 /**
  * ImportResolver resolves import statements using manifest-centric rules (PRS-010).
@@ -17,21 +23,66 @@ import type { LockFile } from './types.js';
  * - ./types → ./types/index.dlang → ./types.dlang
  * - Module entry defaults to index.dlang (no model.yaml required)
  * 
- * Performance:
- * - Resolution results are cached per (document URI + specifier) pair
- * - Cache is invalidated when model.yaml or model.lock changes
+ * Caching Strategy (uses Langium standard infrastructure):
+ * - LSP mode: Uses `WorkspaceCache` - clears on ANY document change in workspace
+ *   This is necessary because file moves/deletes affect resolution of OTHER documents
+ * - Standalone mode: Uses `SimpleCache` - manual invalidation via clearCache()
+ * 
+ * Why WorkspaceCache (not DocumentCache)?
+ * - DocumentCache only invalidates when the KEYED document changes
+ * - But import resolution can break when IMPORTED files are moved/deleted
+ * - Example: index.dlang imports @domains → domains/index.dlang
+ *   If domains/index.dlang is moved, index.dlang's cache entry must be cleared
+ *   DocumentCache wouldn't clear it (index.dlang didn't change)
+ *   WorkspaceCache clears on ANY change, ensuring correct re-resolution
+ * 
+ * @see https://langium.org/docs/recipes/caching/ for Langium caching patterns
  */
 export class ImportResolver {
     private readonly workspaceManager: WorkspaceManager;
-    private readonly resolverCache = new Map<string, URI>();
+    /**
+     * Workspace-level cache for resolved import URIs.
+     * In LSP mode: WorkspaceCache - clears when ANY document changes (correct for imports)
+     * In standalone mode: SimpleCache - manual invalidation via clearCache()
+     */
+    private readonly resolverCache: ResolverCache;
 
+    /**
+     * Creates an ImportResolver.
+     * 
+     * @param services - DomainLang services. If `services.shared` is present, uses WorkspaceCache
+     *                   for automatic invalidation. Otherwise uses SimpleCache for standalone mode.
+     */
     constructor(services: DomainLangServices) {
         this.workspaceManager = services.imports.WorkspaceManager;
+        
+        // Use Langium's WorkspaceCache when shared services are available (LSP mode)
+        // Fall back to SimpleCache for standalone utilities (SDK, CLI)
+        const shared = (services as DomainLangServices & { shared?: LangiumSharedCoreServices }).shared;
+        if (shared) {
+            // LSP mode: WorkspaceCache with DocumentState.Linked
+            // 
+            // This follows the standard pattern used by TypeScript, rust-analyzer, gopls:
+            // - Cache is valid for a "workspace snapshot"
+            // - Invalidates after a batch of changes completes linking (debounced ~300ms)
+            // - Invalidates immediately on file deletion
+            // - Does NOT invalidate during typing (would be too expensive)
+            //
+            // DocumentState.Linked is the right phase because:
+            // - Import resolution is needed during linking
+            // - By the time linking completes, we know which files exist
+            // - File renames appear as delete+create, triggering immediate invalidation
+            this.resolverCache = new WorkspaceCache(shared, DocumentState.Linked);
+        } else {
+            // Standalone mode: simple key-value cache, manual invalidation
+            this.resolverCache = new SimpleCache<string, URI>();
+        }
     }
 
     /**
-     * Clears the import resolution cache.
-     * Call this when model.yaml or model.lock changes.
+     * Clears the entire import resolution cache.
+     * In LSP mode, this is also triggered automatically by WorkspaceCache on any document change.
+     * Call explicitly when model.yaml or model.lock changes.
      */
     clearCache(): void {
         this.resolverCache.clear();
@@ -39,10 +90,10 @@ export class ImportResolver {
 
     /**
      * Resolve an import specifier relative to a Langium document.
-     * Results are cached for performance.
+     * Results are cached using WorkspaceCache (clears on any workspace change).
      */
     async resolveForDocument(document: LangiumDocument, specifier: string): Promise<URI> {
-        // Check cache first (key: document URI + specifier)
+        // Cache key combines document URI + specifier for uniqueness
         const cacheKey = `${document.uri.toString()}|${specifier}`;
         const cached = this.resolverCache.get(cacheKey);
         if (cached) {

@@ -123,7 +123,50 @@ External imports require `model.yaml`. Without it, you'll get an error suggestin
 
 ## Mixed workspaces
 
-DomainLang supports mixing standalone files with modular packages:
+DomainLang supports three workspace organization patterns:
+
+### Pattern 1: Pure Module (with model.yaml)
+
+A single module project with a manifest at the root:
+
+```text
+my-project/
+├── model.yaml          # Project manifest
+├── model.lock          # Lock file (generated)
+├── index.dlang         # Entry point
+├── domains/
+│   ├── sales/
+│   │   └── index.dlang
+│   └── shipping/
+│       └── index.dlang
+└── shared/
+    ├── teams.dlang
+    └── classifications.dlang
+```
+
+- All files loaded via entry point + import graph
+- Supports path aliases and external dependencies
+- LSP features available immediately (eager loading)
+
+### Pattern 2: Standalone Files (no model.yaml)
+
+Individual `.dlang` files without a project manifest:
+
+```text
+workspace/
+├── experiment.dlang
+├── prototype.dlang
+└── utils.dlang
+```
+
+- Files loaded on-demand when opened
+- Only relative imports (`./`, `../`) supported
+- No external dependencies or path aliases
+- Ideal for quick prototypes and examples
+
+### Pattern 3: Mixed Workspace
+
+Combination of standalone files and module folders:
 
 ```text
 workspace/
@@ -346,6 +389,107 @@ File-level cycles are allowed (Order↔Customer references are natural in domain
 Use `index.dlang` as the module entry point for directories. This enables clean imports like `import "./domains/sales"` instead of `import "./domains/sales/sales.dlang"`.
 :::
 
+## Troubleshooting
+
+### External import requires model.yaml
+
+**Error:** `External dependency 'acme/core' requires model.yaml`
+
+**Cause:** You're trying to import an external package without a project manifest.
+
+**Solution:** Create a `model.yaml` file in your project root:
+
+```yaml
+# model.yaml
+model:
+  name: my-company/domain-model
+  version: 1.0.0
+  entry: index.dlang
+
+dependencies:
+  acme/core: "v1.0.0"
+```
+
+Then run `dlang install` to fetch dependencies.
+
+### Dependency not found in model.yaml
+
+**Error:** `Dependency 'patterns' not found in model.yaml`
+
+**Cause:** The import specifier doesn't match any dependency in your manifest.
+
+**Solution:** Add the dependency to `model.yaml`:
+
+```yaml
+dependencies:
+  patterns: "v2.0.0"  # or use owner/repo format
+  # OR with explicit source:
+  patterns:
+    source: acme/patterns
+    ref: v2.0.0
+```
+
+Then run `dlang install`.
+
+### Dependency not installed
+
+**Error:** `Dependency 'core' not installed. Run 'dlang install'`
+
+**Cause:** The dependency is declared in `model.yaml` but not downloaded yet.
+
+**Solution:** Run `dlang install` to fetch dependencies and generate `model.lock`.
+
+### Import file not found
+
+**Error:** `Import file not found: './types.dlang'`
+
+**Cause:** The imported file doesn't exist at the specified path.
+
+**Solutions:**
+
+- Check the file path is correct
+- Verify the file extension (must be `.dlang` or omitted)
+- For directory imports, ensure `index.dlang` exists
+- Use relative paths (`./`, `../`) for local imports
+
+### Unknown path alias
+
+**Error:** `Unknown path alias '@lib' in import '@lib/utils'`
+
+**Cause:** The path alias isn't defined in `model.yaml`.
+
+**Solution:** Add the alias to the `paths` section:
+
+```yaml
+paths:
+  "@lib": "./packages/lib"
+  "@shared": "./shared"
+```
+
+### Invalid file extension
+
+**Error:** `Invalid file extension '.txt' in import './types.txt'`
+
+**Cause:** DomainLang only accepts `.dlang` files.
+
+**Solution:** Rename the file to `.dlang` extension or omit the extension for directory-first resolution.
+
+### Path escapes workspace boundary
+
+**Error:** `Path '../../../secrets' resolves outside workspace boundary`
+
+**Cause:** A path alias or local dependency tries to access files outside the project.
+
+**Solution:** Keep all dependencies within your workspace. Use git-based external dependencies for code outside your project.
+
+### Circular imports
+
+**Observation:** File A imports B, which imports A.
+
+**Behavior:** This is allowed at the file level (natural for domain models with bidirectional references). The import system detects cycles and prevents infinite loops during loading.
+
+**Recommendation:** Keep circular imports minimal. Consider extracting shared definitions to a separate file if cycles become complex.
+
 ## Next steps
 
 - [CLI](/guide/cli) — manage dependencies from the command line
@@ -354,4 +498,5 @@ Use `index.dlang` as the module entry point for directories. This enables clean 
 ## See also
 
 - [Imports Reference](/reference/language#imports) — complete syntax details
+
 

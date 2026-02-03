@@ -169,4 +169,13 @@ describe('Import Validation (Phase 2)', () => {
         expect(imports[0].alias).toBe('core');
         expect(imports[1].alias).toBe('shared');
     });
+
+    // ========================================================================
+    // Import Resolution Validation
+    // ========================================================================
+
+    // NOTE: Import resolution validation requires real filesystem access,
+    // which is not available in test environment with EmptyFileSystem.
+    // The validation behavior is tested via e2e tests with real files.
+    // The import validation logic itself is unit tested in import-resolver.test.ts.
 });

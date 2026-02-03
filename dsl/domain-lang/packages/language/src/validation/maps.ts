@@ -1,6 +1,6 @@
 import type { ValidationAcceptor } from 'langium';
 import type { ContextMap, DomainMap } from '../generated/ast.js';
-import { ValidationMessages, buildCodeDescription } from './constants.js';
+import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
 
 /**
  * Validates that a context map contains at least one bounded context.
@@ -19,6 +19,36 @@ function validateContextMapHasContexts(
             keyword: 'contains',
             codeDescription: buildCodeDescription('language.md', 'context-maps')
         });
+    }
+}
+
+/**
+ * Validates that MultiReference items in a context map resolve.
+ * Langium doesn't report errors for unresolved MultiReference items by default,
+ * so we need custom validation to catch these cases.
+ * 
+ * @param map - The context map to validate
+ * @param accept - The validation acceptor for reporting issues
+ */
+function validateContextMapReferences(
+    map: ContextMap,
+    accept: ValidationAcceptor
+): void {
+    if (!map.boundedContexts) return;
+    
+    for (const multiRef of map.boundedContexts) {
+        // A MultiReference has a $refText (the source text) and items (resolved refs)
+        // If $refText exists but items is empty, the reference didn't resolve
+        const refText = multiRef.$refText;
+        if (refText && multiRef.items.length === 0) {
+            accept('error', ValidationMessages.UNRESOLVED_REFERENCE('BoundedContext', refText), {
+                node: map,
+                // Find the CST node for this specific reference
+                property: 'boundedContexts',
+                index: map.boundedContexts.indexOf(multiRef),
+                code: IssueCodes.UnresolvedReference
+            });
+        }
     }
 }
 
@@ -66,11 +96,38 @@ function validateDomainMapHasDomains(
     }
 }
 
+/**
+ * Validates that MultiReference items in a domain map resolve.
+ * 
+ * @param map - The domain map to validate
+ * @param accept - The validation acceptor for reporting issues
+ */
+function validateDomainMapReferences(
+    map: DomainMap,
+    accept: ValidationAcceptor
+): void {
+    if (!map.domains) return;
+    
+    for (const multiRef of map.domains) {
+        const refText = multiRef.$refText;
+        if (refText && multiRef.items.length === 0) {
+            accept('error', ValidationMessages.UNRESOLVED_REFERENCE('Domain', refText), {
+                node: map,
+                property: 'domains',
+                index: map.domains.indexOf(multiRef),
+                code: IssueCodes.UnresolvedReference
+            });
+        }
+    }
+}
+
 export const contextMapChecks = [
     validateContextMapHasContexts,
+    validateContextMapReferences,
     validateContextMapHasRelationships
 ];
 
 export const domainMapChecks = [
-    validateDomainMapHasDomains
+    validateDomainMapHasDomains,
+    validateDomainMapReferences
 ];

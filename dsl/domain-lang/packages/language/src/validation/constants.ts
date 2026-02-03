@@ -34,6 +34,7 @@ export const IssueCodes = {
     ImportMissingRef: 'import-missing-ref',
     ImportAbsolutePath: 'import-absolute-path',
     ImportEscapesWorkspace: 'import-escapes-workspace',
+    ImportUnresolved: 'import-unresolved',
     
     // Domain Issues
     DomainNoVision: 'domain-no-vision',
@@ -55,6 +56,9 @@ export const IssueCodes = {
     ContextMapNoContexts: 'context-map-no-contexts',
     ContextMapNoRelationships: 'context-map-no-relationships',
     DomainMapNoDomains: 'domain-map-no-domains',
+    
+    // Reference Issues
+    UnresolvedReference: 'unresolved-reference',
     
     // Metadata Issues
     MetadataMissingName: 'metadata-missing-name',
@@ -262,6 +266,14 @@ export const ValidationMessages = {
         `Local path dependency '${alias}' escapes workspace boundary.\n` +
         `Hint: Local dependencies must be within the workspace. Consider moving the dependency or using a git-based source.`,
 
+    /**
+     * Error when import path cannot be resolved to a file.
+     * @param uri - The import URI that couldn't be resolved
+     */
+    IMPORT_UNRESOLVED: (uri: string) =>
+        `Cannot resolve import '${uri}'.\n` +
+        `Hint: Check that the file exists and the path is correct.`,
+
     // ========================================================================
     // Context Map & Domain Map Validation
     // ========================================================================
@@ -290,6 +302,18 @@ export const ValidationMessages = {
     DOMAIN_MAP_NO_DOMAINS: (name: string) =>
         `Domain Map '${name}' contains no domains.\n` +
         `Hint: Use 'contains DomainA, DomainB' to specify which domains are in the map.`,
+
+    // ========================================================================
+    // Reference Resolution Validation
+    // ========================================================================
+
+    /**
+     * Error when a reference cannot be resolved (for MultiReferences).
+     * @param type - The type being referenced (e.g., 'BoundedContext')
+     * @param name - The unresolved name
+     */
+    UNRESOLVED_REFERENCE: (type: string, name: string) =>
+        `Could not resolve reference to ${type} named '${name}'.`,
 
     // ========================================================================
     // Metadata Validation
