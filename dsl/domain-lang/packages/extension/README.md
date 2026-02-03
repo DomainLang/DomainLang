@@ -1,7 +1,5 @@
 # DomainLang for VS Code
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
-
 A Domain-Driven Design modeling language with first-class VS Code support. Define domains, bounded contexts, context maps, and team ownership in a concise, readable syntax.
 
 ## Features
@@ -29,7 +27,7 @@ Team CatalogTeam
 Team OrderTeam
 Classification CoreDomain
 
-bc Catalog for Bookstore as CoreDomain by CatalogTeam {
+BoundedContext Catalog for Bookstore as CoreDomain by CatalogTeam {
     description: "Product catalog and inventory"
     
     terminology {
@@ -38,7 +36,7 @@ bc Catalog for Bookstore as CoreDomain by CatalogTeam {
     }
 }
 
-bc Orders for Bookstore as CoreDomain by OrderTeam {
+BoundedContext Orders for Bookstore as CoreDomain by OrderTeam {
     description: "Order lifecycle and fulfillment"
 }
 
@@ -64,7 +62,7 @@ Domain Sales in Enterprise {
 ### Bounded contexts with ownership
 
 ```dlang
-bc Checkout for Sales as CoreDomain by PaymentsTeam {
+BoundedContext Checkout for Sales as CoreDomain by PaymentsTeam {
     description: "Checkout and payment orchestration"
 }
 ```
@@ -86,7 +84,7 @@ Supported DDD patterns: `OHS` (Open Host Service), `ACL` (Anti-Corruption Layer)
 ### Terminology (ubiquitous language)
 
 ```dlang
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     terminology {
         term Order: "A customer's request to purchase items"
             aka: PurchaseOrder
@@ -99,7 +97,7 @@ bc Orders for Sales {
 ### Decisions and policies
 
 ```dlang
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     decisions {
         decision EventSourcing: "Capture every state change"
         policy Refunds: "Allow refunds within 30 days"
