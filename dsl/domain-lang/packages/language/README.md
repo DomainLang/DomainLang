@@ -1,6 +1,6 @@
 # @domainlang/language
 
-[![npm version](https://img.shields.io/npm/v/@domainlang/language.svg)](https://www.npmjs.com/package/@domainlang/language)[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
+[![npm version](https://img.shields.io/npm/v/@domainlang/language.svg)](https://www.npmjs.com/package/@domainlang/language)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
 [![License](https://img.shields.io/npm/l/@domainlang/language.svg)](https://github.com/DomainLang/DomainLang/blob/main/LICENSE)
 
 Core language library for [DomainLang](https://github.com/DomainLang/DomainLang) - a Domain-Driven Design modeling language built with [Langium](https://langium.org/).
