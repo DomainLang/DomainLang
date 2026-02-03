@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0](https://github.com/DomainLang/DomainLang/compare/v0.6.0...v0.7.0) (2026-02-03)
+
+
+### Features
+
+* **lsp:** improve workspace loading and import graph tracking ([7ac3719](https://github.com/DomainLang/DomainLang/commit/7ac37195de2c2a1edaea1c986cf61a850c0acf47))
+
+
+### Bug Fixes
+
+* **readme:** update badge for quality gate status in README ([00c5a79](https://github.com/DomainLang/DomainLang/commit/00c5a7991ef0c8131ffd92935c02fc5433085487))
+* **validation:** enforce import-based scoping and validate imports ([73df369](https://github.com/DomainLang/DomainLang/commit/73df369935e419c5a8d247543f3c63bd8ac3ce2f))
+
+
+### Code Refactoring
+
+* **readme:** update badge links and improve terminology for bounded contexts ([94610a8](https://github.com/DomainLang/DomainLang/commit/94610a8681deb72f2001bcacf37345eef2b4d026))
+
 ## [0.6.0](https://github.com/DomainLang/DomainLang/compare/v0.5.2...v0.6.0) (2026-02-01)
 
 
