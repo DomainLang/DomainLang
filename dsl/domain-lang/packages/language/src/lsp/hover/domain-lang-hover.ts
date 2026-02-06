@@ -14,7 +14,11 @@ import * as ast from '../../generated/ast.js';
 import type { DomainLangServices } from '../../domain-lang-module.js';
 import { QualifiedNameProvider } from '../domain-lang-naming.js';
 import { keywordExplanations } from './domain-lang-keywords.js';
-import { effectiveClassification, effectiveTeam } from '../../sdk/resolution.js';
+import {
+    buildDomainFields,
+    buildBcFields,
+    formatHoverContent,
+} from './hover-builders.js';
 
 /**
  * Type-specific hover content generator.
@@ -164,23 +168,9 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
     private getDomainHover(node: AstNode, commentBlock: string): string | undefined {
         if (!ast.isDomain(node)) return undefined;
 
-        const description = node.description ?? '';
-        const vision = node.vision ?? '';
-        const typeRef = node.type?.ref;
-        const type = this.getRefName(typeRef);
-
-        const signatureParts = ['Domain', node.name];
-        if (node.parent?.ref?.name) signatureParts.push('in', node.parent.ref.name);
-        const signature = this.codeBlock(signatureParts.join(' '));
-
-        const fields: string[] = [signature];
-        if (description) fields.push(description);
-        if (vision || type || node.parent) fields.push('---');
-        if (vision) fields.push(`**Vision:** ${vision}`);
-        if (type) fields.push(`**Type:** ${this.refLink(typeRef, type)}`);
-        if (node.parent) fields.push(`**Parent:** ${this.refLink(node.parent)}`);
-
-        return this.formatHover(commentBlock, '📁', 'domain', node.name, fields);
+        const refLink = (ref: ast.Type | undefined, label?: string): string => this.refLink(ref, label);
+        const fields = buildDomainFields(node, refLink);
+        return formatHoverContent(commentBlock, '📁', 'domain', node.name, fields);
     }
 
     private getThisRefHover(node: AstNode, _commentBlock: string): string | undefined {
@@ -207,45 +197,13 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
     private getBoundedContextHover(node: AstNode, commentBlock: string): string | undefined {
         if (!ast.isBoundedContext(node)) return undefined;
 
-        const description = node.description ?? '';
-        const classification = effectiveClassification(node);
-        const team = effectiveTeam(node);
-        const businessModel = node.businessModel?.ref;
-        const evolution = node.evolution?.ref;
-        const relationships = node.relationships ?? [];
-        const terminology = node.terminology ?? [];
-        const decisions = node.decisions ?? [];
-        const classificationName = classification?.name;
-        const teamName = team?.name;
-
-        const signatureParts = ['boundedcontext', node.name];
-        if (node.domain?.ref?.name) signatureParts.push('for', node.domain.ref.name);
-        if (classificationName) signatureParts.push('as', classificationName);
-        if (teamName) signatureParts.push('by', teamName);
-        const signature = this.codeBlock(signatureParts.join(' '));
-
-        const fields: string[] = [signature];
-        if (description) fields.push(description);
-        if (classification || team || businessModel || evolution) fields.push('---');
-        if (classification) fields.push(`🔖 **Classification:** ${this.refLink(classification)}`);
-        if (team) fields.push(`👥 **Team:** ${this.refLink(team)}`);
-        if (businessModel) fields.push(`💼 **Business Model:** ${this.refLink(businessModel)}`);
-        if (evolution) fields.push(`🔄 **Evolution:** ${this.refLink(evolution)}`);
-
-        if (relationships.length > 0) {
-            const lines = relationships.map(rel => this.formatRelationshipLine(rel));
-            fields.push(`**Relationships:**\n${lines.join('\n')}`);
-        }
-        if (terminology.length > 0) {
-            const lines = terminology.map(t => `- \`${t.name}\`: ${t.meaning ?? ''}`);
-            fields.push(`**Terminology:**\n${lines.join('\n')}`);
-        }
-        if (decisions.length > 0) {
-            const lines = decisions.map(d => `- \`${d.name}\`: ${d.value ?? ''}`);
-            fields.push(`**Decisions:**\n${lines.join('\n')}`);
-        }
-
-        return this.formatHover(commentBlock, '📕', 'boundedcontext', node.name, fields);
+        const refLink = (ref: ast.Type | undefined, label?: string): string => this.refLink(ref, label);
+        const fields = buildBcFields(
+            node,
+            refLink,
+            (rel) => this.formatRelationshipLine(rel)
+        );
+        return formatHoverContent(commentBlock, '📕', 'boundedcontext', node.name, fields);
     }
 
     private getNamespaceHover(node: AstNode, commentBlock: string): string | undefined {
@@ -390,14 +348,8 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
     }
 
     /**
-     * Wraps text in a domain-lang code block.
-     */
-    private codeBlock(text: string): string {
-        return `\`\`\`domain-lang\n${text}\n\`\`\``;
-    }
-
-    /**
      * Formats the final hover content with consistent structure.
+     * Delegates to the shared hover-builders utility.
      */
     private formatHover(
         commentBlock: string,
@@ -406,19 +358,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
         name: string | undefined,
         fields: string[]
     ): string {
-        const separator = commentBlock ? `${commentBlock}\n\n---\n\n` : '';
-        const nameDisplay = name ? ` ${name}` : '';
-        const header = `${emoji} **\`(${typeName})\`${nameDisplay}**`;
-        const body = fields.length > 0 ? `\n\n${fields.join('\n\n')}` : '';
-        return `${separator}${header}${body}`;
-    }
-
-    private getRefName(ref: ast.Type | Reference<ast.Type> | undefined): string {
-        const node = isReference(ref) ? ref.ref : ref;
-        if (node && ast.isType(node)) {
-            return node.name;
-        }
-        return '';
+        return formatHoverContent(commentBlock, emoji, typeName, name, fields);
     }
 
     private refLink(ref: Reference<ast.Type> | ast.Type | undefined, label?: string): string {
