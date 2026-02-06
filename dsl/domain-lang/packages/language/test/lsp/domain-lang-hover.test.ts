@@ -113,6 +113,23 @@ describe('DomainLangHoverProvider', () => {
 
             expect(hover).toBeDefined();
         });
+
+        test('includes documentation comment in team hover', async () => {
+            const hover = await getHoverAt(
+                s`/**
+ * This is the sales team responsible for customer acquisition
+ */
+Team SalesTeam`,
+                3,
+                5
+            ) as { contents?: { value?: string } };
+
+            expect(hover).toBeDefined();
+            expect(hover.contents).toBeDefined();
+            const content = hover.contents?.value ?? '';
+            expect(content).toContain('sales team');
+            expect(content).toContain('customer acquisition');
+        });
     });
 
     describe('Classification hovers', () => {
@@ -134,6 +151,23 @@ describe('DomainLangHoverProvider', () => {
             );
 
             expect(hover).toBeDefined();
+        });
+
+        test('includes documentation comment in classification hover', async () => {
+            const hover = await getHoverAt(
+                s`/**
+ * Core domain - essential for business success
+ */
+Classification Core`,
+                3,
+                15
+            ) as { contents?: { value?: string } };
+
+            expect(hover).toBeDefined();
+            expect(hover.contents).toBeDefined();
+            const content = hover.contents?.value ?? '';
+            expect(content).toContain('Core domain');
+            expect(content).toContain('business success');
         });
     });
 
