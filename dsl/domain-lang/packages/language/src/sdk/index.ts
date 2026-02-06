@@ -89,7 +89,8 @@
  */
 
 // Browser-safe entry points
-export { loadModelFromText } from './loader.js';
+export { loadModelFromText, createModelLoader } from './loader.js';
+export type { ModelLoader } from './loader.js';
 export { fromModel, fromDocument, fromServices, augmentModel } from './query.js';
 
 // Note: loadModel() is NOT exported here - it requires Node.js filesystem
