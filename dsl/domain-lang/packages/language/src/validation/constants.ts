@@ -55,6 +55,7 @@ export const IssueCodes = {
     // Context/Domain Map Issues
     ContextMapNoContexts: 'context-map-no-contexts',
     ContextMapNoRelationships: 'context-map-no-relationships',
+    ContextMapDuplicateRelationship: 'context-map-duplicate-relationship',
     DomainMapNoDomains: 'domain-map-no-domains',
     
     // Reference Issues
@@ -294,6 +295,14 @@ export const ValidationMessages = {
     CONTEXT_MAP_NO_RELATIONSHIPS: (name: string, count: number) =>
         `Context Map '${name}' contains ${count} contexts but no documented relationships.\n` +
         `Hint: Add relationships to show how contexts integrate (e.g., '[OHS] A -> [CF] B').`,
+
+    /**
+     * Warning when a context map contains duplicate relationships.
+     * @param leftContext - Name of the left context
+     * @param rightContext - Name of the right context
+     */
+    CONTEXT_MAP_DUPLICATE_RELATIONSHIP: (leftContext: string, rightContext: string) =>
+        `Duplicate relationship between '${leftContext}' and '${rightContext}' in context map.`,
 
     /**
      * Warning when domain map contains no domains.

@@ -1,5 +1,6 @@
 import type { ValidationAcceptor } from 'langium';
-import type { ContextMap, DomainMap } from '../generated/ast.js';
+import type { ContextMap, DomainMap, Relationship, BoundedContextRef } from '../generated/ast.js';
+import { isThisRef } from '../generated/ast.js';
 import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
 
 /**
@@ -121,10 +122,66 @@ function validateDomainMapReferences(
     }
 }
 
+/**
+ * Gets a canonical name for a BoundedContextRef for comparison purposes.
+ */
+function getRefKey(ref: BoundedContextRef): string {
+    if (isThisRef(ref)) {
+        return 'this';
+    }
+    return ref.link?.$refText ?? '';
+}
+
+/**
+ * Builds a canonical key for a relationship for duplicate detection.
+ * The key captures both endpoints, arrow direction, and integration patterns.
+ */
+function buildRelationshipKey(rel: Relationship): string {
+    const left = getRefKey(rel.left);
+    const right = getRefKey(rel.right);
+    const leftPatterns = (rel.leftPatterns ?? []).slice().sort((a, b) => a.localeCompare(b)).join(',');
+    const rightPatterns = (rel.rightPatterns ?? []).slice().sort((a, b) => a.localeCompare(b)).join(',');
+    return `[${leftPatterns}]${left}${rel.arrow}[${rightPatterns}]${right}`;
+}
+
+/**
+ * Validates that a context map does not contain duplicate relationships.
+ * Two relationships are considered duplicate if they have the same endpoints,
+ * direction, and integration patterns.
+ * 
+ * @param map - The context map to validate
+ * @param accept - The validation acceptor for reporting issues
+ */
+function validateNoDuplicateRelationships(
+    map: ContextMap,
+    accept: ValidationAcceptor
+): void {
+    if (!map.relationships || map.relationships.length < 2) return;
+
+    const seen = new Map<string, number>();
+    for (let i = 0; i < map.relationships.length; i++) {
+        const rel = map.relationships[i];
+        const key = buildRelationshipKey(rel);
+        
+        if (seen.has(key)) {
+            accept('warning', ValidationMessages.CONTEXT_MAP_DUPLICATE_RELATIONSHIP(
+                getRefKey(rel.left), getRefKey(rel.right)
+            ), {
+                node: rel,
+                property: 'arrow',
+                codeDescription: buildCodeDescription('language.md', 'context-maps')
+            });
+        } else {
+            seen.set(key, i);
+        }
+    }
+}
+
 export const contextMapChecks = [
     validateContextMapHasContexts,
     validateContextMapReferences,
-    validateContextMapHasRelationships
+    validateContextMapHasRelationships,
+    validateNoDuplicateRelationships
 ];
 
 export const domainMapChecks = [
