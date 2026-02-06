@@ -55,7 +55,7 @@ const KIND_MAPPINGS: readonly KindMapping[] = [
     [isNamespaceDeclaration,  SymbolKind.Namespace,     CompletionItemKind.Module],
     
     // Relationships
-    [isRelationship,          SymbolKind.Event,         CompletionItemKind.Event],
+    [isRelationship,          SymbolKind.Interface,         CompletionItemKind.Interface],
     
     // Documentation & governance
     [isDomainTerm,            SymbolKind.Field,         CompletionItemKind.Field],
