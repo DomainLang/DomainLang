@@ -16,6 +16,8 @@ import { DomainLangFormatter } from './lsp/domain-lang-formatter.js';
 import { DomainLangHoverProvider } from './lsp/hover/domain-lang-hover.js';
 import { DomainLangCompletionProvider } from './lsp/domain-lang-completion.js';
 import { DomainLangCodeActionProvider } from './lsp/domain-lang-code-actions.js';
+import { DomainLangNodeKindProvider } from './lsp/domain-lang-node-kind-provider.js';
+import { DomainLangDocumentSymbolProvider } from './lsp/domain-lang-document-symbol-provider.js';
 import { ImportResolver } from './services/import-resolver.js';
 import { WorkspaceManager } from './services/workspace-manager.js';
 import { DomainLangWorkspaceManager } from './lsp/domain-lang-workspace-manager.js';
@@ -47,6 +49,9 @@ export type DomainLangAddedServices = {
 export type DomainLangServices = LangiumServices & DomainLangAddedServices
 
 const DomainLangSharedModule: Module<LangiumSharedServices, PartialLangiumSharedServices> = {
+    lsp: {
+        NodeKindProvider: () => new DomainLangNodeKindProvider()
+    },
     workspace: {
         WorkspaceManager: (services: LangiumSharedServices) => new DomainLangWorkspaceManager(services),
         IndexManager: (services: LangiumSharedServices) => new DomainLangIndexManager(services)
@@ -72,7 +77,8 @@ export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices
         Formatter: () => new DomainLangFormatter(),
         HoverProvider: (services) => new DomainLangHoverProvider(services),
         CompletionProvider: (services) => new DomainLangCompletionProvider(services),
-        CodeActionProvider: () => new DomainLangCodeActionProvider()
+        CodeActionProvider: () => new DomainLangCodeActionProvider(),
+        DocumentSymbolProvider: (services) => new DomainLangDocumentSymbolProvider(services)
     },
 };
 
