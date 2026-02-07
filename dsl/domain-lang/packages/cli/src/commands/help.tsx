@@ -1,43 +1,64 @@
 /**
- * Help command component.
- * Displays styled help output with command list and options.
+ * Help command - displays help information.
+ * Combines yargs CommandModule with Ink UI component.
+ * Uses dynamic command discovery from exported commands array.
  * 
  * @module commands/help
  */
+import type { CommandModule } from 'yargs';
 import React from 'react';
 import { Box, Text } from 'ink';
 import { Header, SectionHeader } from '../ui/components/index.js';
-import { colors } from '../ui/themes/colors.js';
+import { theme } from '../ui/themes/colors.js';
 import { EMOJI } from '../ui/themes/emoji.js';
+import { runCommand } from './command-runner.js';
 import type { CommandContext } from './types.js';
+
+// Import command modules directly to avoid circular dependency with index.ts
+import { initCommand } from './init.js';
+import { validateCommand } from './validate.js';
+import { installCommand } from './install.js';
+import { addCommand } from './add.js';
+import { removeCommand } from './remove.js';
+import { updateCommand } from './update.js';
+import { upgradeCommand } from './upgrade.js';
+import { outdatedCommand } from './outdated.js';
+import { cacheClearCommand } from './cache-clear.js';
+
+/**
+ * All command modules (excluding help itself).
+ * Used to dynamically build the help list.
+ */
+const allCommands = [
+    initCommand,
+    validateCommand,
+    installCommand,
+    addCommand,
+    removeCommand,
+    updateCommand,
+    upgradeCommand,
+    outdatedCommand,
+    cacheClearCommand,
+] as const;
 
 /**
  * Props for Help command component.
  */
 export interface HelpProps {
-    /** Command context */
+    /** Command context (needed for version, mode) */
     context: CommandContext;
 }
 
 /**
- * Command definitions for help display.
+ * Extract command list from yargs modules.
+ * Dynamically derives command names and descriptions from registered modules.
  */
-const COMMANDS = [
-    { name: 'init', description: 'Initialize a new DomainLang project' },
-    { name: 'validate <path>', description: 'Validate model files' },
-    { name: 'generate <file>', description: 'Generate code from model' },
-    { name: 'install', description: 'Install dependencies from model.yaml' },
-] as const;
-
-/**
- * Model subcommands for help display.
- */
-const MODEL_COMMANDS = [
-    { name: 'model list', description: 'List declared dependencies' },
-    { name: 'model add <pkg>', description: 'Add a new dependency' },
-    { name: 'model remove <pkg>', description: 'Remove a dependency' },
-    { name: 'model tree', description: 'Show dependency tree' },
-] as const;
+function getCommandList(): Array<{ name: string; description: string }> {
+    return allCommands.map(cmd => ({
+        name: typeof cmd.command === 'string' ? cmd.command : String(cmd.command),
+        description: cmd.describe || '',
+    }));
+}
 
 /**
  * Global options for help display.
@@ -51,98 +72,98 @@ const OPTIONS = [
 ] as const;
 
 /**
- * Help command component.
+ * Help command component (rich mode only).
  * Displays a styled help screen with banner and command list.
  */
 export const Help: React.FC<HelpProps> = ({ context }) => {
-    // JSON output mode
-    if (context.mode === 'json') {
-        const data = {
-            version: context.version,
-            commands: [...COMMANDS, ...MODEL_COMMANDS].map(c => ({ name: c.name, description: c.description })),
-            options: OPTIONS.map(o => ({ flags: o.flags, description: o.description })),
-        };
-        process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-        return null;
-    }
-
-    // Quiet mode - minimal help
-    if (context.mode === 'quiet') {
-        process.stdout.write(`dlang v${context.version}\n`);
-        process.stdout.write('Commands: init, validate, generate, install, model\n');
-        process.stdout.write('Use --help for more information\n');
-        return null;
-    }
-
-    // Rich output mode
-    const maxCommandWidth = Math.max(
-        ...COMMANDS.map(c => c.name.length),
-        ...MODEL_COMMANDS.map(c => c.name.length)
-    );
+    const commandList = getCommandList();
+    const maxCommandWidth = Math.max(...commandList.map(c => c.name.length));
 
     return (
         <Box flexDirection="column">
-            {/* Header with banner */}
             <Header version={context.version} context="help" />
 
-            {/* Usage */}
             <SectionHeader icon={EMOJI.book} title="USAGE" />
             <Box marginLeft={3} marginBottom={1}>
-                <Text color={colors.secondary}>$ dlang {'<command>'} [options]</Text>
+                <Text color={theme.text.secondary}>$ dlang {'<command>'} [options]</Text>
             </Box>
 
-            {/* Main commands */}
             <SectionHeader icon={EMOJI.tools} title="COMMANDS" />
             <Box flexDirection="column" marginLeft={3} marginBottom={1}>
-                {COMMANDS.map(cmd => (
+                {commandList.map(cmd => (
                     <Box key={cmd.name}>
                         <Box width={maxCommandWidth + 4}>
-                            <Text color={colors.accent}>{cmd.name}</Text>
+                            <Text color={theme.text.accent}>{cmd.name}</Text>
                         </Box>
-                        <Text color={colors.secondary}>{cmd.description}</Text>
+                        <Text color={theme.text.secondary}>{cmd.description}</Text>
                     </Box>
                 ))}
             </Box>
 
-            {/* Model commands */}
-            <SectionHeader icon={EMOJI.package} title="MODEL COMMANDS" />
-            <Box flexDirection="column" marginLeft={3} marginBottom={1}>
-                {MODEL_COMMANDS.map(cmd => (
-                    <Box key={cmd.name}>
-                        <Box width={maxCommandWidth + 4}>
-                            <Text color={colors.accent}>{cmd.name}</Text>
-                        </Box>
-                        <Text color={colors.secondary}>{cmd.description}</Text>
-                    </Box>
-                ))}
-            </Box>
-
-            {/* Options */}
             <SectionHeader icon={EMOJI.gear} title="OPTIONS" />
             <Box flexDirection="column" marginLeft={3} marginBottom={1}>
                 {OPTIONS.map(opt => (
                     <Box key={opt.flags}>
                         <Box width={20}>
-                            <Text color={colors.muted}>{opt.flags}</Text>
+                            <Text color={theme.ui.comment}>{opt.flags}</Text>
                         </Box>
-                        <Text color={colors.secondary}>{opt.description}</Text>
+                        <Text color={theme.text.secondary}>{opt.description}</Text>
                     </Box>
                 ))}
             </Box>
 
-            {/* Links */}
             <SectionHeader icon={EMOJI.link} title="DOCUMENTATION" />
             <Box marginLeft={3} marginBottom={1}>
-                <Text color={colors.link}>https://domainlang.net/docs</Text>
+                <Text color={theme.text.link}>https://domainlang.net/guide/getting-started</Text>
             </Box>
 
-            {/* Examples */}
             <SectionHeader icon={EMOJI.tip} title="EXAMPLES" />
             <Box flexDirection="column" marginLeft={3}>
-                <Text color={colors.muted}>$ dlang init</Text>
-                <Text color={colors.muted}>$ dlang validate ./domains</Text>
-                <Text color={colors.muted}>$ dlang model add domainlang/core</Text>
+                <Text color={theme.ui.comment}>$ dlang init</Text>
+                <Text color={theme.ui.comment}>$ dlang validate ./domains</Text>
+                <Text color={theme.ui.comment}>$ dlang add owner/repo@v1.0.0</Text>
             </Box>
         </Box>
     );
+};
+
+/**
+ * Run help without Ink (for --json and --quiet modes).
+ */
+export function runHelp(context: CommandContext): void {
+    const commandList = getCommandList();
+    
+    if (context.mode === 'json') {
+        const data = {
+            version: context.version,
+            commands: commandList.map(c => ({ name: c.name, description: c.description })),
+            options: OPTIONS.map(o => ({ flags: o.flags, description: o.description })),
+        };
+        process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+    } else {
+        process.stdout.write(`dlang v${context.version}\n`);
+        const commandNames = commandList.map(c => c.name.split(' ')[0]).join(', ');
+        process.stdout.write(`Commands: ${commandNames}\n`);
+        process.stdout.write('Use --help for more information\n');
+    }
+    process.exit(0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// yargs CommandModule
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Help command module for yargs */
+export const helpCommand: CommandModule = {
+    command: 'help',
+    describe: 'Display help information',
+    handler: async (argv) => {
+        await runCommand(argv, {
+            ink: (_args, ctx) => <Help context={ctx} />,
+            direct: (_args, ctx) => {
+                runHelp(ctx);
+                return Promise.resolve();
+            },
+        });
+    },
 };

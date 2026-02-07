@@ -1,11 +1,12 @@
 /**
- * Validate command component.
- * Validates DomainLang model files and displays results.
+ * Validate command - validates DomainLang model files.
+ * Combines yargs CommandModule with Ink UI component.
  * 
  * @module commands/validate
  */
-import React, { useState, useEffect } from 'react';
-import { Box, Text } from 'ink';
+import type { CommandModule, Argv } from 'yargs';
+import React, { useEffect } from 'react';
+import { Box, Text, useApp } from 'ink';
 import type { LangiumDocument } from 'langium';
 import { URI } from 'langium';
 import { NodeFileSystem } from 'langium/node';
@@ -19,7 +20,9 @@ import {
 } from '../ui/components/index.js';
 import { theme } from '../ui/themes/colors.js';
 import { EMOJI } from '../ui/themes/emoji.js';
-import { useElapsedTime } from '../ui/hooks/index.js';
+import { useCommand } from '../ui/hooks/useCommand.js';
+import { runDirect } from '../utils/run-direct.js';
+import { runCommand } from './command-runner.js';
 import type { CommandContext, ValidationResult, CommandError, CommandWarning } from './types.js';
 import { resolve, extname, basename } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -32,15 +35,9 @@ export interface ValidateProps {
     file: string;
     /** Command context */
     context: CommandContext;
+    /** Whether to auto-exit when command completes (default: true) */
+    autoExit?: boolean;
 }
-
-/**
- * State for validation process.
- */
-type ValidateState = 
-    | { status: 'loading' }
-    | { status: 'success'; result: ValidationResult }
-    | { status: 'error'; error: string };
 
 /**
  * Convert Langium diagnostic to CommandError.
@@ -128,82 +125,51 @@ async function validateModel(filePath: string): Promise<ValidationResult> {
 
 /**
  * Validate command component.
- * Renders validation progress and results.
+ * Only renders in rich (Ink) mode.
  */
-export const Validate: React.FC<ValidateProps> = ({ file, context }) => {
-    const [state, setState] = useState<ValidateState>({ status: 'loading' });
-    const elapsed = useElapsedTime();
+export const Validate: React.FC<ValidateProps> = ({ file, context: _context, autoExit = true }) => {
+    const { status, result, error, elapsed } = useCommand(
+        () => validateModel(file),
+        [file],
+    );
+    const { exit } = useApp();
 
+    // Exit when command completes (success or error)
     useEffect(() => {
-        validateModel(file)
-            .then(result => setState({ status: 'success', result }))
-            .catch(error => setState({ 
-                status: 'error', 
-                error: error instanceof Error ? error.message : String(error) 
-            }));
-    }, [file]);
+        if (autoExit && (status === 'success' || status === 'error')) {
+            // Small delay to ensure UI is rendered
+            setTimeout(() => {
+                exit();
+            }, 100);
+        }
+    }, [status, exit, autoExit]);
 
-    // JSON output mode
-    if (context.mode === 'json') {
-        if (state.status === 'loading') {
-            return null; // Wait for result
-        }
-        if (state.status === 'error') {
-            process.stdout.write(JSON.stringify({ success: false, error: state.error }) + '\n');
-            process.exit(1);
-            return null;
-        }
-        process.stdout.write(JSON.stringify({ success: state.result.valid, ...state.result }) + '\n');
-        process.exit(state.result.valid ? 0 : 1);
-        return null;
-    }
-
-    // Quiet mode
-    if (context.mode === 'quiet') {
-        if (state.status === 'loading') {
-            return null;
-        }
-        if (state.status === 'error') {
-            console.error(state.error);
-            process.exit(1);
-            return null;
-        }
-        // Only output errors/warnings in quiet mode
-        for (const err of state.result.errors) {
-            console.error(`${err.file}:${err.line}:${err.column}: error: ${err.message}`);
-        }
-        for (const warn of state.result.warnings) {
-            console.warn(`${warn.file}:${warn.line}: warning: ${warn.message}`);
-        }
-        process.exit(state.result.valid ? 0 : 1);
-        return null;
-    }
-
-    // Rich output mode (default)
-    if (state.status === 'loading') {
+    if (status === 'loading') {
         return <Spinner label={`Validating ${file}`} emoji="search" />;
     }
 
-    if (state.status === 'error') {
+    if (status === 'error') {
         return (
             <Box flexDirection="column">
-                <StatusMessage type="error" message={state.error} />
+                <StatusMessage type="error" message={error ?? 'Unknown error'} />
             </Box>
         );
     }
 
-    const { result } = state;
+    // status === 'success' — result is guaranteed
+    if (!result) return null;
+    const r = result;
     const fileName = basename(file);
 
     return (
         <Box flexDirection="column">
             {/* Result banner */}
             <Banner 
-                bannerText={result.valid 
+                bannerText={r.valid 
                     ? `${EMOJI.success}Model validated successfully`
                     : `${EMOJI.error}Validation failed`
                 }
-                variant={result.valid ? 'success' : 'error'}
+                variant={r.valid ? 'success' : 'error'}
             />
 
             {/* File info */}
@@ -213,18 +179,18 @@ export const Validate: React.FC<ValidateProps> = ({ file, context }) => {
             <Box marginTop={1} marginLeft={1}>
                 <KeyValue data={{
                     'File': fileName,
-                    'Elements': `${result.domainCount} domain${result.domainCount !== 1 ? 's' : ''}, ${result.bcCount} BC${result.bcCount !== 1 ? 's' : ''}`,
-                    'Errors': result.errors.length,
-                    'Warnings': result.warnings.length,
+                    'Elements': `${r.domainCount} domain${r.domainCount === 1 ? '' : 's'}, ${r.bcCount} BC${r.bcCount === 1 ? '' : 's'}`,
+                    'Errors': r.errors.length,
+                    'Warnings': r.warnings.length,
                 }} />
             </Box>
 
             {/* Errors */}
-            {result.errors.length > 0 && (
+            {r.errors.length > 0 && (
                 <Box flexDirection="column" marginTop={1}>
-                    <Divider title={`Errors (${result.errors.length})`} />
-                    {result.errors.map((err, i) => (
-                        <Box key={i} marginLeft={1} marginTop={i === 0 ? 1 : 0}>
+                    <Divider title={`Errors (${r.errors.length})`} />
+                    {r.errors.map((err) => (
+                        <Box key={`${err.file}:${err.line}:${err.column}`} marginLeft={1}>
                             <Text color={theme.status.error}>
                                 {EMOJI.error}{err.file}:{err.line}:{err.column}
                             </Text>
@@ -235,11 +201,11 @@ export const Validate: React.FC<ValidateProps> = ({ file, context }) => {
             )}
 
             {/* Warnings */}
-            {result.warnings.length > 0 && (
+            {r.warnings.length > 0 && (
                 <Box flexDirection="column" marginTop={1}>
-                    <Divider title={`Warnings (${result.warnings.length})`} />
-                    {result.warnings.map((warn, i) => (
-                        <Box key={i} marginLeft={1} marginTop={i === 0 ? 1 : 0}>
+                    <Divider title={`Warnings (${r.warnings.length})`} />
+                    {r.warnings.map((warn) => (
+                        <Box key={`${warn.file}:${warn.line}`} marginLeft={1}>
                             <Text color={theme.status.warning}>
                                 {EMOJI.warning}{warn.file}:{warn.line}
                             </Text>
@@ -263,30 +229,49 @@ export const Validate: React.FC<ValidateProps> = ({ file, context }) => {
  * Run validation without Ink (for --json and --quiet modes).
  */
 export async function runValidate(file: string, context: CommandContext): Promise<void> {
-    try {
-        const result = await validateModel(file);
-
-        if (context.mode === 'json') {
-            process.stdout.write(JSON.stringify({ success: result.valid, ...result }) + '\n');
-            process.exit(result.valid ? 0 : 1);
-        }
-
-        if (context.mode === 'quiet') {
-            for (const err of result.errors) {
-                process.stderr.write(`${err.file}:${err.line}:${err.column}: error: ${err.message}\n`);
-            }
-            for (const warn of result.warnings) {
-                process.stderr.write(`${warn.file}:${warn.line}: warning: ${warn.message}\n`);
-            }
-            process.exit(result.valid ? 0 : 1);
-        }
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (context.mode === 'json') {
-            process.stdout.write(JSON.stringify({ success: false, error: message }) + '\n');
-        } else {
-            process.stderr.write(message + '\n');
-        }
-        process.exit(1);
-    }
+    await runDirect(
+        () => validateModel(file),
+        context,
+        {
+            exitCode: r => (r.valid ? 0 : 1),
+            json: r => ({ success: r.valid, ...r }),
+            quiet: r => {
+                const lines: string[] = [];
+                for (const err of r.errors) {
+                    lines.push(`${err.file}:${err.line}:${err.column}: error: ${err.message}`);
+                }
+                for (const warn of r.warnings) {
+                    lines.push(`${warn.file}:${warn.line}: warning: ${warn.message}`);
+                }
+                return lines.join('\n');
+            },
+        },
+    );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// yargs CommandModule
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Command arguments */
+export interface ValidateArgs {
+    file: string;
+}
+
+/** Validate command module for yargs */
+export const validateCommand: CommandModule<object, ValidateArgs> = {
+    command: 'validate <file>',
+    describe: 'Validate model files',
+    builder: (yargs: Argv) =>
+        yargs.positional('file', {
+            describe: 'File or directory to validate',
+            type: 'string',
+            demandOption: true,
+        }) as Argv<ValidateArgs>,
+    handler: async (argv) => {
+        await runCommand(argv, {
+            ink: (args, ctx) => <Validate file={args.file} context={ctx} />,
+            direct: (args, ctx) => runValidate(args.file, ctx),
+        });
+    },
+};
