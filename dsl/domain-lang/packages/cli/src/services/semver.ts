@@ -104,6 +104,30 @@ export function compareSemVer(a: SemVer, b: SemVer): number {
 }
 
 /**
+ * Compares two version strings.
+ * Returns: negative if a < b, positive if a > b, zero if equal.
+ * 
+ * @example
+ * compareVersions("1.0.0", "2.0.0") // negative (a < b)
+ * compareVersions("v1.5.0", "v1.2.0") // positive (a > b)
+ * compareVersions("v1.0.0-alpha", "v1.0.0") // negative (prerelease < release)
+ */
+export function compareVersions(a: string, b: string): number {
+    const semverA = parseSemVer(a);
+    const semverB = parseSemVer(b);
+    
+    if (!semverA && !semverB) {
+        // Both are non-SemVer - lexicographic comparison
+        return a.localeCompare(b);
+    }
+    
+    if (!semverA) return 1; // Non-SemVer is greater
+    if (!semverB) return -1; // SemVer is less
+    
+    return compareSemVer(semverA, semverB);
+}
+
+/**
  * Picks the latest from a list of SemVer refs.
  * Returns the ref string (with original 'v' prefix if present).
  * 

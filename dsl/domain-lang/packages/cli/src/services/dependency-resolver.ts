@@ -6,7 +6,7 @@
  * 
  * Algorithm:
  * 1. Parse root model.yaml
- * 2. Download all direct dependencies
+ * 2. Download all direct dependencies (HTTP via PackageDownloader)
  * 3. Parse each dependency's model.yaml
  * 4. Recursively discover transitive dependencies
  * 5. Resolve version constraints using "Latest Wins" strategy
@@ -19,25 +19,44 @@
  * - Major version mismatch: Error
  * - Tag vs Branch: Error (incompatible intent)
  * 
- * This module contains network operations and should ONLY be used in CLI contexts.
+ * This module uses HTTP-based package download (no git subprocesses).
+ * Should ONLY be used in CLI contexts, never in LSP.
  */
 
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import YAML from 'yaml';
-import { GitUrlParser, GitUrlResolver } from './git-url-resolver.js';
+import { PackageUrlParser } from './package-url-parser.js';
+import { PackageDownloader } from './package-downloader.js';
+import { PackageCache } from './package-cache.js';
+import { CredentialProvider } from './credential-provider.js';
 import { parseSemVer, pickLatestSemVer, detectRefType } from './semver.js';
-import type { SemVer, ResolvingPackage, LockFile, LockedDependency, DependencyGraph, GitImportInfo } from './types.js';
+import type { SemVer, ResolvingPackage, LockFile, LockedDependency, DependencyGraph } from './types.js';
 
 export class DependencyResolver {
-    private gitResolver: GitUrlResolver;
+    private packageDownloader: PackageDownloader;
+    private packageCache: PackageCache;
     private workspaceRoot: string;
 
-    constructor(workspaceRoot: string, gitResolver?: GitUrlResolver) {
+    constructor(
+        workspaceRoot: string,
+        packageDownloader?: PackageDownloader,
+        packageCache?: PackageCache
+    ) {
         this.workspaceRoot = workspaceRoot;
-        // Per PRS-010: Project-local cache at .dlang/packages/
-        const cacheDir = path.join(workspaceRoot, '.dlang', 'packages');
-        this.gitResolver = gitResolver || new GitUrlResolver(cacheDir);
+        
+        // Initialize HTTP-based services
+        this.packageCache = packageCache || new PackageCache(workspaceRoot);
+        
+        if (!packageDownloader) {
+            const credentialProvider = new CredentialProvider();
+            this.packageDownloader = new PackageDownloader(
+                credentialProvider,
+                this.packageCache
+            );
+        } else {
+            this.packageDownloader = packageDownloader;
+        }
     }
 
     /**
@@ -156,22 +175,25 @@ export class DependencyResolver {
             }
             visited.add(packageKey);
 
-            // Parse package identifier
-            const gitInfo = GitUrlParser.parse(packageKey);
+            // Parse package identifier to extract owner/repo/ref
+            const packageInfo = PackageUrlParser.parse(packageKey);
             
-            // Download package to get its model.yaml
-            const packagePath = await this.gitResolver.resolve(packageKey);
-            const packageDir = path.dirname(packagePath);
+            // Download package using HTTP-based downloader
+            const { path: packagePath } = await this.packageDownloader.download(
+                packageInfo.owner,
+                packageInfo.repo,
+                packageInfo.ref
+            );
 
-            // Load package config
-            const packageConfig = await this.loadPackageConfig(packageDir);
+            // Load package config from downloaded package
+            const packageConfig = await this.loadPackageConfig(packagePath);
 
             // Add to graph
             graph.nodes[packageKey] = {
                 packageKey,
                 refConstraint,
                 constraints: new Set<string>([refConstraint]),
-                repoUrl: gitInfo.repoUrl,
+                repoUrl: packageInfo.repoUrl,
                 dependencies: packageConfig.dependencies || {},
                 dependents: [parent],
             };
@@ -190,7 +212,7 @@ export class DependencyResolver {
     }
 
     /**
-     * Resolves ref constraints to specific commits.
+     * Resolves ref constraints to specific commits using HTTP-based package downloader.
      * 
      * Simple algorithm: Use the ref specified in the constraint.
      * Detects refType (tag, branch, or commit) based on format.
@@ -198,7 +220,7 @@ export class DependencyResolver {
     private async resolveVersions(graph: DependencyGraph): Promise<void> {
         for (const [packageKey, node] of Object.entries(graph.nodes)) {
             // Parse package to get repo info
-            const gitInfo = GitUrlParser.parse(packageKey);
+            const packageInfo = PackageUrlParser.parse(packageKey);
 
             // Extract ref from constraint
             const ref = this.extractRefFromConstraint(node.refConstraint);
@@ -206,8 +228,12 @@ export class DependencyResolver {
             // Detect ref type based on format
             const refType = detectRefType(ref);
             
-            // Resolve ref to commit hash
-            const commitHash = await this.resolveCommitHash(gitInfo.repoUrl, ref, gitInfo);
+            // Resolve ref to commit SHA using HTTP-based downloader
+            const commitHash = await this.packageDownloader.resolveRefToCommit(
+                packageInfo.owner,
+                packageInfo.repo,
+                ref
+            );
 
             node.resolvedRef = ref;
             node.refType = refType;
@@ -236,15 +262,6 @@ export class DependencyResolver {
         }
         
         return ref || 'main';
-    }
-
-    /**
-     * Resolves a version (tag/branch) to a commit hash.
-     */
-    private async resolveCommitHash(_repoUrl: string, _version: string, gitInfo: GitImportInfo): Promise<string> {
-        // Use GitUrlResolver to resolve the commit
-        const commitHash = await this.gitResolver.resolveCommit(gitInfo);
-        return commitHash;
     }
 
     /**
