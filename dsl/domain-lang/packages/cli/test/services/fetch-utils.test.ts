@@ -61,11 +61,15 @@ describe('fetchWithRetry', () => {
         expect(response.status).toBe(200);
     });
 
-    test('retries on HTTP 500 server error', async () => {
-        // Arrange - Mock 500 then success
-        const errorResponse = new Response('Internal Server Error', {
-            status: 500,
-            statusText: 'Internal Server Error',
+    test.each([
+        [500, 'Internal Server Error'],
+        [502, 'Bad Gateway'],
+        [503, 'Service Unavailable'],
+    ])('retries on HTTP %i %s', async (status, statusText) => {
+        // Arrange - Mock error then success
+        const errorResponse = new Response(statusText, {
+            status,
+            statusText,
         });
         const successResponse = new Response('{"status": "ok"}', {
             status: 200,
@@ -80,121 +84,30 @@ describe('fetchWithRetry', () => {
         await vi.advanceTimersByTimeAsync(1500);
         const response = await responsePromise;
 
-        // Assert - Verify retry on 5xx
+        // Assert - Verify retry on 5xx errors
         expect(fetchSpy).toHaveBeenCalledTimes(2);
         expect(response.status).toBe(200);
     });
 
-    test('retries on HTTP 502 bad gateway', async () => {
-        // Arrange - Mock 502 then success
-        const errorResponse = new Response('Bad Gateway', {
-            status: 502,
-            statusText: 'Bad Gateway',
+    test.each([
+        [400, 'Bad Request'],
+        [401, 'Unauthorized'],
+        [403, 'Forbidden'],
+        [404, 'Not Found'],
+    ])('does not retry on HTTP %i %s', async (status, statusText) => {
+        // Arrange - Mock error response
+        const errorResponse = new Response(statusText, {
+            status,
+            statusText,
         });
-        const successResponse = new Response('{"status": "ok"}', {
-            status: 200,
-            statusText: 'OK',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch')
-            .mockResolvedValueOnce(errorResponse)
-            .mockResolvedValueOnce(successResponse);
-
-        // Act - Execute fetch with retry
-        const responsePromise = fetchWithRetry('https://api.example.com/data');
-        await vi.advanceTimersByTimeAsync(1500);
-        const response = await responsePromise;
-
-        // Assert - Verify retry on 502
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-        expect(response.status).toBe(200);
-    });
-
-    test('retries on HTTP 503 service unavailable', async () => {
-        // Arrange - Mock 503 then success
-        const errorResponse = new Response('Service Unavailable', {
-            status: 503,
-            statusText: 'Service Unavailable',
-        });
-        const successResponse = new Response('{"status": "ok"}', {
-            status: 200,
-            statusText: 'OK',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch')
-            .mockResolvedValueOnce(errorResponse)
-            .mockResolvedValueOnce(successResponse);
-
-        // Act - Execute fetch with retry
-        const responsePromise = fetchWithRetry('https://api.example.com/data');
-        await vi.advanceTimersByTimeAsync(1500);
-        const response = await responsePromise;
-
-        // Assert - Verify retry on 503
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-        expect(response.status).toBe(200);
-    });
-
-    test('does not retry on HTTP 400 bad request', async () => {
-        // Arrange - Mock 400 response
-        const badRequestResponse = new Response('Bad Request', {
-            status: 400,
-            statusText: 'Bad Request',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(badRequestResponse);
+        const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(errorResponse);
 
         // Act - Execute fetch (should not retry)
         const response = await fetchWithRetry('https://api.example.com/data');
 
-        // Assert - Verify single call, no retry
+        // Assert - Verify single call, no retry on 4xx client errors
         expect(fetchSpy).toHaveBeenCalledTimes(1);
-        expect(response.status).toBe(400);
-    });
-
-    test('does not retry on HTTP 401 unauthorized', async () => {
-        // Arrange - Mock 401 response
-        const unauthorizedResponse = new Response('Unauthorized', {
-            status: 401,
-            statusText: 'Unauthorized',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(unauthorizedResponse);
-
-        // Act - Execute fetch (should not retry)
-        const response = await fetchWithRetry('https://api.example.com/data');
-
-        // Assert - Verify single call, no retry on auth failure
-        expect(fetchSpy).toHaveBeenCalledTimes(1);
-        expect(response.status).toBe(401);
-    });
-
-    test('does not retry on HTTP 403 forbidden', async () => {
-        // Arrange - Mock 403 response
-        const forbiddenResponse = new Response('Forbidden', {
-            status: 403,
-            statusText: 'Forbidden',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(forbiddenResponse);
-
-        // Act - Execute fetch (should not retry)
-        const response = await fetchWithRetry('https://api.example.com/data');
-
-        // Assert - Verify single call, no retry on forbidden
-        expect(fetchSpy).toHaveBeenCalledTimes(1);
-        expect(response.status).toBe(403);
-    });
-
-    test('does not retry on HTTP 404 not found', async () => {
-        // Arrange - Mock 404 response
-        const notFoundResponse = new Response('Not Found', {
-            status: 404,
-            statusText: 'Not Found',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(notFoundResponse);
-
-        // Act - Execute fetch (should not retry)
-        const response = await fetchWithRetry('https://api.example.com/data');
-
-        // Assert - Verify single call, no retry on not found
-        expect(fetchSpy).toHaveBeenCalledTimes(1);
-        expect(response.status).toBe(404);
+        expect(response.status).toBe(status);
     });
 
     test('uses exponential backoff timing 1s → 2s → 4s', async () => {
