@@ -3,26 +3,80 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import { describe, test, beforeEach, afterEach, expect } from 'vitest';
 import { DependencyResolver } from '../../src/services/dependency-resolver.js';
+import type { PackageDownloader } from '../../src/services/package-downloader.js';
+import type { PackageCache } from '../../src/services/package-cache.js';
 
-class FakeGitUrlResolver {
+/**
+ * Mock PackageCache for testing.
+ * Stores packages in a temporary directory structure.
+ */
+class FakePackageCache implements Partial<PackageCache> {
     constructor(private readonly base: string) {}
-    async resolve(importUrl: string): Promise<string> {
-        // importUrl is expected as owner/repo or full URL; normalize to owner/repo
-        const m = /([^/]+)\/([^/@]+)(?:@([^/]+))?$/.exec(importUrl);
-        if (!m) throw new Error(`Invalid import: ${importUrl}`);
-        const owner = m[1];
-        const repo = m[2];
-        const commit = 'deadbeef';
-        const dir = path.join(this.base, 'github', owner, repo, commit);
-        await fs.mkdir(dir, { recursive: true });
-        const entry = path.join(dir, 'index.dlang');
-        await fs.writeFile(entry, 'Domain Dummy {}', 'utf-8');
-        return entry;
+    
+    async get(owner: string, repo: string, commitSha: string): Promise<string | undefined> {
+        const packagePath = path.join(this.base, owner, repo, commitSha);
+        try {
+            await fs.access(packagePath);
+            return packagePath;
+        } catch {
+            return undefined;
+        }
     }
-     
-    async resolveCommit(_gitInfo: unknown): Promise<string> {
-        // Return a fake commit hash for testing
-        return 'deadbeef';
+    
+    async has(owner: string, repo: string, commitSha: string): Promise<boolean> {
+        const result = await this.get(owner, repo, commitSha);
+        return result !== undefined;
+    }
+    
+    async put(owner: string, repo: string, commitSha: string, _tarballPath: string): Promise<string> {
+        const packagePath = path.join(this.base, owner, repo, commitSha);
+        await fs.mkdir(packagePath, { recursive: true });
+        const entry = path.join(packagePath, 'index.dlang');
+        await fs.writeFile(entry, 'Domain Dummy {}', 'utf-8');
+        return packagePath;
+    }
+}
+
+/**
+ * Mock PackageDownloader for testing.
+ * Downloads packages to fake cache and returns fake commit hashes.
+ */
+class FakePackageDownloader implements Partial<PackageDownloader> {
+    constructor(
+        private readonly cache: FakePackageCache,
+        private readonly base: string
+    ) {}
+    
+    async download(owner: string, repo: string, _ref: string): Promise<{ commitSha: string; integrity: string; path: string }> {
+        const commitSha = 'deadbeef'; // Fixed commit for testing
+        
+        // Create the package directory structure
+        const packagePath = path.join(this.base, owner, repo, commitSha);
+        await fs.mkdir(packagePath, { recursive: true });
+        
+        // Create entry file
+        const entry = path.join(packagePath, 'index.dlang');
+        await fs.writeFile(entry, 'Domain Dummy {}', 'utf-8');
+        
+        // Create model.yaml if it exists in the cache
+        const modelPath = path.join(packagePath, 'model.yaml');
+        const expectedModelPath = path.join(this.base, 'github', owner, repo, commitSha, 'model.yaml');
+        try {
+            const modelContent = await fs.readFile(expectedModelPath, 'utf-8');
+            await fs.writeFile(modelPath, modelContent, 'utf-8');
+        } catch {
+            // No model.yaml - that's OK
+        }
+        
+        return {
+            commitSha,
+            integrity: `sha512-fake`,
+            path: packagePath
+        };
+    }
+    
+    async resolveRefToCommit(_owner: string, _repo: string, _ref: string): Promise<string> {
+        return 'deadbeef'; // Fixed commit for testing
     }
 }
 
@@ -54,7 +108,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
         await writeYaml(path.join(aDir, 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.0.0\n`);
         await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\n`);
 
-        const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+        const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+        const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+        const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
         const lock = await resolver.resolveDependencies();
 
         expect(lock.version).toBe('1');
@@ -71,7 +127,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
         await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.0.0\n`);
         await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v2.0.0\n`);
 
-        const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+        const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+        const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+        const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
         await expect(resolver.resolveDependencies()).rejects.toThrow(/ref conflict/i);
     });
 
@@ -82,7 +140,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
         await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  B:\n    source: org/B\n    ref: v1.0.0\n`);
         await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  A:\n    source: org/A\n    ref: v1.0.0\n`);
 
-        const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+        const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+        const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+        const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
         await expect(resolver.resolveDependencies()).rejects.toThrow(/Cyclic package dependency/i);
     });
 
@@ -94,7 +154,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.2.0\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.3.0\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error
@@ -109,7 +171,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.0.0\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v2.0.0\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             await expect(resolver.resolveDependencies()).rejects.toThrow(/Major version mismatch/i);
         });
 
@@ -120,7 +184,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.0.0\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: main\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             await expect(resolver.resolveDependencies()).rejects.toThrow(/Cannot mix ref types/i);
         });
 
@@ -131,7 +197,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: main\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: main\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error
@@ -146,7 +214,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: main\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: develop\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             await expect(resolver.resolveDependencies()).rejects.toThrow(/Different branch refs/i);
         });
 
@@ -157,7 +227,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.1.0\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.5.0\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             await resolver.resolveDependencies();
 
             const messages = resolver.getResolutionMessages();
@@ -178,7 +250,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.0.0\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v2.0.0\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error due to override
@@ -196,7 +270,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.0.0\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: main\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error due to override
@@ -212,7 +288,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             await writeYaml(path.join(cacheDir, 'github', 'org', 'A', 'deadbeef', 'model.yaml'), `model:\n  name: A\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v1.0.0\n`);
             await writeYaml(path.join(cacheDir, 'github', 'org', 'B', 'deadbeef', 'model.yaml'), `model:\n  name: B\ndependencies:\n  core:\n    source: domainlang/core\n    ref: v2.0.0\n`);
 
-            const resolver = new DependencyResolver(workspace, new FakeGitUrlResolver(cacheDir) as any);
+            const packageCache = new FakePackageCache(cacheDir) as unknown as PackageCache;
+            const packageDownloader = new FakePackageDownloader(packageCache as FakePackageCache, cacheDir) as unknown as PackageDownloader;
+            const resolver = new DependencyResolver(workspace, packageDownloader, packageCache);
             await resolver.resolveDependencies();
 
             const messages = resolver.getOverrideMessages();
