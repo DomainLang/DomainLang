@@ -21,6 +21,9 @@ beforeAll(() => {
 async function getSymbols(input: string): Promise<DocumentSymbol[]> {
     const document = await testServices.parse(input);
     const provider = testServices.services.DomainLang.lsp.DocumentSymbolProvider;
+    if (!provider) {
+        throw new Error('DocumentSymbolProvider not available');
+    }
     return provider.getSymbols(document, {
         textDocument: { uri: document.uri.toString() }
     }) as Promise<DocumentSymbol[]>;
