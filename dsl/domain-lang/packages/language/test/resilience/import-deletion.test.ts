@@ -8,6 +8,7 @@
  * parsing behavior with EmptyFileSystem. See e2e/import-resolution-e2e.test.ts
  * for full filesystem-based import resolution tests.
  */
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- All array accesses in this file are safe after toHaveLength() checks */
 import { describe, test, expect, beforeAll } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, expectValidDocument } from '../test-helpers.js';

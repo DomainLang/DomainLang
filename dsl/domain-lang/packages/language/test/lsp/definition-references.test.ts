@@ -81,6 +81,7 @@ bc OrderContext for Sales {
             expect(result).toBeDefined();
             expect(result).toHaveLength(1);
             
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
             const link = result![0];
             expect(link.targetUri).toBe(doc.uri.toString());
             // Should point to "Sales" domain definition (line 1)
@@ -129,6 +130,7 @@ bc OrderContext for Sales {
             expect(result).toBeDefined();
             expect(result).toHaveLength(1);
             
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
             const link = result![0];
             // Should navigate to the domains.dlang file
             expect(link.targetUri).toBe(URI.file(domainsPath).toString());
@@ -190,6 +192,7 @@ bc OrderContext for Sales {
             expect(result).toBeDefined();
             expect(result).toHaveLength(1);
             
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
             const link = result![0];
             // Should navigate to the teams.dlang file
             expect(link.targetUri).toBe(URI.file(teamsPath).toString());
@@ -234,6 +237,7 @@ bc BillingContext for Sales {
 
             // Find all references
             const references = services.DomainLang.references.References;
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
             const refs = references.findReferences(salesDomain!, { includeDeclaration: false });
             const refArray = refs.toArray();
 
