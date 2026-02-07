@@ -62,19 +62,22 @@ export function useFirstRun(): {
  * Hook to get elapsed time since mount.
  * Useful for loading timers.
  * @param interval - Update interval in ms (default: 100)
+ * @param enabled - Whether the timer is active (default: true). Set to false to stop updates.
  * @returns Elapsed time in seconds
  */
-export function useElapsedTime(interval = 100): number {
+export function useElapsedTime(interval = 100, enabled = true): number {
     const [elapsed, setElapsed] = useState(0);
     const [startTime] = useState(() => Date.now());
 
     useEffect(() => {
+        if (!enabled) return;
+
         const timer = setInterval(() => {
             setElapsed((Date.now() - startTime) / 1000);
         }, interval);
 
         return () => clearInterval(timer);
-    }, [startTime, interval]);
+    }, [startTime, interval, enabled]);
 
     return elapsed;
 }

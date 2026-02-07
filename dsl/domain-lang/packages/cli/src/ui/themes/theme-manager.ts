@@ -53,16 +53,46 @@ export const themes = {
 } as const;
 
 /**
- * Default theme.
+ * Detect terminal background color from environment.
+ * Returns 'dark' or 'light' based on terminal settings.
  */
-export const DEFAULT_THEME: Theme = themes.dark;
+function detectTerminalTheme(): ThemeType {
+    // Check COLORFGBG environment variable (format: "foreground;background")
+    // Background values: 0-7 are dark, 8-15 are light
+    const colorfgbg = process.env['COLORFGBG'];
+    if (colorfgbg) {
+        const parts = colorfgbg.split(';');
+        if (parts.length >= 2) {
+            const bg = Number.parseInt(parts[1] || '0', 10);
+            return bg >= 8 ? 'light' : 'dark';
+        }
+    }
+
+    // Check TERM_PROGRAM for known terminals with light defaults
+    const termProgram = process.env['TERM_PROGRAM'];
+    if (termProgram === 'Apple_Terminal' && process.platform === 'darwin') {
+        // macOS Terminal.app defaults to light theme
+        return 'light';
+    }
+
+    // Default to dark theme
+    return 'dark';
+}
+
+/**
+ * Default theme based on terminal detection.
+ */
+function getDefaultTheme(): Theme {
+    const detected = detectTerminalTheme();
+    return themes[detected];
+}
 
 /**
  * Theme manager singleton.
  * Manages active theme and provides dynamic color access.
  */
 class ThemeManager {
-    private activeTheme: Theme = DEFAULT_THEME;
+    private activeTheme: Theme | null = null;
 
     /**
      * Set the active theme by name.
@@ -71,7 +101,7 @@ class ThemeManager {
      */
     setActiveTheme(themeName: string | undefined): boolean {
         if (!themeName) {
-            this.activeTheme = DEFAULT_THEME;
+            this.activeTheme = getDefaultTheme();
             return true;
         }
 
@@ -92,6 +122,8 @@ class ThemeManager {
         if (process.env['NO_COLOR']) {
             return this.createNoColorTheme();
         }
+        // Lazy initialization - detect on first access
+        this.activeTheme ??= getDefaultTheme();
         return this.activeTheme;
     }
 

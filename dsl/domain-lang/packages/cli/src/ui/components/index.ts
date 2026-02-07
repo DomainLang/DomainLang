@@ -55,6 +55,15 @@ export { Header, type HeaderProps } from './Header.js';
 export { ThemedGradient, type ThemedGradientProps } from './ThemedGradient.js';
 export { SectionHeader, type SectionHeaderProps } from './SectionHeader.js';
 
+// Progress components
+export {
+    ProgressBar,
+    MultiProgressBar,
+    type ProgressBarProps,
+    type MultiProgressBarProps,
+    type PackageProgress,
+} from './ProgressBar.js';
+
 // Layout components
 export {
     Banner,
