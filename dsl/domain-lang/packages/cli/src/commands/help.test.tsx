@@ -3,11 +3,12 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '../test-utils/render.js';
-import { Help } from './help.js';
+import { Help, runHelp } from './help.js';
 import type { CommandContext } from './types.js';
 
 // Mock stdout.write for non-rich modes
 const originalWrite = process.stdout.write;
+const originalExit = process.exit;
 let stdoutOutput: string;
 
 beforeEach(() => {
@@ -16,10 +17,12 @@ beforeEach(() => {
         stdoutOutput += typeof chunk === 'string' ? chunk : chunk.toString();
         return true;
     }) as typeof process.stdout.write;
+    process.exit = vi.fn() as unknown as typeof process.exit;
 });
 
 afterEach(() => {
     process.stdout.write = originalWrite;
+    process.exit = originalExit;
 });
 
 describe('Help command', () => {
@@ -54,7 +57,7 @@ describe('Help command', () => {
         };
 
         // Act
-        render(<Help context={context} />);
+        runHelp(context);
 
         // Assert
         const output = JSON.parse(stdoutOutput);
@@ -74,7 +77,7 @@ describe('Help command', () => {
         };
 
         // Act
-        render(<Help context={context} />);
+        runHelp(context);
 
         // Assert
         expect(stdoutOutput).toContain('dlang v2.0.0');

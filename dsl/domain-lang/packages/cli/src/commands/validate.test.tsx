@@ -61,7 +61,7 @@ describe('Validate command', () => {
 
             // Act
             const { lastFrame } = render(
-                <Validate file={file} context={defaultContext} />,
+                <Validate file={file} context={defaultContext} autoExit={false} />,
             );
 
             // Assert - should show loading spinner
@@ -85,7 +85,7 @@ describe('Validate command', () => {
 
             // Act
             const { lastFrame } = render(
-                <Validate file={file} context={context} />,
+                <Validate file={file} context={context} autoExit={false} />,
             );
 
             // Assert - component renders without error
