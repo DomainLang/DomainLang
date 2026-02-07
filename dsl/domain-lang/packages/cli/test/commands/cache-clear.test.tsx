@@ -5,16 +5,16 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, flushAsync } from '../test-utils/index.js';
-import { CacheClear, runCacheClear, type CacheClearProps } from './cache-clear.js';
+import { render, flushAsync } from '../../src/test-utils/index.js';
+import { CacheClear, runCacheClear, type CacheClearProps } from '../../src/commands/cache-clear.js';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { PackageCache } from '../services/package-cache.js';
+import { PackageCache } from '../../src/services/package-cache.js';
 
 // Mock filesystem operations
 vi.mock('node:fs/promises');
 vi.mock('node:fs');
-vi.mock('../services/package-cache.js');
+vi.mock('../../src/services/package-cache.js');
 
 describe('CacheClear command component', () => {
     const mockContext: CacheClearProps['context'] = {

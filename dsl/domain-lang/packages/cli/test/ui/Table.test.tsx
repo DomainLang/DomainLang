@@ -2,8 +2,8 @@
  * Tests for the Table component.
  */
 import { describe, it, expect } from 'vitest';
-import { render } from '../../test-utils/render.js';
-import { Table, KeyValue, List } from './Table.js';
+import { render } from '../../src/test-utils/render.js';
+import { Table, KeyValue, List } from '../../src/ui/components/Table.js';
 
 describe('Table', () => {
     it('renders table with headers and rows', () => {

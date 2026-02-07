@@ -6,9 +6,9 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Text } from 'ink';
-import { render } from '../test-utils/render.js';
-import { Validate } from './validate.js';
-import type { CommandContext, ValidationResult } from './types.js';
+import { render } from '../../src/test-utils/render.js';
+import { Validate } from '../../src/commands/validate.js';
+import type { CommandContext, ValidationResult } from '../../src/commands/types.js';
 
 // Mock Langium services
 vi.mock('@domainlang/language', () => ({

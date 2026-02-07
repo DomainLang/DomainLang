@@ -5,7 +5,7 @@
  * cache integration, event emission, rate limiting, and error handling.
  */
 
-import { describe, test, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { PackageDownloader } from '../../src/services/package-downloader.js';
 import type { CredentialProvider, GitHubCredentials } from '../../src/services/credential-provider.js';
 import type { PackageCache } from '../../src/services/package-cache.js';
@@ -52,6 +52,12 @@ describe('PackageDownloader', () => {
             mockPackageCache,
             mockEventCallback
         );
+    });
+
+    afterEach(() => {
+        // Cleanup to prevent memory leaks
+        vi.clearAllMocks();
+        fetchMock.mockReset();
     });
 
     describe('resolveRefToCommit', () => {

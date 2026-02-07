@@ -4,8 +4,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { Text } from 'ink';
-import { render } from '../../test-utils/render.js';
-import { Banner, InfoBox, SuccessBanner, ErrorBanner, WarningBanner } from './Banner.js';
+import { render } from '../../src/test-utils/render.js';
+import { Banner, InfoBox, SuccessBanner, ErrorBanner, WarningBanner } from '../../src/ui/components/Banner.js';
 
 describe('Banner', () => {
     it.each([

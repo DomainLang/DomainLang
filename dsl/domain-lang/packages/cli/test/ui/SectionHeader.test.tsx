@@ -6,7 +6,7 @@
  */
 import { render } from 'ink-testing-library';
 import { describe, it, expect } from 'vitest';
-import { SectionHeader } from './SectionHeader.js';
+import { SectionHeader } from '../../src/ui/components/SectionHeader.js';
 
 describe('SectionHeader', () => {
     it('should render icon and title', () => {

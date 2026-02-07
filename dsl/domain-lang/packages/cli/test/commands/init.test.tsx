@@ -6,9 +6,9 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render } from '../test-utils/render.js';
-import { Init, runInit } from './init.js';
-import type { CommandContext } from './types.js';
+import { render } from '../../src/test-utils/render.js';
+import { Init, runInit } from '../../src/commands/init.js';
+import type { CommandContext } from '../../src/commands/types.js';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -93,7 +93,7 @@ describe('Init file generation', () => {
 
     describe('file creation', () => {
         it('creates model.yaml with correct content', async () => {
-            const { runInit } = await import('./init.js');
+            const { runInit } = await import('../../src/commands/init.js');
             const context: CommandContext = {
                 mode: 'quiet',
                 noColor: false,
@@ -121,7 +121,7 @@ describe('Init file generation', () => {
         });
 
         it('creates index.dlang from template', async () => {
-            const { runInit } = await import('./init.js');
+            const { runInit } = await import('../../src/commands/init.js');
             const context: CommandContext = {
                 mode: 'quiet',
                 noColor: false,
@@ -146,7 +146,7 @@ describe('Init file generation', () => {
         });
 
         it('creates .gitignore from template', async () => {
-            const { runInit } = await import('./init.js');
+            const { runInit } = await import('../../src/commands/init.js');
             const context: CommandContext = {
                 mode: 'quiet',
                 noColor: false,
@@ -171,7 +171,7 @@ describe('Init file generation', () => {
         });
 
         it('creates domains directory with .gitkeep', async () => {
-            const { runInit } = await import('./init.js');
+            const { runInit } = await import('../../src/commands/init.js');
             const context: CommandContext = {
                 mode: 'quiet',
                 noColor: false,
@@ -194,7 +194,7 @@ describe('Init file generation', () => {
 
     describe('model.yaml structure', () => {
         it('generates correct YAML structure with paths and dependencies', async () => {
-            const { runInit } = await import('./init.js');
+            const { runInit } = await import('../../src/commands/init.js');
             const context: CommandContext = {
                 mode: 'quiet',
                 noColor: false,
@@ -225,7 +225,7 @@ describe('Init file generation', () => {
             const targetDir = 'existing-dir';
             mkdirSync(resolve(tempDir, targetDir), { recursive: true });
 
-            const { runInit } = await import('./init.js');
+            const { runInit } = await import('../../src/commands/init.js');
             const context: CommandContext = {
                 mode: 'quiet',
                 noColor: false,
@@ -253,7 +253,7 @@ describe('Init file generation', () => {
         it('errors when model.yaml already exists in current directory', async () => {
             writeFileSync(resolve(tempDir, 'model.yaml'), 'existing content', 'utf-8');
 
-            const { runInit } = await import('./init.js');
+            const { runInit } = await import('../../src/commands/init.js');
             const context: CommandContext = {
                 mode: 'quiet',
                 noColor: false,

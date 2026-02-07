@@ -1,15 +1,14 @@
 /**
- * Tests for upgrade command.
+ * Tests for update command.
  */
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render } from '../test-utils/render.js';
-import { Upgrade, runUpgrade } from './upgrade.js';
-import type { CommandContext } from './types.js';
+import { render, flushAsync } from '../../src/test-utils/render.js';
+import { Update, runUpdate } from '../../src/commands/update.js';
+import type { CommandContext } from '../../src/commands/types.js';
 import fs from 'node:fs/promises';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import YAML from 'yaml';
 
 // ============================================================================
 // Test Setup & Helpers
@@ -24,7 +23,7 @@ const defaultContext: CommandContext = {
 };
 
 function createTestWorkspace(): string {
-    const workspaceDir = path.join(tmpdir(), `dlang-test-upgrade-${Date.now()}`);
+    const workspaceDir = path.join(tmpdir(), `dlang-test-update-${Date.now()}`);
     mkdirSync(workspaceDir, { recursive: true });
     return workspaceDir;
 }
@@ -35,27 +34,23 @@ function cleanupWorkspace(workspaceDir: string): void {
     }
 }
 
-async function createManifest(
-    workspaceDir: string, 
-    dependencies: Record<string, string | { ref?: string; source?: string }>
-): Promise<void> {
-    const manifest = {
-        model: 'test-model',
-        version: '1.0.0',
+async function createLockFile(workspaceDir: string, dependencies: Record<string, unknown>): Promise<void> {
+    const lockFile = {
+        version: '1',
         dependencies,
     };
     await fs.writeFile(
-        path.join(workspaceDir, 'model.yaml'),
-        YAML.stringify(manifest),
+        path.join(workspaceDir, 'model.lock'),
+        JSON.stringify(lockFile, null, 2),
         'utf-8'
     );
 }
 
 // ============================================================================
-// Upgrade Component Tests
+// Update Component Tests
 // ============================================================================
 
-describe('Upgrade component', () => {
+describe('Update component', () => {
     let workspaceDir: string;
     let context: CommandContext;
 
@@ -68,56 +63,66 @@ describe('Upgrade component', () => {
         cleanupWorkspace(workspaceDir);
     });
 
-    test('displays error when model.yaml does not exist', async () => {
-        // Arrange - no manifest created
+    test('displays error when lock file does not exist', async () => {
+        // Arrange - no lock file created
 
         // Act
-        const { lastFrame } = render(<Upgrade context={context} />);
-
-        // Wait for component to finish
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const { lastFrame } = render(<Update context={context} />);
+        await flushAsync();
 
         // Assert
-        expect(lastFrame()).toContain('Upgrade failed');
-        expect(lastFrame()).toContain('No model.yaml found');
+        expect(lastFrame()).toContain('Update failed');
+        expect(lastFrame()).toContain('No model.lock found');
     });
 
-    test('list mode shows empty state when no tag dependencies', async () => {
-        // Arrange - manifest with only branch dependencies
-        await createManifest(workspaceDir, {
-            'test/repo': 'main',
+    test('displays error when no branch dependencies found', async () => {
+        // Arrange - lock file with only tag dependencies
+        await createLockFile(workspaceDir, {
+            'domainlang/core': {
+                ref: 'v1.0.0',
+                refType: 'tag',
+                resolved: 'https://api.github.com/repos/domainlang/core/tarball/abc123',
+                commit: 'abc123def456',
+                integrity: 'sha512-...',
+            },
         });
 
         // Act
-        const { lastFrame } = render(<Upgrade context={context} />);
-
-        // Wait for component to finish
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const { lastFrame } = render(<Update context={context} />);
+        await flushAsync();
 
         // Assert
-        expect(lastFrame()).toContain('Available Upgrades');
+        expect(lastFrame()).toContain('Update failed');
+        expect(lastFrame()).toContain('No branch dependencies found');
     });
 
-    test('JSON output mode returns structured data', async () => {
+    test('JSON output mode returns structured data on success', async () => {
         // Arrange
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
         const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
         
-        await createManifest(workspaceDir, {
-            'domainlang/core': 'v1.0.0',
+        await createLockFile(workspaceDir, {
+            'test/repo': {
+                ref: 'main',
+                refType: 'branch',
+                resolved: 'https://api.github.com/repos/test/repo/tarball/abc123',
+                commit: 'abc123def456',
+                integrity: 'sha512-...',
+            },
         });
 
         const jsonContext = { ...context, mode: 'json' as const };
 
-        // Act
-        render(<Upgrade context={jsonContext} />);
+        // Act - will fail because we can't actually download, but we can test the structure
+        await runUpdate(jsonContext);
 
-        // Wait for async operations
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Assert - will eventually output JSON (success or error)
-        if (exitSpy.mock.calls.length > 0) {
-            expect([0, 1]).toContain(exitSpy.mock.calls[0][0]);
+        // Assert
+        // runDirect should handle error and output JSON error
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        if (stdoutSpy.mock.calls.length > 0) {
+            const output = stdoutSpy.mock.calls[0][0] as string;
+            const json = JSON.parse(output);
+            expect(json).toHaveProperty('success');
         }
 
         exitSpy.mockRestore();
@@ -126,10 +131,10 @@ describe('Upgrade component', () => {
 });
 
 // ============================================================================
-// runUpgrade Function Tests
+// runUpdate Function Tests
 // ============================================================================
 
-describe('runUpgrade function', () => {
+describe('runUpdate function', () => {
     let workspaceDir: string;
     let context: CommandContext;
 
@@ -142,13 +147,13 @@ describe('runUpgrade function', () => {
         cleanupWorkspace(workspaceDir);
     });
 
-    test('exits with error code 1 when manifest missing', async () => {
+    test('exits with error code 1 when lock file missing', async () => {
         // Arrange
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
         const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
         // Act
-        await runUpgrade(undefined, undefined, context);
+        await runUpdate(context);
 
         // Assert
         expect(exitSpy).toHaveBeenCalledWith(1);
@@ -158,14 +163,14 @@ describe('runUpgrade function', () => {
         stderrSpy.mockRestore();
     });
 
-    test('JSON mode outputs error structure when manifest missing', async () => {
+    test('JSON mode outputs error when lock file missing', async () => {
         // Arrange
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
         const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
         const jsonContext = { ...context, mode: 'json' as const };
 
         // Act
-        await runUpgrade(undefined, undefined, jsonContext);
+        await runUpdate(jsonContext);
 
         // Assert
         expect(exitSpy).toHaveBeenCalledWith(1);
@@ -174,47 +179,25 @@ describe('runUpgrade function', () => {
         const output = stdoutSpy.mock.calls[0][0] as string;
         const json = JSON.parse(output);
         expect(json.success).toBe(false);
-        expect(json.error).toContain('model.yaml');
+        expect(json.error).toContain('model.lock');
 
         exitSpy.mockRestore();
         stdoutSpy.mockRestore();
     });
 
-    test('quiet mode outputs summary for list mode', async () => {
+    test('quiet mode outputs summary text', async () => {
         // Arrange
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
         const stdoutSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
         const quietContext = { ...context, mode: 'quiet' as const };
-        
-        await createManifest(workspaceDir, {});
 
         // Act
-        await runUpgrade(undefined, undefined, quietContext);
-
-        // Assert - will exit eventually
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        exitSpy.mockRestore();
-        stdoutSpy.mockRestore();
-    });
-
-    test('apply mode exits with error when package not found', async () => {
-        // Arrange
-        const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-        const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        
-        await createManifest(workspaceDir, {
-            'other/repo': 'v1.0.0',
-        });
-
-        // Act - try to upgrade non-existent package
-        await runUpgrade('nonexistent/package', undefined, context);
+        await runUpdate(quietContext);
 
         // Assert
-        await new Promise(resolve => setTimeout(resolve, 100));
         expect(exitSpy).toHaveBeenCalledWith(1);
 
         exitSpy.mockRestore();
-        stderrSpy.mockRestore();
+        stdoutSpy.mockRestore();
     });
 });

@@ -2,8 +2,8 @@
  * Tests for the Footer component.
  */
 import { describe, it, expect } from 'vitest';
-import { render } from '../../test-utils/render.js';
-import { Footer, MinimalFooter } from './Footer.js';
+import { render } from '../../src/test-utils/render.js';
+import { Footer, MinimalFooter } from '../../src/ui/components/Footer.js';
 
 describe('Footer', () => {
     it('renders with version only', () => {

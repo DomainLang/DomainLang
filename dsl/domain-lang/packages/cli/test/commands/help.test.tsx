@@ -2,9 +2,9 @@
  * Tests for the Help command.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render } from '../test-utils/render.js';
-import { Help, runHelp } from './help.js';
-import type { CommandContext } from './types.js';
+import { render } from '../../src/test-utils/render.js';
+import { Help, runHelp } from '../../src/commands/help.js';
+import type { CommandContext } from '../../src/commands/types.js';
 
 // Mock stdout.write for non-rich modes
 const originalWrite = process.stdout.write;

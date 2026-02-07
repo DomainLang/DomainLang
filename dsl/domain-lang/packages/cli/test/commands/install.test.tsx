@@ -6,13 +6,13 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, flushAsync } from '../test-utils/render.js';
-import { Install, runInstall } from './install.js';
-import type { CommandContext } from './types.js';
-import { InstallService, FrozenMismatchError, IntegrityError } from '../services/install-service.js';
+import { render, flushAsync } from '../../src/test-utils/render.js';
+import { Install, runInstall } from '../../src/commands/install.js';
+import type { CommandContext } from '../../src/commands/types.js';
+import { InstallService, FrozenMismatchError, IntegrityError } from '../../src/services/install-service.js';
 
 // Mock InstallService
-vi.mock('../services/install-service.js', () => ({
+vi.mock('../../src/services/install-service.js', () => ({
     InstallService: vi.fn(),
     FrozenMismatchError: class FrozenMismatchError extends Error {
         constructor(

@@ -2,14 +2,14 @@
  * Tests for the StatusMessage component.
  */
 import { describe, it, expect } from 'vitest';
-import { render } from '../../test-utils/render.js';
+import { render } from '../../src/test-utils/render.js';
 import { 
     StatusMessage, 
     SuccessMessage, 
     ErrorMessage, 
     WarningMessage, 
     InfoMessage,
-} from './StatusMessage.js';
+} from '../../src/ui/components/StatusMessage.js';
 
 describe('StatusMessage', () => {
     it.each([

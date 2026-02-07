@@ -10,6 +10,9 @@
  *
  * These tests make real HTTP calls and require network access.
  *
+ * **CI Behavior:** Skipped by default in CI environments (set INTEGRATION_TESTS=true to run).
+ * **Local Run:** Set environment variable to skip: `INTEGRATION_TESTS=false npm test`
+ *
  * @module test/integration/package-lifecycle
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -146,7 +149,10 @@ function readDirRecursive(dir: string): string[] {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Package lifecycle integration via CLI (larsbaunwall/ddd-types)', () => {
+const shouldSkipIntegration = 
+    process.env.CI === 'true' && process.env.INTEGRATION_TESTS !== 'true';
+
+describe.skipIf(shouldSkipIntegration)('Package lifecycle integration via CLI (larsbaunwall/ddd-types)', () => {
     let workspace: string;
 
     beforeAll(() => {
@@ -162,7 +168,7 @@ describe('Package lifecycle integration via CLI (larsbaunwall/ddd-types)', () =>
     // ------------------------------------------------------------------
     // 1. Init a new project
     // ------------------------------------------------------------------
-    it('dlang init scaffolds a new project', { timeout: 30_000 }, () => {
+    it('dlang init scaffolds a new project', { timeout: 10_000 }, () => {
         // Arrange — workspace is an empty temp dir
 
         // Act
@@ -190,7 +196,7 @@ describe('Package lifecycle integration via CLI (larsbaunwall/ddd-types)', () =>
     // ------------------------------------------------------------------
     // 2. Add a dependency
     // ------------------------------------------------------------------
-    it('dlang add installs a dependency and creates lock file', { timeout: 60_000 }, () => {
+    it('dlang add installs a dependency and creates lock file', { timeout: 30_000 }, () => {
         // Arrange — use the project created in step 1
         const projectDir = join(workspace, 'my-project');
 
