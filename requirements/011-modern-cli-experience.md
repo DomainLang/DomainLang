@@ -82,7 +82,7 @@ dlang init               # Interactive project initialization
 dlang validate <file>    # Validate model files
 dlang generate <file>    # Generate code
 dlang install            # Install dependencies
-dlang model list         # List dependencies
+dlang model list         # List model dependencies
 dlang model add <pkg>    # Add dependency
 dlang model remove <pkg> # Remove dependency
 dlang model tree         # Show dependency tree
