@@ -11,5 +11,6 @@ export {
     renderHookWithProviders,
     defaultTestContext,
     waitFor,
+    flushAsync,
     stripAnsi,
 } from './render.js';

@@ -1,0 +1,17 @@
+/**
+ * {{name}} - Domain model entry point
+ * 
+ * This is the main entry file for your DomainLang model.
+ * Define your domains, bounded contexts, and context maps here.
+ * 
+ * @see https://domainlang.net/guide/getting-started
+ */
+
+// Example domain structure - replace with your own
+// Domain Sales {
+//     vision: "Enable efficient sales operations"
+// }
+
+// BoundedContext OrderManagement for Sales as Core {
+//     description: "Handles order lifecycle"
+// }

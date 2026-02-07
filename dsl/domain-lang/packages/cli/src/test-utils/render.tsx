@@ -231,6 +231,16 @@ export async function waitFor(
 }
 
 /**
+ * Flush pending async React effects.
+ * Use this instead of waitUntilExit() in tests to let useEffect/useCommand settle.
+ */
+export async function flushAsync(): Promise<void> {
+    await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+    });
+}
+
+/**
  * Clean ANSI escape codes from output for easier assertions.
  */
 export function stripAnsi(str: string): string {
