@@ -33,7 +33,27 @@ interface LoadedLockFile {
 }
 
 /**
+ * Cached context for a single workspace (directory containing model.yaml).
+ * Each workspace root has its own independent state.
+ */
+interface WorkspaceContext {
+    /** The resolved workspace root path */
+    readonly root: string;
+    /** Cached lock file for this workspace */
+    lockFile: LockFile | undefined;
+    /** Cached manifest for this workspace */
+    manifestCache: ManifestCache | undefined;
+    /** Initialization promise for this context */
+    initPromise: Promise<void> | undefined;
+}
+
+/**
  * Coordinates workspace discovery and manifest/lock file reading.
+ * 
+ * **Multi-Root Support:**
+ * Maintains separate contexts for each workspace root (directory with model.yaml).
+ * This enables correct resolution in multi-project setups where sub-projects
+ * have their own model.yaml files.
  * 
  * This is a read-only service for the LSP - it does NOT:
  * - Generate lock files (use CLI: `dlang install`)
@@ -48,10 +68,24 @@ interface LoadedLockFile {
 export class WorkspaceManager {
     private readonly manifestFiles: readonly string[];
     private readonly lockFiles: readonly string[];
-    private workspaceRoot: string | undefined;
-    private lockFile: LockFile | undefined;
-    private initializePromise: Promise<void> | undefined;
-    private manifestCache: ManifestCache | undefined;
+    
+    /** 
+     * Cache of workspace contexts by resolved workspace root path.
+     * Supports multiple independent workspaces in a single session.
+     */
+    private readonly workspaceContexts = new Map<string, WorkspaceContext>();
+    
+    /**
+     * Cache mapping start paths to their resolved workspace roots.
+     * Avoids repeated directory tree walking for the same paths.
+     */
+    private readonly pathToRootCache = new Map<string, string>();
+    
+    /**
+     * The currently active workspace root (set by last initialize() call).
+     * Used by methods like getWorkspaceRoot(), getManifest(), etc.
+     */
+    private activeRoot: string | undefined;
 
     constructor(options: WorkspaceManagerOptions = {}) {
         this.manifestFiles = options.manifestFiles ?? [...DEFAULT_MANIFEST_FILES];
@@ -59,12 +93,63 @@ export class WorkspaceManager {
     }
 
     /**
+     * Returns the active workspace context, or undefined if not initialized.
+     * All methods that need context should call this after ensureInitialized().
+     */
+    private getActiveContext(): WorkspaceContext | undefined {
+        if (!this.activeRoot) return undefined;
+        return this.workspaceContexts.get(this.activeRoot);
+    }
+
+    /**
      * Finds the workspace root and loads any existing lock file.
-     * Repeated calls await the same initialization work.
+     * 
+     * **Multi-Root Support:**
+     * Each call may switch to a different workspace context based on the startPath.
+     * The workspace root is the nearest ancestor directory containing model.yaml.
+     * 
+     * @param startPath - Directory to start searching from (usually document directory)
      */
     async initialize(startPath: string): Promise<void> {
-        this.initializePromise ??= this.performInitialization(startPath);
-        await this.initializePromise;
+        const normalizedStart = path.resolve(startPath);
+        
+        // Fast path: check if we've already resolved this path
+        let workspaceRoot = this.pathToRootCache.get(normalizedStart);
+        
+        if (!workspaceRoot) {
+            // Find workspace root by walking up directory tree
+            workspaceRoot = await this.findWorkspaceRoot(normalizedStart) ?? normalizedStart;
+            this.pathToRootCache.set(normalizedStart, workspaceRoot);
+        }
+        
+        // Switch to this workspace's context
+        this.activeRoot = workspaceRoot;
+        
+        // Get or create context for this workspace
+        let context = this.workspaceContexts.get(workspaceRoot);
+        if (!context) {
+            context = {
+                root: workspaceRoot,
+                lockFile: undefined,
+                manifestCache: undefined,
+                initPromise: undefined
+            };
+            this.workspaceContexts.set(workspaceRoot, context);
+        }
+        
+        // Initialize this context (lazy, once per context)
+        context.initPromise ??= this.initializeContext(context);
+        await context.initPromise;
+    }
+    
+    /**
+     * Initializes a workspace context by loading its lock file.
+     */
+    private async initializeContext(context: WorkspaceContext): Promise<void> {
+        const loaded = await this.loadLockFileFromDisk(context.root);
+        if (loaded) {
+            context.lockFile = loaded.lockFile;
+        }
     }
 
     /**
@@ -72,21 +157,53 @@ export class WorkspaceManager {
      * @throws Error if {@link initialize} has not completed successfully.
      */
     getWorkspaceRoot(): string {
-        if (!this.workspaceRoot) {
+        if (!this.activeRoot) {
             throw new Error('WorkspaceManager not initialized. Call initialize() first.');
         }
-        return this.workspaceRoot;
+        return this.activeRoot;
     }
 
     /**
      * Returns the project-local package cache directory.
      * Per PRS-010: .dlang/packages/
+     * 
+     * If the current workspace root is inside a cached package,
+     * walks up to find the actual project root's cache directory.
      */
     getCacheDir(): string {
-        if (!this.workspaceRoot) {
+        if (!this.activeRoot) {
             throw new Error('WorkspaceManager not initialized. Call initialize() first.');
         }
-        return path.join(this.workspaceRoot, '.dlang', 'packages');
+        
+        // If workspace root is inside .dlang/packages, find the project root
+        const projectRoot = this.findProjectRootFromCache(this.activeRoot);
+        return path.join(projectRoot, '.dlang', 'packages');
+    }
+    
+    /**
+     * Finds the actual project root when inside a cached package.
+     * 
+     * Cached packages are stored in: <project>/.dlang/packages/<owner>/<repo>/<commit>/
+     * If workspaceRoot is inside this structure, returns <project>
+     * Otherwise returns workspaceRoot unchanged.
+     */
+    private findProjectRootFromCache(currentRoot: string): string {
+        // Normalize path for cross-platform compatibility
+        const normalized = currentRoot.split(path.sep);
+        
+        // Find last occurrence of .dlang in the path
+        const dlangIndex = normalized.lastIndexOf('.dlang');
+        
+        // Check if we're inside .dlang/packages/...
+        if (dlangIndex !== -1 && 
+            dlangIndex + 1 < normalized.length && 
+            normalized[dlangIndex + 1] === 'packages') {
+            // Return the directory containing .dlang (the project root)
+            return normalized.slice(0, dlangIndex).join(path.sep);
+        }
+        
+        // Not in a cached package, return as-is
+        return currentRoot;
     }
 
     /**
@@ -94,7 +211,7 @@ export class WorkspaceManager {
      */
     async getManifestPath(): Promise<string | undefined> {
         await this.ensureInitialized();
-        const root = this.workspaceRoot;
+        const root = this.activeRoot;
         if (!root) {
             return undefined;
         }
@@ -119,12 +236,38 @@ export class WorkspaceManager {
     }
 
     /**
+     * Returns the cached manifest synchronously (if available).
+     * Used by LSP features that need synchronous access (like completion).
+     * Returns undefined if manifest hasn't been loaded yet.
+     */
+    getCachedManifest(): ModelManifest | undefined {
+        return this.getActiveContext()?.manifestCache?.manifest;
+    }
+
+    /**
+     * Ensures the manifest is loaded and returns it.
+     * Use this over getCachedManifest() when you need to guarantee the manifest
+     * is available (e.g., in async LSP operations like completions).
+     * 
+     * @returns The manifest or undefined if no model.yaml exists
+     */
+    async ensureManifestLoaded(): Promise<ModelManifest | undefined> {
+        // If we already have a cached manifest, return it immediately
+        const context = this.getActiveContext();
+        if (context?.manifestCache?.manifest) {
+            return context.manifestCache.manifest;
+        }
+        // Otherwise load it (this also populates the cache)
+        return this.getManifest();
+    }
+
+    /**
      * Gets the currently cached lock file.
      * Returns undefined if no lock file exists (run `dlang install` to create one).
      */
     async getLockFile(): Promise<LockFile | undefined> {
         await this.ensureInitialized();
-        return this.lockFile;
+        return this.getActiveContext()?.lockFile;
     }
 
     /**
@@ -132,13 +275,12 @@ export class WorkspaceManager {
      */
     async refreshLockFile(): Promise<LockFile | undefined> {
         await this.ensureInitialized();
+        const context = this.getActiveContext();
         const loaded = await this.loadLockFileFromDisk();
-        if (loaded) {
-            this.lockFile = loaded.lockFile;
-        } else {
-            this.lockFile = undefined;
+        if (context) {
+            context.lockFile = loaded?.lockFile;
         }
-        return this.lockFile;
+        return loaded?.lockFile;
     }
 
     /**
@@ -149,8 +291,11 @@ export class WorkspaceManager {
      * will re-read from disk.
      */
     invalidateCache(): void {
-        this.manifestCache = undefined;
-        this.lockFile = undefined;
+        const context = this.getActiveContext();
+        if (context) {
+            context.manifestCache = undefined;
+            context.lockFile = undefined;
+        }
     }
 
     /**
@@ -158,7 +303,10 @@ export class WorkspaceManager {
      * Call this when model.yaml changes.
      */
     invalidateManifestCache(): void {
-        this.manifestCache = undefined;
+        const context = this.getActiveContext();
+        if (context) {
+            context.manifestCache = undefined;
+        }
     }
 
     /**
@@ -166,7 +314,10 @@ export class WorkspaceManager {
      * Call this when model.lock changes.
      */
     invalidateLockCache(): void {
-        this.lockFile = undefined;
+        const context = this.getActiveContext();
+        if (context) {
+            context.lockFile = undefined;
+        }
     }
 
     /**
@@ -209,7 +360,8 @@ export class WorkspaceManager {
     async resolveDependencyPath(specifier: string): Promise<string | undefined> {
         await this.ensureInitialized();
         
-        if (!this.lockFile) {
+        const context = this.getActiveContext();
+        if (!context?.lockFile) {
             return undefined;
         }
 
@@ -236,7 +388,7 @@ export class WorkspaceManager {
             // Match if specifier equals key or starts with key/
             if (specifier === key || specifier.startsWith(`${key}/`)) {
                 // Find in lock file
-                const locked = this.lockFile.dependencies[normalized.source];
+                const locked = context.lockFile.dependencies[normalized.source];
                 if (!locked) {
                     return undefined;
                 }
@@ -275,36 +427,34 @@ export class WorkspaceManager {
         }
     }
 
-    private async performInitialization(startPath: string): Promise<void> {
-        this.workspaceRoot = await this.findWorkspaceRoot(startPath) ?? path.resolve(startPath);
-        const loaded = await this.loadLockFileFromDisk();
-        if (loaded) {
-            this.lockFile = loaded.lockFile;
-        }
-    }
-
     private async ensureInitialized(): Promise<void> {
-        if (this.initializePromise) {
-            await this.initializePromise;
-        } else if (!this.workspaceRoot) {
-            throw new Error('WorkspaceManager not initialized. Call initialize() first.');
+        // Check if we have an active workspace context
+        if (this.activeRoot) {
+            const context = this.workspaceContexts.get(this.activeRoot);
+            if (context?.initPromise) {
+                await context.initPromise;
+                return;
+            }
         }
+        
+        throw new Error('WorkspaceManager not initialized. Call initialize() first.');
     }
 
-    private async loadLockFileFromDisk(): Promise<LoadedLockFile | undefined> {
-        if (!this.workspaceRoot) {
+    private async loadLockFileFromDisk(root?: string): Promise<LoadedLockFile | undefined> {
+        const workspaceRoot = root ?? this.activeRoot;
+        if (!workspaceRoot) {
             return undefined;
         }
 
         // Try performance optimizer cache first
         const optimizer = getGlobalOptimizer();
-        const cached = await optimizer.getCachedLockFile(this.workspaceRoot);
+        const cached = await optimizer.getCachedLockFile(workspaceRoot);
         if (cached) {
-            return { lockFile: cached, filePath: path.join(this.workspaceRoot, 'model.lock') };
+            return { lockFile: cached, filePath: path.join(workspaceRoot, 'model.lock') };
         }
 
         for (const filename of this.lockFiles) {
-            const filePath = path.join(this.workspaceRoot, filename);
+            const filePath = path.join(workspaceRoot, filename);
             const lockFile = await this.tryReadLockFile(filePath);
             if (lockFile) {
                 return { lockFile, filePath };
@@ -327,37 +477,84 @@ export class WorkspaceManager {
     }
 
     private async loadManifest(): Promise<ModelManifest | undefined> {
+        const context = this.getActiveContext();
         const manifestPath = await this.getManifestPath();
         if (!manifestPath) {
-            this.manifestCache = undefined;
+            this.clearManifestCache(context);
             return undefined;
         }
 
         try {
-            const stat = await fs.stat(manifestPath);
-            if (this.manifestCache?.path === manifestPath &&
-                this.manifestCache.mtimeMs === stat.mtimeMs) {
-                return this.manifestCache.manifest;
-            }
+            return await this.readAndCacheManifest(manifestPath, context);
+        } catch (error) {
+            return this.handleManifestError(error, manifestPath, context);
+        }
+    }
 
-            const content = await fs.readFile(manifestPath, 'utf-8');
-            const manifest = (YAML.parse(content) ?? {}) as ModelManifest;
-            
-            // Validate manifest structure
-            this.validateManifest(manifest, manifestPath);
-            
-            this.manifestCache = {
+    /**
+     * Reads, validates, and caches a manifest file.
+     */
+    private async readAndCacheManifest(
+        manifestPath: string, 
+        context: WorkspaceContext | undefined
+    ): Promise<ModelManifest> {
+        const stat = await fs.stat(manifestPath);
+        if (context?.manifestCache?.path === manifestPath &&
+            context.manifestCache.mtimeMs === stat.mtimeMs) {
+            return context.manifestCache.manifest;
+        }
+
+        const content = await fs.readFile(manifestPath, 'utf-8');
+        const manifest = (YAML.parse(content) ?? {}) as ModelManifest;
+        
+        // Validate manifest structure
+        this.validateManifest(manifest, manifestPath);
+        
+        if (context) {
+            context.manifestCache = {
                 manifest,
                 path: manifestPath,
                 mtimeMs: stat.mtimeMs,
             };
-            return manifest;
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
-                this.manifestCache = undefined;
-                return undefined;
-            }
-            throw error;
+        }
+        return manifest;
+    }
+
+    /**
+     * Handles errors from manifest loading, distinguishing recoverable
+     * errors (missing file, parse errors) from unexpected ones.
+     */
+    private handleManifestError(
+        error: unknown,
+        manifestPath: string,
+        context: WorkspaceContext | undefined
+    ): ModelManifest | undefined {
+        if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+            this.clearManifestCache(context);
+            return undefined;
+        }
+        // YAML parse errors should not crash the LSP
+        if (error instanceof Error && 
+            (error.name === 'YAMLParseError' || error.name === 'YAMLSyntaxError')) {
+            console.error(`Invalid model.yaml at ${manifestPath}: ${error.message}`);
+            this.clearManifestCache(context);
+            return undefined;
+        }
+        // Validation errors from validateManifest should not crash the LSP
+        if (error instanceof Error) {
+            console.error(`Manifest validation error at ${manifestPath}: ${error.message}`);
+            this.clearManifestCache(context);
+            return undefined;
+        }
+        throw error;
+    }
+
+    /**
+     * Clears the manifest cache on the given context, if available.
+     */
+    private clearManifestCache(context: WorkspaceContext | undefined): void {
+        if (context) {
+            context.manifestCache = undefined;
         }
     }
 
@@ -451,7 +648,7 @@ export class WorkspaceManager {
         // Resolve path relative to manifest directory
         const manifestDir = path.dirname(manifestPath);
         const resolvedPath = path.resolve(manifestDir, localPath);
-        const workspaceRoot = this.workspaceRoot || manifestDir;
+        const workspaceRoot = this.activeRoot || manifestDir;
 
         // Check if resolved path is within workspace
         const relativePath = path.relative(workspaceRoot, resolvedPath);

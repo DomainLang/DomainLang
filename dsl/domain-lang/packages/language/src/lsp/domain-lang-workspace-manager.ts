@@ -4,6 +4,8 @@ import { DefaultWorkspaceManager, URI, UriUtils, type FileSystemNode, type Langi
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
 import { findManifestsInDirectories } from '../utils/manifest-utils.js';
+import type { ImportResolver } from '../services/import-resolver.js';
+import type { DomainLangServices } from '../domain-lang-module.js';
 
 /**
  * Langium WorkspaceManager override implementing manifest-centric import loading per PRS-010.
@@ -54,9 +56,24 @@ import { findManifestsInDirectories } from '../utils/manifest-utils.js';
 export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
     private readonly sharedServices: LangiumSharedCoreServices;
 
+    /**
+     * DI-injected import resolver. Set via late-binding because
+     * WorkspaceManager (shared module) is created before ImportResolver (language module).
+     * Falls back to standalone ensureImportGraphFromDocument when not set.
+     */
+    private importResolver: ImportResolver | undefined;
+
     constructor(services: LangiumSharedCoreServices) {
         super(services);
         this.sharedServices = services;
+    }
+
+    /**
+     * Late-binds the language-specific services after DI initialization.
+     * Called from `createDomainLangServices()` after the language module is created.
+     */
+    setLanguageServices(services: DomainLangServices): void {
+        this.importResolver = services.imports.ImportResolver;
     }
 
     override shouldIncludeEntry(entry: FileSystemNode): boolean {
@@ -93,7 +110,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
                     validation: true
                 });
 
-                const uris = await ensureImportGraphFromDocument(entryDoc, this.langiumDocuments);
+                const uris = await this.loadImportGraph(entryDoc);
                 const importedDocs: LangiumDocument[] = [];
                 for (const uriString of uris) {
                     const uri = URI.parse(uriString);
@@ -125,7 +142,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
      * 
      * Skips:
      * - Module directories (directories with model.yaml) - loaded via import graph
-     * - `.dlang/cache` directory - package cache managed by CLI
+     * - `.dlang/packages` directory - package cache managed by CLI
      * 
      * @param folders - Workspace folders to scan
      * @param moduleDirectories - Set of directories containing model.yaml (to skip)
@@ -154,7 +171,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
 
     /**
      * Recursively loads .dlang files from a directory.
-     * Skips module directories and the .dlang/cache package cache.
+     * Skips module directories and the .dlang/packages cache.
      */
     private async loadDlangFilesRecursively(
         dirPath: string,
@@ -166,13 +183,13 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
             return [];
         }
 
-        // Skip .dlang/cache - package cache managed by CLI
+        // Skip .dlang/packages - package cache managed by CLI
         const baseName = path.basename(dirPath);
         const parentName = path.basename(path.dirname(dirPath));
-        if (baseName === 'cache' && parentName === '.dlang') {
+        if (baseName === 'packages' && parentName === '.dlang') {
             return [];
         }
-        // Also skip the .dlang directory itself if it contains cache
+        // Also skip the .dlang directory itself (contains packages cache)
         if (baseName === '.dlang') {
             return [];
         }
@@ -248,5 +265,46 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
     private async findAllManifestsInFolders(folders: WorkspaceFolder[]): Promise<Array<{ manifestPath: string; entryPath: string }>> {
         const directories = folders.map(f => URI.parse(f.uri).fsPath);
         return findManifestsInDirectories(directories);
+    }
+
+    /**
+     * Recursively builds the import graph from a document.
+     * Uses the DI-injected ImportResolver when available,
+     * falling back to the standalone utility.
+     *
+     * @param document - The starting document
+     * @returns Set of URIs (as strings) for all documents in the import graph
+     */
+    private async loadImportGraph(document: LangiumDocument): Promise<Set<string>> {
+        if (!this.importResolver) {
+            // Fallback to standalone utility when DI isn't wired
+            return ensureImportGraphFromDocument(document, this.langiumDocuments);
+        }
+
+        const resolver = this.importResolver;
+        const langiumDocuments = this.langiumDocuments;
+        const visited = new Set<string>();
+
+        async function visit(doc: LangiumDocument): Promise<void> {
+            const uriString = doc.uri.toString();
+            if (visited.has(uriString)) return;
+            visited.add(uriString);
+
+            const model = doc.parseResult.value as { imports?: Array<{ uri?: string }> };
+            for (const imp of model.imports ?? []) {
+                if (!imp.uri) continue;
+
+                try {
+                    const resolvedUri = await resolver.resolveForDocument(doc, imp.uri);
+                    const childDoc = await langiumDocuments.getOrCreateDocument(resolvedUri);
+                    await visit(childDoc);
+                } catch {
+                    // Import resolution failed — validation will report the error
+                }
+            }
+        }
+
+        await visit(document);
+        return visited;
     }
 }

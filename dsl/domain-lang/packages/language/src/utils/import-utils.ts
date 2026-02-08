@@ -7,7 +7,11 @@ import type { DomainLangServices } from '../domain-lang-module.js';
 
 /**
  * Lazily initialized workspace manager for standalone (non-LSP) usage.
- * Used by import graph building when services aren't available from DI.
+ * Used by import graph building when no DI-injected ImportResolver is available.
+ * 
+ * @deprecated Prefer passing an ImportResolver from the DI container.
+ * These singletons exist only for backwards compatibility with callers
+ * that haven't been updated to pass through DI services.
  */
 let standaloneWorkspaceManager: WorkspaceManager | undefined;
 let standaloneImportResolver: ImportResolver | undefined;
@@ -17,9 +21,7 @@ let lastInitializedDir: string | undefined;
  * Gets or creates a standalone import resolver for non-LSP contexts.
  * Creates its own WorkspaceManager if not previously initialized for this directory.
  *
- * NOTE: In LSP contexts, prefer using services.imports.ImportResolver directly.
- * This function exists for utilities that don't have access to the service container.
- *
+ * @deprecated Prefer using services.imports.ImportResolver directly.
  * @param startDir - Directory to start workspace search from
  * @returns Promise resolving to the import resolver
  */
@@ -44,10 +46,8 @@ async function getStandaloneImportResolver(startDir: string): Promise<ImportReso
 /**
  * Resolves an import path to an absolute file URI.
  * 
- * Delegates to ImportResolver which implements PRS-010 semantics:
- * - File imports (with .dlang extension): Direct file access
- * - Module imports (no extension): Requires model.yaml in directory
- * - External dependencies: Resolved via manifest and lock file
+ * @deprecated Prefer using ImportResolver.resolveForDocument() from the DI container.
+ * This function creates standalone instances outside the DI system.
  * 
  * @param importingDoc - The document containing the import statement
  * @param rawImportPath - The raw import path from the import statement
@@ -68,16 +68,19 @@ export async function resolveImportPath(
  * 
  * @param entryFilePath - Absolute or workspace-relative path to entry file
  * @param langiumDocuments - The Langium documents manager
+ * @param importResolver - Optional DI-injected ImportResolver. When provided,
+ *   uses it instead of creating standalone instances. Recommended for LSP contexts.
  * @returns Set of URIs (as strings) for all documents in the import graph
  * @throws {Error} If entry file cannot be resolved or loaded
  */
 export async function ensureImportGraphFromEntryFile(
   entryFilePath: string,
-  langiumDocuments: LangiumDocuments
+  langiumDocuments: LangiumDocuments,
+  importResolver?: ImportResolver
 ): Promise<Set<string>> {
   const entryUri = URI.file(path.resolve(entryFilePath));
   const entryDoc = await langiumDocuments.getOrCreateDocument(entryUri);
-  return ensureImportGraphFromDocument(entryDoc, langiumDocuments);
+  return ensureImportGraphFromDocument(entryDoc, langiumDocuments, importResolver);
 }
 
 /**
@@ -85,11 +88,14 @@ export async function ensureImportGraphFromEntryFile(
  * 
  * @param document - The starting document
  * @param langiumDocuments - The Langium documents manager
+ * @param importResolver - Optional DI-injected ImportResolver. When provided,
+ *   uses it instead of creating standalone instances. Recommended for LSP contexts.
  * @returns Set of URIs (as strings) for all documents in the import graph
  */
 export async function ensureImportGraphFromDocument(
   document: LangiumDocument,
-  langiumDocuments: LangiumDocuments
+  langiumDocuments: LangiumDocuments,
+  importResolver?: ImportResolver
 ): Promise<Set<string>> {
   const visited = new Set<string>();
 
@@ -102,10 +108,16 @@ export async function ensureImportGraphFromDocument(
     for (const imp of model.imports ?? []) {
       if (!imp.uri) continue;
       
-      // Use new resolveImportPath that supports external dependencies
-      const resolvedUri = await resolveImportPath(doc, imp.uri);
-      const childDoc = await langiumDocuments.getOrCreateDocument(resolvedUri);
-      await visit(childDoc);
+      try {
+        // Use DI-injected resolver when available, falling back to standalone
+        const resolvedUri = importResolver
+          ? await importResolver.resolveForDocument(doc, imp.uri)
+          : await resolveImportPath(doc, imp.uri);
+        const childDoc = await langiumDocuments.getOrCreateDocument(resolvedUri);
+        await visit(childDoc);
+      } catch {
+        // Import resolution failed — validation will report the error
+      }
     }
   }
 

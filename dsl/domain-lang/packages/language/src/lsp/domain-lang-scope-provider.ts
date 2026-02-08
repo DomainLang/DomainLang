@@ -64,23 +64,28 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
      * @returns A scope containing only visible elements
      */
     protected override getGlobalScope(referenceType: string, context: ReferenceInfo): Scope {
-        const document = AstUtils.getDocument(context.container);
-        if (!document) {
+        try {
+            const document = AstUtils.getDocument(context.container);
+            if (!document) {
+                return EMPTY_SCOPE;
+            }
+
+            // Get the set of URIs that are in scope for this document
+            const importedUris = this.getImportedDocumentUris(document);
+
+            // Filter the global index to only include descriptions from imported documents
+            const filteredDescriptions = this.filterDescriptionsByImports(
+                referenceType,
+                document,
+                importedUris
+            );
+
+            // Create a scope from the filtered descriptions
+            return new MapScope(filteredDescriptions);
+        } catch (error) {
+            console.error('Error in getGlobalScope:', error);
             return EMPTY_SCOPE;
         }
-
-        // Get the set of URIs that are in scope for this document
-        const importedUris = this.getImportedDocumentUris(document);
-
-        // Filter the global index to only include descriptions from imported documents
-        const filteredDescriptions = this.filterDescriptionsByImports(
-            referenceType,
-            document,
-            importedUris
-        );
-
-        // Create a scope from the filtered descriptions
-        return new MapScope(filteredDescriptions);
     }
 
     /**

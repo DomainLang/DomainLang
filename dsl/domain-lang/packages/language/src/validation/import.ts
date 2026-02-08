@@ -78,35 +78,36 @@ export class ImportValidator {
             return;
         }
 
-        const alias = imp.uri.split('/')[0];
-        const dependency = this.getDependency(manifest, alias);
+        // Find the matching dependency by key (owner/package format)
+        const match = this.findDependency(manifest, imp.uri);
 
-        if (!dependency) {
-            accept('error', ValidationMessages.IMPORT_NOT_IN_MANIFEST(alias), {
+        if (!match) {
+            accept('error', ValidationMessages.IMPORT_NOT_IN_MANIFEST(imp.uri), {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportNotInManifest, alias }
+                data: { code: IssueCodes.ImportNotInManifest, alias: imp.uri }
             });
             return;
         }
 
-        this.validateDependencyConfig(dependency, alias, accept, imp);
+        const { key, dependency } = match;
+        this.validateDependencyConfig(dependency, key, accept, imp);
 
         // External source dependencies require lock file and cached packages
         if (dependency.source) {
             const lockFile = await this.workspaceManager.getLockFile();
             if (!lockFile) {
-                accept('error', ValidationMessages.IMPORT_NOT_INSTALLED(alias), {
+                accept('error', ValidationMessages.IMPORT_NOT_INSTALLED(key), {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportNotInstalled, alias }
+                    data: { code: IssueCodes.ImportNotInstalled, alias: key }
                 });
                 return;
             }
 
-            await this.validateCachedPackage(dependency, alias, lockFile, accept, imp);
+            await this.validateCachedPackage(dependency, key, lockFile, accept, imp);
         }
     }
 
@@ -186,20 +187,54 @@ export class ImportValidator {
     }
 
     /**
-     * Gets the normalized dependency configuration for an alias.
+     * Finds the dependency configuration that matches the import specifier.
+     * 
+     * Dependencies can be keyed as:
+     * - owner/package (recommended, matches "owner/package" or "owner/package/subpath")
+     * - short-alias (matches "short-alias" or "short-alias/subpath")
+     * 
+     * @returns The matching key and normalized dependency, or undefined if not found
      */
-    private getDependency(manifest: ModelManifest, alias: string): ExtendedDependencySpec | undefined {
-        const dep = manifest.dependencies?.[alias];
+    private findDependency(
+        manifest: ModelManifest,
+        specifier: string
+    ): { key: string; dependency: ExtendedDependencySpec } | undefined {
+        const dependencies = manifest.dependencies;
+        if (!dependencies) {
+            return undefined;
+        }
+
+        // Sort keys by length descending to match most specific first
+        const sortedKeys = Object.keys(dependencies).sort((a, b) => b.length - a.length);
+
+        for (const key of sortedKeys) {
+            // Exact match or prefix match (key followed by /)
+            if (specifier === key || specifier.startsWith(`${key}/`)) {
+                const dependency = this.getDependency(manifest, key);
+                if (dependency) {
+                    return { key, dependency };
+                }
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Gets the normalized dependency configuration for a key.
+     */
+    private getDependency(manifest: ModelManifest, key: string): ExtendedDependencySpec | undefined {
+        const dep = manifest.dependencies?.[key];
         if (!dep) {
             return undefined;
         }
 
         if (typeof dep === 'string') {
-            return { source: alias, ref: dep };
+            return { source: key, ref: dep };
         }
 
         if (!dep.source && !dep.path) {
-            return { ...dep, source: alias };
+            return { ...dep, source: key };
         }
 
         return dep;

@@ -36,12 +36,151 @@ test('description of behavior', async () => {
 ## Essential Rules
 
 - **🔴 MANDATORY: AAA Pattern** - Every test must have `// Arrange`, `// Act`, `// Assert` comments
+- **🔴 CRITICAL: Test BEHAVIOR, not IMPLEMENTATION** - See Anti-Patterns section below
 - **Always add tests** for new behavior (happy path + edge cases + errors)
 - **Use `setupTestSuite()`** from `test-helpers.ts` for automatic cleanup
 - **Use validation helpers** instead of manual error checks
 - **One assertion focus** per test
 - **Never change original code** just to make it easier to test
 - **Document the feature** - If adding feature tests, also update docs (see Documentation Checklist below)
+
+## 🚨 CRITICAL: Avoiding Tautological Tests
+
+**TAUTOLOGICAL TESTS = Testing what the code DOES instead of what it SHOULD DO**
+
+### ❌ Anti-Pattern Examples (DO NOT WRITE TESTS LIKE THIS):
+
+```typescript
+// ❌ BAD: Testing a regex pattern matches strings (tautological)
+test('import string pattern matches import statements', () => {
+    const pattern = /\b(import|Import)\s+"([^"]*)$/;
+    expect(pattern.test('import "')).toBe(true);  // Obviously true
+    expect(pattern.test('import "@d')).toBe(true);  // Just testing the regex
+});
+
+// ❌ BAD: Calling internal methods with mock data
+test('provides completions', async () => {
+    const provider = testServices.services.CompletionProvider as any;
+    const items = provider.buildAllStarterItems(undefined);  // Internal method
+    expect(items).toContain('./');  // Of course it does - that's what the code does
+});
+
+// ❌ BAD: Testing implementation details with fake contexts
+test('import completions include local paths', async () => {
+    const context = { /* fake context */ };
+    await provider.addImportCompletions(context, acceptor, node);  // Internal API
+    expect(completions).toContain('./');  // Testing internal behavior
+});
+
+// ❌ BAD: Testing method exists or returns non-null
+test('getCachedManifest returns value', () => {
+    const result = workspaceManager.getCachedManifest();
+    expect(result).toBeDefined();  // Meaningless - doesn't verify behavior
+});
+```
+
+**Why these are BAD:**
+- They test "this code does X" not "the feature behaves as intended"
+- They pass even if the feature is completely broken for users
+- They're tightly coupled to implementation (break when refactoring)
+- They provide false confidence
+
+### ✅ Correct Pattern Examples (WRITE TESTS LIKE THIS):
+
+```typescript
+// ✅ GOOD: Test actual user-facing behavior through public API
+test('provides completions inside empty import string', async () => {
+    // Arrange - Real document, real scenario
+    const document = await testServices.parse('import ""');
+    const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+    
+    // Act - Call public API as LSP would
+    const params = {
+        textDocument: { uri: document.uri.toString() },
+        position: { line: 0, character: 8 } // cursor inside quotes
+    };
+    const result = await provider.getCompletion(document, params);
+    
+    // Assert - Verify user-visible behavior
+    expect(result).toBeDefined();
+    if (result?.items) {
+        const labels = result.items.map(item => item.label);
+        expect(labels).toContain('./');  // User should see this option
+        expect(labels).toContain('../');
+    }
+});
+
+// ✅ GOOD: Test behavior boundaries (what should NOT happen)
+test('does NOT provide import completions in vision string', async () => {
+    // Arrange - Real document with vision property
+    const document = await testServices.parse('Domain Sales { vision: "test" }');
+    const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+    
+    // Act - Try to get completions inside vision string
+    const params = {
+        textDocument: { uri: document.uri.toString() },
+        position: { line: 0, character: 28 } // inside "test"
+    };
+    const result = await provider.getCompletion(document, params);
+    
+    // Assert - Should not crash, and import completions shouldn't appear
+    expect(result).toBeDefined();  // Must not crash
+    // Import-specific behavior should not trigger here
+});
+
+// ✅ GOOD: Test filtering behavior with realistic data
+test('filters dependencies by input prefix', async () => {
+    // Arrange - Realistic manifest
+    const provider = testServices.services.CompletionProvider as any;
+    const mockManifest = {
+        dependencies: {
+            'larsbaunwall/ddd-types': { ref: 'main' },
+            'larsbaunwall/events': { ref: 'v1.0.0' },
+            'other/package': { ref: 'latest' }
+        }
+    };
+    
+    // Act - Filter with partial input (as user would type)
+    const items = provider.buildFilteredItems('lars', mockManifest);
+    const labels = items.map((item: any) => item.label);
+    
+    // Assert - Verify correct filtering behavior
+    expect(labels).toContain('larsbaunwall/ddd-types');
+    expect(labels).toContain('larsbaunwall/events');
+    expect(labels).not.toContain('other/package');  // Should be filtered out
+});
+```
+
+**Why these are GOOD:**
+- They test through the PUBLIC API (how users/LSP interact)
+- They use REAL documents, not mock contexts
+- They verify USER EXPERIENCE, not code structure
+- They test WHAT SHOULD HAPPEN, not what the code does
+- They would fail if the feature broke for users
+
+### 🎯 The Key Question: "Would this test fail if the feature broke?"
+
+**Before writing ANY test, ask:**
+1. If I completely broke this feature, would this test fail?
+2. Am I testing what the USER sees or what the CODE does?
+3. Am I testing through PUBLIC APIs or INTERNAL methods?
+4. Would this test still pass if I refactored the implementation?
+
+**If you answer wrong to ANY of these, rewrite the test.**
+
+### Test Naming: Describe BEHAVIOR, not Implementation
+
+```typescript
+// ❌ BAD: Describes what code does
+test('buildAllStarterItems returns array with ./ and ../')
+test('getManifest calls loadManifest')
+test('regex matches import statements')
+
+// ✅ GOOD: Describes expected behavior
+test('provides local path completions in empty import string')
+test('loads manifest when workspace initializes')
+test('import completions work inside quoted strings')
+```
 
 ## Test Setup Template
 

@@ -6,3 +6,5 @@ paths:
   "@": .
   "@domains": ./domains
 dependencies:
+  larsbaunwall/ddd-types: 
+    ref: main

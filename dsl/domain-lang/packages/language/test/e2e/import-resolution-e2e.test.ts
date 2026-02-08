@@ -87,6 +87,54 @@ Namespace domainlang.core {
             expect(uri.fsPath).toBe(path.join(cacheDir, 'index.dlang'));
         });
 
+        // SMOKE: short-form dependency (owner/package: version) resolves correctly
+        test('short-form dependency (owner/package: version) resolves correctly', async () => {
+            // This tests the common pattern where the key is both the import specifier
+            // and the GitHub owner/package source
+            const projectDir = path.join(tempDir, 'short-form-dep');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            // Short form: key is owner/package, value is just the ref
+            await fs.writeFile(path.join(projectDir, 'model.yaml'), `
+model:
+  name: test-project
+  entry: index.dlang
+
+dependencies:
+  larsbaunwall/ddd-types: main
+`);
+
+            const lockFile = {
+                version: '1',
+                dependencies: {
+                    'larsbaunwall/ddd-types': {
+                        ref: 'main',
+                        refType: 'branch',
+                        resolved: 'https://api.github.com/repos/larsbaunwall/ddd-types/tarball/abc123',
+                        commit: 'abc123def456'
+                    }
+                }
+            };
+            await fs.writeFile(path.join(projectDir, 'model.lock'), JSON.stringify(lockFile, null, 2));
+
+            const cacheDir = path.join(projectDir, '.dlang', 'packages', 'larsbaunwall', 'ddd-types', 'abc123def456');
+            await fs.mkdir(cacheDir, { recursive: true });
+
+            await fs.writeFile(path.join(cacheDir, 'model.yaml'), `
+model:
+  name: larsbaunwall/ddd-types
+  entry: index.dlang
+`);
+            await fs.writeFile(path.join(cacheDir, 'index.dlang'), `
+Classification CoreDomain
+Classification SupportingDomain
+`);
+
+            const { resolver } = createResolver();
+            const uri = await resolver.resolveFrom(projectDir, 'larsbaunwall/ddd-types');
+            expect(uri.fsPath).toBe(path.join(cacheDir, 'index.dlang'));
+        });
+
         // EDGE: external import without manifest covered by import-resolver.test.ts
 
         // EDGE: external import without lock file

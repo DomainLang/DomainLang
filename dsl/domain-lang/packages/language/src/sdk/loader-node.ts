@@ -99,7 +99,8 @@ export async function loadModel(
     // Traverse import graph to load all imported files
     const importedUris = await ensureImportGraphFromDocument(
         document, 
-        shared.workspace.LangiumDocuments
+        shared.workspace.LangiumDocuments,
+        services.imports.ImportResolver
     );
     
     // Build all imported documents with validation

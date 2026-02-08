@@ -130,6 +130,171 @@ Each test should:
 - Clean up after itself
 - Pass when run alone or in any order
 
+## 🚨 CRITICAL: Avoiding Tautological Tests
+
+**TAUTOLOGICAL TEST = A test that verifies the code does what it does, not what it SHOULD do**
+
+### The Problem: False Confidence
+
+Tautological tests provide false confidence. They pass when the code is completely broken for users.
+
+```typescript
+// ❌ TAUTOLOGICAL: This test passes even if feature is broken
+test('import string pattern matches import statements', () => {
+    const pattern = /\b(import|Import)\s+"([^"]*)$/;
+    expect(pattern.test('import "')).toBe(true);
+    // So what? This only tests the regex, not that completions work
+});
+
+// ❌ TAUTOLOGICAL: Testing what code returns, not what it should do
+test('provides completions', async () => {
+    const items = provider.buildAllStarterItems(undefined);
+    expect(items).toContain('./');
+    // Of course it does - that's literally what the implementation returns
+    // But does it work when a USER triggers completions? We don't know!
+});
+```
+
+**These tests would pass even if:**
+- Completions never trigger for users
+- The feature crashes in production
+- The public API is completely broken
+
+### The Solution: Test User-Facing Behavior
+
+```typescript
+// ✅ CORRECT: Tests actual user experience through public API
+test('provides completions inside empty import string', async () => {
+    // Arrange - Real document as user would create
+    const document = await testServices.parse('import ""');
+    const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+    
+    // Act - Call public API as LSP would
+    const params = {
+        textDocument: { uri: document.uri.toString() },
+        position: { line: 0, character: 8 } // cursor inside quotes
+    };
+    const result = await provider.getCompletion(document, params);
+    
+    // Assert - Verify user sees correct completions
+    expect(result).toBeDefined();
+    if (result?.items) {
+        const labels = result.items.map(item => item.label);
+        expect(labels).toContain('./');  // User should see this
+        expect(labels).toContain('../');
+    }
+});
+
+// ✅ CORRECT: Tests boundaries (what should NOT happen)
+test('does NOT provide import completions in vision string', async () => {
+    // Arrange
+    const document = await testServices.parse('Domain Sales { vision: "test" }');
+    const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+    
+    // Act - Try to get completions in wrong context
+    const params = {
+        textDocument: { uri: document.uri.toString() },
+        position: { line: 0, character: 28 } // inside vision string
+    };
+    const result = await provider.getCompletion(document, params);
+    
+    // Assert - Should not crash, completions shouldn't appear for import
+    expect(result).toBeDefined();
+    // This would fail if import completions triggered in vision strings
+});
+```
+
+### 🎯 The Litmus Test: "Would This Test Fail If The Feature Broke?"
+
+**Before committing ANY test, ask yourself:**
+
+1. **If the feature completely broke for users, would this test fail?**
+   - ❌ If no → Tautological test, rewrite it
+   - ✅ If yes → Good test, proceed
+
+2. **Am I testing what the USER sees or what the CODE does?**
+   - ❌ Testing code → Rewrite to test user experience
+   - ✅ Testing user experience → Good
+
+3. **Am I testing through PUBLIC APIs or INTERNAL methods?**
+   - ❌ Testing internal methods (`.buildItems()`, private helpers) → Rewrite
+   - ✅ Testing public APIs (`.getCompletion()`, `.parse()`) → Good
+
+4. **Would this test still pass if I refactored the implementation?**
+   - ❌ If it would break → Too coupled to implementation
+   - ✅ If it would still work → Good abstraction level
+
+### Anti-Pattern Checklist
+
+**NEVER write tests that:**
+
+- [ ] Test regex patterns match strings (obvious from the regex itself)
+- [ ] Call internal/private methods directly with mock data
+- [ ] Assert a method returns what it obviously returns
+- [ ] Test that a value is defined without verifying its correctness
+- [ ] Use fake/mock contexts instead of real documents
+- [ ] Test implementation details (method names, internal state)
+- [ ] Would pass even if the feature is completely broken
+
+**ALWAYS write tests that:**
+
+- [x] Test through public APIs (how users/LSP interact)
+- [x] Use real documents, not mock contexts
+- [x] Verify user-visible behavior
+- [x] Would fail if the feature broke for users
+- [x] Test boundaries (what should NOT happen)
+- [x] Use realistic test data
+
+### Red Flags in Test Code
+
+**If you see these patterns, STOP and rewrite:**
+
+```typescript
+// 🚩 RED FLAG: Testing internal methods
+const items = provider.buildAllStarterItems();  // Internal method
+const result = helper.processInternal();        // Internal method
+
+// 🚩 RED FLAG: Mock contexts instead of real documents
+const context = { /* fake fields */ };
+await provider.addCompletions(context, acceptor);
+
+// 🚩 RED FLAG: Testing obvious code behavior
+expect(pattern.test('string')).toBe(true);  // Just testing the pattern
+expect(result).toBeDefined();  // Meaningless without validating content
+
+// 🚩 RED FLAG: Test name describes implementation
+test('calls buildItems and returns array')  // Who cares what it calls?
+test('regex matches pattern')               // Obvious from regex definition
+```
+
+### Good Test Patterns
+
+```typescript
+// ✅ GOOD: Test through public API with real data
+test('provides filtered completions for partial dependency name', async () => {
+    const document = await testServices.parse('import "lar"');
+    const params = { position: { line: 0, character: 11 } };
+    const result = await provider.getCompletion(document, params);
+    // Test what user sees
+});
+
+// ✅ GOOD: Test boundaries and negative cases
+test('does NOT trigger completions outside import context', async () => {
+    const document = await testServices.parse('Domain X { vision: "test" }');
+    const result = await provider.getCompletion(document, params);
+    // Verify import behavior doesn't leak into other contexts
+});
+
+// ✅ GOOD: Test realistic scenarios
+test('filters dependencies case-insensitively', async () => {
+    const manifest = {
+        dependencies: { 'LarsBaunwall/Types': { ref: 'main' } }
+    };
+    const items = await provider.getItems('lars', manifest);
+    expect(items).toContain('LarsBaunwall/Types');
+});
+```
+
 ## Before Writing Tests - Mandatory Checklist
 
 **Complete these steps BEFORE writing a single line of test code:**

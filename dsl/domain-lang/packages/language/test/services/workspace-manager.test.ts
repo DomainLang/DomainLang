@@ -199,15 +199,29 @@ describe("WorkspaceManager", () => {
     // Edge: re-initialization and workspace root
     // ========================================================================
 
-    describe("Edge: re-initialization", () => {
+    describe("Edge: multi-root workspace support", () => {
 
-        test("re-initialization retains original workspace root", async () => {
+        test("re-initialization switches to the new workspace root", async () => {
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
             expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
 
-            // Re-initializing with a different root does not change the workspace root
+            // Re-initializing with a different root SHOULD switch to a new workspace context
+            // This enables multi-project workspaces where sub-projects have their own model.yaml
             await manager.initialize(ALIAS_ROOT);
+            expect(manager.getWorkspaceRoot()).toBe(ALIAS_ROOT);
+        });
+        
+        test("initializing from different paths to same root reuses context", async () => {
+            const manager = new WorkspaceManager();
+            
+            // First init from subdirectory
+            const subDir = path.join(TEST_ROOT, 'src');
+            await manager.initialize(subDir);
+            expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
+            
+            // Second init from same workspace root
+            await manager.initialize(TEST_ROOT);
             expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
         });
 

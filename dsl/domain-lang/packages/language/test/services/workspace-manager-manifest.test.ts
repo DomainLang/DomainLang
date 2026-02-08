@@ -252,7 +252,9 @@ dependencies:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            await expect(manager.getManifest()).rejects.toThrow(/Cannot specify both 'source' and 'path'/i);
+            // Validation errors are handled gracefully - return undefined instead of crashing
+            const manifest = await manager.getManifest();
+            expect(manifest).toBeUndefined();
         });
     });
 
@@ -272,7 +274,9 @@ dependencies:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            await expect(manager.getManifest()).rejects.toThrow(/outside workspace boundary/i);
+            // Validation errors are handled gracefully - return undefined instead of crashing
+            const manifest = await manager.getManifest();
+            expect(manifest).toBeUndefined();
         });
 
         test('allows local path dependency within workspace boundary', async () => {
@@ -325,7 +329,9 @@ paths:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            await expect(manager.getManifest()).rejects.toThrow(/must start with '@'/i);
+            // Validation errors are handled gracefully - return undefined instead of crashing
+            const manifest = await manager.getManifest();
+            expect(manifest).toBeUndefined();
         });
 
         test('rejects path alias that escapes workspace boundary', async () => {
@@ -339,7 +345,9 @@ paths:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            await expect(manager.getManifest()).rejects.toThrow(/outside workspace boundary/i);
+            // Validation errors are handled gracefully - return undefined instead of crashing
+            const manifest = await manager.getManifest();
+            expect(manifest).toBeUndefined();
         });
 
         test('allows valid path alias within workspace', async () => {

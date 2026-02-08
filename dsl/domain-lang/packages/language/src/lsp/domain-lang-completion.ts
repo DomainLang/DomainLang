@@ -6,12 +6,18 @@
  * - Grammar-aligned: Completions match grammar structure exactly
  * - Simple: Uses parent node to determine context
  * - Maintainable: Clear mapping from grammar to completions
+ * - Import-aware: Provides completions for local paths, aliases, and dependencies
  */
 
-import type { AstNode } from 'langium';
+import type { AstNode, LangiumDocument } from 'langium';
+import { GrammarAST } from 'langium';
 import { CompletionAcceptor, CompletionContext, DefaultCompletionProvider, NextFeature } from 'langium/lsp';
-import { CompletionItemKind, InsertTextFormat } from 'vscode-languageserver';
+import { CompletionItemKind, CompletionList, InsertTextFormat } from 'vscode-languageserver';
+import type { CancellationToken, CompletionItem, CompletionParams } from 'vscode-languageserver-protocol';
 import * as ast from '../generated/ast.js';
+import type { DomainLangServices } from '../domain-lang-module.js';
+import type { WorkspaceManager } from '../services/workspace-manager.js';
+import type { ModelManifest, DependencySpec } from '../services/types.js';
 
 /**
  * Top-level snippet templates for creating new AST nodes.
@@ -118,32 +124,118 @@ const TOP_LEVEL_SNIPPETS = [
 ] as const;
 
 export class DomainLangCompletionProvider extends DefaultCompletionProvider {
-    protected override completionFor(
+    private readonly workspaceManager: WorkspaceManager;
+
+    constructor(services: DomainLangServices) {
+        super(services);
+        this.workspaceManager = services.imports.WorkspaceManager;
+    }
+
+    /**
+     * Override getCompletion to handle import string completions for incomplete strings.
+     *
+     * **Why this override is necessary:**
+     * When the cursor sits inside an incomplete string token (e.g. `import "partial`)
+     * Langium's lexer cannot produce a valid STRING token, so `completionFor()` never
+     * fires for the `uri` property.  This override detects the incomplete-string case
+     * via regex and returns completions directly.  For all other positions the parent
+     * implementation (which routes through `completionFor`) is used.
+     */
+    override async getCompletion(
+        document: LangiumDocument,
+        params: CompletionParams,
+        cancelToken?: CancellationToken
+    ): Promise<CompletionList | undefined> {
+        const text = document.textDocument.getText();
+        const offset = document.textDocument.offsetAt(params.position);
+        const textBefore = text.substring(0, offset);
+
+        // Pattern: import "partial_text (opening quote, no closing quote)
+        const importStringPattern = /\b(import|Import)\s+"([^"]*)$/;
+        const match = importStringPattern.exec(textBefore);
+
+        if (match) {
+            const currentInput = match[2];
+            const items = await this.collectImportItems(currentInput);
+            return CompletionList.create(items, true);
+        }
+
+        return super.getCompletion(document, params, cancelToken);
+    }
+
+    /**
+     * Collect import completion items for a given partial input string.
+     *
+     * Shared by both the `getCompletion` override (incomplete string case)
+     * and the `completionFor` path (normal Langium feature-based routing).
+     */
+    private async collectImportItems(currentInput: string): Promise<CompletionItem[]> {
+        let manifest: ModelManifest | undefined;
+        try {
+            manifest = await this.workspaceManager.ensureManifestLoaded();
+        } catch {
+            // Continue with undefined manifest – will show basic starters
+        }
+
+        const items: CompletionItem[] = [];
+        const collector = (_ctx: unknown, item: CompletionItem): void => { items.push(item); };
+
+        // Re-use the acceptor-based helpers by wrapping the collector
+        // We pass `undefined as unknown` for context since the collector ignores it
+        const ctx = undefined as unknown as CompletionContext;
+        const accept = ((_context: CompletionContext, item: CompletionItem): void => {
+            collector(undefined, item);
+        }) as CompletionAcceptor;
+
+        if (currentInput === '' || !currentInput) {
+            this.addAllStarterOptions(ctx, accept, manifest);
+        } else if (currentInput.startsWith('@')) {
+            this.addAliasCompletions(ctx, accept, currentInput, manifest);
+        } else if (currentInput.startsWith('./') || currentInput.startsWith('../')) {
+            this.addLocalPathStarters(ctx, accept);
+        } else if (currentInput.includes('/') && !currentInput.startsWith('.')) {
+            this.addDependencyCompletions(ctx, accept, currentInput, manifest);
+        } else {
+            this.addFilteredOptions(ctx, accept, currentInput, manifest);
+        }
+
+        return items;
+    }
+
+    protected override async completionFor(
         context: CompletionContext,
         next: NextFeature,
         acceptor: CompletionAcceptor
-    ): void {
+    ): Promise<void> {
         try {
-            this.safeCompletionFor(context, next, acceptor);
+            await this.safeCompletionFor(context, next, acceptor);
         } catch (error) {
             console.error('Error in completionFor:', error);
             // Fall back to default completion on error
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
         }
     }
 
-    private safeCompletionFor(
+    private async safeCompletionFor(
         context: CompletionContext,
         next: NextFeature,
         acceptor: CompletionAcceptor
-    ): void {
+    ): Promise<void> {
         const node = context.node;
         if (!node) {
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return;
         }
 
         // Strategy: Check node type and container to determine what's allowed at cursor position
+        
+        // Handle import statement completions
+        if (this.isImportUriCompletion(node, context, next)) {
+            // Add async import completions (ensures manifest is loaded)
+            await this.addImportCompletions(context, acceptor, node);
+            // Don't call super - we handle import string completions ourselves
+            return;
+        }
         
         // Check if cursor is after the node (for top-level positioning)
         const offset = context.offset;
@@ -154,76 +246,384 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         if ((ast.isBoundedContext(node) || ast.isDomain(node)) && isAfterNode) {
             this.addTopLevelSnippets(acceptor, context);
             // Let Langium provide keywords like "bc", "Domain", etc.
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return;
         }
         
         // Handle node-level completions
-        if (this.handleNodeCompletions(node, acceptor, context, next)) {
+        if (await this.handleNodeCompletions(node, acceptor, context, next)) {
             return;
         }
 
         // Handle container-level completions
         const container = node.$container;
-        if (this.handleContainerCompletions(container, node, acceptor, context, next)) {
+        if (await this.handleContainerCompletions(container, node, acceptor, context, next)) {
             return;
         }
 
         // Let Langium handle default completions
-        super.completionFor(context, next, acceptor);
+        await super.completionFor(context, next, acceptor);
     }
 
-    private handleNodeCompletions(
+    /**
+     * Detect if we're completing inside an import statement's uri property.
+     * 
+     * This checks:
+     * 1. The NextFeature's type and property (when completing STRING for uri)
+     * 2. The current AST node (when inside an ImportStatement)
+     * 3. Text-based pattern matching (fallback for edge cases)
+     */
+    private isImportUriCompletion(
+        node: AstNode,
+        context: CompletionContext,
+        next: NextFeature
+    ): boolean {
+        // Check 1: NextFeature indicates we're completing uri property of ImportStatement
+        // This is the most reliable check - Langium tells us exactly what it's completing
+        if (next.type === 'ImportStatement' && next.property === 'uri') {
+            return true;
+        }
+        
+        // Check 2: The feature is an Assignment to 'uri' property
+        if (GrammarAST.isAssignment(next.feature)) {
+            const assignment = next.feature;
+            if (assignment.feature === 'uri') {
+                return true;
+            }
+        }
+        
+        // Check 3: We're already inside an ImportStatement node
+        if (ast.isImportStatement(node)) {
+            return true;
+        }
+        
+        // Check 4: Container is ImportStatement
+        if (node.$container && ast.isImportStatement(node.$container)) {
+            return true;
+        }
+        
+        // Check 5: Any ancestor is ImportStatement
+        let current: AstNode | undefined = node;
+        while (current) {
+            if (ast.isImportStatement(current)) {
+                return true;
+            }
+            current = current.$container;
+        }
+        
+        // Check 6: Text-based pattern matching (fallback)
+        // Only do text analysis if textDocument.getText is available (not in tests)
+        if (typeof context.textDocument?.getText === 'function') {
+            try {
+                const text = context.textDocument.getText();
+                const offset = context.offset;
+                const textBefore = text.substring(0, offset);
+                
+                // Match patterns like:
+                // - import "|
+                // - import "@|
+                // - import "./|
+                // - import "owner/|
+                const importStringPattern = /\bimport\s+"[^"]*$/i;
+                if (importStringPattern.test(textBefore)) {
+                    return true;
+                }
+            } catch {
+                // Ignore errors in text analysis
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Add import completions asynchronously.
+     * This method ensures the manifest is loaded before providing completions.
+     */
+    private async addImportCompletions(
+        context: CompletionContext,
+        acceptor: CompletionAcceptor,
+        _node: AstNode
+    ): Promise<void> {
+        // Extract what user has typed inside the import string
+        const currentInput = this.extractImportInput(context);
+
+        // Ensure manifest is loaded (async)
+        let manifest: ModelManifest | undefined;
+        try {
+            manifest = await this.workspaceManager.ensureManifestLoaded();
+        } catch {
+            // Continue with undefined manifest – will show basic starters
+        }
+        
+        if (currentInput.startsWith('@')) {
+            // Alias completions
+            this.addAliasCompletions(context, acceptor, currentInput, manifest);
+        } else if (currentInput.startsWith('./') || currentInput.startsWith('../')) {
+            // Local path completions
+            this.addLocalPathStarters(context, acceptor);
+        } else if (currentInput === '' || !currentInput) {
+            // Show all starter options
+            this.addAllStarterOptions(context, acceptor, manifest);
+        } else if (currentInput.includes('/') && !currentInput.startsWith('.')) {
+            // External dependency - filter by partial input
+            this.addDependencyCompletions(context, acceptor, currentInput, manifest);
+        } else {
+            // Show all options for partial input (e.g., typing 'l' should show matching items)
+            this.addFilteredOptions(context, acceptor, currentInput, manifest);
+        }
+    }
+
+    /**
+     * Extract the current input inside the import string.
+     */
+    private extractImportInput(context: CompletionContext): string {
+        try {
+            const text = context.textDocument.getText();
+            const offset = context.offset;
+            const textBefore = text.substring(0, offset);
+            
+            const importPattern = /\bimport\s+"([^"]*)$/i;
+            const match = importPattern.exec(textBefore);
+            return match ? match[1] : '';
+        } catch {
+            return '';
+        }
+    }
+
+    /**
+     * Add local path starters.
+     */
+    private addLocalPathStarters(context: CompletionContext, acceptor: CompletionAcceptor): void {
+        // Would need async fs access to list directories
+        // For now, just acknowledge the path exists
+        acceptor(context, {
+            label: '(type path)',
+            kind: CompletionItemKind.Text,
+            insertText: '',
+            documentation: 'Continue typing the file path',
+            sortText: 'z_'
+        });
+    }
+
+    /**
+     * Add all starter options when input is empty.
+     */
+    private addAllStarterOptions(
+        context: CompletionContext,
+        acceptor: CompletionAcceptor,
+        manifest?: ModelManifest
+    ): void {
+        // Local starters
+        acceptor(context, {
+            label: './',
+            kind: CompletionItemKind.Folder,
+            insertText: './',
+            documentation: 'Import from current directory',
+            sortText: '0_local_current'
+        });
+        acceptor(context, {
+            label: '../',
+            kind: CompletionItemKind.Folder,
+            insertText: '../',
+            documentation: 'Import from parent directory',
+            sortText: '0_local_parent'
+        });
+
+        // Add aliases if available
+        if (manifest?.paths) {
+            for (const alias of Object.keys(manifest.paths)) {
+                acceptor(context, {
+                    label: alias,
+                    kind: CompletionItemKind.Module,
+                    detail: `→ ${manifest.paths[alias]}`,
+                    documentation: `Path alias from model.yaml`,
+                    insertText: alias,
+                    sortText: `1_alias_${alias}`
+                });
+            }
+        }
+
+        // Add dependencies if available
+        if (manifest?.dependencies) {
+            for (const [depKey, depSpec] of Object.entries(manifest.dependencies)) {
+                const dep: DependencySpec = depSpec;
+                const depName = typeof dep === 'string' ? depKey : (dep.source ?? depKey);
+                const version = typeof dep === 'string' ? dep : (dep.ref ?? 'latest');
+                
+                acceptor(context, {
+                    label: depName,
+                    kind: CompletionItemKind.Module,
+                    detail: `📦 ${version}`,
+                    documentation: `External dependency from model.yaml`,
+                    insertText: depName,
+                    sortText: `2_dep_${depName}`
+                });
+            }
+        }
+    }
+
+    /**
+     * Add alias completions that match the current input.
+     */
+    private addAliasCompletions(
+        context: CompletionContext,
+        acceptor: CompletionAcceptor,
+        currentInput: string,
+        manifest?: ModelManifest
+    ): void {
+        if (!manifest?.paths) {
+            return;
+        }
+
+        const inputLower = currentInput.toLowerCase();
+
+        for (const [alias, targetPath] of Object.entries(manifest.paths)) {
+            if (alias.toLowerCase().startsWith(inputLower)) {
+                acceptor(context, {
+                    label: alias,
+                    kind: CompletionItemKind.Module,
+                    detail: `→ ${targetPath}`,
+                    documentation: `Path alias defined in model.yaml\nMaps to: ${targetPath}`,
+                    insertText: alias,
+                    sortText: `1_alias_${alias}`
+                });
+            }
+        }
+    }
+
+    /**
+     * Add dependency completions that match the current input.
+     */
+    private addDependencyCompletions(
+        context: CompletionContext,
+        acceptor: CompletionAcceptor,
+        currentInput: string,
+        manifest?: ModelManifest
+    ): void {
+        if (!manifest?.dependencies) {
+            return;
+        }
+
+        const inputLower = currentInput.toLowerCase();
+
+        for (const [depKey, depSpec] of Object.entries(manifest.dependencies)) {
+            const dep: DependencySpec = depSpec;
+            const depName = typeof dep === 'string' ? depKey : (dep.source ?? depKey);
+            const version = typeof dep === 'string' ? dep : (dep.ref ?? 'latest');
+            
+            if (depName.toLowerCase().startsWith(inputLower)) {
+                acceptor(context, {
+                    label: depName,
+                    kind: CompletionItemKind.Module,
+                    detail: `📦 ${version}`,
+                    documentation: `External dependency from model.yaml\nVersion: ${version}`,
+                    insertText: depName,
+                    sortText: `2_dep_${depName}`
+                });
+            }
+        }
+    }
+
+    /**
+     * Add filtered options for partial input that doesn't start with special characters.
+     * Shows aliases and dependencies that match the user's partial input.
+     */
+    private addFilteredOptions(
+        context: CompletionContext,
+        acceptor: CompletionAcceptor,
+        currentInput: string,
+        manifest?: ModelManifest
+    ): void {
+        // Offer local path starters when the partial input could match ./ or ../
+        if ('./'.startsWith(currentInput) || '../'.startsWith(currentInput)) {
+            acceptor(context, {
+                label: './',
+                kind: CompletionItemKind.Folder,
+                insertText: './',
+                documentation: 'Import from current directory',
+                sortText: '0_local_current'
+            });
+            acceptor(context, {
+                label: '../',
+                kind: CompletionItemKind.Folder,
+                insertText: '../',
+                documentation: 'Import from parent directory',
+                sortText: '0_local_parent'
+            });
+        }
+
+        // Delegate to existing helpers for alias and dependency filtering
+        this.addAliasCompletions(context, acceptor, currentInput, manifest);
+        this.addDependencyCompletions(context, acceptor, currentInput, manifest);
+    }
+
+    private async handleNodeCompletions(
         node: AstNode,
         acceptor: CompletionAcceptor,
         context: CompletionContext,
         next: NextFeature
-    ): boolean {
+    ): Promise<boolean> {
         // If we're AT a BoundedContext node: only BC documentation blocks
         if (ast.isBoundedContext(node)) {
             this.addBoundedContextCompletions(node, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         // If we're AT a Domain node: only Domain documentation blocks
         if (ast.isDomain(node)) {
             this.addDomainCompletions(node, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         // If we're AT a ContextMap node: relationships and contains
         if (ast.isContextMap(node)) {
             this.addContextMapCompletions(node, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         // If we're AT a DomainMap node: contains
         if (ast.isDomainMap(node)) {
             this.addDomainMapCompletions(node, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         // If we're AT the Model or NamespaceDeclaration level: all top-level constructs
         if (ast.isModel(node) || ast.isNamespaceDeclaration(node)) {
             this.addTopLevelSnippets(acceptor, context);
-            super.completionFor(context, next, acceptor);
+            this.addImportSnippet(acceptor, context);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         return false;
     }
 
-    private handleContainerCompletions(
+    /**
+     * Add import statement snippet at top level.
+     */
+    private addImportSnippet(acceptor: CompletionAcceptor, context: CompletionContext): void {
+        acceptor(context, {
+            label: '⚡ import',
+            kind: CompletionItemKind.Snippet,
+            insertText: 'import "${1:./path}"',
+            insertTextFormat: InsertTextFormat.Snippet,
+            documentation: '📝 Snippet: Import another DomainLang file',
+            sortText: '0_snippet_import'
+        });
+    }
+
+    private async handleContainerCompletions(
         container: AstNode | undefined,
         node: AstNode,
         acceptor: CompletionAcceptor,
         context: CompletionContext,
         next: NextFeature
-    ): boolean {
+    ): Promise<boolean> {
         if (!container) {
             return false;
         }
@@ -231,34 +631,34 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         // Inside BoundedContext body: suggest missing scalar properties and collections
         if (ast.isBoundedContext(container)) {
             this.addBoundedContextCompletions(container, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         // Inside Domain body: suggest missing scalar properties
         if (ast.isDomain(container)) {
             this.addDomainCompletions(container, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         // Inside ContextMap body: relationships and contains
         if (ast.isContextMap(container)) {
             this.addContextMapCompletions(container, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         // Inside DomainMap body: contains
         if (ast.isDomainMap(container)) {
             this.addDomainMapCompletions(container, acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 
         if (ast.isRelationship(node) || ast.isRelationship(container)) {
             this.addRelationshipCompletions(acceptor, context);
-            super.completionFor(context, next, acceptor);
+            await super.completionFor(context, next, acceptor);
             return true;
         }
 

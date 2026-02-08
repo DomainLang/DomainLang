@@ -35,6 +35,7 @@ async function validateManifestAtUri(uri: string): Promise<void> {
 shared.lsp.DocumentUpdateHandler.onWatchedFilesChange(async params => {
     const workspaceManager = DomainLang.imports.WorkspaceManager;
     const indexManager = shared.workspace.IndexManager as DomainLangIndexManager;
+    const importResolver = DomainLang.imports.ImportResolver;
     let manifestChanged = false;
     let lockChanged = false;
 
@@ -53,23 +54,38 @@ shared.lsp.DocumentUpdateHandler.onWatchedFilesChange(async params => {
             }
         } else if (filename === 'model.lock') {
             lockChanged = true;
+            
+            // Refresh lock file on change/create
+            if (change.type !== FileChangeType.Deleted) {
+                await workspaceManager.refreshLockFile();
+            }
         }
     }
 
     // Invalidate caches based on what changed
-    if (manifestChanged && lockChanged) {
-        workspaceManager.invalidateCache();
+    if (manifestChanged || lockChanged) {
+        if (manifestChanged && lockChanged) {
+            workspaceManager.invalidateCache();
+        } else if (manifestChanged) {
+            workspaceManager.invalidateManifestCache();
+        } else if (lockChanged) {
+            workspaceManager.invalidateLockCache();
+        }
+        
+        // Clear import resolution cache BEFORE rebuilding documents
+        // This ensures fresh resolution with new config
+        importResolver.clearCache();
         indexManager.clearImportDependencies();
-    } else if (manifestChanged) {
-        workspaceManager.invalidateManifestCache();
-        indexManager.clearImportDependencies();
-    } else if (lockChanged) {
-        workspaceManager.invalidateLockCache();
-        indexManager.clearImportDependencies();
+        
+        // Rebuild all documents to update diagnostics and cross-references
+        // This is equivalent to what TypeScript does when package.json changes
+        const documents = shared.workspace.LangiumDocuments.all.toArray();
+        if (documents.length > 0) {
+            const uris = documents.map(doc => doc.uri);
+            console.warn(`Config files changed - rebuilding ${documents.length} documents`);
+            await shared.workspace.DocumentBuilder.update(uris, []);
+        }
     }
-
-    // After cache invalidation, the next document build will pick up new config
-    // Langium's DocumentUpdateHandler already triggers document rebuild for watched files
 });
 
 // Start the language server with the shared services

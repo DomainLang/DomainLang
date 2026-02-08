@@ -90,7 +90,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
             }
 
             // Then try keyword hover
-            return await this.tryGetKeywordHover(cstNode);
+            return this.tryGetKeywordHover(cstNode);
         } catch (error) {
             console.error('Error in getHoverContent:', error);
             return undefined;
@@ -126,7 +126,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
      * Try to get hover for a keyword node.
      * Uses the keyword dictionary for all keywords.
      */
-    private async tryGetKeywordHover(cstNode: ReturnType<typeof CstUtils.findDeclarationNodeAtOffset>): Promise<Hover | undefined> {
+    private tryGetKeywordHover(cstNode: ReturnType<typeof CstUtils.findDeclarationNodeAtOffset>): Hover | undefined {
         if (!cstNode || cstNode.grammarSource?.$type !== 'Keyword') {
             return undefined;
         }
@@ -186,7 +186,17 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
                 ast.isDomainMap(parent) ||
                 ast.isModel(parent)
             ) {
-                return this.getAstNodeHoverContent(parent) as string | undefined;
+                const result = this.getAstNodeHoverContent(parent);
+                // getAstNodeHoverContent returns MaybePromise<string | undefined>.
+                // All registered hover generators are synchronous, so the result
+                // should always be a plain string. Guard defensively in case a
+                // future generator becomes async.
+                if (typeof result === 'string' || result === undefined) {
+                    return result;
+                }
+                // If somehow a Promise is returned, we cannot await in a sync
+                // context - fall through to the default message.
+                return undefined;
             }
             parent = parent.$container;
         }

@@ -3,6 +3,8 @@ import { DefaultIndexManager, DocumentState } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { resolveImportPath } from '../utils/import-utils.js';
 import type { Model } from '../generated/ast.js';
+import type { ImportResolver } from '../services/import-resolver.js';
+import type { DomainLangServices } from '../domain-lang-module.js';
 
 /**
  * Custom IndexManager that extends Langium's default to:
@@ -55,9 +57,39 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      */
     private readonly sharedServices: LangiumSharedCoreServices;
 
+    /**
+     * DI-injected import resolver. Set via late-binding because
+     * IndexManager (shared module) is created before ImportResolver (language module).
+     * Falls back to standalone resolveImportPath when not set.
+     */
+    private importResolver: ImportResolver | undefined;
+
     constructor(services: LangiumSharedCoreServices) {
         super(services);
         this.sharedServices = services;
+    }
+
+    /**
+     * Late-binds the language-specific services after DI initialization.
+     * Called from `createDomainLangServices()` after the language module is created.
+     *
+     * This is necessary because the IndexManager lives in the shared module,
+     * which is created before the language module that provides ImportResolver.
+     */
+    setLanguageServices(services: DomainLangServices): void {
+        this.importResolver = services.imports.ImportResolver;
+    }
+
+    /**
+     * Resolves an import path using the DI-injected ImportResolver when available,
+     * falling back to the standalone resolver for backwards compatibility.
+     */
+    private async resolveImport(document: LangiumDocument, specifier: string): Promise<URI> {
+        if (this.importResolver) {
+            return this.importResolver.resolveForDocument(document, specifier);
+        }
+        // Fallback for contexts where language services aren't wired (e.g., tests)
+        return resolveImportPath(document, specifier);
     }
 
     /**
@@ -152,7 +184,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             if (!imp.uri) continue;
 
             try {
-                const resolvedUri = await resolveImportPath(document, imp.uri);
+                const resolvedUri = await this.resolveImport(document, imp.uri);
                 const importedUri = resolvedUri.toString();
 
                 // Track the specifier → resolved URI mapping
@@ -210,7 +242,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             if (!imp.uri) continue;
 
             try {
-                const resolvedUri = await resolveImportPath(document, imp.uri);
+                const resolvedUri = await this.resolveImport(document, imp.uri);
                 const importedUriString = resolvedUri.toString();
                 
                 // Skip if already loaded

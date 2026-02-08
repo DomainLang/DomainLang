@@ -88,6 +88,7 @@ function categorizeChanges(
         } else if (fileName === 'model.lock') {
             console.warn(`model.lock changed: ${uriString}`);
             langServices.imports.ImportResolver.clearCache();
+            indexManager.clearImportDependencies();
             result.lockFileChanged = true;
         } else if (fileName.endsWith('.dlang')) {
             if (change.type === FileChangeType.Deleted) {
@@ -290,7 +291,8 @@ if (entryFile) {
         try {
             currentGraph = await ensureImportGraphFromEntryFile(
                 entryFile, 
-                shared.workspace.LangiumDocuments
+                shared.workspace.LangiumDocuments,
+                DomainLang.imports.ImportResolver
             );
             console.warn(`Successfully loaded import graph from ${entryFile}`);
         } catch (error) {

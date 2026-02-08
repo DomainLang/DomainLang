@@ -12,7 +12,7 @@ import { DomainLangWorkspaceManager } from '../../src/lsp/domain-lang-workspace-
  * - Mode A: Pure workspace with model.yaml (entry + import graph loading)
  * - Mode B: Pure standalone files (on-demand loading) 
  * - Mode C: Mixed mode (modules + standalone files)
- * - Edge cases: .dlang/cache skipping, error handling
+ * - Edge cases: .dlang/packages skipping, error handling
  */
 describe('DomainLangWorkspaceManager', () => {
     let tempDir: string;
@@ -129,11 +129,11 @@ describe('DomainLangWorkspaceManager', () => {
             expect(paths).toContain('nested.dlang');
         });
 
-        test('skips .dlang/cache directory', async () => {
+        test('skips .dlang/packages directory', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-b2-'));
 
-            // Create .dlang/cache structure (where packages are cached)
-            const cacheDir = path.join(tempDir, '.dlang', 'cache', 'owner', 'repo', 'commit');
+            // Create .dlang/packages structure (where packages are cached)
+            const cacheDir = path.join(tempDir, '.dlang', 'packages', 'owner', 'repo', 'commit');
             await fs.mkdir(cacheDir, { recursive: true });
             await fs.writeFile(
                 path.join(cacheDir, 'cached-package.dlang'),
@@ -151,7 +151,7 @@ describe('DomainLangWorkspaceManager', () => {
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const paths = docs.map(d => d.uri.fsPath);
             
-            expect(paths.some(p => p.includes('.dlang/cache'))).toBe(false);
+            expect(paths.some(p => p.includes('.dlang/packages'))).toBe(false);
             expect(paths.some(p => p.endsWith('standalone.dlang'))).toBe(true);
         });
     });

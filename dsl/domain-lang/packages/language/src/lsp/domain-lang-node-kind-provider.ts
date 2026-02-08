@@ -76,23 +76,33 @@ const KIND_MAPPINGS: readonly KindMapping[] = [
 export class DomainLangNodeKindProvider extends DefaultNodeKindProvider {
 
     override getSymbolKind(node: AstNode | AstNodeDescription): SymbolKind {
-        const astNode = this.resolveNode(node);
-        if (!astNode) return super.getSymbolKind(node);
+        try {
+            const astNode = this.resolveNode(node);
+            if (!astNode) return super.getSymbolKind(node);
 
-        for (const [guard, symbolKind] of KIND_MAPPINGS) {
-            if (guard(astNode)) return symbolKind;
+            for (const [guard, symbolKind] of KIND_MAPPINGS) {
+                if (guard(astNode)) return symbolKind;
+            }
+            return super.getSymbolKind(node);
+        } catch (error) {
+            console.error('Error in getSymbolKind:', error);
+            return super.getSymbolKind(node);
         }
-        return super.getSymbolKind(node);
     }
 
     override getCompletionItemKind(node: AstNode | AstNodeDescription): CompletionItemKind {
-        const astNode = this.resolveNode(node);
-        if (!astNode) return super.getCompletionItemKind(node);
+        try {
+            const astNode = this.resolveNode(node);
+            if (!astNode) return super.getCompletionItemKind(node);
 
-        for (const [guard, , completionKind] of KIND_MAPPINGS) {
-            if (guard(astNode)) return completionKind;
+            for (const [guard, , completionKind] of KIND_MAPPINGS) {
+                if (guard(astNode)) return completionKind;
+            }
+            return super.getCompletionItemKind(node);
+        } catch (error) {
+            console.error('Error in getCompletionItemKind:', error);
+            return super.getCompletionItemKind(node);
         }
-        return super.getCompletionItemKind(node);
     }
 
     /**

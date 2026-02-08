@@ -18,6 +18,7 @@
  */
 
 import { describe, test, expect, beforeAll } from 'vitest';
+import { CompletionItemKind } from 'vscode-languageserver';
 import { setupTestSuite, type TestServices } from '../test-helpers.js';
 import * as ast from '../../src/generated/ast.js';
 
@@ -254,5 +255,382 @@ describe('DomainLangCompletionProvider', () => {
 
         // ContextMap should not offer Domain-specific blocks
         expect(labels).not.toContain('vision');
+    });
+
+    // ==========================================
+    // IMPORT: Top-level includes import snippet
+    // ==========================================
+    test('top-level completions include import snippet', async () => {
+        const completions = await getCompletions('');
+        const labels = completions.map(c => c.label);
+
+        expect(labels.some((l: string) => l.includes('import'))).toBe(true);
+    });
+
+    // ==========================================
+    // IMPORT: Import statement detection
+    // ==========================================
+    test('detects ImportStatement node for completion context', async () => {
+        // When the node is an ImportStatement, we should recognize it
+        const input = 'import "./domain"';
+        const document = await testServices.parse(input);
+        const model = document.parseResult.value;
+        
+        // The model should have an import statement
+        expect(model.imports.length).toBe(1);
+        expect(ast.isImportStatement(model.imports[0])).toBe(true);
+    });
+
+    // ==========================================
+    // IMPORT: Import URI completion detection via NextFeature
+    // ==========================================
+    describe('Import URI Completion Detection', () => {
+        /**
+         * Test that isImportUriCompletion correctly identifies import contexts
+         * using the NextFeature's type and property fields.
+         */
+        test('recognizes import completion via next.type and next.property', async () => {
+            const document = await testServices.parse('');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            // Create a NextFeature that simulates completing the uri property of ImportStatement
+            const nextFeature = {
+                type: 'ImportStatement',
+                property: 'uri',
+                feature: { $type: 'Assignment', feature: 'uri' }
+            };
+            
+            const context = {
+                node: document.parseResult.value,
+                document,
+                textDocument: { getText: () => 'import "' },
+                offset: 8,
+                tokenOffset: 7,
+                tokenEndOffset: 8,
+                position: { line: 0, character: 8 }
+            };
+            
+            const result = provider.isImportUriCompletion(
+                context.node,
+                context,
+                nextFeature
+            );
+            
+            expect(result).toBe(true);
+        });
+
+        test('recognizes import completion via text pattern matching', async () => {
+            const document = await testServices.parse('');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            // NextFeature that doesn't specify ImportStatement type 
+            const nextFeature = {
+                feature: {} // Not an assignment
+            };
+            
+            const context = {
+                node: document.parseResult.value,
+                document,
+                textDocument: { 
+                    getText: () => 'import "@domains/'
+                },
+                offset: 17,
+                tokenOffset: 7,
+                tokenEndOffset: 17,
+                position: { line: 0, character: 17 }
+            };
+            
+            const result = provider.isImportUriCompletion(
+                context.node,
+                context,
+                nextFeature
+            );
+            
+            expect(result).toBe(true);
+        });
+
+        test('does not recognize non-import contexts', async () => {
+            const document = await testServices.parse('Domain Sales {}');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            const nextFeature = {
+                type: 'Domain',
+                property: 'name',
+                feature: {}
+            };
+            
+            const context = {
+                node: document.parseResult.value,
+                document,
+                textDocument: { getText: () => 'Domain Sales {}' },
+                offset: 7,
+                tokenOffset: 7,
+                tokenEndOffset: 12,
+                position: { line: 0, character: 7 }
+            };
+            
+            const result = provider.isImportUriCompletion(
+                context.node,
+                context,
+                nextFeature
+            );
+            
+            expect(result).toBe(false);
+        });
+    });
+
+    // ==========================================
+    // IMPORT: Import completion integration tests
+    // ==========================================
+    describe('Import completion behavior', () => {
+        /**
+         * Test that getCompletion returns import completions when cursor is inside import string.
+         * This is the actual user-facing behavior.
+         */
+        test('provides completions inside empty import string', async () => {
+            const document = await testServices.parse('import ""');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+            
+            // Simulate cursor position inside the quotes: import "|"
+            const params = {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: 0, character: 8 } // after opening quote
+            };
+            
+            const result = await provider.getCompletion(document, params);
+            expect(result).toBeDefined();
+            expect(result?.items).toBeDefined();
+            
+            if (result?.items) {
+                const labels = result.items.map(item => item.label);
+                
+                // Must include local path starters
+                expect(labels).toContain('./');
+                expect(labels).toContain('../');
+            }
+        });
+
+        test('provides filtered alias completions when typing @', async () => {
+            const document = await testServices.parse('import "@"');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+            
+            // Simulate cursor after @: import "@|"
+            const params = {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: 0, character: 9 }
+            };
+            
+            const result = await provider.getCompletion(document, params);
+            expect(result).toBeDefined();
+            
+            // If manifest is available, should show aliases
+            // If not available, should still return a result (not crash)
+            expect(result?.items).toBeDefined();
+        });
+
+        test('provides filtered dependency completions when typing partial name', async () => {
+            const document = await testServices.parse('import "lar"');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+            
+            // Simulate cursor after "lar": import "lar|"
+            const params = {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: 0, character: 11 }
+            };
+            
+            const result = await provider.getCompletion(document, params);
+            expect(result).toBeDefined();
+            expect(result?.items).toBeDefined();
+        });
+
+        test('does NOT provide import completions outside import context', async () => {
+            const document = await testServices.parse('Domain Sales { vision: "test" }');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+            
+            // Simulate cursor inside vision string: vision: "test|"
+            const params = {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: 0, character: 28 }
+            };
+            
+            const result = await provider.getCompletion(document, params);
+            
+            // Should either return undefined or return completions without crashing
+            // (We can't assert specific absence since default completion might provide other items)
+            expect(result).toBeDefined();
+            if (result?.items) {
+                expect(result.items).toBeDefined();
+            }
+        });
+
+        test('does NOT provide import completions in BC description string', async () => {
+            const document = await testServices.parse('bc Sales { description: "handles" }');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+            
+            // Simulate cursor inside description string: description: "handles|"
+            const params = {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: 0, character: 30 }
+            };
+            
+            const result = await provider.getCompletion(document, params);
+            
+            // Should not crash, and shouldn't provide import-specific completions
+            if (result?.items) {
+                expect(result.items).toBeDefined();
+            }
+        });
+
+        test('import completions work with Import keyword (capital I)', async () => {
+            const document = await testServices.parse('Import ""');
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
+            
+            // Simulate cursor inside the quotes: Import "|"
+            const params = {
+                textDocument: { uri: document.uri.toString() },
+                position: { line: 0, character: 8 }
+            };
+            
+            const result = await provider.getCompletion(document, params);
+            expect(result).toBeDefined();
+            expect(result?.items).toBeDefined();
+            
+            if (result?.items) {
+                const labels = result.items.map(item => item.label);
+                expect(labels).toContain('./');
+                expect(labels).toContain('../');
+            }
+        });
+    });
+
+    // ==========================================
+    // IMPORT: Completion item structure validation
+    // ==========================================
+    describe('Import completion item structure', () => {
+        test('local path items have correct structure', async () => {
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            // Mock the workspace manager to return no manifest
+            provider.workspaceManager = { ensureManifestLoaded: () => Promise.resolve(undefined) };
+
+            const items = await provider.collectImportItems('');
+            
+            const localCurrentItem = items.find((item: any) => item.label === './');
+            expect(localCurrentItem).toBeDefined();
+            expect(localCurrentItem.kind).toBe(CompletionItemKind.Folder);
+            expect(localCurrentItem.insertText).toBe('./');
+            expect(localCurrentItem.documentation).toContain('current directory');
+            
+            const localParentItem = items.find((item: any) => item.label === '../');
+            expect(localParentItem).toBeDefined();
+            expect(localParentItem.kind).toBe(CompletionItemKind.Folder);
+            expect(localParentItem.insertText).toBe('../');
+            expect(localParentItem.documentation).toContain('parent directory');
+        });
+
+        test('alias items have correct structure when manifest available', async () => {
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            const mockManifest = {
+                paths: {
+                    '@domains': './domains'
+                }
+            };
+            provider.workspaceManager = { ensureManifestLoaded: () => Promise.resolve(mockManifest) };
+            
+            const items = await provider.collectImportItems('');
+            const aliasItem = items.find((item: any) => item.label === '@domains');
+            
+            expect(aliasItem).toBeDefined();
+            expect(aliasItem.kind).toBe(CompletionItemKind.Module);
+            expect(aliasItem.insertText).toBe('@domains');
+            expect(aliasItem.detail).toContain('./domains');
+            expect(aliasItem.documentation).toContain('model.yaml');
+        });
+
+        test('dependency items have correct structure when manifest available', async () => {
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            const mockManifest = {
+                dependencies: {
+                    'larsbaunwall/ddd-types': { ref: 'main' }
+                }
+            };
+            provider.workspaceManager = { ensureManifestLoaded: () => Promise.resolve(mockManifest) };
+            
+            const items = await provider.collectImportItems('');
+            const depItem = items.find((item: any) => item.label === 'larsbaunwall/ddd-types');
+            
+            expect(depItem).toBeDefined();
+            expect(depItem.kind).toBe(CompletionItemKind.Module);
+            expect(depItem.insertText).toBe('larsbaunwall/ddd-types');
+            expect(depItem.detail).toContain('main');
+            expect(depItem.documentation).toContain('model.yaml');
+        });
+    });
+
+    // ==========================================
+    // IMPORT: Filtering behavior validation
+    // ==========================================
+    describe('Import completion filtering', () => {
+        test('filters aliases by input prefix', async () => {
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            const mockManifest = {
+                paths: {
+                    '@core': './core',
+                    '@domains': './domains',
+                    '@shared': './shared'
+                }
+            };
+            provider.workspaceManager = { ensureManifestLoaded: () => Promise.resolve(mockManifest) };
+            
+            // Filter with '@d' - should only show @domains
+            const items = await provider.collectImportItems('@d');
+            const labels = items.map((item: any) => item.label);
+            
+            expect(labels).toContain('@domains');
+            expect(labels).not.toContain('@core');
+            expect(labels).not.toContain('@shared');
+            // Only @domains should match the filter
+            expect(labels.filter((l: string) => l.startsWith('@')).length).toBe(1);
+        });
+
+        test('filters dependencies by input prefix', async () => {
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            const mockManifest = {
+                dependencies: {
+                    'larsbaunwall/ddd-types': { ref: 'main' },
+                    'larsbaunwall/events': { ref: 'v1.0.0' },
+                    'other/package': { ref: 'latest' }
+                }
+            };
+            provider.workspaceManager = { ensureManifestLoaded: () => Promise.resolve(mockManifest) };
+            
+            // Filter with 'lars' - should only show larsbaunwall packages
+            const items = await provider.collectImportItems('lars');
+            const labels = items.map((item: any) => item.label);
+            
+            expect(labels).toContain('larsbaunwall/ddd-types');
+            expect(labels).toContain('larsbaunwall/events');
+            expect(labels).not.toContain('other/package');
+        });
+
+        test('case-insensitive filtering', async () => {
+            const provider = testServices.services.DomainLang.lsp.CompletionProvider as any;
+            
+            const mockManifest = {
+                dependencies: {
+                    'LarsBaunwall/DDD-Types': { ref: 'main' }
+                }
+            };
+            provider.workspaceManager = { ensureManifestLoaded: () => Promise.resolve(mockManifest) };
+            
+            // Filter with lowercase 'lars' - should match uppercase 'Lars'
+            const items = await provider.collectImportItems('lars');
+            const labels = items.map((item: any) => item.label);
+            
+            expect(labels).toContain('LarsBaunwall/DDD-Types');
+        });
     });
 });

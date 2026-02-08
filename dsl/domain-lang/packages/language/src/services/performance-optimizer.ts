@@ -76,7 +76,8 @@ export class PerformanceOptimizer {
 
         try {
             const content = await fs.readFile(manifestPath, 'utf-8');
-            const manifest = JSON.parse(content);
+            const { parse } = await import('yaml');
+            const manifest: unknown = parse(content);
 
             this.manifestCache.set(cacheKey, {
                 value: manifest,

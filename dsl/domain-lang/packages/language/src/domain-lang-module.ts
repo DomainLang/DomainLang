@@ -113,6 +113,18 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
     );
     shared.ServiceRegistry.register(DomainLang);
     registerValidationChecks(DomainLang);
+
+    // Late-bind language services into shared module services.
+    // IndexManager and WorkspaceManager are in the shared module (created first),
+    // but need access to ImportResolver from the language module (created second).
+    const indexManager = shared.workspace.IndexManager;
+    if (indexManager instanceof DomainLangIndexManager) {
+        indexManager.setLanguageServices(DomainLang);
+    }
+    const workspaceManager = shared.workspace.WorkspaceManager;
+    if (workspaceManager instanceof DomainLangWorkspaceManager) {
+        workspaceManager.setLanguageServices(DomainLang);
+    }
     
     if (!context.connection) {
         // We don't run inside a language server
