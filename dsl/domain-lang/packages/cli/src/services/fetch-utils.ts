@@ -85,14 +85,14 @@ function parseRetryAfter(retryAfter: string | null): number | undefined {
     }
 
     // Try parsing as seconds (numeric)
-    const seconds = parseInt(retryAfter, 10);
-    if (!isNaN(seconds)) {
+    const seconds = Number.parseInt(retryAfter, 10);
+    if (!Number.isNaN(seconds)) {
         return seconds * 1000;
     }
 
     // Try parsing as HTTP date
     const date = new Date(retryAfter);
-    if (!isNaN(date.getTime())) {
+    if (!Number.isNaN(date.getTime())) {
         const delayMs = date.getTime() - Date.now();
         return Math.max(0, delayMs);
     }
@@ -111,8 +111,8 @@ function parseRateLimitReset(rateLimitReset: string | null): number | undefined 
         return undefined;
     }
 
-    const timestamp = parseInt(rateLimitReset, 10);
-    if (isNaN(timestamp)) {
+    const timestamp = Number.parseInt(rateLimitReset, 10);
+    if (Number.isNaN(timestamp)) {
         return undefined;
     }
 
