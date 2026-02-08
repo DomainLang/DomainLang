@@ -311,4 +311,167 @@ describe('DocumentSymbolProvider', () => {
         expect(sales.kind).toBe(SymbolKind.Namespace);
         expect(sales.detail).toBe('Domain \u2014 Nested deep');
     });
+
+    // ==========================================
+    // EDGE: Individual node kind mappings (NodeKindProvider coverage)
+    // ==========================================
+    test('Policy has Field SymbolKind', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc OrderContext for Sales {
+                decisions {
+                    Policy RefundPolicy
+                }
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        if (!bc.children || bc.children.length === 0) {
+            throw new Error('Expected BC to have children folders');
+        }
+        const decisionsFolder = expectSymbol(bc.children, 'decisions');
+        if (!decisionsFolder.children || decisionsFolder.children.length === 0) {
+            throw new Error('Expected decisions folder to have children');
+        }
+        const policy = expectSymbol(decisionsFolder.children, 'RefundPolicy');
+        expect(policy.kind).toBe(SymbolKind.Field);
+    });
+
+    test('Decision has Field SymbolKind', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc OrderContext for Sales {
+                decisions {
+                    Decision UseCQRS [strategic]
+                }
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        if (!bc.children) throw new Error('Expected BC to have children');
+        const decisionsFolder = expectSymbol(bc.children, 'decisions');
+        if (!decisionsFolder.children) throw new Error('Expected decisions folder to have children');
+        const decision = expectSymbol(decisionsFolder.children, 'UseCQRS');
+        expect(decision.kind).toBe(SymbolKind.Field);
+    });
+
+    test('BusinessRule has Field SymbolKind (using rules keyword)', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc OrderContext for Sales {
+                rules {
+                    Rule DiscountRule
+                }
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        if (!bc.children) throw new Error('Expected BC to have children');
+        // Even with 'rules' keyword, the folder is still named 'decisions' (per grammar)
+        const decisionsFolder = expectSymbol(bc.children, 'decisions');
+        if (!decisionsFolder.children) throw new Error('Expected decisions folder to have children');
+        const rule = expectSymbol(decisionsFolder.children, 'DiscountRule');
+        expect(rule.kind).toBe(SymbolKind.Field);
+    });
+
+    test('DomainTerm has Field SymbolKind', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc OrderContext for Sales {
+                terminology {
+                    Term Customer "A person who buys"
+                }
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        if (!bc.children) throw new Error('Expected BC to have children');
+        const termFolder = expectSymbol(bc.children, 'terminology');
+        if (!termFolder.children) throw new Error('Expected terminology folder to have children');
+        const term = expectSymbol(termFolder.children, 'Customer');
+        expect(term.kind).toBe(SymbolKind.Field);
+    });
+
+    test('MetadataEntry has Field SymbolKind', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            Metadata Language
+            bc OrderContext for Sales {
+                metadata {
+                    Language: "TypeScript"
+                }
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        if (!bc.children) throw new Error('Expected BC to have children');
+        const metaFolder = expectSymbol(bc.children, 'metadata');
+        expect(metaFolder.children).toBeDefined();
+        // MetadataEntry symbols use the key as the name
+        const entry = metaFolder.children![0];
+        expect(entry.kind).toBe(SymbolKind.Field);
+    });
+
+    test('Relationship has Interface SymbolKind', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc Orders for Sales {
+                relationships {
+                    [OHS] this -> [CF] External
+                }
+            }
+            bc External for Sales {}
+        `);
+        const bc = expectSymbol(symbols, 'Orders');
+        // The BC with relationships should have grouped children
+        if (!bc.children) throw new Error('Expected BC to have children');
+        const relFolder = expectSymbol(bc.children, 'relationships');
+        // Relationships are synthetic symbols  
+        expect(relFolder.children).toBeDefined();
+        expect(relFolder.children!.length).toBeGreaterThan(0);
+        const rel = relFolder.children![0];
+        expect(rel.kind).toBe(SymbolKind.Interface);
+    });
+
+    test('ContextMap with contained contexts shows correct detail', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc Orders for Sales {}
+            bc Billing for Sales {}
+            bc Shipping for Sales {}
+            ContextMap SalesMap {
+                contains Orders, Billing, Shipping
+            }
+        `);
+        const cmap = expectSymbol(symbols, 'SalesMap');
+        expect(cmap.detail).toBe('3 contexts');
+        expect(cmap.kind).toBe(SymbolKind.Package);
+    });
+
+    test('DomainMap with contained domains shows correct detail', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            Domain Marketing {}
+            Domain Support {}
+            DomainMap Enterprise {
+                contains Sales, Marketing, Support
+            }
+        `);
+        const dmap = expectSymbol(symbols, 'Enterprise');
+        expect(dmap.detail).toBe('3 domains');
+        expect(dmap.kind).toBe(SymbolKind.Package);
+    });
+
+    test('empty ContextMap has undefined detail (pluralize returns undefined for 0)', async () => {
+        const symbols = await getSymbols(s`
+            ContextMap EmptyMap {}
+        `);
+        const cmap = expectSymbol(symbols, 'EmptyMap');
+        // pluralize() returns undefined for count 0
+        expect(cmap.detail).toBeUndefined();
+    });
+
+    test('empty DomainMap has undefined detail (pluralize returns undefined for 0)', async () => {
+        const symbols = await getSymbols(s`
+            DomainMap EmptyMap {}
+        `);
+        const dmap = expectSymbol(symbols, 'EmptyMap');
+        // pluralize() returns undefined for count 0
+        expect(dmap.detail).toBeUndefined();
+    });
 });
