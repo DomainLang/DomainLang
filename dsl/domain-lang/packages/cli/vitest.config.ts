@@ -64,12 +64,11 @@ export default defineConfig({
       }
     },
     testTimeout: 30000,
-    // Pass heap size to worker threads (helps but doesn't fully prevent cleanup issues)
-    poolOptions: {
-      threads: {
-        maxThreads: 2,
-        execArgv: ['--max-old-space-size=8192'],
-      },
-    },
+    // Vitest v4: Use forks pool for process.chdir() support and memory management
+    // Forks pool is required for tests using process.chdir() (init.test, remove.test, add.test)
+    // Also supports execArgv for memory configuration
+    pool: 'forks',
+    maxWorkers: 2,
+    execArgv: ['--max-old-space-size=8192'],
   },
 });

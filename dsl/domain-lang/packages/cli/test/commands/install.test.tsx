@@ -11,9 +11,11 @@ import { Install, runInstall } from '../../src/commands/install.js';
 import type { CommandContext } from '../../src/commands/types.js';
 import { InstallService, FrozenMismatchError, IntegrityError } from '../../src/services/install-service.js';
 
-// Mock InstallService
+// Mock InstallService - Vitest v4 requires wrapping class in vi.fn()
 vi.mock('../../src/services/install-service.js', () => ({
-    InstallService: vi.fn(),
+    InstallService: vi.fn(class {
+        install = vi.fn();
+    }),
     FrozenMismatchError: class FrozenMismatchError extends Error {
         constructor(
             public readonly added: string[],
@@ -50,12 +52,12 @@ describe('Install command', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         
-        // Setup mock InstallService
+        // Setup mock install method - Vitest v4 pattern
         mockInstall = vi.fn();
         const MockInstallService = vi.mocked(InstallService);
-        MockInstallService.mockImplementation((() => ({
-            install: mockInstall,
-        })) as any);
+        MockInstallService.mockImplementation(class {
+            install = mockInstall;
+        } as any);
     });
 
     afterEach(() => {
@@ -537,12 +539,12 @@ describe('runInstall function', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         
-        // Setup mock InstallService
+        // Setup mock InstallService - Vitest v4 requires class pattern
         mockInstall = vi.fn();
         const MockInstallService = vi.mocked(InstallService);
-        MockInstallService.mockImplementation((() => ({
-            install: mockInstall,
-        })) as any);
+        MockInstallService.mockImplementation(class {
+            install = mockInstall;
+        } as any);
     });
 
     afterEach(() => {
