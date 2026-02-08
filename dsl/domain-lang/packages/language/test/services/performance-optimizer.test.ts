@@ -99,30 +99,27 @@ describe('PerformanceOptimizer', () => {
         });
 
         test('handles corrupt JSON in lock file gracefully', async () => {
+            // Arrange
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, 'NOT VALID JSON {{{', 'utf-8');
 
-            // Should either return undefined or throw a descriptive error
-            try {
-                const result = await optimizer.getCachedLockFile(tempDir);
-                // If it returns, it should be undefined (graceful handling)
-                expect(result).toBeUndefined();
-            } catch (e: unknown) {
-                // If it throws, it should mention parsing
-                expect((e as Error).message).toMatch(/JSON|parse|syntax/i);
-            }
+            // Act
+            const result = await optimizer.getCachedLockFile(tempDir);
+
+            // Assert — corrupt JSON should be handled gracefully, returning undefined
+            expect(result).toBeUndefined();
         });
 
         test('handles empty lock file', async () => {
+            // Arrange
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, '', 'utf-8');
 
-            try {
-                const result = await optimizer.getCachedLockFile(tempDir);
-                expect(result).toBeUndefined();
-            } catch (e: unknown) {
-                expect((e as Error).message).toMatch(/JSON|parse|empty/i);
-            }
+            // Act
+            const result = await optimizer.getCachedLockFile(tempDir);
+
+            // Assert — empty lock file should be handled gracefully, returning undefined
+            expect(result).toBeUndefined();
         });
 
         test('caches lockfiles from multiple workspaces independently', async () => {
@@ -302,13 +299,5 @@ describe('Global Optimizer', () => {
         resetGlobalOptimizer();
         const opt2 = getGlobalOptimizer();
         expect(opt1).not.toBe(opt2);
-    });
-
-    test('singleton has fresh empty stats after reset', () => {
-        const opt = getGlobalOptimizer();
-        // Force some state (we cannot easily load a file, but stats should be 0)
-        const stats = opt.getCacheStats();
-        expect(stats.lockFiles).toBe(0);
-        expect(stats.manifests).toBe(0);
     });
 });

@@ -28,7 +28,7 @@ describe('DependencyAnalyzer', () => {
             expect(tree).toEqual([]);
         });
 
-        test('should build tree with single dependency', async () => {
+        test('should return empty tree when cache directory is missing', async () => {
             // Arrange
             const lockFile: LockFile = {
                 version: '1',
@@ -42,13 +42,11 @@ describe('DependencyAnalyzer', () => {
                 },
             };
 
-            // Act
-            // Note: This test would need actual cache dir with model.yaml
-            // For now, we test the structure
+            // Act - cache dir doesn't exist at /tmp/test
             const tree = await analyzer.buildDependencyTree(lockFile, '/tmp/test');
 
-            // Assert
-            expect(tree).toBeDefined();
+            // Assert - entries without cache are silently skipped
+            expect(tree).toEqual([]);
         });
     });
 

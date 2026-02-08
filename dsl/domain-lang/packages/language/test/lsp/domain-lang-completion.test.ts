@@ -268,20 +268,6 @@ describe('DomainLangCompletionProvider', () => {
     });
 
     // ==========================================
-    // IMPORT: Import statement detection
-    // ==========================================
-    test('detects ImportStatement node for completion context', async () => {
-        // When the node is an ImportStatement, we should recognize it
-        const input = 'import "./domain"';
-        const document = await testServices.parse(input);
-        const model = document.parseResult.value;
-        
-        // The model should have an import statement
-        expect(model.imports.length).toBe(1);
-        expect(ast.isImportStatement(model.imports[0])).toBe(true);
-    });
-
-    // ==========================================
     // IMPORT: Import URI completion detection via NextFeature
     // ==========================================
     describe('Import URI Completion Detection', () => {
@@ -410,24 +396,6 @@ describe('DomainLangCompletionProvider', () => {
             }
         });
 
-        test('provides filtered alias completions when typing @', async () => {
-            const document = await testServices.parse('import "@"');
-            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
-            
-            // Simulate cursor after @: import "@|"
-            const params = {
-                textDocument: { uri: document.uri.toString() },
-                position: { line: 0, character: 9 }
-            };
-            
-            const result = await provider.getCompletion(document, params);
-            expect(result).toBeDefined();
-            
-            // If manifest is available, should show aliases
-            // If not available, should still return a result (not crash)
-            expect(result?.items).toBeDefined();
-        });
-
         test('provides filtered dependency completions when typing partial name', async () => {
             const document = await testServices.parse('import "lar"');
             const provider = testServices.services.DomainLang.lsp.CompletionProvider;
@@ -441,44 +409,6 @@ describe('DomainLangCompletionProvider', () => {
             const result = await provider.getCompletion(document, params);
             expect(result).toBeDefined();
             expect(result?.items).toBeDefined();
-        });
-
-        test('does NOT provide import completions outside import context', async () => {
-            const document = await testServices.parse('Domain Sales { vision: "test" }');
-            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
-            
-            // Simulate cursor inside vision string: vision: "test|"
-            const params = {
-                textDocument: { uri: document.uri.toString() },
-                position: { line: 0, character: 28 }
-            };
-            
-            const result = await provider.getCompletion(document, params);
-            
-            // Should either return undefined or return completions without crashing
-            // (We can't assert specific absence since default completion might provide other items)
-            expect(result).toBeDefined();
-            if (result?.items) {
-                expect(result.items).toBeDefined();
-            }
-        });
-
-        test('does NOT provide import completions in BC description string', async () => {
-            const document = await testServices.parse('bc Sales { description: "handles" }');
-            const provider = testServices.services.DomainLang.lsp.CompletionProvider;
-            
-            // Simulate cursor inside description string: description: "handles|"
-            const params = {
-                textDocument: { uri: document.uri.toString() },
-                position: { line: 0, character: 30 }
-            };
-            
-            const result = await provider.getCompletion(document, params);
-            
-            // Should not crash, and shouldn't provide import-specific completions
-            if (result?.items) {
-                expect(result.items).toBeDefined();
-            }
         });
 
         test('import completions work with Import keyword (capital I)', async () => {

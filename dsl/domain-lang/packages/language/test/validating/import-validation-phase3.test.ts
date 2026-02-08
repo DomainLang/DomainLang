@@ -79,6 +79,8 @@ describe('Import Validation (Phase 3)', () => {
     });
 
     describe('Dependency configuration validation', () => {
+        // TODO(PRS-010): Re-enable once manifest validation rejects conflicting source+path.
+        // Blocked by: Manifest validation rule not yet implemented.
         test.skip('rejects dependency with both source and path', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val-'));
 
@@ -135,6 +137,8 @@ describe('Import Validation (Phase 3)', () => {
             expect(errors.length).toBeGreaterThan(0);
         });
 
+        // TODO(PRS-010): Re-enable once manifest validation requires ref for source dependencies.
+        // Blocked by: Manifest validation rule not yet implemented.
         test.skip('rejects source dependency without ref', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val3-'));
 
@@ -159,6 +163,8 @@ describe('Import Validation (Phase 3)', () => {
     });
 
     describe('Local path dependency validation', () => {
+        // TODO(PRS-010): Re-enable once path dependency validation rejects absolute paths.
+        // Blocked by: Path security validation not yet implemented.
         test.skip('rejects absolute paths in path dependencies', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val4-'));
 
@@ -189,6 +195,8 @@ describe('Import Validation (Phase 3)', () => {
             expect(errors.length).toBeGreaterThan(0);
         });
 
+        // TODO(PRS-010): Re-enable once path dependency validation rejects workspace escapes.
+        // Blocked by: Workspace boundary security validation not yet implemented.
         test.skip('rejects paths that escape workspace boundary', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val5-'));
 
@@ -262,6 +270,8 @@ describe('Import Validation (Phase 3)', () => {
     });
 
     describe('External dependency caching validation', () => {
+        // TODO(PRS-010): Re-enable once LSP reports missing lock file for external imports.
+        // Blocked by: Phase 3 external dependency validation not fully wired in LSP.
         test.skip('rejects external import without lock file', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val7-'));
 
@@ -293,6 +303,8 @@ describe('Import Validation (Phase 3)', () => {
             expect(errors.length).toBeGreaterThan(0);
         });
 
+        // TODO(PRS-010): Re-enable once LSP reports missing cache for external imports.
+        // Blocked by: Phase 3 external dependency validation not fully wired in LSP.
         test.skip('rejects external import with lock file but missing cache', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val8-'));
 

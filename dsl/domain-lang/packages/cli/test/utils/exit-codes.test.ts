@@ -7,74 +7,21 @@ import { describe, test, expect } from 'vitest';
 import { EXIT, getExitCodeDescription } from '../../src/utils/exit-codes.js';
 
 describe('Exit code utilities', () => {
-    describe('EXIT constants', () => {
-        test('defines standard exit codes', () => {
-            // Assert
-            expect(EXIT.SUCCESS).toBe(0);
-            expect(EXIT.VALIDATION_ERROR).toBe(1);
-            expect(EXIT.FILE_NOT_FOUND).toBe(2);
-            expect(EXIT.PARSE_ERROR).toBe(3);
-            expect(EXIT.CONFIG_ERROR).toBe(4);
-            expect(EXIT.NETWORK_ERROR).toBe(10);
-            expect(EXIT.UNKNOWN_COMMAND).toBe(127);
-        });
-    });
-
     describe('getExitCodeDescription', () => {
-        test('describes SUCCESS', () => {
+        test.each([
+            [EXIT.SUCCESS, 'Success'],
+            [EXIT.VALIDATION_ERROR, 'Validation failed'],
+            [EXIT.FILE_NOT_FOUND, 'File not found'],
+            [EXIT.PARSE_ERROR, 'Syntax error'],
+            [EXIT.CONFIG_ERROR, 'Configuration error'],
+            [EXIT.NETWORK_ERROR, 'Network error'],
+            [EXIT.UNKNOWN_COMMAND, 'Unknown command'],
+        ])('describes exit code %i as %s', (code, expected) => {
             // Act
-            const result = getExitCodeDescription(EXIT.SUCCESS);
+            const result = getExitCodeDescription(code);
 
             // Assert
-            expect(result).toBe('Success');
-        });
-
-        test('describes VALIDATION_ERROR', () => {
-            // Act
-            const result = getExitCodeDescription(EXIT.VALIDATION_ERROR);
-
-            // Assert
-            expect(result).toBe('Validation failed');
-        });
-
-        test('describes FILE_NOT_FOUND', () => {
-            // Act
-            const result = getExitCodeDescription(EXIT.FILE_NOT_FOUND);
-
-            // Assert
-            expect(result).toBe('File not found');
-        });
-
-        test('describes PARSE_ERROR', () => {
-            // Act
-            const result = getExitCodeDescription(EXIT.PARSE_ERROR);
-
-            // Assert
-            expect(result).toBe('Syntax error');
-        });
-
-        test('describes CONFIG_ERROR', () => {
-            // Act
-            const result = getExitCodeDescription(EXIT.CONFIG_ERROR);
-
-            // Assert
-            expect(result).toBe('Configuration error');
-        });
-
-        test('describes NETWORK_ERROR', () => {
-            // Act
-            const result = getExitCodeDescription(EXIT.NETWORK_ERROR);
-
-            // Assert
-            expect(result).toBe('Network error');
-        });
-
-        test('describes UNKNOWN_COMMAND', () => {
-            // Act
-            const result = getExitCodeDescription(EXIT.UNKNOWN_COMMAND);
-
-            // Assert
-            expect(result).toBe('Unknown command');
+            expect(result).toBe(expected);
         });
 
         test('returns Unknown error for unrecognized code', () => {

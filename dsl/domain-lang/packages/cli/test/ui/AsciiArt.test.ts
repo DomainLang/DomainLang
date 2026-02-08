@@ -93,28 +93,9 @@ describe('AsciiArt utilities', () => {
             expect(result).toBe('help');
         });
 
-        test('returns help for help command', () => {
-            // Arrange / Act
-            const result = getBannerContext('help', false);
-
-            // Assert
-            expect(result).toBe('help');
-        });
-
-        test('returns help for --help flag', () => {
-            // Arrange / Act
-            const result = getBannerContext('--help', false);
-
-            // Assert
-            expect(result).toBe('help');
-        });
-
-        test('returns help for -h flag', () => {
-            // Arrange / Act
-            const result = getBannerContext('-h', false);
-
-            // Assert
-            expect(result).toBe('help');
+        test.each(['help', '--help', '-h'])('returns help for %s', (cmd) => {
+            // Act / Assert
+            expect(getBannerContext(cmd, false)).toBe('help');
         });
 
         test('returns init for init command', () => {

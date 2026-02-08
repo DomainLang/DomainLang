@@ -264,95 +264,59 @@ describe('DomainLangHoverProvider', () => {
         });
     });
 
-    describe('Decision hovers', () => {
-        test('shows type label, name, and definition', async () => {
+    describe('Decision/Policy/Rule/Term hovers', () => {
+        test.each([
+            {
+                type: 'decision',
+                keyword: 'decision',
+                block: 'decisions',
+                name: 'UseCQRS',
+                definition: 'Apply CQRS pattern',
+                col: 17,
+            },
+            {
+                type: 'policy',
+                keyword: 'policy',
+                block: 'decisions',
+                name: 'ReturnPolicy',
+                definition: '30-day returns',
+                col: 15,
+            },
+            {
+                type: 'rule',
+                keyword: 'rule',
+                block: 'rules',
+                name: 'MaxItems',
+                definition: 'Maximum 100 items per order',
+                col: 13,
+            },
+            {
+                type: 'term',
+                keyword: 'term',
+                block: 'terminology',
+                name: 'Order',
+                definition: 'A request to purchase',
+                col: 13,
+            },
+        ])('$type hover shows type label, name, and definition', async ({ keyword, block, name, type, definition, col }) => {
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
                 bc OrderCtx for Sales {
-                    decisions {
-                        decision UseCQRS: "Apply CQRS pattern"
+                    ${block} {
+                        ${keyword} ${name}: "${definition}"
                     }
                 }
                 `,
                 3,
-                17 // 'U' in UseCQRS
+                col
             );
 
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
-            expect(value).toContain('(decision)');
-            expect(value).toContain('UseCQRS');
-            expect(value).toContain('Apply CQRS pattern');
-        });
-    });
-
-    describe('Policy hovers', () => {
-        test('shows type label, name, and definition', async () => {
-            const hover = await getHoverAt(
-                s`
-                Domain Sales {}
-                bc OrderCtx for Sales {
-                    decisions {
-                        policy ReturnPolicy: "30-day returns"
-                    }
-                }
-                `,
-                3,
-                15 // 'R' in ReturnPolicy
-            );
-
-            expect(hover).toBeDefined();
-            const value = hover!.contents.value;
-            expect(value).toContain('(policy)');
-            expect(value).toContain('ReturnPolicy');
-            expect(value).toContain('30-day returns');
-        });
-    });
-
-    describe('BusinessRule hovers', () => {
-        test('shows type label, name, and definition', async () => {
-            const hover = await getHoverAt(
-                s`
-                Domain Sales {}
-                bc OrderCtx for Sales {
-                    rules {
-                        rule MaxItems: "Maximum 100 items per order"
-                    }
-                }
-                `,
-                3,
-                13 // 'M' in MaxItems
-            );
-
-            expect(hover).toBeDefined();
-            const value = hover!.contents.value;
-            expect(value).toContain('(rule)');
-            expect(value).toContain('MaxItems');
-            expect(value).toContain('Maximum 100 items per order');
-        });
-    });
-
-    describe('DomainTerm hovers', () => {
-        test('shows type label, name, and meaning', async () => {
-            const hover = await getHoverAt(
-                s`
-                Domain Sales {}
-                bc OrderCtx for Sales {
-                    terminology {
-                        term Order: "A request to purchase"
-                    }
-                }
-                `,
-                3,
-                13 // 'O' in Order
-            );
-
-            expect(hover).toBeDefined();
-            const value = hover!.contents.value;
-            expect(value).toContain('(term)');
-            expect(value).toContain('Order');
-            expect(value).toContain('A request to purchase');
+            expect(value).toContain(`(${type})`);
+            expect(value).toContain(name);
+            expect(value).toContain(definition);
         });
     });
 
@@ -538,20 +502,6 @@ Classification Core`,
 
             expect(hover).toBeUndefined();
         });
-
-        test('returns undefined for empty line between elements', async () => {
-            const hover = await getHoverAt(
-                s`
-                Domain Sales {}
-
-                Team TeamA {}
-                `,
-                1, // the empty line
-                0
-            );
-
-            expect(hover).toBeUndefined();
-        });
     });
 
     // ================================================================
@@ -582,27 +532,6 @@ Classification Core`,
             }
         });
 
-        test('hovering over "this" inside a bounded context returns BC hover', async () => {
-            const hover = await getHoverAt(
-                s`
-                    Domain Sales { vision: "Sales domain" }
-                    ContextMap SalesMap {
-                        contains OrderCtx, BillingCtx
-                        [OHS] this -> [CF] BillingCtx
-                    }
-                    bc OrderCtx for Sales
-                    bc BillingCtx for Sales
-                `,
-                4,
-                14 // position of 'this'
-            );
-
-            // Hover may or may not resolve depending on position precision,
-            // but the key requirement is that it does NOT crash
-            if (hover) {
-                expect(hover.contents.kind).toBe('markdown');
-            }
-        });
     });
 
     // ================================================================

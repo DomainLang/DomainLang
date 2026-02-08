@@ -340,7 +340,7 @@ export const TestFixtures = {
             
             ContextMap CommerceMap {
                 contains OrderManagement, PaymentProcessing
-                OrderManagement U/D PaymentProcessing
+                OrderManagement -> PaymentProcessing
             }
             
             DomainMap BusinessMap {

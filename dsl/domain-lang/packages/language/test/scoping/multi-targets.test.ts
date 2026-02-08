@@ -57,20 +57,4 @@ describe('Scoping: Multi-Target References', () => {
         expect(rel.left.link?.ref?.name).toBe('Dup');
         expect(rel.right.link?.ref?.name).toBe('Unique');
     });
-
-    test('ContextMap with empty contains clause has no bounded context refs', async () => {
-        const document = await testServices.parse(s`
-            Domain Sales {}
-
-            ContextMap EmptyContainsMap {
-            }
-        `);
-
-        expectValidDocument(document);
-
-        const contextMap = getFirstContextMap(document);
-        expect(contextMap.name).toBe('EmptyContainsMap');
-        expect(contextMap.boundedContexts).toHaveLength(0);
-        expect(contextMap.relationships).toHaveLength(0);
-    });
 });

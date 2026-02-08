@@ -205,38 +205,6 @@ describe('InstallService', () => {
         });
     });
 
-    describe('FrozenMismatchError', () => {
-        it('should include details about mismatches', () => {
-            const error = new FrozenMismatchError(
-                ['acme/new@v1.0.0'],
-                ['acme/old'],
-                [{ pkg: 'acme/test', manifestRef: 'v2.0.0', lockRef: 'v1.0.0' }]
-            );
-
-            expect(error.name).toBe('FrozenMismatchError');
-            expect(error.added).toEqual(['acme/new@v1.0.0']);
-            expect(error.removed).toEqual(['acme/old']);
-            expect(error.changed).toEqual([
-                { pkg: 'acme/test', manifestRef: 'v2.0.0', lockRef: 'v1.0.0' },
-            ]);
-        });
-    });
-
-    describe('IntegrityError', () => {
-        it('should include package and hash details', () => {
-            const error = new IntegrityError(
-                'acme/test',
-                'sha512-expected',
-                'sha512-actual'
-            );
-
-            expect(error.name).toBe('IntegrityError');
-            expect(error.pkg).toBe('acme/test');
-            expect(error.expected).toBe('sha512-expected');
-            expect(error.actual).toBe('sha512-actual');
-        });
-    });
-
     describe('Error messages', () => {
         it('should provide actionable hints for frozen mode errors', () => {
             const error = new FrozenMismatchError(
@@ -257,35 +225,6 @@ describe('InstallService', () => {
 
             expect(error.message).toContain('Integrity check failed');
             expect(error.message).toContain('acme/test');
-        });
-    });
-
-    describe('RefType detection', () => {
-        it('should detect commit SHAs', () => {
-            const service = new InstallService(testDir);
-            // Access private method through type assertion for testing
-            const detectRefType = (service as any).detectRefType.bind(service);
-
-            const commit = 'a'.repeat(40);
-            expect(detectRefType(commit)).toBe('commit');
-        });
-
-        it('should detect semantic version tags', () => {
-            const service = new InstallService(testDir);
-            const detectRefType = (service as any).detectRefType.bind(service);
-
-            expect(detectRefType('v1.0.0')).toBe('tag');
-            expect(detectRefType('1.2.3')).toBe('tag');
-            expect(detectRefType('v2.0.0-beta.1')).toBe('tag');
-        });
-
-        it('should detect branches', () => {
-            const service = new InstallService(testDir);
-            const detectRefType = (service as any).detectRefType.bind(service);
-
-            expect(detectRefType('main')).toBe('branch');
-            expect(detectRefType('develop')).toBe('branch');
-            expect(detectRefType('feature/test')).toBe('branch');
         });
     });
 

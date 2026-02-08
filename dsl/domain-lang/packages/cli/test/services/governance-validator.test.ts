@@ -217,9 +217,11 @@ describe('loadGovernancePolicy', () => {
 
     test('loads governance policy from model.yaml', async () => {
         // Arrange
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-gov-test-'));
-        const manifestPath = path.join(tempDir, 'model.yaml');
-        const manifest = `
+        let tempDir: string | undefined;
+        try {
+            tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-gov-test-'));
+            const manifestPath = path.join(tempDir, 'model.yaml');
+            const manifest = `
 model:
   name: test
   version: 1.0.0
@@ -229,15 +231,18 @@ governance:
   allowedSources:
     - github.com/acme
 `;
-        await fs.writeFile(manifestPath, manifest, 'utf-8');
+            await fs.writeFile(manifestPath, manifest, 'utf-8');
 
-        // Act
-        const policy = await loadGovernancePolicy(tempDir);
+            // Act
+            const policy = await loadGovernancePolicy(tempDir);
 
-        // Assert
-        expect(policy.requireStableVersions).toBe(true);
-        expect(policy.allowedSources).toEqual(['github.com/acme']);
-        
-        await fs.rm(tempDir, { recursive: true, force: true });
+            // Assert
+            expect(policy.requireStableVersions).toBe(true);
+            expect(policy.allowedSources).toEqual(['github.com/acme']);
+        } finally {
+            if (tempDir) {
+                await fs.rm(tempDir, { recursive: true, force: true });
+            }
+        }
     });
 });

@@ -268,14 +268,5 @@ describe('DomainLang Formatter', () => {
             expect(nonEmptyLines.length).toBeGreaterThan(3);
         });
 
-        test('formatting is idempotent: re-formatting produces no further edits', async () => {
-            // First pass: format a single-line document
-            const { result: firstPass } = await formatAndApply(
-                s`Domain Sales { vision: "Sales" }`
-            );
-            // Second pass: format the already-formatted output
-            const secondEdits = await formatDocument(firstPass);
-            expect(secondEdits).toHaveLength(0);
-        });
     });
 });

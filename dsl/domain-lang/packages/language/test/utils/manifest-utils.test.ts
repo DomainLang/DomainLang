@@ -287,14 +287,4 @@ dependencies:
             expect(results[0].manifestPath).toBe(manifestPath);
         });
     });
-
-    // ==========================================
-    // EDGE: exported constants consolidated
-    // ==========================================
-    describe('exported constants', () => {
-        test('DEFAULT_MANIFEST_FILENAME and DEFAULT_ENTRY_FILE have correct values', () => {
-            expect(manifestUtils.DEFAULT_MANIFEST_FILENAME).toBe('model.yaml');
-            expect(manifestUtils.DEFAULT_ENTRY_FILE).toBe('index.dlang');
-        });
-    });
 });

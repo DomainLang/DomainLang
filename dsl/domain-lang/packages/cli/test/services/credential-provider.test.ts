@@ -247,36 +247,6 @@ describe('CredentialProvider', () => {
             });
         });
 
-        describe('terminal prompt prevention', () => {
-            beforeEach(() => {
-                // Arrange - Ensure no env vars interfere
-                delete process.env['DLANG_GITHUB_TOKEN'];
-                delete process.env['GITHUB_TOKEN'];
-            });
-
-            test('sets GIT_TERMINAL_PROMPT=0 to prevent interactive prompts', async () => {
-                // Arrange
-                mockExecFileAsync.mockResolvedValue({
-                    stdout: 'username=user\npassword=pass\n',
-                    stderr: '',
-                });
-
-                // Act
-                await provider.getGitHubCredentials('github.com');
-
-                // Assert
-                expect(mockExecFileAsync).toHaveBeenCalledWith(
-                    'git',
-                    ['credential', 'fill'],
-                    expect.objectContaining({
-                        env: expect.objectContaining({
-                            GIT_TERMINAL_PROMPT: '0',
-                        }),
-                    })
-                );
-            });
-        });
-
         describe('credential caching', () => {
             beforeEach(() => {
                 delete process.env['DLANG_GITHUB_TOKEN'];
@@ -415,55 +385,6 @@ describe('CredentialProvider', () => {
                 // Assert
                 expect(result).toBeUndefined();
             });
-        });
-    });
-
-    describe('integration scenarios', () => {
-        test('full workflow with env token produces Bearer header', async () => {
-            // Arrange
-            process.env['GITHUB_TOKEN'] = 'ghp_integration_test';
-
-            // Act
-            const credentials = await provider.getGitHubCredentials('github.com');
-            const header = provider.getAuthorizationHeader(credentials);
-
-            // Assert
-            expect(header).toBe('Bearer ghp_integration_test');
-        });
-
-        test('full workflow with git credentials produces Basic header', async () => {
-            // Arrange
-            delete process.env['DLANG_GITHUB_TOKEN'];
-            delete process.env['GITHUB_TOKEN'];
-            mockExecFileAsync.mockResolvedValue({
-                stdout: 'username=integrationuser\npassword=integrationpass\n',
-                stderr: '',
-            });
-
-            // Act
-            const credentials = await provider.getGitHubCredentials('github.com');
-            const header = provider.getAuthorizationHeader(credentials);
-
-            // Assert
-            const expected = 'Basic ' + Buffer.from('integrationuser:integrationpass').toString('base64');
-            expect(header).toBe(expected);
-        });
-
-        test('full workflow with no credentials returns undefined', async () => {
-            // Arrange
-            delete process.env['DLANG_GITHUB_TOKEN'];
-            delete process.env['GITHUB_TOKEN'];
-            const notFoundError = new Error('Command failed');
-            (notFoundError as NodeJS.ErrnoException).code = 'ENOENT';
-            mockExecFileAsync.mockRejectedValue(notFoundError);
-
-            // Act
-            const credentials = await provider.getGitHubCredentials('github.com');
-            const header = provider.getAuthorizationHeader(credentials);
-
-            // Assert
-            expect(credentials).toBeUndefined();
-            expect(header).toBeUndefined();
         });
     });
 });

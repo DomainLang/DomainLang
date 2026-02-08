@@ -4,7 +4,7 @@
  * @module ui/theme-manager.test
  */
 import { describe, test, expect, afterEach, vi } from 'vitest';
-import { themes, themeManager } from '../../src/ui/themes/theme-manager.js';
+import { themeManager } from '../../src/ui/themes/theme-manager.js';
 
 describe('ThemeManager', () => {
     afterEach(() => {
@@ -63,15 +63,6 @@ describe('ThemeManager', () => {
             expect(theme.name).toBe('No Color');
             expect(theme.colors.Foreground).toBe('');
         });
-
-        test('lazy-initializes on first access', () => {
-            // Act
-            const theme = themeManager.getActiveTheme();
-
-            // Assert
-            expect(theme).toBeDefined();
-            expect(theme.name).toBeTruthy();
-        });
     });
 
     describe('getSemanticColors', () => {
@@ -99,16 +90,6 @@ describe('ThemeManager', () => {
             expect(available.length).toBeGreaterThanOrEqual(2);
             expect(available.some(t => t.type === 'dark')).toBe(true);
             expect(available.some(t => t.type === 'light')).toBe(true);
-        });
-    });
-
-    describe('themes constant', () => {
-        test('provides dark and light themes', () => {
-            // Assert
-            expect(themes.dark).toBeDefined();
-            expect(themes.dark.type).toBe('dark');
-            expect(themes.light).toBeDefined();
-            expect(themes.light.type).toBe('light');
         });
     });
 

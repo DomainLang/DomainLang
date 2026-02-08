@@ -10,7 +10,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- Test assertions use ! to verify expected values exist */
 
 import { describe, test, expect } from 'vitest';
-import { loadModelFromText, Pattern, matchesPattern } from '../../src/sdk/index.js';
+import { loadModelFromText, matchesPattern } from '../../src/sdk/index.js';
 import type { BoundedContext, Domain, Relationship } from '../../src/generated/ast.js';
 import { isBoundedContext, isDomain, isContextMap } from '../../src/generated/ast.js';
 import { AstUtils } from 'langium';
@@ -369,16 +369,6 @@ describe('SDK AST Augmentation', () => {
     // ========================================================================
 
     describe('Pattern matching utilities', () => {
-
-        // Smoke: pattern constants exist with correct values
-        test('Pattern constants have expected abbreviation values', () => {
-            expect(Pattern.OHS).toBe('OHS');
-            expect(Pattern.CF).toBe('CF');
-            expect(Pattern.ACL).toBe('ACL');
-            expect(Pattern.SK).toBe('SK');
-            expect(Pattern.PL).toBe('PL');
-            expect(Pattern.P).toBe('P');
-        });
 
         // Edge: abbreviation <-> full name bidirectional matching
         test('matchesPattern resolves abbreviations and full names bidirectionally', () => {

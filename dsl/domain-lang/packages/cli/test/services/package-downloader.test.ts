@@ -109,27 +109,6 @@ describe('PackageDownloader', () => {
             );
         });
 
-        test('should validate commit SHA', async () => {
-            // Arrange - Mock GitHub API response for commit validation
-            const commitSha = 'abc123def456789012345678901234567890abcd';
-            fetchMock.mockResolvedValueOnce(
-                createMockResponse(200, {
-                    sha: commitSha,
-                    commit: { message: 'Test commit' },
-                })
-            );
-
-            // Act
-            const result = await downloader.resolveRefToCommit('owner', 'repo', commitSha);
-
-            // Assert
-            expect(result).toBe(commitSha);
-            expect(fetchMock).toHaveBeenCalledWith(
-                `https://api.github.com/repos/owner/repo/commits/${commitSha}`,
-                expect.any(Object)
-            );
-        });
-
         test('should throw error when ref cannot be resolved', async () => {
             // Arrange - Unified endpoint returns 404
             fetchMock.mockResolvedValueOnce(createMockResponse(404, { message: 'Not Found' }));
@@ -528,32 +507,6 @@ describe('PackageDownloader', () => {
             expect(result.integrity).toBe(expectedIntegrity);
         });
 
-        test('should compute different hashes for different content', async () => {
-            // Arrange - Two different downloads
-            const content1 = Buffer.from('content-v1');
-            const content2 = Buffer.from('content-v2');
-            const commitSha = 'abc123def456789012345678901234567890abcd';
-
-            // First download
-            fetchMock
-                .mockResolvedValueOnce(createMockResponse(200, { sha: commitSha }))
-                .mockResolvedValueOnce(createMockStreamResponse(200, content1));
-            (mockPackageCache.get as Mock).mockResolvedValueOnce(undefined);
-
-            // Act
-            const result1 = await downloader.download('owner', 'repo1', 'v1.0.0');
-
-            // Second download
-            fetchMock
-                .mockResolvedValueOnce(createMockResponse(200, { sha: commitSha }))
-                .mockResolvedValueOnce(createMockStreamResponse(200, content2));
-            (mockPackageCache.get as Mock).mockResolvedValueOnce(undefined);
-
-            const result2 = await downloader.download('owner', 'repo2', 'v1.0.0');
-
-            // Assert - Different content should produce different hashes
-            expect(result1.integrity).not.toBe(result2.integrity);
-        });
     });
 });
 

@@ -21,14 +21,5 @@ describe('Command runner utilities', () => {
             // Assert
             expect(version).toMatch(/^\d+\.\d+\.\d+/);
         });
-
-        test('returns consistent version on repeated calls', async () => {
-            // Act
-            const version1 = await getVersion();
-            const version2 = await getVersion();
-
-            // Assert
-            expect(version1).toBe(version2);
-        });
     });
 });

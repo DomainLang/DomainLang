@@ -437,7 +437,6 @@ describe('This Reference Linking', () => {
     test('this reference in BC relationships block resolves participant and has ThisRef type', async () => {
         const input = s`
             Domain Sales {}
-            BoundedContext OrderContext for Sales
             BoundedContext PaymentContext for Sales
 
             BoundedContext OrderContext for Sales {

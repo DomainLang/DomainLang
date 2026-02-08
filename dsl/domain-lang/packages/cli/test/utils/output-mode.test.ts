@@ -111,142 +111,55 @@ describe('Output mode utilities', () => {
     });
 
     describe('shouldUseInk', () => {
-        test('returns true for rich mode', () => {
+        test.each([
+            { mode: 'rich' as const, expected: true },
+            { mode: 'json' as const, expected: false },
+            { mode: 'quiet' as const, expected: false },
+        ])('returns $expected for $mode mode', ({ mode, expected }) => {
             // Arrange
-            const config = { mode: 'rich' as const, noColor: false, cwd: '/test' };
+            const config = { mode, noColor: false, cwd: '/test' };
 
-            // Act
-            const result = shouldUseInk(config);
-
-            // Assert
-            expect(result).toBe(true);
-        });
-
-        test('returns false for json mode', () => {
-            // Arrange
-            const config = { mode: 'json' as const, noColor: false, cwd: '/test' };
-
-            // Act
-            const result = shouldUseInk(config);
-
-            // Assert
-            expect(result).toBe(false);
-        });
-
-        test('returns false for quiet mode', () => {
-            // Arrange
-            const config = { mode: 'quiet' as const, noColor: false, cwd: '/test' };
-
-            // Act
-            const result = shouldUseInk(config);
-
-            // Assert
-            expect(result).toBe(false);
+            // Act / Assert
+            expect(shouldUseInk(config)).toBe(expected);
         });
     });
 
     describe('shouldUseColors', () => {
-        test('returns true for rich mode without no-color', () => {
+        test.each([
+            { mode: 'rich' as const, noColor: false, expected: true },
+            { mode: 'rich' as const, noColor: true, expected: false },
+            { mode: 'json' as const, noColor: false, expected: false },
+        ])('returns $expected for $mode mode (noColor=$noColor)', ({ mode, noColor, expected }) => {
             // Arrange
-            const config = { mode: 'rich' as const, noColor: false, cwd: '/test' };
+            const config = { mode, noColor, cwd: '/test' };
 
-            // Act
-            const result = shouldUseColors(config);
-
-            // Assert
-            expect(result).toBe(true);
-        });
-
-        test('returns false for rich mode with no-color', () => {
-            // Arrange
-            const config = { mode: 'rich' as const, noColor: true, cwd: '/test' };
-
-            // Act
-            const result = shouldUseColors(config);
-
-            // Assert
-            expect(result).toBe(false);
-        });
-
-        test('returns false for json mode', () => {
-            // Arrange
-            const config = { mode: 'json' as const, noColor: false, cwd: '/test' };
-
-            // Act
-            const result = shouldUseColors(config);
-
-            // Assert
-            expect(result).toBe(false);
+            // Act / Assert
+            expect(shouldUseColors(config)).toBe(expected);
         });
     });
 
     describe('shouldUseEmoji', () => {
-        test('returns true for rich mode', () => {
+        test.each([
+            { mode: 'rich' as const, expected: true },
+            { mode: 'quiet' as const, expected: false },
+        ])('returns $expected for $mode mode', ({ mode, expected }) => {
             // Arrange
-            const config = { mode: 'rich' as const, noColor: false, cwd: '/test' };
+            const config = { mode, noColor: false, cwd: '/test' };
 
-            // Act
-            const result = shouldUseEmoji(config);
-
-            // Assert
-            expect(result).toBe(true);
-        });
-
-        test('returns false for quiet mode', () => {
-            // Arrange
-            const config = { mode: 'quiet' as const, noColor: false, cwd: '/test' };
-
-            // Act
-            const result = shouldUseEmoji(config);
-
-            // Assert
-            expect(result).toBe(false);
+            // Act / Assert
+            expect(shouldUseEmoji(config)).toBe(expected);
         });
     });
 
     describe('stripOutputFlags', () => {
-        test('removes --json flag', () => {
-            // Arrange
-            const args = ['validate', '--json', 'file.dlang'];
-
-            // Act
-            const result = stripOutputFlags(args);
-
-            // Assert
-            expect(result).toEqual(['validate', 'file.dlang']);
-        });
-
-        test('removes --quiet flag', () => {
-            // Arrange
-            const args = ['--quiet', 'validate'];
-
-            // Act
-            const result = stripOutputFlags(args);
-
-            // Assert
-            expect(result).toEqual(['validate']);
-        });
-
-        test('removes -q flag', () => {
-            // Arrange
-            const args = ['-q', 'install'];
-
-            // Act
-            const result = stripOutputFlags(args);
-
-            // Assert
-            expect(result).toEqual(['install']);
-        });
-
-        test('removes --no-color flag', () => {
-            // Arrange
-            const args = ['validate', '--no-color', 'file.dlang'];
-
-            // Act
-            const result = stripOutputFlags(args);
-
-            // Assert
-            expect(result).toEqual(['validate', 'file.dlang']);
+        test.each([
+            { args: ['validate', '--json', 'file.dlang'], expected: ['validate', 'file.dlang'], label: '--json' },
+            { args: ['--quiet', 'validate'], expected: ['validate'], label: '--quiet' },
+            { args: ['-q', 'install'], expected: ['install'], label: '-q' },
+            { args: ['validate', '--no-color', 'file.dlang'], expected: ['validate', 'file.dlang'], label: '--no-color' },
+        ])('removes $label flag', ({ args, expected }) => {
+            // Act / Assert
+            expect(stripOutputFlags(args)).toEqual(expected);
         });
 
         test('removes multiple output flags', () => {

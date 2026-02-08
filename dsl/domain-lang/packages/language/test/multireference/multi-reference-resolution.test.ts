@@ -211,7 +211,9 @@ describe('Multi-Target References', () => {
         expect(resolved).toHaveLength(0);
     });
 
-    // TODO: Namespace scoping not fully supported with EmptyFileSystem in tests.
+    // TODO: Re-enable once namespace scoping is supported in EmptyFileSystem tests.
+    // Blocked by: Namespace-qualified name resolution requires workspace-level scoping
+    // that EmptyFileSystem doesn't provide. Verify manually or via integration tests.
     test.skip('MultiReference works with qualified names in namespaces', async () => {
         const input = `
             Namespace acme.sales {

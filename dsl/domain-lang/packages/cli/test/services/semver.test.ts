@@ -34,7 +34,7 @@ describe('SemVer utilities', () => {
                 major: 1,
                 minor: 2,
                 patch: 3,
-                prerelease: undefined,
+                preRelease: undefined,
                 original: '1.2.3',
             });
         });
@@ -45,7 +45,7 @@ describe('SemVer utilities', () => {
                 major: 1,
                 minor: 2,
                 patch: 3,
-                prerelease: undefined,
+                preRelease: undefined,
                 original: 'v1.2.3',
             });
         });

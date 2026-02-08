@@ -13,8 +13,6 @@
 import { describe, test, expect } from 'vitest';
 import { loadModelFromText } from '../../src/sdk/loader.js';
 import {
-    effectiveClassification,
-    effectiveTeam,
     metadataAsMap,
 } from '../../src/sdk/resolution.js';
 import type { BoundedContext, Domain } from '../../src/generated/ast.js';
@@ -66,24 +64,9 @@ describe('SDK Resolution Functions', () => {
 
     // ========================================================================
     // Edge: effectiveTeam()
+    // Header/body resolution, undefined cases, and team-with-classification
+    // covered by resolution-precedence.test.ts
     // ========================================================================
-
-    describe('Edge: effectiveTeam()', () => {
-        // Header/body resolution and undefined cases covered by resolution-precedence.test.ts
-
-        test('returns team even when classification is also set', async () => {
-            const { query } = await loadModelFromText(`
-                Classification Core
-                Team SalesTeam
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales as Core by SalesTeam
-            `);
-
-            const bc = query.bc('OrderContext') as BoundedContext;
-            expect(effectiveTeam(bc)?.name).toBe('SalesTeam');
-            expect(effectiveClassification(bc)?.name).toBe('Core');
-        });
-    });
 
     // ========================================================================
     // Edge: metadataAsMap()
@@ -91,19 +74,8 @@ describe('SDK Resolution Functions', () => {
 
     describe('Edge: metadataAsMap()', () => {
 
-        // Happy path and empty-no-metadata cases covered by resolution-precedence.test.ts
-
-        test('returns empty map when metadata block is empty', async () => {
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    metadata { }
-                }
-            `);
-
-            const metadata = metadataAsMap(query.bc('OrderContext') as BoundedContext);
-            expect(metadata.size).toBe(0);
-        });
+        // Happy path, empty-no-metadata, and empty-block cases
+        // covered by resolution-precedence.test.ts
 
         test('handles special characters in metadata values', async () => {
             const { query } = await loadModelFromText(`
@@ -118,24 +90,6 @@ describe('SDK Resolution Functions', () => {
 
             const metadata = metadataAsMap(query.bc('OrderContext') as BoundedContext);
             expect(metadata.get('pattern')).toBe('[a-zA-Z0-9_]*');
-        });
-
-        // 'returns empty map for BC with description but no metadata' covered by resolution-precedence.test.ts
-
-        test('non-existent key returns undefined from map', async () => {
-            const { query } = await loadModelFromText(`
-                Metadata tier
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    metadata {
-                        tier: "critical"
-                    }
-                }
-            `);
-
-            const metadata = metadataAsMap(query.bc('OrderContext') as BoundedContext);
-            expect(metadata.get('tier')).toBe('critical');
-            expect(metadata.get('nonexistent')).toBeUndefined();
         });
     });
 });
