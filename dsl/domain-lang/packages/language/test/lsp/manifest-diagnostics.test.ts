@@ -21,6 +21,9 @@ import { describe, test, expect } from 'vitest';
 import { DiagnosticSeverity } from 'vscode-languageserver-types';
 import { ManifestDiagnosticsService } from '../../src/lsp/manifest-diagnostics.js';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 describe('ManifestDiagnosticsService', () => {
     const service = new ManifestDiagnosticsService();
 

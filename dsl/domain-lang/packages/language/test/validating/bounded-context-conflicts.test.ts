@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 let testServices: ReturnType<typeof setupTestSuite>;
 
 beforeAll(() => {

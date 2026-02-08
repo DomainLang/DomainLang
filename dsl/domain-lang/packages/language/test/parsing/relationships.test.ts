@@ -14,6 +14,9 @@ import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, get
 import type { ContextMap, Relationship } from '../../src/generated/ast.js';
 import { isContextMap } from '../../src/generated/ast.js';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 let testServices: TestServices;
 
 beforeAll(() => {

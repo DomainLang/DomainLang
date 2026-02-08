@@ -11,6 +11,9 @@ import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, s } from '../test-helpers.js';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 let testServices: TestServices;
 
 beforeAll(() => {
@@ -18,7 +21,7 @@ beforeAll(() => {
 });
 
 describe('Enhanced Error Messages', () => {
-    const contextMapPreamble = (body: string) => s`
+    const contextMapPreamble = (body: string): string => s`
         Domain Sales {}
         bc Context1 for Sales
         bc Context2 for Sales

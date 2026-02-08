@@ -11,6 +11,9 @@ import { setupTestSuite, type TestServices, s } from '../test-helpers.js';
 import type { HoverParams } from 'vscode-languageserver';
 import { Position } from 'vscode-languageserver';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 /** Typed hover result matching the provider's return shape. */
 interface HoverResult {
     contents: { kind: string; value: string };

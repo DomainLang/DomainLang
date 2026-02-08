@@ -16,7 +16,7 @@
 import { describe, test, beforeAll, afterAll, expect } from 'vitest';
 import { URI } from 'langium';
 import type { LangiumDocument } from 'langium';
-import type { DefinitionParams } from 'vscode-languageserver-protocol';
+import type { DefinitionParams, LocationLink } from 'vscode-languageserver-protocol';
 import { createDomainLangServices } from '../../src/domain-lang-module.js';
 import { NodeFileSystem } from 'langium/node';
 import type { Model } from '../../src/generated/ast.js';
@@ -53,7 +53,7 @@ describe('Go to Definition and Find References', () => {
         }
     }
 
-    async function getDefinitionAt(doc: LangiumDocument<Model>, line: number, character: number) {
+    async function getDefinitionAt(doc: LangiumDocument<Model>, line: number, character: number): Promise<LocationLink[] | undefined> {
         const params: DefinitionParams = {
             textDocument: { uri: doc.uri.toString() },
             position: { line, character }

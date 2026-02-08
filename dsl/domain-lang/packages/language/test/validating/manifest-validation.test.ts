@@ -17,6 +17,9 @@ import {
 import type { ModelManifest } from '../../src/services/types.js';
 import { IssueCodes } from '../../src/validation/constants.js';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 describe('ManifestValidator', () => {
     const validator = new ManifestValidator();
 

@@ -12,6 +12,9 @@ import { describe, test, expect, beforeAll } from 'vitest';
 import type { TextEdit } from 'vscode-languageserver-types';
 import { setupTestSuite, type TestServices, s } from '../test-helpers.js';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 describe('DomainLang Formatter', () => {
     let testServices: TestServices;
 
