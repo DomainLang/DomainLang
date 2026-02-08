@@ -21,9 +21,9 @@
 
 import type { LockFile, GovernancePolicy, GovernanceMetadata, GovernanceViolation } from './types.js';
 import path from 'node:path';
-import fs from 'node:fs/promises';
 import YAML from 'yaml';
 import { isPreRelease } from './semver.js';
+import { defaultFileSystem, type FileSystemService } from './filesystem.js';
 
 /** Locked dependency entry from lock file */
 interface LockedDependency {
@@ -36,7 +36,14 @@ interface LockedDependency {
  * Validates dependencies against organizational governance policies.
  */
 export class GovernanceValidator {
-    constructor(private readonly policy: GovernancePolicy) {}
+    private readonly fs: FileSystemService;
+
+    constructor(
+        private readonly policy: GovernancePolicy,
+        fs: FileSystemService = defaultFileSystem
+    ) {
+        this.fs = fs;
+    }
 
     /**
      * Validates a lock file against governance policies.
@@ -150,7 +157,7 @@ export class GovernanceValidator {
         const manifestPath = path.join(workspaceRoot, 'model.yaml');
 
         try {
-            const content = await fs.readFile(manifestPath, 'utf-8');
+            const content = await this.fs.readFile(manifestPath, 'utf-8');
             const manifest = YAML.parse(content) as {
                 metadata?: GovernanceMetadata;
             };
@@ -208,7 +215,10 @@ export class GovernanceValidator {
 /**
  * Loads governance policy from model.yaml governance section.
  */
-export async function loadGovernancePolicy(workspaceRoot: string): Promise<GovernancePolicy> {
+export async function loadGovernancePolicy(
+    workspaceRoot: string,
+    fs: FileSystemService = defaultFileSystem
+): Promise<GovernancePolicy> {
     const manifestPath = path.join(workspaceRoot, 'model.yaml');
 
     try {

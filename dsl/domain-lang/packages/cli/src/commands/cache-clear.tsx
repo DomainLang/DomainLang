@@ -5,7 +5,7 @@
  * @module commands/cache-clear
  */
 import type { CommandModule } from 'yargs';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { runCommand } from './command-runner.js';
 import { Box, useApp } from 'ink';
 import { 
@@ -15,13 +15,12 @@ import {
     KeyValue,
 } from '../ui/components/index.js';
 import { EMOJI } from '../ui/themes/emoji.js';
-import { useCommand } from '../ui/hooks/useCommand.js';
+import { useCommand, useExitOnComplete } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import type { CommandContext } from './types.js';
 import { resolve, join } from 'node:path';
-import { existsSync } from 'node:fs';
-import fs from 'node:fs/promises';
 import { PackageCache } from '../services/package-cache.js';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 
 /**
  * Props for CacheClear command component.
@@ -45,23 +44,27 @@ export interface CacheClearResult {
  * Calculate the total size of a directory recursively.
  * 
  * @param dirPath - Absolute path to the directory
+ * @param fs - Filesystem service (defaults to real fs)
  * @returns Total size in bytes
  */
-async function calculateDirectorySize(dirPath: string): Promise<number> {
-    if (!existsSync(dirPath)) {
+export async function calculateDirectorySize(
+    dirPath: string,
+    fs: FileSystemService = defaultFileSystem,
+): Promise<number> {
+    if (!fs.existsSync(dirPath)) {
         return 0;
     }
 
     let totalSize = 0;
     
     try {
-        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        const entries = await fs.readdir(dirPath);
         
         for (const entry of entries) {
             const fullPath = join(dirPath, entry.name);
             
             if (entry.isDirectory()) {
-                totalSize += await calculateDirectorySize(fullPath);
+                totalSize += await calculateDirectorySize(fullPath, fs);
             } else if (entry.isFile()) {
                 const stats = await fs.stat(fullPath);
                 totalSize += stats.size;
@@ -79,24 +82,28 @@ async function calculateDirectorySize(dirPath: string): Promise<number> {
  * Packages are stored at `.dlang/packages/{owner}/{repo}/{commit}/`
  * 
  * @param packagesDir - Absolute path to the packages directory
+ * @param fs - Filesystem service (defaults to real fs)
  * @returns Number of packages (commit-level directories)
  */
-async function countPackages(packagesDir: string): Promise<number> {
-    if (!existsSync(packagesDir)) {
+export async function countPackages(
+    packagesDir: string,
+    fs: FileSystemService = defaultFileSystem,
+): Promise<number> {
+    if (!fs.existsSync(packagesDir)) {
         return 0;
     }
 
     let count = 0;
     
     try {
-        const owners = await fs.readdir(packagesDir, { withFileTypes: true });
+        const owners = await fs.readdir(packagesDir);
         
         for (const owner of owners) {
             if (!isValidDirectory(owner)) {
                 continue;
             }
             
-            count += await countReposForOwner(packagesDir, owner.name);
+            count += await countReposForOwner(packagesDir, owner.name, fs);
         }
     } catch {
         // Ignore errors
@@ -115,17 +122,21 @@ function isValidDirectory(entry: { name: string; isDirectory: () => boolean }): 
 /**
  * Helper: Count repos for a given owner.
  */
-async function countReposForOwner(packagesDir: string, ownerName: string): Promise<number> {
+async function countReposForOwner(
+    packagesDir: string,
+    ownerName: string,
+    fs: FileSystemService,
+): Promise<number> {
     let count = 0;
     const ownerPath = join(packagesDir, ownerName);
-    const repos = await fs.readdir(ownerPath, { withFileTypes: true });
+    const repos = await fs.readdir(ownerPath);
     
     for (const repo of repos) {
         if (!repo.isDirectory()) {
             continue;
         }
         
-        count += await countCommitsForRepo(ownerPath, repo.name);
+        count += await countCommitsForRepo(ownerPath, repo.name, fs);
     }
     
     return count;
@@ -134,9 +145,13 @@ async function countReposForOwner(packagesDir: string, ownerName: string): Promi
 /**
  * Helper: Count commits for a given repo.
  */
-async function countCommitsForRepo(ownerPath: string, repoName: string): Promise<number> {
+async function countCommitsForRepo(
+    ownerPath: string,
+    repoName: string,
+    fs: FileSystemService,
+): Promise<number> {
     const repoPath = join(ownerPath, repoName);
-    const commits = await fs.readdir(repoPath, { withFileTypes: true });
+    const commits = await fs.readdir(repoPath);
     
     return commits.filter(commit => commit.isDirectory()).length;
 }
@@ -164,14 +179,18 @@ function formatBytes(bytes: number): string {
  * Clear the package cache.
  * 
  * @param workspaceRoot - Workspace root directory
+ * @param fs - Filesystem service (defaults to real fs)
  * @returns Cache clear result
  */
-async function clearCache(workspaceRoot: string): Promise<CacheClearResult> {
+export async function clearCache(
+    workspaceRoot: string,
+    fs: FileSystemService = defaultFileSystem,
+): Promise<CacheClearResult> {
     const packagesDir = resolve(workspaceRoot, '.dlang', 'packages');
     
     // Calculate size and count before clearing
-    const bytesFreed = await calculateDirectorySize(packagesDir);
-    const packagesRemoved = await countPackages(packagesDir);
+    const bytesFreed = await calculateDirectorySize(packagesDir, fs);
+    const packagesRemoved = await countPackages(packagesDir, fs);
     
     // Use PackageCache.clear() to remove the directory
     const cache = new PackageCache(workspaceRoot);
@@ -194,13 +213,7 @@ export const CacheClear: React.FC<CacheClearProps> = ({ context: _context }) => 
         [],
     );
     const { exit } = useApp();
-
-    // Exit when command completes (success or error)
-    useEffect(() => {
-        if (status === 'success' || status === 'error') {
-            setTimeout(() => exit(), 100);
-        }
-    }, [status, exit]);
+    useExitOnComplete(status, exit);
 
     if (status === 'loading') {
         return <Spinner label="Clearing cache" emoji="package" />;

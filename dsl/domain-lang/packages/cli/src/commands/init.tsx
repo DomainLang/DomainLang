@@ -21,8 +21,8 @@ import { useCommand } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import type { CommandContext } from './types.js';
 import { resolve, basename, dirname, join } from 'node:path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 
 /**
  * Props for Init command component.
@@ -83,12 +83,12 @@ function getProjectConfig(targetDir: string | undefined): ProjectConfig {
  *  2. Walk up from the module location looking for `package.json` (the package
  *     root), then check `src/templates` and `out/templates` beneath it.
  */
-function resolveTemplatesDir(): string {
+function resolveTemplatesDir(fs: FileSystemService = defaultFileSystem): string {
     const moduleDir = dirname(fileURLToPath(import.meta.url));
 
     // 1. Relative sibling — covers source & build layouts
     const sibling = resolve(moduleDir, '..', 'templates');
-    if (existsSync(sibling)) {
+    if (fs.existsSync(sibling)) {
         return sibling;
     }
 
@@ -96,10 +96,10 @@ function resolveTemplatesDir(): string {
     let current = moduleDir;
     const root = resolve('/');
     while (current !== root) {
-        if (existsSync(join(current, 'package.json'))) {
+        if (fs.existsSync(join(current, 'package.json'))) {
             for (const sub of ['out/templates', 'src/templates']) {
                 const candidate = resolve(current, sub);
-                if (existsSync(candidate)) {
+                if (fs.existsSync(candidate)) {
                     return candidate;
                 }
             }
@@ -120,18 +120,23 @@ const TEMPLATES_DIR = resolveTemplatesDir();
  *
  * @param templateName - Filename inside `src/templates/` (e.g. `model.yaml.tpl`)
  * @param variables - Key/value pairs to interpolate into the template
+ * @param fs - Optional filesystem service for testability
  * @returns The rendered template string
  * @throws {Error} with a descriptive message when the template file is missing
  */
-function loadTemplate(templateName: string, variables: Record<string, string> = {}): string {
+function loadTemplate(
+    templateName: string,
+    variables: Record<string, string> = {},
+    fs: FileSystemService = defaultFileSystem
+): string {
     const templatePath = join(TEMPLATES_DIR, templateName);
-    if (!existsSync(templatePath)) {
+    if (!fs.existsSync(templatePath)) {
         throw new Error(
             `Template "${templateName}" not found at ${templatePath}. ` +
             'This may indicate a broken install — try reinstalling @domainlang/cli.',
         );
     }
-    let content = readFileSync(templatePath, 'utf-8');
+    let content = fs.readFileSync(templatePath, 'utf-8');
     for (const [key, value] of Object.entries(variables)) {
         content = content.split(`{{${key}}}`).join(value);
     }
@@ -141,12 +146,16 @@ function loadTemplate(templateName: string, variables: Record<string, string> = 
 /**
  * Create project files.
  */
-async function createProject(config: ProjectConfig, targetPath: string): Promise<string[]> {
+async function createProject(
+    config: ProjectConfig,
+    targetPath: string,
+    fs: FileSystemService = defaultFileSystem
+): Promise<string[]> {
     const files: string[] = [];
 
     // Create target directory if needed
-    if (!existsSync(targetPath)) {
-        mkdirSync(targetPath, { recursive: true });
+    if (!fs.existsSync(targetPath)) {
+        fs.mkdirSync(targetPath, { recursive: true });
     }
 
     // Create model.yaml from template
@@ -155,26 +164,26 @@ async function createProject(config: ProjectConfig, targetPath: string): Promise
         name: config.name,
         version: config.version,
         entry: config.entry,
-    });
-    writeFileSync(modelYamlPath, modelYamlContent, 'utf-8');
+    }, fs);
+    fs.writeFileSync(modelYamlPath, modelYamlContent, 'utf-8');
     files.push('model.yaml');
 
     // Create index.dlang from template
     const indexPath = resolve(targetPath, config.entry);
-    const indexContent = loadTemplate('index.dlang.tpl', { name: config.name });
-    writeFileSync(indexPath, indexContent, 'utf-8');
+    const indexContent = loadTemplate('index.dlang.tpl', { name: config.name }, fs);
+    fs.writeFileSync(indexPath, indexContent, 'utf-8');
     files.push(config.entry);
 
     // Create .gitignore from template
     const gitignorePath = resolve(targetPath, '.gitignore');
-    writeFileSync(gitignorePath, loadTemplate('gitignore.tpl'), 'utf-8');
+    fs.writeFileSync(gitignorePath, loadTemplate('gitignore.tpl', {}, fs), 'utf-8');
     files.push('.gitignore');
 
     // Create domains directory with .gitkeep
     const domainsPath = resolve(targetPath, 'domains');
-    mkdirSync(domainsPath, { recursive: true });
+    fs.mkdirSync(domainsPath, { recursive: true });
     const gitkeepPath = resolve(domainsPath, '.gitkeep');
-    writeFileSync(gitkeepPath, '', 'utf-8');
+    fs.writeFileSync(gitkeepPath, '', 'utf-8');
     files.push('domains/.gitkeep');
 
     return files;
@@ -185,24 +194,25 @@ async function createProject(config: ProjectConfig, targetPath: string): Promise
  */
 async function initializeProject(
     targetDir: string | undefined,
-    _yes: boolean
+    _yes: boolean,
+    fs: FileSystemService = defaultFileSystem
 ): Promise<InitResult> {
     const cwd = process.cwd();
     const projectPath = targetDir ? resolve(cwd, targetDir) : cwd;
     const config = getProjectConfig(targetDir);
 
     // Check if directory exists and has files (if creating new directory)
-    if (targetDir && existsSync(projectPath)) {
+    if (targetDir && fs.existsSync(projectPath)) {
         throw new Error(`Directory already exists: ${targetDir}`);
     }
 
     // Check if current directory already has model.yaml
-    if (!targetDir && existsSync(resolve(projectPath, 'model.yaml'))) {
+    if (!targetDir && fs.existsSync(resolve(projectPath, 'model.yaml'))) {
         throw new Error('Project already initialized (model.yaml exists)');
     }
 
     // Create project files
-    const files = await createProject(config, projectPath);
+    const files = await createProject(config, projectPath, fs);
 
     return { projectPath, files };
 }

@@ -18,9 +18,8 @@
 
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { extract } from 'tar';
+import { defaultFileSystem, type FileSystemService } from './filesystem.js';
 
 /**
  * Metadata stored alongside cached packages.
@@ -43,15 +42,18 @@ export interface PackageMetadata {
 export class PackageCache {
     private readonly cacheRoot: string;
     private readonly packagesDir: string;
+    private readonly fs: FileSystemService;
 
     /**
      * Create a new package cache instance.
      * 
      * @param workspaceRoot - Absolute path to the workspace root directory
+     * @param fs - Filesystem service (defaults to Node.js fs)
      */
-    constructor(workspaceRoot: string) {
+    constructor(workspaceRoot: string, fs: FileSystemService = defaultFileSystem) {
         this.cacheRoot = join(workspaceRoot, '.dlang');
         this.packagesDir = join(this.cacheRoot, 'packages');
+        this.fs = fs;
     }
 
     /**
@@ -64,7 +66,7 @@ export class PackageCache {
      */
     async has(owner: string, repo: string, commitSha: string): Promise<boolean> {
         const packagePath = this.getPackagePath(owner, repo, commitSha);
-        return existsSync(packagePath);
+        return this.fs.existsSync(packagePath);
     }
 
     /**
@@ -77,7 +79,7 @@ export class PackageCache {
      */
     async get(owner: string, repo: string, commitSha: string): Promise<string | undefined> {
         const packagePath = this.getPackagePath(owner, repo, commitSha);
-        if (existsSync(packagePath)) {
+        if (this.fs.existsSync(packagePath)) {
             return packagePath;
         }
         return undefined;
@@ -95,12 +97,12 @@ export class PackageCache {
         const packagePath = this.getPackagePath(owner, repo, commitSha);
         const metadataPath = join(packagePath, '.dlang-metadata.json');
         
-        if (!existsSync(metadataPath)) {
+        if (!this.fs.existsSync(metadataPath)) {
             return undefined;
         }
 
         try {
-            const content = await fs.readFile(metadataPath, 'utf-8');
+            const content = await this.fs.readFile(metadataPath, 'utf-8');
             return JSON.parse(content) as PackageMetadata;
         } catch (error) {
             // Invalid or corrupted metadata - log and return undefined
@@ -121,7 +123,7 @@ export class PackageCache {
         const packagePath = this.getPackagePath(owner, repo, commitSha);
         const metadataPath = join(packagePath, '.dlang-metadata.json');
         
-        await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
+        await this.fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
     }
 
     /**
@@ -143,7 +145,7 @@ export class PackageCache {
 
         try {
             // Create temp directory
-            await fs.mkdir(tempDir, { recursive: true });
+            await this.fs.mkdir(tempDir, { recursive: true });
 
             // Extract tarball to temp directory with strip: 1
             // (removes the top-level directory from the tarball)
@@ -154,16 +156,16 @@ export class PackageCache {
             });
 
             // Ensure parent directory exists for the final path
-            await fs.mkdir(join(finalPath, '..'), { recursive: true });
+            await this.fs.mkdir(join(finalPath, '..'), { recursive: true });
 
             // Atomic rename: if target exists, this will fail on some platforms
             // or succeed on others. We handle both cases.
             try {
-                await fs.rename(tempDir, finalPath);
+                await this.fs.rename(tempDir, finalPath);
             } catch (error) {
                 // Target might already exist (concurrent install or cache hit)
                 // Check if final path exists
-                if (existsSync(finalPath)) {
+                if (this.fs.existsSync(finalPath)) {
                     // Clean up our temp directory and return existing path
                     await this.cleanupTempDir(tempDir);
                     return finalPath;
@@ -191,8 +193,8 @@ export class PackageCache {
      */
     async remove(owner: string, repo: string, commitSha: string): Promise<void> {
         const packagePath = this.getPackagePath(owner, repo, commitSha);
-        if (existsSync(packagePath)) {
-            await fs.rm(packagePath, { recursive: true, force: true });
+        if (this.fs.existsSync(packagePath)) {
+            await this.fs.rm(packagePath, { recursive: true, force: true });
         }
     }
 
@@ -202,8 +204,8 @@ export class PackageCache {
      * Removes the `.dlang/packages/` directory and all its contents.
      */
     async clear(): Promise<void> {
-        if (existsSync(this.packagesDir)) {
-            await fs.rm(this.packagesDir, { recursive: true, force: true });
+        if (this.fs.existsSync(this.packagesDir)) {
+            await this.fs.rm(this.packagesDir, { recursive: true, force: true });
         }
     }
 
@@ -226,8 +228,8 @@ export class PackageCache {
      */
     private async cleanupTempDir(tempDir: string): Promise<void> {
         try {
-            if (existsSync(tempDir)) {
-                await fs.rm(tempDir, { recursive: true, force: true });
+            if (this.fs.existsSync(tempDir)) {
+                await this.fs.rm(tempDir, { recursive: true, force: true });
             }
         } catch (error) {
             // Log but don't throw - cleanup is best-effort

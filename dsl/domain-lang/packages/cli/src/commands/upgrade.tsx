@@ -5,7 +5,7 @@
  * @module commands/upgrade
  */
 import type { CommandModule, Argv } from 'yargs';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { runCommand } from './command-runner.js';
 import { Box, Text, useApp } from 'ink';
 import { 
@@ -16,14 +16,13 @@ import {
 } from '../ui/components/index.js';
 import { theme } from '../ui/themes/colors.js';
 import { EMOJI } from '../ui/themes/emoji.js';
-import { useCommand } from '../ui/hooks/useCommand.js';
+import { useCommand, useExitOnComplete } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import type { CommandContext } from './types.js';
 import { CredentialProvider } from '../services/credential-provider.js';
 import { fetchTags, findLatestVersion } from '../services/github-tags.js';
 import { compareVersions } from '../services/semver.js';
-import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import type { ModelManifest, DependencySpec } from '@domainlang/language';
@@ -83,10 +82,13 @@ function classifyUpgradeType(current: string, latest: string): AvailableUpgrade[
 /**
  * List available upgrades for tag dependencies.
  */
-async function listAvailableUpgrades(workspaceRoot: string): Promise<AvailableUpgrade[]> {
+async function listAvailableUpgrades(
+    workspaceRoot: string,
+    fs: FileSystemService = defaultFileSystem
+): Promise<AvailableUpgrade[]> {
     const manifestPath = path.join(workspaceRoot, 'model.yaml');
     
-    if (!existsSync(manifestPath)) {
+    if (!fs.existsSync(manifestPath)) {
         throw new Error('No model.yaml found in workspace');
     }
 
@@ -135,10 +137,11 @@ async function applyUpgrade(
     workspaceRoot: string,
     packageName: string,
     targetVersion?: string,
+    fs: FileSystemService = defaultFileSystem
 ): Promise<{ pkg: string; from: string; to: string }> {
     const manifestPath = path.join(workspaceRoot, 'model.yaml');
     
-    if (!existsSync(manifestPath)) {
+    if (!fs.existsSync(manifestPath)) {
         throw new Error('No model.yaml found in workspace');
     }
 
@@ -248,13 +251,7 @@ export const Upgrade: React.FC<UpgradeProps> = ({ packageName, targetVersion, co
         [packageName, targetVersion, context.cwd],
     );
     const { exit } = useApp();
-
-    // Exit when command completes (success or error)
-    useEffect(() => {
-        if (status === 'success' || status === 'error') {
-            setTimeout(() => exit(), 100);
-        }
-    }, [status, exit]);
+    useExitOnComplete(status, exit);
 
     if (status === 'loading') {
         const label = packageName 

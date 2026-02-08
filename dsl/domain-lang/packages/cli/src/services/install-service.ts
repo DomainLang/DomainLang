@@ -12,14 +12,13 @@
  * - Clear error messages with actionable hints
  */
 
-import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import type { ModelManifest, LockFile, LockedDependency } from '@domainlang/language';
 import { PackageDownloader } from './package-downloader.js';
 import { PackageCache } from './package-cache.js';
 import { CredentialProvider } from './credential-provider.js';
+import { defaultFileSystem, type FileSystemService } from './filesystem.js';
 
 /**
  * Installation options.
@@ -102,10 +101,12 @@ export class InstallService {
     private readonly packageCache: PackageCache;
     private readonly downloader: PackageDownloader;
     private readonly credentialProvider: CredentialProvider;
+    private readonly fs: FileSystemService;
 
-    constructor(workspaceRoot: string) {
+    constructor(workspaceRoot: string, fs: FileSystemService = defaultFileSystem) {
         this.workspaceRoot = workspaceRoot;
-        this.packageCache = new PackageCache(workspaceRoot);
+        this.fs = fs;
+        this.packageCache = new PackageCache(workspaceRoot, fs);
         this.credentialProvider = new CredentialProvider();
         this.downloader = new PackageDownloader(
             this.credentialProvider,
@@ -182,11 +183,11 @@ export class InstallService {
      */
     private async loadManifest(): Promise<ModelManifest> {
         const manifestPath = path.join(this.workspaceRoot, 'model.yaml');
-        if (!existsSync(manifestPath)) {
+        if (!this.fs.existsSync(manifestPath)) {
             throw new Error('No model.yaml found in workspace');
         }
 
-        const manifestContent = await fs.readFile(manifestPath, 'utf-8');
+        const manifestContent = await this.fs.readFile(manifestPath, 'utf-8');
         return YAML.parse(manifestContent) as ModelManifest;
     }
 
@@ -196,11 +197,11 @@ export class InstallService {
     private async loadLockFile(): Promise<{ lock: LockFile | undefined; lockExists: boolean }> {
         const lockPath = path.join(this.workspaceRoot, 'model.lock');
         
-        if (!existsSync(lockPath)) {
+        if (!this.fs.existsSync(lockPath)) {
             return { lock: undefined, lockExists: false };
         }
 
-        const lockContent = await fs.readFile(lockPath, 'utf-8');
+        const lockContent = await this.fs.readFile(lockPath, 'utf-8');
         return {
             lock: JSON.parse(lockContent) as LockFile,
             lockExists: true,
@@ -413,7 +414,7 @@ export class InstallService {
             dependencies,
         };
 
-        await fs.writeFile(lockPath, JSON.stringify(lock, null, 2), 'utf-8');
+        await this.fs.writeFile(lockPath, JSON.stringify(lock, null, 2), 'utf-8');
     }
 
     /**

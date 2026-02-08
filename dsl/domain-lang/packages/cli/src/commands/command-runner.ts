@@ -11,10 +11,10 @@ import type { ReactElement } from 'react';
 import { render } from 'ink';
 import type { CommandContext } from './types.js';
 import { parseOutputConfig, shouldUseInk } from '../utils/output-mode.js';
-import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isFirstRun, markFirstRunComplete } from '../ui/hooks/useFirstRun.js';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 
 // Get package version
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,10 +25,10 @@ let cachedVersion: string | undefined;
 /**
  * Get the CLI version from package.json.
  */
-export async function getVersion(): Promise<string> {
+export async function getVersion(fs: FileSystemService = defaultFileSystem): Promise<string> {
     if (cachedVersion) return cachedVersion;
     try {
-        const content = await readFile(packagePath, 'utf-8');
+        const content = await fs.readFile(packagePath, 'utf-8');
         const pkg = JSON.parse(content) as { version: string };
         cachedVersion = pkg.version;
         return pkg.version;

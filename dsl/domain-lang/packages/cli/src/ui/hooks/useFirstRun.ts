@@ -5,9 +5,9 @@
  * @module ui/hooks/useFirstRun
  */
 import { useState, useEffect } from 'react';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { defaultFileSystem, type FileSystemService } from '../../services/filesystem.js';
 
 /**
  * Path to the first-run marker file.
@@ -17,21 +17,23 @@ const MARKER_FILE = join(MARKER_DIR, '.welcomed');
 
 /**
  * Check if this is the first run (synchronous version for non-React usage).
+ * @param fs - Optional filesystem service for testability
  * @returns True if this is the first time the CLI has been run
  */
-export function isFirstRun(): boolean {
-    return !existsSync(MARKER_FILE);
+export function isFirstRun(fs: FileSystemService = defaultFileSystem): boolean {
+    return !fs.existsSync(MARKER_FILE);
 }
 
 /**
  * Mark the first run as complete (create marker file).
+ * @param fs - Optional filesystem service for testability
  */
-export function markFirstRunComplete(): void {
+export function markFirstRunComplete(fs: FileSystemService = defaultFileSystem): void {
     try {
-        if (!existsSync(MARKER_DIR)) {
-            mkdirSync(MARKER_DIR, { recursive: true });
+        if (!fs.existsSync(MARKER_DIR)) {
+            fs.mkdirSync(MARKER_DIR, { recursive: true });
         }
-        writeFileSync(MARKER_FILE, new Date().toISOString(), 'utf-8');
+        fs.writeFileSync(MARKER_FILE, new Date().toISOString(), 'utf-8');
     } catch {
         // Silently ignore errors (e.g., permission issues)
     }

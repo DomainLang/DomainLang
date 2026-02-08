@@ -10,6 +10,20 @@ import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 
+// Mock network-calling services to prevent real HTTP requests and OOM in CI
+vi.mock('../../src/services/package-downloader.js', () => ({
+    PackageDownloader: vi.fn(() => ({
+        resolveRefToCommit: vi.fn().mockRejectedValue(new Error('Network mocked in test')),
+        download: vi.fn().mockRejectedValue(new Error('Network mocked in test')),
+    })),
+}));
+vi.mock('../../src/services/credential-provider.js', () => ({
+    CredentialProvider: vi.fn(() => ({})),
+}));
+vi.mock('../../src/services/package-cache.js', () => ({
+    PackageCache: vi.fn(() => ({})),
+}));
+
 // ============================================================================
 // Test Setup & Helpers
 // ============================================================================

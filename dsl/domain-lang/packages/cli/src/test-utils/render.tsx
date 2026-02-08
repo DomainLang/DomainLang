@@ -2,6 +2,10 @@
  * Test utilities for DomainLang CLI components.
  * Provides render helpers for Ink components following Gemini CLI patterns.
  * 
+ * Includes automatic cleanup of unmounted Ink renders to prevent memory leaks.
+ * Import {@link cleanup} and call it in `afterEach`, or use the global setup
+ * file (`test/setup.ts`) which does this automatically.
+ * 
  * @module test-utils/render
  */
 import { render as inkRender } from 'ink-testing-library';
@@ -9,7 +13,31 @@ import { Box } from 'ink';
 import React, { useState, act } from 'react';
 
 /**
+ * Tracks all active Ink render instances for cleanup.
+ * Each `render()` call pushes its unmount function here.
+ * Call {@link cleanup} to unmount all active renders.
+ */
+const activeRenders: Array<() => void> = [];
+
+/**
+ * Unmount all active Ink render instances and clear the tracking list.
+ * Call this in `afterEach` to prevent React tree and timer leaks.
+ * This follows the same pattern as `@testing-library/react`'s cleanup.
+ */
+export function cleanup(): void {
+    for (const unmountFn of activeRenders) {
+        try {
+            unmountFn();
+        } catch {
+            // Ignore errors during cleanup (component may already be unmounted)
+        }
+    }
+    activeRenders.length = 0;
+}
+
+/**
  * Wrapper around Ink's built-in render (compatible with React 19).
+ * Automatically tracks the render for cleanup via {@link cleanup}.
  * @param tree - React element to render
  * @param terminalWidth - Optional terminal width to simulate
  */
@@ -39,13 +67,22 @@ export const render = (
     const originalUnmount = renderResult.unmount;
     const originalRerender = renderResult.rerender;
 
-    return {
-        ...renderResult,
-        unmount: () => {
+    let unmounted = false;
+    const wrappedUnmount = () => {
+        if (!unmounted) {
+            unmounted = true;
             act(() => {
                 originalUnmount();
             });
-        },
+        }
+    };
+
+    // Track this render for automatic cleanup
+    activeRenders.push(wrappedUnmount);
+
+    return {
+        ...renderResult,
+        unmount: wrappedUnmount,
         rerender: (newTree: React.ReactElement) => {
             act(() => {
                 originalRerender(newTree);

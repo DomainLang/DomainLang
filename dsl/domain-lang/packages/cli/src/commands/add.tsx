@@ -20,11 +20,11 @@ import {
 import { theme } from '../ui/themes/colors.js';
 import { EMOJI } from '../ui/themes/emoji.js';
 import { useElapsedTime } from '../ui/hooks/index.js';
+import { useExitOnComplete } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import type { CommandContext } from './types.js';
 import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
-import fs from 'node:fs/promises';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 import YAML from 'yaml';
 import { PackageUrlParser } from '../services/package-url-parser.js';
 import { InstallService, type InstallProgressEvent } from '../services/install-service.js';
@@ -62,7 +62,8 @@ interface AddResult {
 async function addDependency(
     specifier: string, 
     workspaceRoot: string,
-    onProgress?: (event: InstallProgressEvent) => void
+    onProgress?: (event: InstallProgressEvent) => void,
+    fs: FileSystemService = defaultFileSystem
 ): Promise<AddResult> {
     // Parse specifier
     const parsed = PackageUrlParser.parse(specifier);
@@ -70,7 +71,7 @@ async function addDependency(
 
     // Check if model.yaml exists
     const manifestPath = resolve(workspaceRoot, 'model.yaml');
-    if (!existsSync(manifestPath)) {
+    if (!fs.existsSync(manifestPath)) {
         throw new Error('No model.yaml found in current directory. Run "dlang init" first.');
     }
 
@@ -163,13 +164,7 @@ export const Add: React.FC<AddProps> = ({ specifier, context: _context }) => {
     const [state, setState] = useState<AddState>({ status: 'loading' });
     const elapsed = useElapsedTime(100, state.status === 'loading' || state.status === 'downloading');
     const { exit } = useApp();
-
-    // Exit when command completes (success or error)
-    useEffect(() => {
-        if (state.status === 'success' || state.status === 'error') {
-            setTimeout(() => exit(), 100);
-        }
-    }, [state.status, exit]);
+    useExitOnComplete(state.status === 'success' || state.status === 'error' ? state.status : 'loading', exit);
 
     useEffect(() => {
         const handleProgress = (event: InstallProgressEvent): void => {

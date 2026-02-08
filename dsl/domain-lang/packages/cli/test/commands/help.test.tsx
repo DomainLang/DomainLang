@@ -6,23 +6,19 @@ import { render } from '../../src/test-utils/render.js';
 import { Help, runHelp } from '../../src/commands/help.js';
 import type { CommandContext } from '../../src/commands/types.js';
 
-// Mock stdout.write for non-rich modes
-const originalWrite = process.stdout.write;
-const originalExit = process.exit;
 let stdoutOutput: string;
 
 beforeEach(() => {
     stdoutOutput = '';
-    process.stdout.write = vi.fn((chunk: string | Uint8Array) => {
+    vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
         stdoutOutput += typeof chunk === 'string' ? chunk : chunk.toString();
         return true;
-    }) as typeof process.stdout.write;
-    process.exit = vi.fn() as unknown as typeof process.exit;
+    });
+    vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 });
 
 afterEach(() => {
-    process.stdout.write = originalWrite;
-    process.exit = originalExit;
+    vi.restoreAllMocks();
 });
 
 describe('Help command', () => {

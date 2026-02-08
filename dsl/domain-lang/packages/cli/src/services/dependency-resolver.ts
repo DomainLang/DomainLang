@@ -24,7 +24,6 @@
  */
 
 import path from 'node:path';
-import fs from 'node:fs/promises';
 import YAML from 'yaml';
 import { PackageUrlParser } from './package-url-parser.js';
 import { PackageDownloader } from './package-downloader.js';
@@ -32,21 +31,25 @@ import { PackageCache } from './package-cache.js';
 import { CredentialProvider } from './credential-provider.js';
 import { parseSemVer, pickLatestSemVer, detectRefType } from './semver.js';
 import type { SemVer, ResolvingPackage, LockFile, LockedDependency, DependencyGraph } from './types.js';
+import { defaultFileSystem, type FileSystemService } from './filesystem.js';
 
 export class DependencyResolver {
     private packageDownloader: PackageDownloader;
     private packageCache: PackageCache;
     private workspaceRoot: string;
+    private readonly fs: FileSystemService;
 
     constructor(
         workspaceRoot: string,
         packageDownloader?: PackageDownloader,
-        packageCache?: PackageCache
+        packageCache?: PackageCache,
+        fs: FileSystemService = defaultFileSystem
     ) {
         this.workspaceRoot = workspaceRoot;
+        this.fs = fs;
         
         // Initialize HTTP-based services
-        this.packageCache = packageCache || new PackageCache(workspaceRoot);
+        this.packageCache = packageCache || new PackageCache(workspaceRoot, fs);
         
         if (!packageDownloader) {
             const credentialProvider = new CredentialProvider();
@@ -300,7 +303,7 @@ export class DependencyResolver {
         const yamlPath = path.join(packageDir, 'model.yaml');
 
         try {
-            const yamlContent = await fs.readFile(yamlPath, 'utf-8');
+            const yamlContent = await this.fs.readFile(yamlPath, 'utf-8');
             return this.parseYaml(yamlContent);
         } catch {
             // No model.yaml found
@@ -542,11 +545,11 @@ export class DependencyResolver {
     /**
      * Loads an existing lock file from disk.
      */
-    static async loadLockFile(workspaceRoot: string): Promise<LockFile | undefined> {
+    static async loadLockFile(workspaceRoot: string, fsService: FileSystemService = defaultFileSystem): Promise<LockFile | undefined> {
         const lockPath = path.join(workspaceRoot, 'model.lock');
 
         try {
-            const content = await fs.readFile(lockPath, 'utf-8');
+            const content = await fsService.readFile(lockPath, 'utf-8');
             return JSON.parse(content) as LockFile;
         } catch {
             // No lock file

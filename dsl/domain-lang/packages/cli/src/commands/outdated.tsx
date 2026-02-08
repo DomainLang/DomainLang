@@ -5,7 +5,7 @@
  * @module commands/outdated
  */
 import type { CommandModule } from 'yargs';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { runCommand } from './command-runner.js';
 import { Box, Text, useApp } from 'ink';
 import { 
@@ -16,7 +16,7 @@ import {
 } from '../ui/components/index.js';
 import { theme } from '../ui/themes/colors.js';
 import { EMOJI } from '../ui/themes/emoji.js';
-import { useCommand } from '../ui/hooks/useCommand.js';
+import { useCommand, useExitOnComplete } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import type { CommandContext } from './types.js';
 import { PackageDownloader } from '../services/package-downloader.js';
@@ -24,8 +24,7 @@ import { PackageCache } from '../services/package-cache.js';
 import { CredentialProvider } from '../services/credential-provider.js';
 import { fetchTags, findLatestVersion } from '../services/github-tags.js';
 import { compareVersions } from '../services/semver.js';
-import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 import path from 'node:path';
 import type { LockFile } from '@domainlang/language';
 
@@ -156,10 +155,13 @@ async function classifyDependency(
 /**
  * Check all dependencies for updates.
  */
-async function checkOutdatedDependencies(workspaceRoot: string): Promise<OutdatedResult> {
+async function checkOutdatedDependencies(
+    workspaceRoot: string,
+    fs: FileSystemService = defaultFileSystem
+): Promise<OutdatedResult> {
     const lockPath = path.join(workspaceRoot, 'model.lock');
     
-    if (!existsSync(lockPath)) {
+    if (!fs.existsSync(lockPath)) {
         throw new Error('No model.lock found. Run \'dlang install\' first.');
     }
 
@@ -214,13 +216,7 @@ export const Outdated: React.FC<OutdatedProps> = ({ context }) => {
         [context.cwd],
     );
     const { exit } = useApp();
-
-    // Exit when command completes (success or error)
-    useEffect(() => {
-        if (status === 'success' || status === 'error') {
-            setTimeout(() => exit(), 100);
-        }
-    }, [status, exit]);
+    useExitOnComplete(status, exit);
 
     if (status === 'loading') {
         return (

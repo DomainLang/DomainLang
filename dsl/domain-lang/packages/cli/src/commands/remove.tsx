@@ -5,7 +5,7 @@
  * @module commands/remove
  */
 import type { CommandModule, Argv } from 'yargs';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { runCommand } from './command-runner.js';
 import { Box, Text, useApp } from 'ink';
 import { 
@@ -17,12 +17,11 @@ import {
 } from '../ui/components/index.js';
 import { theme } from '../ui/themes/colors.js';
 import { EMOJI } from '../ui/themes/emoji.js';
-import { useCommand } from '../ui/hooks/useCommand.js';
+import { useCommand, useExitOnComplete } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import type { CommandContext } from './types.js';
 import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
-import fs from 'node:fs/promises';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 import YAML from 'yaml';
 import type { ModelManifest, LockFile } from '@domainlang/language';
 
@@ -49,13 +48,17 @@ interface RemoveResult {
 /**
  * Remove a dependency from model.yaml and model.lock.
  */
-async function removeDependency(packageName: string, workspaceRoot: string): Promise<RemoveResult> {
+async function removeDependency(
+    packageName: string,
+    workspaceRoot: string,
+    fs: FileSystemService = defaultFileSystem
+): Promise<RemoveResult> {
     // Normalize package name (strip @ if present)
     const normalizedName = packageName.includes('@') ? packageName.split('@')[0] : packageName;
 
     // Check if model.yaml exists
     const manifestPath = resolve(workspaceRoot, 'model.yaml');
-    if (!existsSync(manifestPath)) {
+    if (!fs.existsSync(manifestPath)) {
         throw new Error('No model.yaml found in current directory.');
     }
 
@@ -95,7 +98,7 @@ async function removeDependency(packageName: string, workspaceRoot: string): Pro
     const lockPath = resolve(workspaceRoot, 'model.lock');
     let cacheCleared = false;
 
-    if (existsSync(lockPath)) {
+    if (fs.existsSync(lockPath)) {
         const lockContent = await fs.readFile(lockPath, 'utf-8');
         const lock = JSON.parse(lockContent) as LockFile;
 
@@ -113,7 +116,7 @@ async function removeDependency(packageName: string, workspaceRoot: string): Pro
 
     // Clean cache directory for this package
     const cachePath = resolve(workspaceRoot, '.dlang', 'packages', normalizedName);
-    if (existsSync(cachePath)) {
+    if (fs.existsSync(cachePath)) {
         await fs.rm(cachePath, { recursive: true, force: true });
         cacheCleared = true;
     }
@@ -149,13 +152,7 @@ export const Remove: React.FC<RemoveProps> = ({ packageName, context: _context }
         [packageName],
     );
     const { exit } = useApp();
-
-    // Exit when command completes (success or error)
-    useEffect(() => {
-        if (status === 'success' || status === 'error') {
-            setTimeout(() => exit(), 100);
-        }
-    }, [status, exit]);
+    useExitOnComplete(status, exit);
 
     if (status === 'loading') {
         return <Spinner label={`Removing ${packageName}`} emoji="search" />;

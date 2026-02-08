@@ -7,16 +7,11 @@
  *   - These make real GitHub API calls and are slow/expensive (14s+)
  *   - Run locally with: INTEGRATION_TESTS=true npm test
  *
- * Known Issue - Memory Cleanup:
- * - The test suite may report "Worker exited unexpectedly" after all tests pass
- * - This is a cleanup issue related to Langium's AST structures accumulating in memory
- * - All tests complete successfully before the error occurs
- * - Does NOT affect test correctness or validity
- * - The error can be safely ignored - it's cosmetic and happens during teardown
- *
- * If needed, you can run tests in smaller batches:
- *   - npx vitest run test/commands/  # Just command tests
- *   - CI=true npm test                # Skip integration tests
+ * Memory Management:
+ * - All Ink renders are automatically unmounted after each test via test/setup.ts
+ * - This prevents React tree leaks and orphaned setInterval timers
+ * - Network-calling services are mocked in tests to avoid real HTTP requests
+ * - Worker heap is set to 4GB (sufficient with proper cleanup)
  *
  * @module
  */
@@ -29,6 +24,8 @@ export default defineConfig({
   test: {
     globals: false,
     environment: 'node',
+    // Auto-cleanup Ink renders after each test to prevent memory leaks
+    setupFiles: ['./test/setup.ts'],
     include: [
       'test/**/*.test.{ts,tsx}',
     ],
@@ -66,9 +63,10 @@ export default defineConfig({
     testTimeout: 30000,
     // Vitest v4: Use forks pool for process.chdir() support and memory management
     // Forks pool is required for tests using process.chdir() (init.test, remove.test, add.test)
-    // Also supports execArgv for memory configuration
     pool: 'forks',
-    maxWorkers: 2,
-    execArgv: ['--max-old-space-size=8192'],
+    // Limit concurrent workers to control memory pressure in CI
+    maxWorkers: isCI ? 1 : 2,
+    // 4GB heap is sufficient with proper cleanup; 8GB masked memory leaks
+    execArgv: ['--max-old-space-size=4096'],
   },
 });

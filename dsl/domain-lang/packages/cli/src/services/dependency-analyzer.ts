@@ -10,15 +10,21 @@
 
 import type { LockFile, DependencyTreeNode, ReverseDependency, VersionPolicy } from './types.js';
 import path from 'node:path';
-import fs from 'node:fs/promises';
 import os from 'node:os';
 import YAML from 'yaml';
 import { sortVersionsDescending, isPreRelease } from './semver.js';
+import { defaultFileSystem, type FileSystemService } from './filesystem.js';
 
 /**
  * Analyzes dependency relationships and provides visualization/analysis tools.
  */
 export class DependencyAnalyzer {
+    private readonly fs: FileSystemService;
+
+    constructor(fs: FileSystemService = defaultFileSystem) {
+        this.fs = fs;
+    }
+
     /**
      * Builds a dependency tree from a lock file.
      * 
@@ -32,7 +38,7 @@ export class DependencyAnalyzer {
         // Load root manifest to get direct dependencies
         const rootDeps: Record<string, string> = {};
         try {
-            const content = await fs.readFile(manifestPath, 'utf-8');
+            const content = await this.fs.readFile(manifestPath, 'utf-8');
             const manifest = YAML.parse(content) as {
                 dependencies?: Record<string, { source: string; version: string }>;
             };
@@ -128,7 +134,7 @@ export class DependencyAnalyzer {
 
         // Check if target is a direct dependency of root
         try {
-            const content = await fs.readFile(manifestPath, 'utf-8');
+            const content = await this.fs.readFile(manifestPath, 'utf-8');
             const manifest = YAML.parse(content) as {
                 dependencies?: Record<string, { source: string; version: string }>;
             };
@@ -309,7 +315,7 @@ export class DependencyAnalyzer {
         const manifestPath = path.join(cacheDir, 'model.yaml');
 
         try {
-            const content = await fs.readFile(manifestPath, 'utf-8');
+            const content = await this.fs.readFile(manifestPath, 'utf-8');
             const manifest = YAML.parse(content) as {
                 dependencies?: Record<string, { source: string; version: string }>;
             };

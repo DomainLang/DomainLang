@@ -25,7 +25,7 @@ import { runDirect } from '../utils/run-direct.js';
 import { runCommand } from './command-runner.js';
 import type { CommandContext, ValidationResult, CommandError, CommandWarning } from './types.js';
 import { resolve, extname, basename } from 'node:path';
-import { existsSync } from 'node:fs';
+import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
 
 /**
  * Props for Validate command component.
@@ -73,7 +73,10 @@ function toCommandWarning(
 /**
  * Validate a model file and return results.
  */
-async function validateModel(filePath: string): Promise<ValidationResult> {
+async function validateModel(
+    filePath: string,
+    fs: FileSystemService = defaultFileSystem
+): Promise<ValidationResult> {
     const services = createDomainLangServices(NodeFileSystem).DomainLang;
     const extensions = services.LanguageMetaData.fileExtensions;
     
@@ -85,7 +88,7 @@ async function validateModel(filePath: string): Promise<ValidationResult> {
 
     // Check file exists
     const resolvedPath = resolve(filePath);
-    if (!existsSync(resolvedPath)) {
+    if (!fs.existsSync(resolvedPath)) {
         throw new Error(`File not found: ${filePath}`);
     }
 

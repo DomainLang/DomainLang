@@ -5,4 +5,4 @@
  */
 
 export { useFirstRun, isFirstRun, markFirstRunComplete, useElapsedTime } from './useFirstRun.js';
-export { useCommand, type CommandState } from './useCommand.js';
+export { useCommand, useExitOnComplete, type CommandState } from './useCommand.js';

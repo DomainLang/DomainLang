@@ -13,4 +13,5 @@ export {
     waitFor,
     flushAsync,
     stripAnsi,
+    cleanup,
 } from './render.js';

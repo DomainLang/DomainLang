@@ -51,6 +51,8 @@ export function useCommand<T>(
     const elapsed = useElapsedTime(100, status === 'loading');
 
     useEffect(() => {
+        let cancelled = false;
+
         // Reset state on re-execution
         setStatus('loading');
         setResult(undefined);
@@ -58,16 +60,46 @@ export function useCommand<T>(
 
         execute()
             .then(r => {
-                setResult(r);
-                setStatus('success');
+                if (!cancelled) {
+                    setResult(r);
+                    setStatus('success');
+                }
             })
             .catch((err: unknown) => {
-                const msg = err instanceof Error ? err.message : String(err);
-                setError(msg);
-                setStatus('error');
+                if (!cancelled) {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    setError(msg);
+                    setStatus('error');
+                }
             });
+
+        return () => { cancelled = true; };
         // deps array intentionally controlled by caller, not by this hook
     }, deps);
 
     return { status, result, error, elapsed };
+}
+
+/**
+ * React hook that exits the Ink app after a command completes.
+ *
+ * Properly clears the exit timeout on unmount to prevent leaked timers
+ * that would keep the Node.js event loop alive (causing OOM in test workers).
+ *
+ * @param status - Current command status from {@link useCommand}.
+ * @param exit   - Ink's `useApp().exit` callback.
+ * @param delay  - Delay in ms before calling exit (default: 100).
+ */
+export function useExitOnComplete(
+    status: CommandStatus,
+    exit: () => void,
+    delay = 100,
+): void {
+    useEffect(() => {
+        if (status === 'success' || status === 'error') {
+            const timer = setTimeout(() => exit(), delay);
+            return () => clearTimeout(timer);
+        }
+        return undefined;
+    }, [status, exit, delay]);
 }

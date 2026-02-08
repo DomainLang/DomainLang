@@ -20,6 +20,7 @@ import {
 import { theme } from '../ui/themes/colors.js';
 import { EMOJI } from '../ui/themes/emoji.js';
 import { useElapsedTime } from '../ui/hooks/index.js';
+import { useExitOnComplete, type CommandStatus } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import type { CommandContext } from './types.js';
 import { InstallService, type InstallResult, type InstallProgressEvent, FrozenMismatchError, IntegrityError } from '../services/install-service.js';
@@ -218,12 +219,9 @@ export const Install: React.FC<InstallProps> = ({ options, context }) => {
     const elapsed = useElapsedTime(100, state.status === 'loading');
     const { exit } = useApp();
 
-    // Exit when command completes (any terminal state)
-    useEffect(() => {
-        if (state.status !== 'loading' && state.status !== 'downloading') {
-            setTimeout(() => exit(), 100);
-        }
-    }, [state.status, exit]);
+    // Map install status to command status for exit hook
+    const exitStatus: CommandStatus = (state.status !== 'loading' && state.status !== 'downloading') ? 'success' : 'loading';
+    useExitOnComplete(exitStatus, exit);
 
     useEffect(() => {
         const service = new InstallService(context.cwd);

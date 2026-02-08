@@ -16,13 +16,12 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
-import { mkdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fetchWithRetry, type RetryOptions } from './fetch-utils.js';
 import type { CredentialProvider } from './credential-provider.js';
 import type { PackageCache } from './package-cache.js';
+import { defaultFileSystem, type FileSystemService } from './filesystem.js';
 
 /**
  * Events emitted during package download lifecycle.
@@ -78,6 +77,7 @@ export class PackageDownloader {
     private readonly credentialProvider: CredentialProvider;
     private readonly packageCache: PackageCache;
     private readonly eventCallback?: (event: PackageEvent) => void;
+    private readonly fs: FileSystemService;
 
     private readonly githubApiBaseUrl = 'https://api.github.com';
     private readonly githubApiVersion = '2022-11-28';
@@ -85,11 +85,13 @@ export class PackageDownloader {
     constructor(
         credentialProvider: CredentialProvider,
         packageCache: PackageCache,
-        eventCallback?: (event: PackageEvent) => void
+        eventCallback?: (event: PackageEvent) => void,
+        fs: FileSystemService = defaultFileSystem
     ) {
         this.credentialProvider = credentialProvider;
         this.packageCache = packageCache;
         this.eventCallback = eventCallback;
+        this.fs = fs;
     }
 
     /**
@@ -161,7 +163,7 @@ export class PackageDownloader {
             });
 
             // Clean up temp tarball
-            await unlink(tarballPath).catch(() => {
+            await this.fs.unlink(tarballPath).catch(() => {
                 // Ignore cleanup errors
             });
 
@@ -261,11 +263,11 @@ export class PackageDownloader {
 
         // Create temp file for tarball
         const tarballPath = join(tmpdir(), `dlang-${randomUUID()}.tar.gz`);
-        await mkdir(join(tarballPath, '..'), { recursive: true });
+        await this.fs.mkdir(join(tarballPath, '..'), { recursive: true });
 
         // Stream response to file while computing hash
         const hash = createHash('sha512');
-        const fileStream = createWriteStream(tarballPath);
+        const fileStream = this.fs.createWriteStream(tarballPath);
 
         const contentLength = response.headers.get('content-length');
         const totalBytes = contentLength ? Number.parseInt(contentLength, 10) : undefined;
@@ -282,12 +284,15 @@ export class PackageDownloader {
                 const { done, value } = await reader.read();
                 if (done) break;
 
+                // Convert Uint8Array to Buffer for compatibility with WritableFileStream
+                const chunk = Buffer.from(value);
+
                 // Update hash
-                hash.update(value);
+                hash.update(chunk);
                 
                 // Write to file
                 await new Promise<void>((resolve, reject) => {
-                    fileStream.write(value, (error) => {
+                    fileStream.write(chunk, (error) => {
                         if (error) reject(error);
                         else resolve();
                     });
