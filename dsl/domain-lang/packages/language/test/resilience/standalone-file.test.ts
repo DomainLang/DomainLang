@@ -93,9 +93,7 @@ describe('Standalone .dlang files (no model.yaml)', () => {
             }
         `);
         expectValidDocument(doc);
-        const diagnostics = doc.diagnostics ?? [];
         // Should have zero or only linking warnings (not parse errors)
-        const _parseErrors = diagnostics.filter(d => d.severity === 1);
         // Standalone files may have some warnings but parser should succeed
         expect(doc.parseResult.parserErrors).toHaveLength(0);
     });

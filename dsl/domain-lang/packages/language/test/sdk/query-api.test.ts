@@ -7,6 +7,7 @@
 
 import { describe, test, expect } from 'vitest';
 import { loadModelFromText } from '../../src/sdk/loader.js';
+import type { Domain } from '../../src/generated/ast.js';
 
 describe('SDK Query API', () => {
     
@@ -376,7 +377,7 @@ describe('SDK Query API', () => {
                     Domain Sales { vision: "v" }
                 }
             `);
-            const domain = query.byFqn('com.example.Sales');
+            const domain = query.byFqn<Domain>('com.example.Sales');
             expect(domain).toBeDefined();
             expect(domain?.name).toBe('Sales');
         });
