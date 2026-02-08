@@ -137,9 +137,7 @@ class QueryImpl implements Query {
      * Lazily builds and caches indexes on first access.
      */
     private getIndexes(): ModelIndexes {
-        if (!this.indexes) {
-            this.indexes = buildIndexes(this.model);
-        }
+        this.indexes ??= buildIndexes(this.model);
         return this.indexes;
     }
 
@@ -202,7 +200,12 @@ class QueryImpl implements Query {
 
     /** @internal Generator for relationship iteration */
     private *iterateRelationships(): Generator<RelationshipView> {
-        // Collect relationships defined on bounded contexts
+        yield* this.collectBoundedContextRelationships();
+        yield* this.collectContextMapRelationships();
+    }
+
+    /** @internal Collects relationships from bounded contexts */
+    private *collectBoundedContextRelationships(): Generator<RelationshipView> {
         for (const node of AstUtils.streamAllContents(this.model)) {
             if (isBoundedContext(node)) {
                 for (const rel of node.relationships) {
@@ -213,8 +216,10 @@ class QueryImpl implements Query {
                 }
             }
         }
+    }
 
-        // Collect from ContextMap.relationships
+    /** @internal Collects relationships from context maps */
+    private *collectContextMapRelationships(): Generator<RelationshipView> {
         for (const node of AstUtils.streamAllContents(this.model)) {
             if (isContextMap(node)) {
                 for (const rel of node.relationships) {
@@ -442,10 +447,9 @@ class QueryBuilderImpl<T> implements QueryBuilder<T> {
     }
 
     first(): T | undefined {
-        for (const item of this) {
-            return item;
-        }
-        return undefined;
+        const iterator = this[Symbol.iterator]();
+        const result = iterator.next();
+        return result.done ? undefined : result.value;
     }
 
     toArray(): T[] {
@@ -554,7 +558,7 @@ class BcQueryBuilderImpl extends QueryBuilderImpl<BoundedContext> implements BcQ
  * Escapes special regex characters in a string.
  */
 function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 /**
@@ -780,7 +784,7 @@ function augmentModelInternal(model: Model): void {
         } else if (isContextMap(node)) {
             // Augment relationships in context maps (no containing BC)
             for (const rel of node.relationships) {
-                augmentRelationship(rel, undefined);
+                augmentRelationship(rel);
             }
         }
     }
