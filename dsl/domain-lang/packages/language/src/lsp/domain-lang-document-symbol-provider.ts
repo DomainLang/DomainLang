@@ -12,8 +12,7 @@
  * @module lsp/domain-lang-document-symbol-provider
  */
 
-import type { AstNode } from 'langium';
-import type { LangiumDocument } from 'langium';
+import type { AstNode, LangiumDocument } from 'langium';
 import { DocumentSymbol, SymbolKind } from 'vscode-languageserver';
 import { CstUtils } from 'langium';
 import { DefaultDocumentSymbolProvider } from 'langium/lsp';
