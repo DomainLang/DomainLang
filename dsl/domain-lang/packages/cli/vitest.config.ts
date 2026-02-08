@@ -42,6 +42,18 @@ export default defineConfig({
         'src/**/*.test.{ts,tsx}',
         'src/test-utils/**',
         '**/node_modules/**',
+        // Type-only files (no runtime code)
+        'src/commands/types.ts',
+        'src/services/types.ts',
+        // Barrel re-export files (no logic)
+        'src/commands/index.ts',
+        'src/services/index.ts',
+        'src/ui/components/index.ts',
+        // CLI entry point (tested via E2E/integration)
+        'src/main.ts',
+        // Pure Ink/React presentational components (no testable logic)
+        'src/ui/components/ProgressBar.tsx',
+        'src/ui/components/KeyboardHints.tsx',
       ],
       reportsDirectory: './coverage',
       thresholds: {
