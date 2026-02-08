@@ -3,125 +3,54 @@ description: 'Guidelines for Langium 4.x grammar development and DomainLang DSL 
 applyTo: "**/*.langium,**/*.dlang"
 ---
 
-# Langium Framework Guidelines
+# Langium & DomainLang Guidelines
 
-> Guidelines for working with Langium grammar files (`.langium`) and DomainLang DSL files (`.dlang`).
-
-## Role
-
-You are working with Langium 4.x, a framework for building DSLs with full LSP support. DomainLang uses Langium to implement a Domain-Driven Design modeling language.
-
-## References
-
-- [Langium Documentation](https://langium.org/docs/)
-- [LSP Specification](https://microsoft.github.io/language-server-protocol/)
-- [DomainLang Grammar](../../dsl/domain-lang/packages/language/src/domain-lang.langium)
-
-## Core Intent
-
-- Keep grammar clean and aligned with DDD terminology
-- Never edit generated files; always regenerate
-- Understand the document lifecycle before implementing services
-- Test grammar changes with parsing and linking tests
+> Langium 4.x DSL framework with LSP support. DomainLang implements Domain-Driven Design modeling language.
 
 ## Critical Rules
 
-🔴 **NEVER** edit `dsl/domain-lang/packages/language/src/generated/**` - regenerate with `npm run langium:generate`
+- **NEVER** edit `src/generated/**` - always regenerate with `npm run langium:generate`
+- **ALWAYS** run `langium:generate` after `.langium` changes
+- **ALWAYS** run `npm run build` after grammar changes
+- **Test** grammar changes with parsing and linking tests
 
-🔴 **ALWAYS** run `npm run langium:generate` after editing `.langium` files
+## Architecture
 
-🔴 **ALWAYS** run `npm run build` after grammar changes to compile TypeScript
+| Component | Path | Purpose |
+|-----------|------|---------|
+| Grammar | `packages/language/src/domain-lang.langium` | DSL syntax source |
+| Generated | `packages/language/src/generated/` | **Never edit** |
+| Validation | `packages/language/src/validation/` | Rules |
+| LSP | `packages/language/src/lsp/` | Services |
+| Services | `packages/language/src/services/` | Import, workspace |
 
-## Project Layout
+## DomainLang Core Constructs
 
-| File | Purpose |
-|------|---------|
-| `dsl/domain-lang/packages/language/src/domain-lang.langium` | Grammar source |
-| `dsl/domain-lang/packages/language/src/generated/` | Generated AST (never edit) |
-| `packages/language/src/validation/` | Validation rules |
-| `packages/language/src/lsp/` | LSP services |
-| `packages/language/src/services/` | Import resolution, workspace |
-## LSP Service Development
+| Construct | Example |
+|-----------|---------|
+| Domain | `Domain Sales { vision: "..." }` |
+| Subdomain | `Domain Orders in Sales {}` |
+| BoundedContext | `BoundedContext OrderContext for Sales as Core by SalesTeam {}` |
+| ContextMap | `ContextMap Sales { contains OrderContext, BillingContext }` |
+| Namespace | `Namespace acme.sales { Domain Sales {} }` |
+| Import | `Import "owner/repo"` |
 
-### Error Handling - MANDATORY Pattern
-
-**Every LSP provider method MUST have try-catch error handling.**
-
-**See `.github/instructions/typescript.instructions.md` section "Error Handling & Resilience" for:**
-- Complete error handling patterns with examples
-- Safe defaults by return type
-- VS Code extension requirements (OutputChannel, crash recovery)
-- Common pitfalls to avoid
-- Cognitive complexity management
-
-**Quick Reference:**
-
-```typescript
-// ✅ Required pattern for all LSP providers
-export class MyLspProvider {
-    async myFeature(params: Params): Promise<Result | undefined> {
-        try {
-            // Your logic here
-            return result;
-        } catch (error) {
-            console.error('Error in myFeature:', error);
-            return undefined; // Safe default
-        }
-    }
-}
-```
-
-**Safe Defaults:**
-- Hover → `undefined`
-- CompletionItem[] → `[]` or call `super.method()`
-- CodeAction[] → `undefined`
-- Diagnostic[] → `[]` or minimal diagnostic
-- Symbol[] → `[]`
-
-**Validation with Workspace:**
-
-```typescript
-// Gracefully handle missing workspace (standalone files)
-export class ImportValidator {
-    validate(importStmt: ImportStatement, accept: ValidationAcceptor): void {
-        try {
-            const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
-            // Workspace-dependent validation
-        } catch (error) {
-            console.warn('No workspace - skipping workspace validation');
-            return; // Degrade gracefully
-        }
-    }
-}
-```
-## DomainLang Language Design
-
-### Core Constructs
-
-| Construct | Purpose | Key Features |
-|-----------|---------|--------------|
-| `Domain` | Sphere of knowledge/activity | `in` hierarchy, `vision`, `description`, `classifier` |
-| `BoundedContext` / `bc` | Context boundary | `for` domain, `as` classifier, `by` team |
-| `ContextMap` / `DomainMap` | Architecture mapping | MultiReference support |
-| `Team`, `Classification` | Organizational elements | Cross-referenced |
-| `NamespaceDeclaration` | Hierarchical organization | FQN support |
-
-### BoundedContext Features
+### BoundedContext features
 
 ```dlang
-bc OrderContext for Sales as Core by SalesTeam {
-    description: \"Order management\"
-    role: Core                  // Direct property (or use header: 'as Core')
-    team: SalesTeam             // Direct property (or use header: 'by SalesTeam')
+BoundedContext OrderContext for Sales as Core by SalesTeam {
+    description: "Order management"
+    role: Core                  // Or use header: 'as Core'
+    team: SalesTeam             // Or use header: 'by SalesTeam'
     businessModel: Revenue
     lifecycle: Custom
     
     terminology {
-        term Order: \"A customer purchase request\"
+        term Order: "A customer purchase request"
     }
     
     decisions {
-        decision [Architectural] EventSourcing: \"Use event sourcing for orders\"
+        decision [Architectural] EventSourcing: "Use event sourcing"
     }
     
     relationships {
@@ -130,47 +59,24 @@ bc OrderContext for Sales as Core by SalesTeam {
 }
 ```
 
-> **Note:** Properties like `role` and `team` can be specified inline in the header (`as`, `by`) or as direct properties in the body. When both are used, the inline form takes precedence (grammar order determines array position).
-```
+> **Note:** `role` and `team` can be in header (`as`, `by`) or body. Header takes precedence.
 
-### Relationship Arrows
+### Relationship arrows
 
 | Arrow | Meaning |
-|-------|---------|
-| `->` | Downstream direction |
-| `<-` | Upstream direction |
+|-------|---------|  
+| `->` | Downstream |
+| `<-` | Upstream |
 | `<->` | Bidirectional |
 | `><` | Mutual dependency |
 | `U/D` or `u/d` | Upstream/Downstream |
 | `C/S` or `c/s` | Customer/Supplier |
 
-### DDD Patterns (Roles)
+### DDD Patterns
 
-| Pattern | Meaning |
-|---------|---------|
-| `[OHS]` | Open Host Service |
-| `[CF]` | Conformist |
-| `[ACL]` | Anti-Corruption Layer |
-| `[PL]` | Published Language |
-| `[P]` | Partnership |
-| `[SK]` | Shared Kernel |
-| `[BBoM]` | Big Ball of Mud |
+`[OHS]` Open Host Service · `[CF]` Conformist · `[ACL]` Anti-Corruption Layer · `[PL]` Published Language · `[P]` Partnership · `[SK]` Shared Kernel · `[BBoM]` Big Ball of Mud
 
-### Namespace and Import System
-
-```dlang
-namespace Strategic {
-    Classification CoreDomain
-}
-
-import "./shared/types.dlang"
-import "~/contexts/sales.dlang"
-import "owner/repo@v1.0.0" as Patterns
-```
-
-Qualified names: `Strategic.CoreDomain`, `Company.Engineering.BackendTeam`
-
-## Grammar Fundamentals
+## Grammar Basics
 
 ```langium
 grammar DomainLang
@@ -179,45 +85,27 @@ entry Model:
     imports+=ImportStatement*
     (children+=StructureElement)*;
 
-// Direct properties instead of documentation block arrays
+// Direct properties on nodes
 Domain:
     'Domain' name=ID ('in' parentDomain=[Domain:QualifiedName])?
     '{' 
         ('description' Assignment description=STRING)?
         ('vision' Assignment vision=STRING)?
-        ('classification' Assignment classification=[Classification:QualifiedName])?
-    '}';
-
-BoundedContext:
-    'bc' name=ID ('for' domain=[Domain:QualifiedName])?
-    (('as' role+=[Classification:QualifiedName])? ('by' team+=[Team:QualifiedName])?)?
-    '{'
-        ('description' Assignment description=STRING)?
-        ('role' Assignment role+=[Classification:QualifiedName])?  // Array for dual-location
-        // ... other direct properties
     '}';
 ```
 
-> **PRS-008 Change:** Properties are now direct on AST nodes instead of nested in documentation block arrays. The `role` and `team` use `+=` (array) to allow both header and body syntax with grammar-order precedence.
+**Assignments:**
+- `=` scalar: `name=ID` → `string`
+- `+=` array: `domains+=Domain` → `Domain[]`
+- `?=` boolean: `isPublic?='public'` → `boolean`
 
-### Assignments
-
-- `=` Single value: `name=ID`
-- `+=` Array: `domains+=Domain`
-- `?=` Boolean: `isPublic?='public'`
-
-### Cross-References
-
+**Cross-references:**
 ```langium
-// Reference to a Domain using QualifiedName
 BoundedContext:
-    'Context' name=ID 'for' domain=[Domain:QualifiedName];
+    'bc' name=ID 'for' domain=[Domain:QualifiedName];
 ```
 
-### MultiReference Pattern
-
-Use `[+Type]` for references that resolve to **multiple targets** (same-named elements):
-
+**MultiReference (Langium 4.0+):**
 ```langium
 ContextMap:
     'ContextMap' name=ID '{'
@@ -225,50 +113,38 @@ ContextMap:
     '}';
 ```
 
+Allows single reference to resolve multiple same-named elements:
 ```dlang
 bc Orders for Sales {}
 bc Orders for Billing {}
 
 ContextMap AllOrders {
-    contains Orders  // Resolves to BOTH BCs!
+    contains Orders  // Resolves to BOTH!
 }
 ```
-
-**Generated TypeScript:**
-```typescript
-interface MultiReference<T> {
-    $refText: string;           // Written text ("Orders")
-    items: Array<{ ref: T }>;   // All matching AST nodes
-}
-```
-
-**Where MultiReference IS used:** `ContextMap.boundedContexts`, `DomainMap.domains`
-**Where MultiReference is NOT used:** `BoundedContext.domain` (BC belongs to exactly ONE domain)
 
 ## Document Lifecycle (Critical)
 
-Understanding this is **essential** for correct service implementation:
-
-1. **Parsed** - AST generated from text
-2. **IndexedContent** - Exported symbols indexed for global scope
+1. **Parsed** - AST from text
+2. **IndexedContent** - Symbols indexed
 3. **ComputedScopes** - Local scopes precomputed
-4. **Linked** - Cross-references resolved ← **References available here**
-5. **IndexedReferences** - Reference dependencies indexed
-6. **Validated** - Custom validation checks executed
+4. **Linked** - Cross-references resolved ← **refs available here**
+5. **IndexedReferences** - Reference dependencies
+6. **Validated** - Validation checks
 
-**Key Rule:** Cross-references are `undefined` until phase 4 (Linked).
+**Key:** Cross-references are `undefined` until phase 4 (Linked).
 
 ## Scoping
 
 ### ScopeComputation (Phase 3)
 
-- Creates precomputed scopes (symbols attached to containers)
-- **Cannot access cross-references** (linking hasn't happened)
+- Creates precomputed scopes
+- **Cannot access cross-references** (not linked yet)
 
 ```typescript
 export class DomainLangScopeComputation extends DefaultScopeComputation {
     protected override exportNode(node: AstNode, exports: AstNodeDescriptionProvider): void {
-        if (isDomain(node) || isBoundedContext(node) || isTeam(node) || isClassification(node)) {
+        if (isDomain(node) || isBoundedContext(node)) {
             exports.export(node, node.name);
         }
     }
@@ -278,119 +154,10 @@ export class DomainLangScopeComputation extends DefaultScopeComputation {
 ### ScopeProvider (Phase 4)
 
 - Resolves cross-references to AST nodes
-- Can filter, shadow, and customize visibility
+- Can filter, shadow, customize visibility
 - Consults global scope for exported symbols
 
-### Scoping Behavior (Test-Verified)
-
-**Forward references work:**
-```dlang
-BoundedContext OrderContext for Sales {}  // Sales not yet defined
-Domain Sales {}                            // Defined after reference - WORKS
-```
-
-**`this` reference in relationships:**
-```dlang
-BoundedContext OrderContext for Sales {
-    relationships {
-        [OHS] this -> [CF] PaymentContext  // "this" = OrderContext
-    }
-}
-```
-
-**Missing references don't crash:**
-```dlang
-BoundedContext OrderContext for NonExistent {}  // domain?.ref is undefined
-```
-
-**Duplicate detection uses FQN:**
-```dlang
-namespace A { Domain Sales {} }
-namespace B { Domain Sales {} }  // OK - different FQN (A.Sales vs B.Sales)
-```
-
-## Validation Rules
-
-### Currently Implemented
-
-| Rule | Severity | Message |
-|------|----------|---------|
-| Missing domain vision | Warning | `Domain 'X' has no domain vision` |
-| Missing BC description | Warning | `Bounded Context 'X' has no description` |
-| Duplicate FQN | Error | `This element is already defined elsewhere` |
-
-### Planned (TODO)
-
-- Cyclic `Domain in` hierarchies
-- Invalid classifier/team/domain reference validation
-- Import file existence validation
-
-```typescript
-export class DomainLangValidator {
-    @Check(Domain)
-    checkDomainHasVision(domain: Domain, accept: ValidationAcceptor): void {
-        const hasVision = domain.documentation?.some(d => 'vision' in d);
-        if (!hasVision) {
-            accept('warning', `Domain '${domain.name}' has no domain vision`, {
-                node: domain,
-                property: 'name'
-            });
-        }
-    }
-}
-```
-
-## Common Pitfalls
-
-### ❌ Access cross-references during ScopeComputation
-
-```typescript
-// BAD: ref is undefined in phase 3
-export class BadScopeComputation extends DefaultScopeComputation {
-    protected override exportNode(node: AstNode) {
-        if (isBoundedContext(node)) {
-            const domain = node.domain?.ref; // ❌ ref is undefined!
-        }
-    }
-}
-```
-
-### ❌ Edit generated files
-
-Never edit `src/generated/ast.ts`, `grammar.ts`, or `module.ts` - always regenerate.
-
-### ❌ Skip langium:generate after grammar changes
-
-AST types will be out of sync with grammar.
-
-### ❌ Forget document cleanup in tests
-
-```typescript
-// Use setupTestSuite() which handles cleanup automatically
-let testServices: TestServices;
-beforeAll(() => { testServices = setupTestSuite(); });
-```
-
-### ❌ Expensive operations in ScopeProvider without caching
-
-```typescript
-// BAD: Recomputes on every reference
-getScope(context: ReferenceInfo): Scope {
-    const result = computeExpensiveThing(); // ❌ Called repeatedly!
-}
-
-// GOOD: Use WorkspaceCache
-private cache = new WorkspaceCache<string, Result>(this.services.shared);
-getScope(context: ReferenceInfo): Scope {
-    const uri = getDocument(context.container).uriString;
-    const result = this.cache.get(uri, () => computeExpensiveThing());
-}
-```
-
-## Advanced Patterns
-
-### Qualified Names
-
+**Qualified Names:**
 ```typescript
 export class QualifiedNameProvider extends DefaultNameProvider {
     getQualifiedName(node: AstNode, name?: string): string | undefined {
@@ -407,7 +174,115 @@ export class QualifiedNameProvider extends DefaultNameProvider {
 }
 ```
 
-### Service Registration
+## Validation
+
+```typescript
+export class DomainLangValidator {
+    @Check(Domain)
+    checkDomainHasVision(domain: Domain, accept: ValidationAcceptor): void {
+        if (!domain.vision) {
+            accept('warning', `Domain '${domain.name}' has no domain vision`, {
+                node: domain,
+                property: 'name'
+            });
+        }
+    }
+}
+```
+
+**Current rules:**
+- Missing domain vision → warning
+- Missing BC description → warning
+- Duplicate FQN → error
+
+**Planned (TODO):**
+- Cyclic `Domain in` hierarchies
+- Invalid classifier/team/domain reference validation
+- Import file existence validation
+
+## LSP Error Handling
+
+**STRONGLY RECOMMENDED:** Wrap LSP providers in try-catch for graceful degradation.
+
+```typescript
+async myFeature(params: Params): Promise<Result | undefined> {
+    try {
+        return computeResult();
+    } catch (error) {
+        console.error('Error in myFeature:', error);
+        return undefined; // Safe default
+    }
+}
+```
+
+**Safe defaults:** Hover → `undefined` · CompletionItem[] → `[]` · CodeAction[] → `undefined` · Symbol[] → `[]`
+
+See `.github/instructions/typescript.instructions.md` for complete error handling patterns.
+
+## Scoping Behavior (Test-Verified)
+
+**Forward references work:**
+```dlang
+bc OrderContext for Sales {}   // Sales not yet defined
+Domain Sales {}                 // Defined after reference - WORKS
+```
+
+**`this` keyword in relationships:**
+```dlang
+bc OrderContext for Sales {
+    relationships {
+        [OHS] this -> [CF] PaymentContext  // "this" = OrderContext
+    }
+}
+```
+
+**Missing references don't crash:**
+```dlang
+bc OrderContext for NonExistent {}  // domain?.ref is undefined, no crash
+```
+
+**Duplicate detection uses FQN:**
+```dlang
+namespace A { Domain Sales {} }
+namespace B { Domain Sales {} }  // OK - different FQN (A.Sales vs B.Sales)
+```
+
+## Test File Organization
+
+```
+test/
+├── test-helpers.ts        # Always use this!
+├── parsing/               # Grammar parsing tests
+├── linking/               # Cross-reference tests
+├── validating/            # Validation rule tests
+├── scoping/               # Scope computation tests
+├── services/              # Service layer tests
+└── multireference/        # Multi-reference tests
+```
+
+## Common Pitfalls
+
+| ❌ Don't | ✅ Do |
+|----------|-------|
+| Access refs in ScopeComputation | Wait until ScopeProvider (phase 4) |
+| Edit generated files | Regenerate with `langium:generate` |
+| Skip `langium:generate` after grammar changes | Always regenerate |
+| Forget document cleanup in tests | Use `setupTestSuite()` |
+| Expensive ScopeProvider without caching | Use `WorkspaceCache` |
+
+**Caching example:**
+```typescript
+import { WorkspaceCache } from 'langium';
+
+private cache = new WorkspaceCache<string, Result>(this.services.shared);
+
+getScope(context: ReferenceInfo): Scope {
+    const uri = getDocument(context.container).uriString;
+    return this.cache.get(uri, () => computeExpensiveThing());
+}
+```
+
+## Service Registration
 
 ```typescript
 export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices> = {
@@ -422,80 +297,52 @@ export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices
 };
 ```
 
+## Documentation Requirements
+
+**Grammar/keyword changes require `/site/` updates:**
+
+- [ ] `site/reference/language.md` - Syntax and semantics
+- [ ] `site/reference/quick-reference.md` - Concise examples
+- [ ] `examples/*.dlang` - Real-world usage
+- [ ] JSDoc on grammar rules and types
+
+**Skip for:** Bug fixes, internal refactoring, performance optimizations (no syntax changes)
+
 ## Workflow
 
 1. Edit `.langium` grammar
-2. Run `npm run langium:generate`
+2. `npm run langium:generate`
 3. Implement/update services
-4. **Update documentation** (see below)
+4. Update `/site/` documentation
 5. Write tests
-6. Run `npm run build`
-7. Run `npm test`
-
-## Documentation Requirements for Grammar Changes
-
-**When adding new keywords, rules, or grammar constructs:**
-
-- [ ] Update language documentation with syntax explanation and semantics
-- [ ] Add concise example to quick reference guide
-- [ ] Create `.dlang` example files in the examples directory
-- [ ] Add JSDoc comments to grammar rules and generated types
-- [ ] Document any new validation rules in the rule's JSDoc
-
-**Documentation files to update (source of truth: `/site/`):**
-- `site/reference/language.md` - Full syntax and semantics
-- `site/reference/quick-reference.md` - Concise examples for quick lookup
-- `dsl/domain-lang/examples/*.dlang` - Real-world example models
-
-**Skip documentation for:**
-- Internal refactoring with no syntax changes
-- Bug fixes that don't add new syntax
-- Performance optimizations
-
-## Validation
-
-Before committing Langium/DomainLang changes:
-
-```bash
-# Regenerate AST from grammar (required after .langium changes)
-npm run langium:generate
-
-# Build TypeScript
-npm run build
-
-# Run all tests
-npm test
-```
-
-## Decision Framework
-
-| Scenario | Use |
-|----------|-----|
-| New language construct | Add grammar rule, regenerate, add validation |
-| Reference to single element | Standard `[Type:QualifiedName]` |
-| Reference to multiple same-named elements | MultiReference `[+Type:QualifiedName]` |
-| Custom scoping logic | Implement in ScopeProvider (phase 4) |
-| Export symbols globally | Override ScopeComputation (phase 3) |
-| Validate semantic rules | Add `@Check` methods in Validator |
+6. `npm run build && npm test`
 
 ## Known Generator Warnings
 
-**"Found multiple assignments to 'X' with the '=' assignment operator"**
+**"Multiple assignments to 'X' with '=' operator"**
 
-- **Context:** Occurs during `npm run langium:generate` for properties inside unordered groups or loops (e.g., `(prop=Value | ...)*`).
-- **Cause:** We use the `*` cardinality to allow properties to appear in any order within a block, but use `=` assignment to map them to a single scalar property in the AST.
-- **Behavior:** Langium warns that data might be lost if the user defines the property multiple times (last assignment wins).
-- **Resolution:** **IGNORE THIS WARNING.** Do NOT change `=` to `+=` unless you intend to change the AST property to an array.
-  - We strictly want scalar properties (e.g., one `description`).
-  - "Last one wins" is acceptable parser behavior.
-  - We add specific validators (like `validateBoundedContextClassificationConflict`) to warn users about duplicates if "last one wins" is not desired.
+- Occurs with properties in loops: `(prop=Value)*`
+- **IGNORE THIS WARNING** - Last value wins is acceptable
+- Add validators to warn users about duplicates if needed
+- Don't change `=` to `+=` unless you want array property
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| `ref` is undefined | Accessing in wrong phase | Wait until phase 4 (Linked) |
-| AST types don't match grammar | Forgot to regenerate | Run `npm run langium:generate` |
-| Duplicate symbol errors | Missing namespace | Use `namespace` blocks for disambiguation |
-| Slow reference resolution | No caching | Use `WorkspaceCache` in ScopeProvider |
-| Tests fail with stale AST | Document cleanup | Use `setupTestSuite()` helper |
+| Problem | Solution |
+|---------|----------|
+| `ref` is undefined | Access in phase 4+ (Linked) |
+| AST types don't match | Run `langium:generate` |
+| Slow reference resolution | Use `WorkspaceCache` |
+| Tests fail with stale AST | Use `setupTestSuite()` |
+
+## Decision Matrix
+
+| Scenario | Use |
+|----------|-----|
+| New language construct | Add grammar rule → regenerate → add validation |
+| Reference single element | `[Type:QualifiedName]` |
+| Reference multiple same-named | MultiReference `[+Type:QualifiedName]` |
+| Custom scoping | ScopeProvider (phase 4) |
+| Export symbols globally | ScopeComputation (phase 3) |
+| Validate semantic rules | `@Check` methods in Validator |
+| Validate semantics | `@Check` methods in Validator |

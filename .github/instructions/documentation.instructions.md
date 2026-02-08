@@ -3,261 +3,175 @@ description: 'Documentation standards for DomainLang including JSDoc, Markdown, 
 applyTo: "**/*.md"
 ---
 
-# Documentation standards
+# Documentation Standards
 
-> Guidelines for creating effective documentation in DomainLang. Based on Google's Technical Writing Style Guide principles.
+> Clear, accurate documentation for DomainLang users and contributors.
+> Use Google tech writing style: https://developers.google.com/style
 
-## Core intent
+## Critical Rules
 
-- Write documentation that helps users accomplish tasks
-- Explain WHY, not just WHAT
-- Keep examples minimal, focused, and tested
-- Update documentation when code changes
-- **Documentation accompanies code:** Grammar, SDK, and CLI changes require site updates
+- **Sentence casing:** All headings use sentence casing (`## Getting started`, not `## Getting Started`)
+- **Code accompanies docs:** Grammar/SDK/CLI changes MUST update `/site/` docs
+- **JSDoc on public APIs:** All exported functions, classes, methods documented
+- **Examples tested:** All code examples must work
 
-## Casing rules
+## Document Types
 
-- **Sentence casing for headings:** Use `## Getting started`, not `## Getting Started`
-- **Never use title casing** in headings
-- **Product names retain capitalization:** DomainLang, VS Code, GitHub
+| Type | Location | Purpose | Audience |
+|------|----------|---------|----------|
+| User guides | `/site/guide/` | How to use features | End users |
+| Reference | `/site/reference/` | Complete syntax/API | Developers |
+| READMEs | Package roots | Quick start, setup | Developers |
+| JSDoc | Code | API documentation | Library users |
+| ADRs | `/adr/` | Architecture decisions | Team |
+| PRSs | `/requirements/` | Feature requirements | Team |
 
-## Writing style
+## Writing Style
 
-- Use **active voice** and **present tense**
-- Write in imperative mood ("Use", "Implement", "Avoid")
-- Be concise; eliminate unnecessary words
-- Define terminology on first use
-- Use lists and tables for scannable content
+### Voice and Tone
+
+- **Second person:** "You can define" (not "One can")
+- **Active voice:** "Parser validates" (not "is validated")
+- **Present tense:** "Returns" (not "will return")
+- **Imperative instructions:** "Create a domain" (not "You should create")
+
+### Clarity
 
 ```markdown
-✅ The validator detects circular references
-❌ Circular references are detected by the validator
+❌ In order to create a domain, one must utilize the Domain keyword.
 
-✅ This function returns the domain name
-❌ This function will return the domain name
+✅ Create a domain with the `Domain` keyword:
+\`\`\`dlang
+Domain Sales {}
+\`\`\`
 ```
 
-## JSDoc for Public APIs
+## JSDoc Standards
 
-Document all public functions with JSDoc (appears in IDE hover):
+### Template
 
 ```typescript
 /**
- * Resolves an import URL to a file URI.
- *
- * Supports: `./file.dlang`, `~/file.dlang`, `owner/repo@v1.0.0`
- *
- * @param importUrl - The import URL string
- * @returns Resolved file URI
- * @throws {ImportError} When URL format is invalid
- *
+ * Brief one-line description.
+ * 
+ * Optional longer explanation.
+ * 
+ * @param name - Parameter description
+ * @returns Return value description
+ * @throws {ErrorType} When error occurs
  * @example
  * ```typescript
- * const uri = await resolver.resolveImport('owner/repo@v1.0.0');
+ * const result = myFunction('input');
  * ```
  */
-async resolveImport(importUrl: string): Promise<URI> { }
+export function myFunction(name: string): Result { }
 ```
 
-### Required JSDoc Tags
+### Best Practices
 
-- `@param` - Each parameter with purpose
-- `@returns` - Return value description
-- `@throws` - Exceptions that can be thrown
-- `@example` - Usage example for complex APIs
-
-### Optional JSDoc Tags
-
-- `@deprecated` - Mark deprecated APIs with migration path
-- `@see` - Link to related functions
-- `@internal` - Mark internal APIs
-
-## Grammar Documentation
-
-Document grammar rules with JSDoc-style comments for hover tooltips:
-
-```langium
-/**
- * A Domain represents a sphere of knowledge or activity in DDD.
- *
- * @example
- * ```dlang
- * Domain Sales { vision: "Handle sales operations" }
- * Domain OrderManagement in Sales { }
- * ```
- */
-Domain:
-    'Domain' name=ID ('in' parentDomain=[Domain:QualifiedName])?
-    '{' documentation+=DomainDocumentationBlock* '}';
-```
-
-## Documentation Locations
-
-| Type          | Location                                            | Purpose                      |
-|---------------|-----------------------------------------------------|------------------------------|
-| Public site   | `/site/` → <https://domainlang.net>                 | User-facing documentation    |
-| API docs      | JSDoc in source                                     | IDE hover tooltips           |
-| Examples      | `dsl/domain-lang/examples/`                         | `.dlang` patterns            |
-| ADRs          | `adr/`                                              | Architecture decisions       |
-| Changelog     | `dsl/domain-lang/CHANGELOG.md` (create if missing) | Version history              |
-
-**⚠️ When documenting new language features:** Update the public site (`/site/`). See `.github/skills/site-maintainer/SKILL.md` for site-specific guidelines.
-
-## Formatting Guidelines
-
-- **Headings**: Use `##` for H2, `###` for H3 in hierarchical order
-- **Lists**: Use `-` for bullets, `1.` for numbered steps
-- **Code blocks**: Use triple backticks with language identifier
-- **Tables**: Align columns, include headers
-- **Whitespace**: Single blank line between sections
-
-## Code Examples
-
-- Keep examples **minimal and focused**
-- Show **common use cases** first
-- Include **error handling** when relevant
-- Use **triple backticks** with language identifier
-- **Test all examples** before committing
-
-````markdown
 ```typescript
-const domain: Domain = { name: 'Sales' };
-```
+✅ /** Parses a DomainLang document and returns the AST. */
+✅ /** Validates domain names are unique within namespace. */
 
-```dlang
-Domain Sales { vision: "Handle sales" }
+❌ /** This function parses. */  // Too vague
+❌ /** TODO: Document later. */  // Not helpful
 ```
-````
 
 ## README Structure
 
 ```markdown
-# Package Name
+# Project Title
 
-Brief description (1-2 sentences)
+One-sentence description.
+
+## Features
+- Feature 1
+- Feature 2
 
 ## Installation
+\`\`\`bash
+npm install package
+\`\`\`
 
-## Usage
+## Quick Start
+Minimal example.
 
-## API
+## Documentation
+Link to full docs.
 
 ## License
+License info.
 ```
 
-## Changelog Format
+## Grammar Documentation
 
-Follow [Keep a Changelog](https://keepachangelog.com/):
+```langium
+/**
+ * Represents a domain in strategic design.
+ * 
+ * Domains organize contexts hierarchically.
+ * 
+ * @example
+ * ```dlang
+ * Domain Sales in Commerce {}
+ * ```
+ */
+Domain:
+    'Domain' name=ID ('in' parent=[Domain:QualifiedName])?
+    '{' ... '}';
+```
+
+## Common Patterns
+
+### Introducing Concepts
 
 ```markdown
-## [Unreleased]
+# Feature Name
 
-### Added
-- New feature description
+One-sentence definition.
 
-### Changed
-- Modified behavior
+## Why Use This
 
-### Fixed
-- Bug fix description
+Benefits in bullet points.
+
+## Basic Example
+
+\`\`\`dlang
+// Minimal working code
+\`\`\`
+
+## See Also
+
+Links to related concepts.
 ```
 
-## Architecture Decision Records (ADRs)
+### Documenting Options
 
-Location: `adr/` directory
+**Use tables:**
 
-```markdown
-# ADR-001: Git-Native Import System
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | string | Yes | Unique identifier |
+| `vision` | string | No | Strategic purpose |
 
-## Status
-Accepted
+## Quality Checklist
 
-## Context
-Users need to share .dlang files across projects.
+- [ ] Sentence casing on headings
+- [ ] Code examples tested
+- [ ] Technical terms consistent
+- [ ] Links working
+- [ ] Grammar/spelling correct
+- [ ] Appropriate detail for audience
+- [ ] Examples show best practices
 
-## Decision
-Implement Git-native imports (like Go modules/Deno).
+## Common Mistakes
 
-## Consequences
-### Positive
-- No npm publication overhead
-- Direct versioning with Git tags
-
-### Negative
-- Requires Git installation
-- Network calls for remote imports
-```
-
-## Migration Guides
-
-When introducing breaking changes, provide migration guides in `site/guide/migrations/` (create if missing):
-
-```markdown
-# Migration: v0.x to v1.0
-
-## Breaking Changes
-
-### Keyword Rename: `partof` → `in`
-
-**Before:** `Domain Child partof Parent {}`
-**After:** `Domain Child in Parent {}`
-
-**Migration:** Replace `partof` with `in` in all `.dlang` files.
-```
-
-## When to Update Documentation
-
-### Trigger Conditions
-
-Automatically update documentation when:
-
-- **New features** — Add feature description to user guides
-- **API changes** — Update JSDoc and API reference
-- **Breaking changes** — Create migration guide, update changelog
-- **Configuration changes** — Document new options, environment variables
-- **Grammar changes** — Update language.md, quick-reference.md, grammar comments
-- **Error messages change** — Update troubleshooting guides
-
-### Documentation Review Checklist
-
-Before committing:
-- [ ] JSDoc updated for all changed functions
-- [ ] Code examples tested and working
-- [ ] Grammar comments updated if `.langium` changed
-- [ ] Changelog entry added
-- [ ] Links validated (no broken references)
-- [ ] Terminology consistent with existing docs
-- [ ] README reflects current project state
-
-## Anti-Patterns
-
-| ❌ Avoid | ✅ Instead |
-|----------|----------|
-| Outdated examples | Test examples during docs review |
-| Passive voice ("is validated by") | Active voice ("The validator checks") |
-| Future tense ("will parse") | Present tense ("parses") |
-| Assumed knowledge | Define terms on first use |
-| Missing context for WHY | Explain purpose before details |
-| Verbose explanations | Concise, scannable content |
-| Comments that repeat code | Comments that explain intent |
-
-## Validation
-
-Before committing documentation changes:
-
-```bash
-# Ensure code examples compile
-npm run build
-
-# Run tests to verify examples work
-npm test
-```
-
-## Decision Framework
-
-| Documentation Type | Location | Format |
-|-------------------|----------|--------|
-| API reference | JSDoc in source files | `@param`, `@returns`, `@example` |
-| User guides | `/site/` | Markdown with examples |
-| Architecture decisions | `adr/` | ADR template |
-| Quick reference | README or docs folder | Tables and code snippets |
+| ❌ Avoid | ✅ Do |
+|----------|-------|
+| Title Casing | Sentence casing |
+| Future tense | Present tense |
+| Passive voice | Active voice |
+| Undefined jargon | Define terms first use |
+| Long paragraphs | Short, scannable text |
+| Missing examples | Include working code |
+| Outdated info | Keep synced with code |

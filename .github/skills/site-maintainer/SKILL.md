@@ -5,297 +5,55 @@ description: Use for documentation website tasks including VitePress pages, site
 
 # Site Maintainer
 
-You are the Site Maintainer for DomainLang - responsible for the public documentation website at **domainlang.net**.
+You maintain the public documentation website at **domainlang.net** (`/site/` source).
 
-## Non-negotiables
+## Non-Negotiables
 
-- **Public-facing:** Everything in `/site/` is published for public consumption at <https://domainlang.net>. Write accordingly.
-- **High-quality bar:** Treat changes like a product surface: accurate, consistent, well-structured, and easy to scan.
-- **Single source of truth:** All user-facing documentation lives in `/site/`. Do not introduce new user-docs elsewhere.
-- **Documentation accompanies code:** Changes to grammar, SDK, or CLI **must** include corresponding site documentation updates. Do not ship features without docs.
-- **Sentence casing:** Use sentence casing for all headings (`## Getting started`, not `## Getting Started`). Never use title casing.
+- **Public-facing:** Everything in `/site/` published at https://domainlang.net
+- **Documentation accompanies code:** Grammar/SDK/CLI changes MUST include `/site/` updates
+- **Sentence casing:** All headings use sentence casing (`## Getting started`, not `## Getting Started`)
+- **Single source of truth:** All user docs in `/site/` only
 
-## Skill activation (mandatory)
+## Your Role
 
-Use this skill whenever you:
+- Create/maintain user documentation pages
+- Configure VitePress site and navigation
+- Ensure consistent style and formatting
+- Add code examples with syntax highlighting
+- Maintain site deployment
 
-- Edit any file under `/site/`.
-- Write or restructure any user-facing documentation (even if the initial request is "documentation" broadly).
+**Related skill:** `.github/skills/technical-writer/SKILL.md` (writing style)
 
-If you're writing documentation:
+## Skill Pairing
 
-- Use **this** skill first (information architecture, navigation, public quality).
-- Use `.github/skills/technical-writer/SKILL.md` second (writing style, clarity, technical correctness).
+- **This skill first:** Information architecture, navigation, public quality
+- **Technical-writer second:** Writing style, clarity, technical correctness
 
-## Your role
+## Site Architecture
 
-- Create and maintain user documentation pages
-- Configure VitePress site settings and navigation
-- Ensure consistent style and formatting across all pages
-- Add code examples with proper syntax highlighting
-- Maintain site deployment via GitHub Actions
+| Path | Purpose | Content |
+|------|---------|---------|
+| `/site/guide/` | Teach and onboard | Narrative explanations, best practices, progressive examples |
+| `/site/reference/` | Authoritative syntax | Complete details, keywords, canonical examples |
+| `/site/examples/` | Realistic models | Working examples with explanations |
+| `/site/roadmap.md` | Future plans | Speculative content |
 
-**Live site:** <https://domainlang.net>
+**Rule:** Guide teaches, Reference defines, Examples prove.
 
-**Site source:** `/site/`
+## Page Structure Template
 
-**Related skill:** `.github/skills/technical-writer/SKILL.md` (for writing style guidelines)
-
-## Commit Message Guidelines
-
-**When committing site changes, use the `docs(site):` scope:**
-
-```bash
-# Site-only commits (no version bump)
-docs(site): add migration guide for v2.0.0
-docs(site): improve getting started tutorial
-docs(site): update SDK reference examples
-docs(site): fix broken links in context map guide
-
-# Site configuration
-chore(site): update VitePress to v1.5.0
-chore(site): configure search plugin
-```
-
-**The `docs:` type does NOT trigger version bumps** - documentation improvements don't affect package versions.
-
-## Release Process & Site Updates
-
-**When releases happen, the site auto-deploys:**
-
-1. **Development:** Push site changes to `main` branch
-2. **Fast Path:** Site-only changes skip quality gates, require manual approval
-3. **Full Path:** Code + site changes go through full CI/CD pipeline
-4. **Deployment:** GitHub Pages publishes to domainlang.net
-
-**After major/minor releases:**
-
-- Update version references in site pages
-- Add migration guides for breaking changes
-- Update examples to use new syntax
-- Announce new features in release notes section
-
-**The site deploys automatically but requires production environment approval for all changes.**
-
-## Existing site style (what to match)
-
-The current `/site` content consistently uses:
-
-- A short, direct opening sentence describing the page.
-- Simple sectioning with predictable headings (e.g., **Keywords**, **Basic syntax**, **Best practices**, **Examples**, **Next steps**, **See also**).
-- Small, copy-pastable `dlang` examples.
-- VitePress callouts for emphasis (`tip`, `warning`, `info`) rather than long prose.
-- Clear cross-links between guide pages and the reference.
-
-When adding a new page, follow the same narrative sequence and keep the tone:
-
-- Second-person, action-oriented, minimal jargon.
-- Prefer short paragraphs and bullets over dense blocks of text.
-
-## Professional documentation standards (Microsoft TechDocs-style)
-
-- **Lead with value:** Start each page by answering "what will the reader learn or accomplish?"
-- **Progressive disclosure:** Introduce concepts in order of increasing complexity. Link to deeper content; don't overload early sections.
-- **Cross-reference liberally:** Every concept should link to prerequisite and related content. Use "See also" sections.
-- **Consistent terminology:** Use the same term for the same concept throughout (e.g., always "bounded context", not sometimes "context").
-- **Scannable structure:** Use tables, lists, and callouts. Readers skim—make the important parts visible.
-- **Code before prose:** Show a working example first, then explain.
-- **One idea per paragraph:** If a paragraph covers multiple ideas, split it.
-
-## Information architecture (put things in the right place)
-
-- `/site/guide/`
-  - Purpose: teach and onboard.
-  - Content: narrative explanations, best practices, recommended patterns, progressive examples.
-  - Rule: it's OK to simplify and link to reference for full syntax.
-
-- `/site/reference/`
-  - Purpose: authoritative syntax + semantics.
-  - Content: complete details, keyword lists, edge cases, canonical examples.
-  - Rule: avoid long tutorials; link back to guide for learning flow.
-
-- `/site/examples/`
-  - Purpose: realistic end-to-end models.
-  - Content: explanation + highlights + links to source models.
-  - Rule: examples should reinforce the guide and prove the reference.
-
-- `/site/roadmap.md`
-  - Purpose: future plans.
-  - Rule: keep speculative content here, not in guide/reference.
-
-## Avoiding repetition (without losing discoverability)
-
-- Some duplication between **guide** and **reference** is healthy (discoverability).
-- Avoid copy/paste drift:
-  - Prefer the **reference** as the canonical syntax description.
-  - Prefer the **guide** for "why" and "how to apply".
-  - If you must repeat, keep phrasing consistent and link to the canonical section.
-
-## Public documentation quality checklist
-
-Before merging changes to `/site/`:
-
-- [ ] Content is accurate vs current grammar/CLI/extension.
-- [ ] All headings use sentence casing.
-- [ ] Page belongs in the correct area (guide vs reference vs examples).
-- [ ] Navigation is updated in `/site/.vitepress/config.mts` when needed.
-- [ ] All code blocks use `dlang` for DomainLang.
-- [ ] Links are correct and use clean, relative internal links.
-- [ ] Cross-references to prerequisite and related pages are included.
-- [ ] No internal notes, TODOs, or repo-only assumptions.
-
-## Feature documentation sync checklist
-
-When implementing grammar, SDK, or CLI changes:
-
-- [ ] Guide page updated or created (if user-facing concept).
-- [ ] Reference page updated (if syntax/keyword change).
-- [ ] Quick reference updated (if common pattern affected).
-- [ ] Getting started updated (if affects onboarding flow).
-- [ ] Examples updated (if new patterns demonstrated).
-- [ ] Sidebar wired if new page added.
-
-## Site architecture
-
-```text
-site/
-├── .vitepress/
-│   ├── config.mts          # VitePress configuration
-│   ├── theme/
-│   │   ├── index.ts        # Theme setup
-│   │   └── style.css       # Custom brand styling
-│   └── cache/              # Build cache (gitignored)
-├── public/
-│   ├── logo.svg            # Site logo
-│   └── favicon.ico         # Browser favicon
-├── guide/                  # Tutorial content
-│   ├── getting-started.md
-│   ├── what-is-domainlang.md
-│   ├── domains.md
-│   ├── bounded-contexts.md
-│   ├── context-maps.md
-│   ├── teams-classifications.md
-│   ├── namespaces.md
-│   └── imports.md
-├── reference/              # Technical reference
-│   ├── language.md
-│   └── quick-reference.md
-├── examples/               # Real-world examples
-│   ├── index.md
-│   ├── banking-system.md
-│   └── healthcare-system.md
-└── index.md                # Home page
-```
-
-## Configuration reference
-
-### VitePress config (`config.mts`)
-
-Key configuration in `/site/.vitepress/config.mts`:
-
-```typescript
-export default defineConfig({
-  title: 'DomainLang',
-  description: 'A DSL for Domain-Driven Design modeling',
-  
-  // CRITICAL: Use '/' for custom domain (domainlang.net)
-  // Only use '/DomainLang/' for GitHub Pages project site
-  base: '/',
-  
-  cleanUrls: true,        // No .html extensions
-  lastUpdated: true,      // Show last updated timestamp
-  
-  head: [
-    ['link', { rel: 'icon', href: '/favicon.ico' }],
-    ['meta', { property: 'og:url', content: 'https://domainlang.net/' }],
-  ],
-})
-```
-
-### Custom syntax highlighting
-
-DomainLang syntax highlighting is registered via custom TextMate grammar:
-
-```typescript
-const domainLangGrammar: LanguageRegistration = {
-  name: 'dlang',
-  scopeName: 'source.domain-lang',
-  aliases: ['domain-lang', 'domainlang'],
-  // ... patterns for keywords, strings, comments
-}
-
-export default defineConfig({
-  markdown: {
-    languages: [domainLangGrammar]
-  }
-})
-```
-
-Use `dlang` as the language identifier in code blocks:
-
-````markdown
-```dlang
-Domain Sales { vision: "Sell stuff" }
-```
-````
-
-### Navigation structure
-
-Update navigation in `config.mts`:
-
-```typescript
-themeConfig: {
-  nav: [
-    { text: 'Home', link: '/' },
-    { text: 'Guide', link: '/guide/getting-started' },
-    { text: 'Reference', link: '/reference/language' },
-  ],
-  sidebar: {
-    '/guide/': [
-      { text: 'Introduction', items: [...] },
-      { text: 'Core Concepts', items: [...] },
-      { text: 'Advanced', items: [...] },
-    ]
-  }
-}
-```
-
-### Brand colors
-
-The site uses colors from the DomainLang logo:
-
-| Color | Hex       | Usage                              |
-|-------|-----------|------------------------------------|
-| Blue  | `#027fff` | Primary brand color, links, buttons|
-| Cyan  | `#00e5fc` | Accent color, highlights           |
-
-Custom theme variables in `/site/.vitepress/theme/style.css`.
-
-## Writing style for site
-
-### Voice and tone
-
-- **User-focused:** Write for DDD practitioners learning the DSL
-- **Action-oriented:** Use imperative mood ("Create a domain", "Add a context")
-- **Concise:** Short sentences, scannable content
-- **Welcoming:** Assume readers are new to DomainLang
-
-### Page structure
-
-Every guide page should follow this structure:
-
-````markdown
+```markdown
 # Page Title
 
 One-sentence description of what this page covers.
 
 ## Basic Syntax
 
-Show the simplest example first.
+Show simplest example first.
 
-```dlang
+\`\`\`dlang
 // Minimal working example
-```
+\`\`\`
 
 ## Properties / Options
 
@@ -314,11 +72,51 @@ Actionable advice
 ## See Also
 
 Links to related pages.
+```
+
+## VitePress Configuration
+
+### Key Settings (`/site/.vitepress/config.mts`)
+
+```typescript
+export default defineConfig({
+  title: 'DomainLang',
+  base: '/',           // CRITICAL: Use '/' for domainlang.net
+  cleanUrls: true,     // No .html extensions
+  lastUpdated: true,
+})
+```
+
+### Syntax Highlighting
+
+**Always use `dlang` for code blocks:**
+
+````markdown
+```dlang
+Domain Sales { vision: "Sell products" }
+```
 ````
 
-### VitePress components
+Custom TextMate grammar registered in `config.mts`.
 
-Use VitePress containers for callouts:
+### Navigation
+
+```typescript
+themeConfig: {
+  nav: [
+    { text: 'Guide', link: '/guide/getting-started' },
+    { text: 'Reference', link: '/reference/language' },
+  ],
+  sidebar: {
+    '/guide/': [
+      { text: 'Introduction', items: [...] },
+      { text: 'Core Concepts', items: [...] },
+    ]
+  }
+}
+```
+
+## VitePress Containers
 
 ```markdown
 ::: info
@@ -330,11 +128,11 @@ Helpful advice
 :::
 
 ::: warning
-Something to be careful about
+Be careful about this
 :::
 
 ::: danger
-Critical warning - something could break
+Critical warning
 :::
 
 ::: details Click to expand
@@ -342,142 +140,102 @@ Hidden content
 :::
 ```
 
-### Code examples
+## Writing Style
 
-1. **Always use `dlang` for DomainLang code:**
-
-   ````markdown
-   ```dlang
-   Domain Sales { }
-   ```
-   ````
-
-2. **Show minimal, complete examples** - readers should be able to copy-paste
-
-3. **Build up progressively** - start simple, add complexity
-
-4. **Include expected behavior** when relevant
+### Voice
+- **User-focused:** DDD practitioners learning DSL
+- **Action-oriented:** Use imperatives ("Create a domain", "Add a context")
+- **Concise:** Short sentences, scannable
+- **Welcoming:** Assume readers new to DomainLang
 
 ### Links
+```markdown
+<!-- Internal (relative, no .md) -->
+See [Bounded Contexts](/guide/bounded-contexts) for details.
 
-- **Internal links:** Use relative paths without `.md` extension
+<!-- External (full URL) -->
+[VS Code Extension](https://marketplace.visualstudio.com/items?itemName=...)
+```
 
-  ```markdown
-  See [Bounded Contexts](/guide/bounded-contexts) for details.
-  ```
+## Feature Documentation Sync
 
-- **External links:** Include full URL
+**When implementing grammar/SDK/CLI changes:**
 
-  ```markdown
-  [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)
-  ```
+- [ ] Guide page updated or created
+- [ ] Reference page updated (syntax changes)
+- [ ] Quick reference updated (common patterns)
+- [ ] Getting started updated (onboarding affected)
+- [ ] Examples updated (new patterns)
+- [ ] Sidebar navigation wired
 
 ## Deployment
 
-### GitHub Actions workflow
+**GitHub Actions workflow:**
+- **Trigger:** Push to `main` with `site/` changes
+- **Fast Path:** Site-only changes skip quality gates, require manual approval
+- **Deploy:** GitHub Pages → domainlang.net
 
-The site deploys via the `deploy-docs` job in `.github/workflows/ci.yml`:
-
-- **Trigger:** Push to `main` with changes in `site/`
-- **Build:** `npm run build` in `site/` directory
-- **Deploy:** GitHub Pages with custom domain
-
-### Custom domain
-
-- Domain: `domainlang.net`
-- Base URL must be `/` (not `/DomainLang/`)
-- CNAME configured in GitHub repo settings
-
-### Local development
-
+**Local development:**
 ```bash
 cd site
-npm install
-npm run dev      # Start dev server at localhost:5173
-npm run build    # Build for production
-npm run preview  # Preview production build
+npm run dev      # localhost:5173
+npm run build    # Production build
+npm run preview  # Preview build
 ```
 
-## Adding new pages
+## Adding New Pages
 
-### 1. Create the markdown file
+1. Create markdown file: `site/guide/new-feature.md`
+2. Add frontmatter (optional):
+   ```markdown
+   ---
+   title: Custom Title
+   description: SEO description
+   ---
+   ```
+3. Update navigation in `config.mts`
+4. Cross-link from related pages
+
+## Quality Checklist
+
+- [ ] Content accurate vs current grammar/CLI
+- [ ] Sentence casing on all headings
+- [ ] Page in correct area (guide/reference/examples)
+- [ ] Navigation updated in `config.mts`
+- [ ] Code blocks use `dlang`
+- [ ] Links correct (relative internal)
+- [ ] Cross-references to prerequisite/related pages
+- [ ] No internal notes or TODOs
+- [ ] Tested locally
+
+## Commit Messages
 
 ```bash
-# For a new guide page
-touch site/guide/new-feature.md
+# Site changes (no version bump)
+docs(site): add migration guide for v2.0.0
+docs(site): improve getting started tutorial
+docs(site): fix broken links in context map guide
+
+# Configuration
+chore(site): update VitePress to v1.5.0
 ```
 
-### 2. Add frontmatter (optional)
+## Microsoft TechDocs Standards
 
-```markdown
----
-title: Custom Page Title
-description: SEO description for this page
----
-```
+- **Lead with value:** Answer "what will reader learn?"
+- **Progressive disclosure:** Simple → complex, link for depth
+- **Cross-reference liberally:** Link prerequisites and related
+- **Consistent terminology:** Same term for same concept
+- **Introduce new concepts clearly:** Define terms on first use. Link to reference for details.
+- **Scannable:** Tables, lists, callouts
+- **Code before prose:** Show example, then explain
+- **One idea per paragraph:** Split if multiple ideas
 
-### 3. Update navigation
+## Brand Colors
 
-Edit `/site/.vitepress/config.mts`:
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Blue | `#027fff` | Primary, links, buttons |
+| Cyan | `#00e5fc` | Accent, highlights |
 
-```typescript
-sidebar: {
-  '/guide/': [
-    {
-      text: 'Section Name',
-      items: [
-        { text: 'New Feature', link: '/guide/new-feature' },
-      ]
-    }
-  ]
-}
-```
-
-### 4. Cross-link from related pages
-
-Add "See also" links from related documentation.
-
-## Synchronization with DSL docs
-
-The site documentation should stay in sync with:
-
-- `/guide/domains.md` → Grammar + implementation (keywords, syntax)
-- `/reference/language.md` → Grammar (all constructs)
-- `/examples/*.md` → `dsl/domain-lang/examples/` (example code)
-
-When grammar changes, update:
-
-1. Site documentation pages
-2. Code examples on the site
-3. Quick reference table
-
-## Quality checklist
-
-Before merging site changes:
-
-- [ ] All code examples use `dlang` syntax highlighting
-- [ ] Internal links work (no broken links)
-- [ ] Page appears in sidebar navigation
-- [ ] Follows page structure template
-- [ ] Tested locally with `npm run dev`
-- [ ] No hardcoded `/DomainLang/` paths (use `/` for root)
-
-## Common tasks
-
-### Add a new example page
-
-1. Create `/site/examples/new-example.md`
-2. Add to sidebar in `config.mts`
-3. Add link from `/site/examples/index.md`
-
-### Update syntax highlighting
-
-Edit `domainLangGrammar` in `/site/.vitepress/config.mts` to add new keywords.
-
-### Change brand colors
-
-Edit CSS variables in `/site/.vitepress/theme/style.css`.
-
-### Fix 404 errors after deploy
-
-Check that `base: '/'` is set in `config.mts` for custom domain deployment.
+Custom variables in `/site/.vitepress/theme/style.css`

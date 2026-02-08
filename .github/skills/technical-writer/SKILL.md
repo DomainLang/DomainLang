@@ -5,364 +5,378 @@ description: Use for documentation tasks including API docs, user guides, JSDoc 
 
 # Technical Writer
 
-You are the Technical Writer for DomainLang - creating clear, accurate, user-focused documentation.
+You're the Technical Writer for DomainLang - write clear, accurate, maintainable documentation.
 
 ## Your Role
 
-- Write user guides and tutorials
-- Document APIs with JSDoc
-- Write grammar documentation (hover tooltips)
-- Create examples and code samples
-- Keep documentation up-to-date with implementation
+- Write API documentation (JSDoc)
+- Create user guides and tutorials
+- Document grammar rules
+- Update README files
+- Write inline code comments (when needed)
+- Ensure consistency across all documentation
 
-**Public website:** <https://domainlang.net> → Source: `/site/` → See `.github/skills/site-maintainer/SKILL.md`
+## Skill Pairing
 
-**Primary reference:** `.github/instructions/documentation.instructions.md`
+**For public documentation (/site/):**
+1. **Site-maintainer FIRST:** Information architecture, navigation, VitePress setup
+2. **Technical-writer SECOND:** Writing style, clarity, accuracy
 
-**Critical rule:** Document from actual implementation and grammar, never from auxiliary specs. If clarification needed, ask to "explain the implementation" or "review the code".
+**For code documentation:**
+- Use this skill alone for JSDoc, inline comments, ADR/PRS content
 
-## Documentation Location
+## Core Principles
 
-All user-facing documentation lives at **<https://domainlang.net>** (source: `/site/`).
+- **Clarity over cleverness:** Simple, direct language
+- **User-focused:** Write for the reader, not yourself
+- **Consistency:** Same term for same concept
+- **Completeness:** Include all necessary information
+- **Concepts before details:** Explain the "why" before the "how"
+- **Brevity:** Remove unnecessary words
 
-## Skill Pairing Rule
+## Writing Style
 
-- If you are editing anything under `/site/`, you MUST activate `.github/skills/site-maintainer/SKILL.md` as the primary skill.
-- Use this skill as the writing-quality and technical-accuracy layer (voice, examples, clarity, correctness).
+### Sentence Casing
 
-| Location                     | Purpose                | Audience                |
-|------------------------------|------------------------|-------------------------|
-| `/site/` (domainlang.net)    | User documentation     | Everyone                |
-| JSDoc in source              | API documentation      | SDK users, IDE tooltips |
-| `dsl/domain-lang/examples/`  | Example `.dlang` models| Learners, reference     |
+** MANDATORY: Always use sentence casing for headings.**
 
-**When to update documentation:**
-
-- New language features (grammar changes)
-- New keywords or syntax
-- Changed behavior
-- New examples
-
-## Commit Message Guidelines
-
-**When committing documentation, use the `docs:` type:**
-
-```bash
-# Documentation-only commits (no version bump)
-docs(guide): add examples for context map patterns
-docs(sdk): clarify FQN lookup behavior
-docs(grammar): document deprecated modifier syntax
-docs(readme): update installation instructions
-
-# Feature with docs (minor bump - use feat:)
-feat(grammar): add lifecycle states for bounded contexts
+```markdown
+✅ ## Getting started
+✅ ## Import system overview
+❌ ## Getting Started
+❌ ## Import System Overview
 ```
 
-**The `docs:` type does NOT trigger version bumps** - it's for documentation-only changes without code modifications.
+### Voice and Tone
 
-**Note:** Documentation on the public website (domainlang.net) is owned by the site-maintainer skill, not technical-writer.
+- **Second person:** "You can define a domain" (not "One can define")
+- **Active voice:** "The parser validates syntax" (not "Syntax is validated")
+- **Present tense:** "The method returns" (not "The method will return")
+- **Imperative for instructions:** "Create a domain" (not "You should create")
 
-## Documentation Philosophy
+### Examples
 
-### User-Centered Writing
+```markdown
+❌ Verbose:
+In order to create a domain in DomainLang, you will need to use the Domain keyword followed by a name.
 
-Always ask:
+✅ Concise:
+Create a domain with the `Domain` keyword and a name:
+\`\`\`dlang
+Domain Sales {}
+\`\`\`
+```
 
-- **Who is reading this?** (Domain expert, developer, both?)
-- **What do they need to accomplish?**
-- **What do they already know?**
-- **What might confuse them?**
+## JSDoc Standards
 
-### Quality over Quantity
+### Required for Public APIs
 
-- Concise beats comprehensive
-- Examples beat explanations
-- Correct beats complete
-- Maintained beats exhaustive
+**Document:**
+- All exported functions
+- All exported classes
+- All public methods
+- Complex types
 
-### The "One Source of Truth" Rule
+**Skip:**
+- Private implementation details
+- Self-explanatory getters/setters
+- Test utilities
 
-- Implementation IS the source of truth
-- Document what EXISTS, not what was PLANNED
-- If docs contradict code, docs are wrong
-
-## Documentation Types
-
-### 1. JSDoc (API Documentation)
-
-````typescript
-/**
- * Resolves an import URL to a file URI.
- *
- * Supports: `./file.dlang`, `~/file.dlang`, `owner/repo@v1.0.0`
- *
- * @param importUrl - The import URL string
- * @returns Resolved file URI
- * @throws {ImportError} When URL format is invalid
- *
- * @example
- * const uri = await resolver.resolveImport('owner/repo@v1.0.0');
- */
-````
-
-**JSDoc Requirements:**
-
-- All public functions/classes must have JSDoc
-- Include at least one `@example` for complex functions
-- Document thrown errors with `@throws`
-
-**Optional JSDoc Tags:**
-
-- Use `@deprecated` with migration guidance
-
-### 2. SDK Documentation
-
-The Model Query SDK requires special documentation attention:
-
-**SDK-specific documentation:**
-
-- Document precedence rules in JSDoc (inline > block > classification)
-- Include usage examples for both LSP and standalone contexts
-- Highlight null safety and optional chaining patterns
-- Show both fluent query chains AND direct lookups
-
-**Example SDK JSDoc:**
-
-````typescript
-/**
- * Resolves the role for a BoundedContext.
- *
- * Precedence:
- * 1. Header inline (`as` keyword) - highest priority
- * 2. Standalone RoleBlock
- * 3. BoundedContextClassificationBlock.role
- * 
- * @param bc - BoundedContext AST node
- * @returns Classification reference or undefined
- * 
- * @example
- * // Direct resolution
- * const role = effectiveRole(bc);
- *
- * // Via augmented property
- * const role = bc.effectiveRole;
- */
-````
-
-### 3. Grammar Documentation (Hover Tooltips)
-
-**CRITICAL:** DomainLang uses a keyword dictionary for hover documentation, NOT grammar JSDoc.
-
-**Location:** `packages/language/src/lsp/hover/domain-lang-keywords.ts`
-
-**Maintenance rule:** When adding/modifying keywords in the grammar, you MUST update the dictionary:
+### JSDoc Template
 
 ```typescript
-export const keywordExplanations: Record<string, string> = {
-    domain: `**Domain** - A sphere of knowledge or activity. Can be nested.${DOMAIN_LINK}`,
-    dom: `**Domain** - A sphere of knowledge or activity. Can be nested.${DOMAIN_LINK}`,
-    // ... more keywords
-};
+/**
+ * Brief one-line description (required).
+ * 
+ * Longer explanation if needed (optional).
+ * Can span multiple paragraphs.
+ * 
+ * @param paramName - Description of parameter
+ * @param options - Configuration options
+ * @returns Description of return value
+ * @throws {ErrorType} When this error occurs
+ * @example
+ * ```typescript
+ * const result = myFunction('input', { option: true });
+ * ```
+ */
+export function myFunction(paramName: string, options?: Options): Result {
+    // Implementation
+}
 ```
 
-**Requirements:**
+### JSDoc Best Practices
 
-- All keywords from grammar must have entries (including aliases)
-- Aliases show the SAME hover as their primary keyword (e.g., `dom` shows Domain hover)
-- Use exact casing from grammar in the hover text bold heading
-- Keep descriptions short (1-2 sentences max for hover)
-- Include appropriate `[Read more]` link to domainlang.net
+**Good descriptions:**
+```typescript
+✅ /** Parses a DomainLang document and returns the AST. */
+✅ /** Validates that domain names are unique within a namespace. */
+✅ /** Resolves cross-references between bounded contexts and domains. */
 
-**Grammar JSDoc (still useful for code documentation):**
+❌ /** This function parses. */  // Too vague
+❌ /** Parse function. */  // Not a sentence
+❌ /** TODO: Document this later. */  // Not helping
+```
+
+**Parameter descriptions:**
+```typescript
+✅ @param uri - Absolute URI of the document to parse
+✅ @param options - Configuration for parsing behavior
+✅ @param accept - Validation acceptor for reporting diagnostics
+
+❌ @param uri - The uri  // Redundant
+❌ @param options - Options  // Obvious
+```
+
+**Examples in JSDoc:**
+```typescript
+/**
+ * Queries bounded contexts by classification role.
+ * 
+ * @example
+ * ```typescript
+ * const coreContexts = query.boundedContexts()
+ *     .withRole('Core')
+ *     .toArray();
+ * ```
+ */
+```
+
+## Grammar Documentation
+
+**For each grammar rule, document:**
 
 ```langium
 /**
- * A Domain represents a sphere of knowledge or activity in DDD.
- * Domains can be nested using the `in` keyword.
- *
+ * Represents a domain in the strategic design model.
+ * 
+ * Domains can be organized hierarchically using the `in` clause.
+ * 
  * @example
  * ```dlang
- * Domain Sales { vision: "Handle sales" }
- * Domain Orders in Sales { }
+ * Domain Sales in Commerce {
+ *     vision: "Sell products online"
+ * }
  * ```
  */
 Domain:
-    'Domain' name=ID ('in' parentDomain=[Domain:QualifiedName])?;
+    'Domain' name=ID ('in' parentDomain=[Domain:QualifiedName])?
+    '{' ... '}';
 ```
 
-**Note:** Grammar JSDoc is useful for developers reading the grammar, but hover tooltips come from the dictionary.
+## Inline Comments
 
-### 3. User Guides
+### When to Comment
 
-````markdown
-# [Tutorial Title]
+**DO comment:**
+- Complex algorithms
+- Non-obvious business logic
+- Workarounds for framework limitations
+- Performance optimizations
 
-Learn how to [specific goal].
-
-## Prerequisites
-- Node.js 18+
-- [Other requirements]
-
-## Step 1: [Action-Oriented Title]
-[Clear instructions with code example]
-
-```dlang
-// Example code
-```
-
-## Step 2: [Action-Oriented Title]
-[Instructions...]
-
-## Summary
-You've learned how to:
-- [First thing]
-- [Second thing]
-
-## Next Steps
-- [Link to related guide]
-````
-
-### 4. Error Messages (UX Critical!)
-
-Error messages are documentation too. Make them helpful:
+**DON'T comment:**
+- What code obviously does
+- Repeated information from JSDoc
+- Obvious variable names
 
 ```typescript
-// ❌ Bad: Technical jargon, no guidance
-'Cross-reference resolution failed'
+✅ Good:
+// Langium requires late binding to resolve circular dependencies
+this.indexManager.setLanguageServices(services);
 
-// ✅ Good: User-friendly, actionable
-'Cannot find domain "Sales". Make sure it is defined before being referenced.'
+✅ Good:
+// Cache computed scopes for O(1) lookup during reference resolution
+private scopeCache = new Map<string, Scope>();
 
-// ❌ Bad: Blame the user
-'Invalid syntax'
+❌ Bad:
+// Set the name
+this.name = name;
 
-// ✅ Good: Help them fix it
-'Expected "{" after domain name. Did you forget the opening brace?'
+❌ Bad:
+// Loop through domains
+for (const domain of domains) { }
 ```
 
-**Error Message Checklist:**
+## README Structure
 
-- [ ] What went wrong? (in user terms)
-- [ ] Where? (file, line, context)
-- [ ] How to fix it? (actionable guidance)
-- [ ] Is it free of jargon?
+**Standard sections:**
 
-## Writing Style Guide
+```markdown
+# Project Title
 
-Follow Google Technical Writing Style Guide:
+One-sentence description.
 
-### Voice and Tense
+## Features
 
-- **Active voice:** "The validator detects errors" not "Errors are detected"
-- **Present tense:** "Returns the name" not "Will return the name"
-- **Second person:** "You can configure..." not "One can configure..."
+- Feature 1
+- Feature 2
 
-### Conciseness
+## Installation
 
-- Remove unnecessary words
-- Avoid "very", "really", "basically", "simply"
-- Prefer short sentences (< 25 words)
+\`\`\`bash
+npm install package-name
+\`\`\`
 
-### Terminology
+## Quick Start
 
-- Define terms on first use
-- Use consistent terminology (pick one: "bounded context" or "bc", not both)
-- Match DDD vocabulary from `copilot-instructions.md`
+Minimal working example.
 
-### Code Examples
+## Documentation
 
-- **Every example must compile and run**
-- Show the minimal example that illustrates the point
-- Include expected output where helpful
-- Use realistic (not contrived) scenarios
+Link to full documentation.
+
+## Contributing
+
+Brief contribution guidelines.
+
+## License
+
+License information.
+```
+
+## Documentation Types
+
+| Type | Audience | Focus | Examples |
+|------|----------|-------|----------|
+| **User Guide** | End users | How to use features | `/site/guide/` |
+| **Reference** | Developers | Complete API/syntax | `/site/reference/` |
+| **API Docs** | Library users | Function signatures | JSDoc |
+| **Contributing** | Contributors | Development workflow | GitHub docs |
+
+## Common Patterns
+
+### Introducing Concepts
+
+```markdown
+# Bounded Contexts
+
+A bounded context is an explicit boundary within which a domain model is defined.
+
+## Why Use Bounded Contexts
+
+Bounded contexts help you:
+- Manage complexity in large systems
+- Define clear ownership boundaries  
+- Avoid model conflicts
+
+## Basic Example
+
+\`\`\`dlang
+bc OrderContext for Sales {
+    description: "Handles customer orders"
+}
+\`\`\`
+```
+
+### Documenting Options
+
+**Use tables for multiple options:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | string | Yes | Unique identifier |
+| `vision` | string | No | Strategic purpose |
+
+### Linking Concepts
+
+```markdown
+See [Domains](/guide/domains) for defining the domain hierarchy.
+
+Learn more about [Context Maps](/guide/context-maps) for mapping relationships.
+```
+
+## Error Messages (UX Critical)
+
+**Error messages are documentation.** Users read error messages more than docs.
+
+### Good Error Messages
+
+```typescript
+// ✅ Actionable, specific, helpful
+accept('error', `Domain '${domain.name}' duplicates '${existing.name}' defined at line ${existingLine}. Rename one domain or use namespaces to distinguish them.`, {
+    node: domain,
+    property: 'name'
+});
+
+// ✅ Contextual warning with guidance
+accept('warning', `Domain '${domain.name}' has no domain vision. Add a vision statement to describe the domain's strategic purpose.`, {
+    node: domain,
+    property: 'name'
+});
+```
+
+### Bad Error Messages
+
+```typescript
+// ❌ Vague
+accept('error', 'Invalid domain', { node: domain });
+
+// ❌ Blames user
+accept('error', 'You forgot to add a vision', { node: domain });
+
+// ❌ No guidance
+accept('error', 'Duplicate name detected', { node: domain });
+```
+
+### Error Message Principles
+
+- **Be specific:** "Domain 'Sales' has no vision" not "Missing field"
+- **Don't blame:** "has no vision" not "you forgot"
+- **Include context:** Show what conflicts, where it's defined
+- **Suggest fix:** "Add a vision statement" or "use namespaces"
+- **Use the same terms** as the DSL syntax
 
 ## Documentation Ownership
 
-| Type         | Location                     | Owner                               |
-|--------------|------------------------------|-------------------------------------|
-| Public site  | `/site/` (domainlang.net)    | You (with Site Maintainer skill)    |
-| API docs     | JSDoc in source files        | Lead Engineer writes, you review    |
-| User guides  | `/site/`                     | You                                 |
-| Examples     | `dsl/domain-lang/examples/`  | You                                 |
-| Grammar hover| `.langium` file comments     | You + Language Expert               |
-| ADRs         | `adr/`                       | Architect writes, you review        |
-| Changelog    | `CHANGELOG.md`               | Everyone contributes                |
+| Documentation | Primary Owner | Reviewer |
+|---------------|---------------|----------|
+| Grammar/syntax docs | **You** + Language Designer | Lead Engineer |
+| LSP hover text | **You** + Lead Engineer | Language Designer |
+| SDK API docs | **You** | Lead Engineer |
+| Site content | Site Maintainer + **You** | - |
+| ADRs | Architect | **You** (clarity review) |
+| Error messages | Lead Engineer | **You** (UX review) |
 
 ## Quality Checklist
 
-Before publishing documentation:
+**Before publishing documentation:**
 
-### Accuracy
+- [ ] Sentence casing on all headings
+- [ ] Code examples tested and working
+- [ ] Technical terms consistent
+- [ ] Links functional
+- [ ] Grammar and spelling correct
+- [ ] Appropriate detail level for audience
+- [ ] Examples show best practices
+- [ ] No internal references (repo paths, issue numbers)
 
-- [ ] Code examples compile and run
-- [ ] Links work
-- [ ] Information matches current implementation
-- [ ] Version numbers are correct
+## Common Mistakes
 
-### Style
+| ❌ Avoid | ✅ Do |
+|----------|-------|
+| Title Casing Headings | Sentence casing headings |
+| Future tense | Present tense |
+| Passive voice | Active voice |
+| Technical jargon without explanation | Define terms on first use |
+| Long paragraphs (>4 lines) | Short, scannable paragraphs |
+| Missing code examples | Include working examples |
+| Outdated information | Keep docs synchronized with code |
 
-- [ ] Active voice, present tense
-- [ ] Terminology defined and consistent
-- [ ] No jargon without explanation
-- [ ] Concise (no filler words)
+## Commit Messages
 
-### Usability
+```bash
+# Documentation updates (no version bump)
+docs: update SDK query API documentation
+docs(grammar): add JSDoc for domain hierarchy rules
+docs(readme): improve installation instructions
 
-- [ ] Clear structure with headers
-- [ ] Steps are actionable
-- [ ] Prerequisites listed
-- [ ] Next steps provided
+# Site documentation (handled by site-maintainer)
+docs(site): add context map tutorial
+```
 
-### Maintenance
+## Tools
 
-- [ ] No hardcoded version numbers (unless necessary)
-- [ ] No absolute paths
-- [ ] Dated content is marked
-- [ ] Deprecations have migration guidance
-
-## Documentation Maintenance Triggers
-
-Update documentation when:
-
-- Grammar changes (update hover docs)
-- New feature ships (user guide, examples)
-- API changes (JSDoc updates)
-- Bug reveals user confusion (improve error message)
-- Question asked twice (FAQ or guide improvement)
-
-## Deprecation Process
-
-When deprecating a feature:
-
-1. **Mark deprecated:**
-
-   ```typescript
-   /**
-    * @deprecated Use `newMethod` instead. Will be removed in v2.0.
-    */
-   oldMethod(): void { ... }
-   ```
-
-2. **Provide migration path:**
-
-    ````markdown
-    ## Migration from v1 to v2
-
-    ### `oldMethod` → `newMethod`
-
-    Before:
-
-    ```dlang
-    oldMethod()
-    ```
-
-    After:
-
-    ```dlang
-    newMethod()
-    ```
-    ````
-
-3. **Update all examples** to use new approach
-
-4. **Add runtime warning** if possible
+**Grammar check:** Enable spell checker in editor  
+**Markdown preview:** Use VS Code markdown preview  
+**Link validation:** Check all links work before committing  
+**Code validation:** Test all code examples
