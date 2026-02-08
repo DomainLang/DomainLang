@@ -80,7 +80,8 @@ npm test                  # Run tests
 1. **NEVER** commit to git without my explicit approval
 2. **ALWAYS** use conventional commit messages (feat:, fix:, chore:, docs:, etc.)
 3. **ALWAYS** divide large changes into smaller commits
-4. **ALWAYS** run tests before committing
+4. **ALWAYS** run lint and tests (including coverage) before committing
+5. **NEVER** commit code that doesn't build
 
 ### 📝 Conventional Commits & Release Process
 
@@ -210,7 +211,8 @@ release-please operates in two distinct phases:
 2. **ALWAYS** run `npm run langium:generate` after editing `.langium` files
 3. **ALWAYS** run `npm run build` to compile TypeScript
 4. **ALWAYS** add test cases for parsing changes
-5. **ALWAYS** update documentation for new keywords/constructs (see below)
+5. **ALWAYS** review and update LSP features (hover, completion, symbol provider, validation, etc.) affected by grammar changes
+6. **ALWAYS** update documentation for new keywords/constructs (see below)
 
 ### 📦 Type Organization
 
