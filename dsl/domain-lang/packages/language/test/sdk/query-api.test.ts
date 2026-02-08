@@ -62,21 +62,7 @@ describe('SDK Query API', () => {
             expect(bcs.map(bc => bc.name)).toEqual(expect.arrayContaining(['OrderContext', 'ShippingContext', 'PaymentContext']));
         });
         
-        test('returns BcQueryBuilder with chaining support', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-            
-            // Act
-            const builder = query.boundedContexts();
-            
-            // Assert
-            expect(typeof builder.where).toBe('function');
-            expect(typeof builder.withName).toBe('function');
-            expect(typeof builder.inDomain).toBe('function');
-        });
+        // BcQueryBuilder chaining covered by bc-query-builder.test.ts
     });
     
     describe('Query.teams()', () => {
@@ -224,32 +210,180 @@ describe('SDK Query API', () => {
     });
     
     describe('Query.fqn()', () => {
-        
+
         test('computes fully qualified name for top-level node', async () => {
             // Arrange
             const { query } = await loadModelFromText(`
                 Domain Sales { vision: "v" }
             `);
             const domain = [...query.domains()][0];
-            
+
             // Act
             const fqn = query.fqn(domain);
-            
+
             // Assert
             expect(fqn).toBe('Sales');
         });
-        
+
         test('returns empty string for nodes without name property', async () => {
             // Arrange
             const { query } = await loadModelFromText(`
                 Domain Sales { vision: "v" }
             `);
-            
-            // Act  
+
+            // Act
             const fqn = query.fqn({} as any);
-            
+
             // Assert
             expect(fqn).toBe('');
+        });
+    });
+
+    // ========================================================================
+    // RELATIONSHIPS
+    // ========================================================================
+
+    describe('Query.relationships()', () => {
+
+        test('returns relationships from context maps', async () => {
+            const { query } = await loadModelFromText(`
+                Domain Sales { vision: "v" }
+                bc OrderContext for Sales
+                bc PaymentContext for Sales
+                ContextMap SalesMap {
+                    contains OrderContext, PaymentContext
+                    [OHS] OrderContext -> [CF] PaymentContext : CustomerSupplier
+                }
+            `);
+            const rels = [...query.relationships()];
+            expect(rels).toHaveLength(1);
+            expect(rels[0].left.name).toBe('OrderContext');
+            expect(rels[0].right.name).toBe('PaymentContext');
+            expect(rels[0].arrow).toBe('->');
+            expect(rels[0].source).toBe('ContextMap');
+        });
+
+        test('returns relationships from bounded contexts using this', async () => {
+            const { query } = await loadModelFromText(`
+                Domain Sales { vision: "v" }
+                bc PaymentContext for Sales
+                bc OrderContext for Sales {
+                    relationships {
+                        [OHS] this -> [CF] PaymentContext : CustomerSupplier
+                    }
+                }
+            `);
+            const rels = [...query.relationships()];
+            expect(rels).toHaveLength(1);
+            expect(rels[0].left.name).toBe('OrderContext');
+            expect(rels[0].right.name).toBe('PaymentContext');
+            expect(rels[0].source).toBe('BoundedContext');
+        });
+
+        test('returns empty for model with no relationships', async () => {
+            const { query } = await loadModelFromText(`Domain Sales { vision: "v" }`);
+            expect([...query.relationships()]).toHaveLength(0);
+        });
+    });
+
+    // ========================================================================
+    // CONTEXT MAPS
+    // ========================================================================
+
+    describe('Query.contextMaps()', () => {
+
+        test('returns all context maps', async () => {
+            const { query } = await loadModelFromText(`
+                Domain Sales { vision: "v" }
+                bc A for Sales
+                bc B for Sales
+                ContextMap Map1 { contains A, B }
+                ContextMap Map2 { contains A }
+            `);
+            const maps = [...query.contextMaps()];
+            expect(maps).toHaveLength(2);
+            expect(maps.map(m => m.name)).toContain('Map1');
+            expect(maps.map(m => m.name)).toContain('Map2');
+        });
+
+        test('returns empty when no context maps', async () => {
+            const { query } = await loadModelFromText(`Domain Sales { vision: "v" }`);
+            expect([...query.contextMaps()]).toHaveLength(0);
+        });
+    });
+
+    // ========================================================================
+    // DOMAIN MAPS
+    // ========================================================================
+
+    describe('Query.domainMaps()', () => {
+
+        test('returns all domain maps', async () => {
+            const { query } = await loadModelFromText(`
+                Domain Sales { vision: "v" }
+                Domain Finance { vision: "v" }
+                DomainMap BusinessMap {
+                    contains Sales, Finance
+                }
+            `);
+            const maps = [...query.domainMaps()];
+            expect(maps).toHaveLength(1);
+            expect(maps[0].name).toBe('BusinessMap');
+        });
+
+        test('returns empty when no domain maps', async () => {
+            const { query } = await loadModelFromText(`Domain Sales { vision: "v" }`);
+            expect([...query.domainMaps()]).toHaveLength(0);
+        });
+    });
+
+    // ========================================================================
+    // NAMESPACES
+    // ========================================================================
+
+    describe('Query.namespaces()', () => {
+
+        test('returns all namespaces including nested', async () => {
+            const { query } = await loadModelFromText(`
+                Namespace com.example {
+                    Domain Sales { vision: "v" }
+                    Namespace inner {
+                        Domain Finance { vision: "v" }
+                    }
+                }
+            `);
+            const ns = [...query.namespaces()];
+            expect(ns).toHaveLength(2);
+            expect(ns.map(n => n.name)).toContain('com.example');
+            expect(ns.map(n => n.name)).toContain('inner');
+        });
+
+        test('returns empty when no namespaces', async () => {
+            const { query } = await loadModelFromText(`Domain Sales { vision: "v" }`);
+            expect([...query.namespaces()]).toHaveLength(0);
+        });
+    });
+
+    // ========================================================================
+    // BY FQN LOOKUP
+    // ========================================================================
+
+    describe('Query.byFqn()', () => {
+
+        test('finds element by fully qualified name', async () => {
+            const { query } = await loadModelFromText(`
+                Namespace com.example {
+                    Domain Sales { vision: "v" }
+                }
+            `);
+            const domain = query.byFqn('com.example.Sales');
+            expect(domain).toBeDefined();
+            expect(domain?.name).toBe('Sales');
+        });
+
+        test('returns undefined for non-existent FQN', async () => {
+            const { query } = await loadModelFromText(`Domain Sales { vision: "v" }`);
+            expect(query.byFqn('does.not.exist')).toBeUndefined();
         });
     });
 });

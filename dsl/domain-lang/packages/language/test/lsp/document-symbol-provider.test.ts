@@ -1,8 +1,17 @@
 /**
  * Tests for DomainLang DocumentSymbolProvider and NodeKindProvider.
  *
- * Verifies that the Outline view, breadcrumbs, and Go to Symbol present
- * DDD-appropriate icons (SymbolKind) and detail text for each AST type.
+ * Smoke (~20%):
+ * - All major AST types map to correct SymbolKinds
+ * - Basic detail text rendering
+ *
+ * Edge/error (~80%):
+ * - Empty document yields no symbols
+ * - Namespace nesting produces correct parent-child hierarchy
+ * - BC without collections has empty children array
+ * - BC with multiple collection types creates all synthetic folders with correct item counts
+ * - Deeply nested namespaces produce correct symbol tree
+ * - Domain without body still produces a symbol
  */
 
 import { describe, test, beforeAll, expect } from 'vitest';
@@ -52,260 +61,251 @@ function expectSymbol(symbols: DocumentSymbol[], name: string): DocumentSymbol {
 
 describe('DocumentSymbolProvider', () => {
 
-    describe('Symbol kinds', () => {
-        test('Domain is Namespace', async () => {
-            const symbols = await getSymbols(s`Domain Sales { vision: "Sales" }`);
-            const sym = expectSymbol(symbols, 'Sales');
-            expect(sym.kind).toBe(SymbolKind.Namespace);
-        });
-
-        test('BoundedContext is Package', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                bc OrderContext for Sales
-            `);
-            const sym = expectSymbol(symbols, 'OrderContext');
-            expect(sym.kind).toBe(SymbolKind.Package);
-        });
-
-        test('Team is Interface', async () => {
-            const symbols = await getSymbols(s`Team SalesTeam`);
-            const sym = expectSymbol(symbols, 'SalesTeam');
-            expect(sym.kind).toBe(SymbolKind.Interface);
-        });
-
-        test('Classification is Enum', async () => {
-            const symbols = await getSymbols(s`Classification Core`);
-            const sym = expectSymbol(symbols, 'Core');
-            expect(sym.kind).toBe(SymbolKind.Enum);
-        });
-
-        test('Metadata is Enum', async () => {
-            const symbols = await getSymbols(s`Metadata Language`);
-            const sym = expectSymbol(symbols, 'Language');
-            expect(sym.kind).toBe(SymbolKind.Enum);
-        });
-
-        test('ContextMap is Package', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
+    // ==========================================
+    // SMOKE: consolidated symbol kind verification
+    // ==========================================
+    test('all major AST types map to correct SymbolKinds', async () => {
+        const symbols = await getSymbols(s`
+            Namespace acme.sales {
+                Domain Sales { vision: "Sales" }
+                Team SalesTeam
+                Classification Core
+                Metadata Language
                 bc OrderContext for Sales
                 ContextMap SalesMap {
                     contains OrderContext
                 }
-            `);
-            const sym = expectSymbol(symbols, 'SalesMap');
-            expect(sym.kind).toBe(SymbolKind.Package);
-        });
+            }
+            Domain Billing {}
+            DomainMap Overview {
+                contains Billing
+            }
+        `);
 
-        test('DomainMap is Package', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                DomainMap Overview {
-                    contains Sales
-                }
-            `);
-            const sym = expectSymbol(symbols, 'Overview');
-            expect(sym.kind).toBe(SymbolKind.Package);
-        });
-
-        test('Namespace is Namespace', async () => {
-            const symbols = await getSymbols(s`Namespace acme.sales { Domain Sales {} }`);
-            const sym = expectSymbol(symbols, 'acme.sales');
-            expect(sym.kind).toBe(SymbolKind.Namespace);
-        });
+        expect(expectSymbol(symbols, 'acme.sales').kind).toBe(SymbolKind.Namespace);
+        expect(expectSymbol(symbols, 'Sales').kind).toBe(SymbolKind.Namespace);
+        expect(expectSymbol(symbols, 'SalesTeam').kind).toBe(SymbolKind.Interface);
+        expect(expectSymbol(symbols, 'Core').kind).toBe(SymbolKind.Enum);
+        expect(expectSymbol(symbols, 'Language').kind).toBe(SymbolKind.Enum);
+        expect(expectSymbol(symbols, 'OrderContext').kind).toBe(SymbolKind.Package);
+        expect(expectSymbol(symbols, 'SalesMap').kind).toBe(SymbolKind.Package);
+        expect(expectSymbol(symbols, 'Overview').kind).toBe(SymbolKind.Package);
     });
 
-    describe('Detail text', () => {
-        test('Domain shows vision as detail', async () => {
-            const symbols = await getSymbols(s`Domain Sales { vision: "Handle all sales" }`);
-            const sym = expectSymbol(symbols, 'Sales');
-            expect(sym.detail).toBe('Domain — Handle all sales');
-        });
+    // ==========================================
+    // SMOKE: detail text rendering
+    // ==========================================
+    test('detail text includes vision, description, and counts', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales { vision: "Handle all sales" }
+            Domain Billing { description: "Billing domain" }
+            bc OrderContext for Sales { description: "Order processing" }
+            bc PaymentContext for Sales
+            ContextMap SalesMap {
+                contains OrderContext, PaymentContext
+            }
+            DomainMap Overview {
+                contains Sales, Billing
+            }
+        `);
 
-        test('Domain shows description when no vision', async () => {
-            const symbols = await getSymbols(s`Domain Sales { description: "Sales domain" }`);
-            const sym = expectSymbol(symbols, 'Sales');
-            expect(sym.detail).toBe('Domain — Sales domain');
-        });
-
-        test('BoundedContext shows domain and description', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                bc OrderContext for Sales { description: "Order processing" }
-            `);
-            const sym = expectSymbol(symbols, 'OrderContext');
-            expect(sym.detail).toContain('Sales');
-            expect(sym.detail).toContain('Order processing');
-        });
-
-        test('ContextMap shows context count', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                bc OrderContext for Sales
-                bc PaymentContext for Sales
-                ContextMap SalesMap {
-                    contains OrderContext, PaymentContext
-                }
-            `);
-            const sym = expectSymbol(symbols, 'SalesMap');
-            expect(sym.detail).toBe('2 contexts');
-        });
-
-        test('DomainMap shows domain count', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                Domain Billing {}
-                DomainMap Overview {
-                    contains Sales, Billing
-                }
-            `);
-            const sym = expectSymbol(symbols, 'Overview');
-            expect(sym.detail).toBe('2 domains');
-        });
+        // Domain shows vision as detail
+        expect(expectSymbol(symbols, 'Sales').detail).toBe('Domain \u2014 Handle all sales');
+        // Domain shows description when no vision
+        expect(expectSymbol(symbols, 'Billing').detail).toBe('Domain \u2014 Billing domain');
+        // BC includes domain and description
+        const bcDetail = expectSymbol(symbols, 'OrderContext').detail;
+        expect(bcDetail).toContain('Sales');
+        expect(bcDetail).toContain('Order processing');
+        // ContextMap shows context count
+        expect(expectSymbol(symbols, 'SalesMap').detail).toBe('2 contexts');
+        // DomainMap shows domain count
+        expect(expectSymbol(symbols, 'Overview').detail).toBe('2 domains');
     });
 
-    describe('Nesting', () => {
-        test('Namespace contains nested symbols as children', async () => {
-            const symbols = await getSymbols(s`Namespace acme.sales { Domain Sales { vision: "Sales" } Team SalesTeam }`);
-            const ns = expectSymbol(symbols, 'acme.sales');
-            expect(ns.children).toBeDefined();
-            const children = ns.children as DocumentSymbol[];
-            expect(children.length).toBeGreaterThanOrEqual(2);
+    // ==========================================
+    // EDGE: empty document returns no symbols
+    // ==========================================
+    test('empty document yields no symbols', async () => {
+        const symbols = await getSymbols('');
+        expect(symbols).toHaveLength(0);
+    });
 
-            const domain = expectSymbol(children, 'Sales');
-            expect(domain.kind).toBe(SymbolKind.Namespace);
+    // ==========================================
+    // EDGE: domain without body still produces a symbol
+    // ==========================================
+    test('minimal domain without body still produces a symbol with Namespace kind', async () => {
+        const symbols = await getSymbols(s`Domain Sales {}`);
+        const sym = expectSymbol(symbols, 'Sales');
+        expect(sym.kind).toBe(SymbolKind.Namespace);
+        // Range should be valid (start <= end)
+        expect(sym.range.start.line).toBeLessThanOrEqual(sym.range.end.line);
+    });
 
-            const team = expectSymbol(children, 'SalesTeam');
-            expect(team.kind).toBe(SymbolKind.Interface);
-        });
+    // ==========================================
+    // EDGE: namespace nesting hierarchy
+    // ==========================================
+    test('Namespace children are nested under parent, not at root level', async () => {
+        const symbols = await getSymbols(s`Namespace acme.sales { Domain Sales { vision: "Sales" } Team SalesTeam }`);
+        const ns = expectSymbol(symbols, 'acme.sales');
+        const children = ns.children!;
+        expect(children.length).toBeGreaterThanOrEqual(2);
 
-        test('BoundedContext groups decisions under synthetic folder', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                Classification Core
-                bc OrderContext for Sales {
-                    decisions {
-                        Decision UseEventSourcing: "Use event sourcing",
-                        Policy RefundPolicy: "Refund within 30 days"
-                    }
+        // Children should be found under the namespace, not at root
+        const domain = expectSymbol(children, 'Sales');
+        expect(domain.kind).toBe(SymbolKind.Namespace);
+        const team = expectSymbol(children, 'SalesTeam');
+        expect(team.kind).toBe(SymbolKind.Interface);
+
+        // Root should not directly contain Sales or SalesTeam (they're nested)
+        const rootSales = symbols.find(s => s.name === 'Sales');
+        expect(rootSales).toBeUndefined();
+    });
+
+    // ==========================================
+    // EDGE: BC synthetic folders with correct item counts and kinds
+    // ==========================================
+    test('BC decisions folder has correct kind, item count, and child count', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            Classification Core
+            bc OrderContext for Sales {
+                decisions {
+                    Decision UseEventSourcing: "Use event sourcing",
+                    Policy RefundPolicy: "Refund within 30 days"
                 }
-            `);
-            const bc = expectSymbol(symbols, 'OrderContext');
-            expect(bc.children).toBeDefined();
-            const children = bc.children as DocumentSymbol[];
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        const children = bc.children!;
+        const decisionsFolder = expectSymbol(children, 'decisions');
+        expect(decisionsFolder.kind).toBe(SymbolKind.Object);
+        expect(decisionsFolder.detail).toBe('2 items');
+        expect(decisionsFolder.children).toHaveLength(2);
+    });
 
-            const decisionsFolder = expectSymbol(children, 'decisions');
-            expect(decisionsFolder.kind).toBe(SymbolKind.Object);
-            expect(decisionsFolder.detail).toBe('2 items');
-            expect(decisionsFolder.children).toBeDefined();
-            expect(decisionsFolder.children?.length).toBe(2);
-        });
-
-        test('BoundedContext groups terminology under synthetic folder', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                bc OrderContext for Sales {
-                    terminology {
-                        Term Order: "A customer purchase",
-                        Term LineItem: "Product in order"
-                    }
+    test('BC terminology folder has correct kind and item count', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc OrderContext for Sales {
+                terminology {
+                    Term Order: "A customer purchase",
+                    Term LineItem: "Product in order"
                 }
-            `);
-            const bc = expectSymbol(symbols, 'OrderContext');
-            expect(bc.children).toBeDefined();
-            const children = bc.children as DocumentSymbol[];
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        const termFolder = expectSymbol(bc.children!, 'terminology');
+        expect(termFolder.kind).toBe(SymbolKind.Object);
+        expect(termFolder.detail).toBe('2 items');
+        expect(termFolder.children).toHaveLength(2);
+    });
 
-            const termFolder = expectSymbol(children, 'terminology');
-            expect(termFolder.kind).toBe(SymbolKind.Object);
-            expect(termFolder.detail).toBe('2 items');
-            expect(termFolder.children).toBeDefined();
-            expect(termFolder.children?.length).toBe(2);
-        });
-
-        test('BoundedContext groups relationships under synthetic folder', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                bc OrderContext for Sales {
-                    relationships {
-                        [OHS] this -> [CF] PaymentContext,
-                        this -> ShippingContext
-                    }
+    test('BC relationships folder has correct kind and item count', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc OrderContext for Sales {
+                relationships {
+                    [OHS] this -> [CF] PaymentContext,
+                    this -> ShippingContext
                 }
-                bc PaymentContext for Sales
-                bc ShippingContext for Sales
-            `);
-            const bc = expectSymbol(symbols, 'OrderContext');
-            expect(bc.children).toBeDefined();
-            const children = bc.children as DocumentSymbol[];
+            }
+            bc PaymentContext for Sales
+            bc ShippingContext for Sales
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        const relFolder = expectSymbol(bc.children!, 'relationships');
+        expect(relFolder.kind).toBe(SymbolKind.Object);
+        expect(relFolder.detail).toBe('2 items');
+        expect(relFolder.children).toHaveLength(2);
+    });
 
-            const relFolder = expectSymbol(children, 'relationships');
-            expect(relFolder.kind).toBe(SymbolKind.Object);
-            expect(relFolder.detail).toBe('2 items');
-            expect(relFolder.children).toBeDefined();
-            expect(relFolder.children?.length).toBe(2);
-        });
-
-        test('BoundedContext groups metadata under synthetic folder', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                Metadata Language
-                Metadata Framework
-                bc OrderContext for Sales {
-                    metadata {
-                        Language: "TypeScript",
-                        Framework: "Node.js"
-                    }
+    test('BC metadata folder has correct kind and item count', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            Metadata Language
+            Metadata Framework
+            bc OrderContext for Sales {
+                metadata {
+                    Language: "TypeScript",
+                    Framework: "Node.js"
                 }
-            `);
-            const bc = expectSymbol(symbols, 'OrderContext');
-            expect(bc.children).toBeDefined();
-            const children = bc.children as DocumentSymbol[];
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        const metaFolder = expectSymbol(bc.children!, 'metadata');
+        expect(metaFolder.kind).toBe(SymbolKind.Object);
+        expect(metaFolder.detail).toBe('2 items');
+        expect(metaFolder.children).toHaveLength(2);
+    });
 
-            const metaFolder = expectSymbol(children, 'metadata');
-            expect(metaFolder.kind).toBe(SymbolKind.Object);
-            expect(metaFolder.detail).toBe('2 items');
-            expect(metaFolder.children).toBeDefined();
-            expect(metaFolder.children?.length).toBe(2);
-        });
-
-        test('BoundedContext with multiple collection types creates all folders', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                Metadata Language
-                Classification Core
-                bc OrderContext for Sales {
-                    decisions {
-                        Decision UseCQRS: "Use CQRS"
-                    }
-                    terminology {
-                        Term Order: "Purchase"
-                    }
-                    metadata {
-                        Language: "Java"
-                    }
+    // ==========================================
+    // EDGE: multiple collection types create all folders
+    // ==========================================
+    test('BC with all collection types creates decisions, terminology, and metadata folders', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            Metadata Language
+            Classification Core
+            bc OrderContext for Sales {
+                decisions {
+                    Decision UseCQRS: "Use CQRS"
                 }
-            `);
-            const bc = expectSymbol(symbols, 'OrderContext');
-            expect(bc.children).toBeDefined();
-            const children = bc.children as DocumentSymbol[];
+                terminology {
+                    Term Order: "Purchase"
+                }
+                metadata {
+                    Language: "Java"
+                }
+            }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        const children = bc.children!;
 
-            // Should have 3 folders
-            expect(expectSymbol(children, 'decisions')).toBeDefined();
-            expect(expectSymbol(children, 'terminology')).toBeDefined();
-            expect(expectSymbol(children, 'metadata')).toBeDefined();
-        });
+        // All three folders should exist with kind Object and 1 item each
+        const decisionsFolder = expectSymbol(children, 'decisions');
+        expect(decisionsFolder.kind).toBe(SymbolKind.Object);
+        expect(decisionsFolder.detail).toBe('1 items');
 
-        test('BoundedContext without collections shows no folders', async () => {
-            const symbols = await getSymbols(s`
-                Domain Sales {}
-                bc OrderContext for Sales { description: "Simple BC" }
-            `);
-            const bc = expectSymbol(symbols, 'OrderContext');
-            
-            // Should have no children or empty children
-            const childCount = bc.children?.length ?? 0;
-            expect(childCount).toBe(0);
-        });
+        const termFolder = expectSymbol(children, 'terminology');
+        expect(termFolder.kind).toBe(SymbolKind.Object);
+        expect(termFolder.detail).toBe('1 items');
+
+        const metaFolder = expectSymbol(children, 'metadata');
+        expect(metaFolder.kind).toBe(SymbolKind.Object);
+        expect(metaFolder.detail).toBe('1 items');
+    });
+
+    // ==========================================
+    // EDGE: BC without collections has no children
+    // ==========================================
+    test('BC without any collections shows no children', async () => {
+        const symbols = await getSymbols(s`
+            Domain Sales {}
+            bc OrderContext for Sales { description: "Simple BC" }
+        `);
+        const bc = expectSymbol(symbols, 'OrderContext');
+        const childCount = bc.children?.length ?? 0;
+        expect(childCount).toBe(0);
+    });
+
+    // ==========================================
+    // EDGE: deeply nested namespace hierarchy
+    // ==========================================
+    test('deeply nested namespaces produce correctly nested symbol tree', async () => {
+        const symbols = await getSymbols(s`
+            Namespace com {
+                Namespace company {
+                    Domain Sales { vision: "Nested deep" }
+                }
+            }
+        `);
+        const com = expectSymbol(symbols, 'com');
+        expect(com.kind).toBe(SymbolKind.Namespace);
+        const company = expectSymbol(com.children!, 'company');
+        expect(company.kind).toBe(SymbolKind.Namespace);
+        const sales = expectSymbol(company.children!, 'Sales');
+        expect(sales.kind).toBe(SymbolKind.Namespace);
+        expect(sales.detail).toBe('Domain \u2014 Nested deep');
     });
 });

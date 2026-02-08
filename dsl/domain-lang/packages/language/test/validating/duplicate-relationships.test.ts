@@ -1,6 +1,6 @@
 /**
  * Tests for duplicate relationship validation in context maps.
- * 
+ *
  * Verifies that identical relationships within a context map
  * produce warnings, while distinct relationships are accepted.
  */
@@ -17,7 +17,6 @@ beforeAll(() => {
 
 describe('Duplicate Relationship Validation', () => {
     test('warns on duplicate relationship in context map', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -30,60 +29,29 @@ describe('Duplicate Relationship Validation', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
 
-        // Assert
         const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
-        expect(warnings.some(w => w.message.includes('Duplicate relationship'))).toBe(true);
+        const duplicateWarnings = warnings.filter(w => w.message.includes('Duplicate relationship'));
+        expect(duplicateWarnings.length).toBeGreaterThanOrEqual(1);
     });
 
-    test('accepts distinct relationships between same contexts', async () => {
-        // Arrange - different arrow directions are distinct
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-
-            ContextMap ECommerceMap {
-                contains OrderContext, PaymentContext
+    test.each([
+        {
+            scenario: 'different directions',
+            relationships: s`
                 [OHS] OrderContext -> [CF] PaymentContext
                 OrderContext <-> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert - no duplicate warnings
-        const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
-        expect(warnings.some(w => w.message.includes('Duplicate relationship'))).toBe(false);
-    });
-
-    test('accepts different integration patterns as distinct', async () => {
-        // Arrange - same endpoints but different patterns
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-
-            ContextMap ECommerceMap {
-                contains OrderContext, PaymentContext
+            `,
+        },
+        {
+            scenario: 'different integration patterns',
+            relationships: s`
                 [OHS] OrderContext -> [CF] PaymentContext
                 [PL] OrderContext -> [ACL] PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert - no duplicate warnings
-        const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
-        expect(warnings.some(w => w.message.includes('Duplicate relationship'))).toBe(false);
-    });
-
-    test('no warning with single relationship', async () => {
-        // Arrange
+            `,
+        },
+    ])('accepts distinct relationships ($scenario)', async ({ relationships }) => {
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -91,15 +59,36 @@ describe('Duplicate Relationship Validation', () => {
 
             ContextMap ECommerceMap {
                 contains OrderContext, PaymentContext
-                [OHS] OrderContext -> [CF] PaymentContext
+                ${relationships}
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
 
-        // Assert
         const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
-        expect(warnings.some(w => w.message.includes('Duplicate relationship'))).toBe(false);
+        const duplicateWarnings = warnings.filter(w => w.message.includes('Duplicate relationship'));
+        expect(duplicateWarnings).toHaveLength(0);
+    });
+
+    test('duplicate warning message includes context names', async () => {
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales
+            bc PaymentContext for Sales
+
+            ContextMap ECommerceMap {
+                contains OrderContext, PaymentContext
+                OrderContext -> PaymentContext
+                OrderContext -> PaymentContext
+            }
+        `;
+
+        const document = await testServices.parse(input);
+
+        const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
+        const duplicateWarning = warnings.find(w => w.message.includes('Duplicate relationship'));
+        expect(duplicateWarning).not.toBeUndefined();
+        expect(duplicateWarning!.message).toContain('OrderContext');
+        expect(duplicateWarning!.message).toContain('PaymentContext');
     });
 });

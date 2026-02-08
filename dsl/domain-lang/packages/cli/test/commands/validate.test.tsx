@@ -5,10 +5,9 @@
  * @module commands/validate.test
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Text } from 'ink';
 import { render } from '../../src/test-utils/render.js';
 import { Validate } from '../../src/commands/validate.js';
-import type { CommandContext, ValidationResult } from '../../src/commands/types.js';
+import type { CommandContext } from '../../src/commands/types.js';
 
 // Mock Langium services
 vi.mock('@domainlang/language', () => ({
@@ -91,76 +90,5 @@ describe('Validate command', () => {
             // Assert - component renders without error
             expect(lastFrame()).toBeDefined();
         });
-    });
-});
-
-describe('Validate result display', () => {
-    /**
-     * Component for testing successful validation display.
-     * This bypasses the async validation and directly renders results.
-     */
-    const SuccessResultDisplay: React.FC = () => {
-        const result: ValidationResult = {
-            valid: true,
-            fileCount: 1,
-            domainCount: 2,
-            bcCount: 3,
-            errors: [],
-            warnings: [],
-        };
-
-        return (
-            <Text>
-                Model validated: {result.domainCount} domains, {result.bcCount} BCs
-            </Text>
-        );
-    };
-
-    const ErrorResultDisplay: React.FC = () => {
-        const result: ValidationResult = {
-            valid: false,
-            fileCount: 1,
-            domainCount: 1,
-            bcCount: 1,
-            errors: [
-                {
-                    code: 'E001',
-                    message: 'Missing domain vision',
-                    file: 'test.dlang',
-                    line: 5,
-                    column: 10,
-                },
-            ],
-            warnings: [
-                {
-                    code: 'W001',
-                    message: 'Consider adding description',
-                    file: 'test.dlang',
-                    line: 10,
-                },
-            ],
-        };
-
-        return (
-            <Text>
-                Validation failed: {result.errors.length} errors, {result.warnings.length} warnings
-            </Text>
-        );
-    };
-
-    it('renders success display snapshot', () => {
-        // Act
-        const { lastFrame } = render(<SuccessResultDisplay />);
-
-        // Assert
-        expect(lastFrame()).toMatchSnapshot();
-    });
-
-    it('renders error display snapshot', () => {
-        // Act
-        const { lastFrame } = render(<ErrorResultDisplay />);
-
-        // Assert
-        expect(lastFrame()).toMatchSnapshot();
     });
 });

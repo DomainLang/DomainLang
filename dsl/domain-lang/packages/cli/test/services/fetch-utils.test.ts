@@ -314,68 +314,29 @@ describe('fetchWithRetry', () => {
         expect(response.status).toBe(200);
     });
 
-    test('retries on network error ECONNRESET', async () => {
-        // Arrange - Simulate connection reset error
-        const networkError = new Error('fetch failed: ECONNRESET');
-        const successResponse = new Response('{"status": "ok"}', {
-            status: 200,
-            statusText: 'OK',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch')
-            .mockRejectedValueOnce(networkError)
-            .mockResolvedValueOnce(successResponse);
+    test.each(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'])(
+        'retries on network error %s',
+        async (errorCode) => {
+            // Arrange - Simulate network error
+            const networkError = new Error(`fetch failed: ${errorCode}`);
+            const successResponse = new Response('{"status": "ok"}', {
+                status: 200,
+                statusText: 'OK',
+            });
+            const fetchSpy = vi.spyOn(global, 'fetch')
+                .mockRejectedValueOnce(networkError)
+                .mockResolvedValueOnce(successResponse);
 
-        // Act - Execute fetch with retry
-        const responsePromise = fetchWithRetry('https://api.example.com/data');
-        await vi.advanceTimersByTimeAsync(1500);
-        const response = await responsePromise;
+            // Act - Execute fetch with retry
+            const responsePromise = fetchWithRetry('https://api.example.com/data');
+            await vi.advanceTimersByTimeAsync(1500);
+            const response = await responsePromise;
 
-        // Assert - Verify retry on network error
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-        expect(response.status).toBe(200);
-    });
-
-    test('retries on network error ETIMEDOUT', async () => {
-        // Arrange - Simulate timeout error
-        const timeoutError = new Error('fetch failed: ETIMEDOUT');
-        const successResponse = new Response('{"status": "ok"}', {
-            status: 200,
-            statusText: 'OK',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch')
-            .mockRejectedValueOnce(timeoutError)
-            .mockResolvedValueOnce(successResponse);
-
-        // Act - Execute fetch with retry
-        const responsePromise = fetchWithRetry('https://api.example.com/data');
-        await vi.advanceTimersByTimeAsync(1500);
-        const response = await responsePromise;
-
-        // Assert - Verify retry on timeout
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-        expect(response.status).toBe(200);
-    });
-
-    test('retries on network error ENOTFOUND', async () => {
-        // Arrange - Simulate DNS resolution error
-        const dnsError = new Error('fetch failed: ENOTFOUND');
-        const successResponse = new Response('{"status": "ok"}', {
-            status: 200,
-            statusText: 'OK',
-        });
-        const fetchSpy = vi.spyOn(global, 'fetch')
-            .mockRejectedValueOnce(dnsError)
-            .mockResolvedValueOnce(successResponse);
-
-        // Act - Execute fetch with retry
-        const responsePromise = fetchWithRetry('https://api.example.com/data');
-        await vi.advanceTimersByTimeAsync(1500);
-        const response = await responsePromise;
-
-        // Assert - Verify retry on DNS error
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-        expect(response.status).toBe(200);
-    });
+            // Assert - Verify retry on network error
+            expect(fetchSpy).toHaveBeenCalledTimes(2);
+            expect(response.status).toBe(200);
+        },
+    );
 
     test('does not retry on non-network error', async () => {
         // Arrange - Non-retryable error

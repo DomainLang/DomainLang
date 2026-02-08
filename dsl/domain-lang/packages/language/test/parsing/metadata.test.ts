@@ -1,51 +1,56 @@
 /**
  * Metadata Parsing and Validation Tests
- * 
+ *
  * This test suite validates:
  * - Metadata definition and parsing
- * - Metadata block syntax
+ * - Metadata block syntax with assignment operators
  * - Metadata key references
  * - Validation of undefined metadata keys
- * - IDE support (hover, completion)
+ * - Coexistence with other BC documentation blocks
  */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
 import {
     isBoundedContext,
     isMetadata,
 } from '../../src/generated/ast.js';
 
-describe('Metadata Parsing', () => {
-    let testServices: TestServices;
+let testServices: TestServices;
 
-    beforeAll(() => {
-        testServices = setupTestSuite();
-    });
+beforeAll(() => {
+    testServices = setupTestSuite();
+});
 
-    test('should parse Metadata definition', async () => {
-        // Arrange
+// ============================================================================
+// METADATA DEFINITION PARSING
+// ============================================================================
+
+describe('Metadata Definition Parsing', () => {
+    test('should parse Metadata definitions with correct names', async () => {
         const input = s`
             Metadata Language
             Metadata Framework
         `;
 
-        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const metadatas = model.children.filter((c) => isMetadata(c));
+        const metadatas = document.parseResult.value.children.filter(isMetadata);
 
-        // Assert
         expect(metadatas).toHaveLength(2);
         expect(metadatas[0]!.name).toBe('Language');
         expect(metadatas[1]!.name).toBe('Framework');
     });
+});
 
-    test('should parse metadata block in BoundedContext', async () => {
-        // Arrange
+// ============================================================================
+// METADATA BLOCK IN BOUNDED CONTEXT
+// ============================================================================
+
+describe('Metadata Block in BoundedContext', () => {
+    test('should parse metadata entries with all assignment operators', async () => {
         const input = s`
             Metadata Language
             Metadata Framework
@@ -61,20 +66,23 @@ describe('Metadata Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
-        // Assert
-        expect(bc).toBeDefined();
-        const entries = bc!.metadata ?? [];
+        expect(bc.description).toBe('Order management');
+        const entries = bc.metadata;
         expect(entries).toHaveLength(3);
+
+        expect(entries[0]?.key.ref?.name).toBe('Language');
+        expect(entries[0]?.value).toBe('TypeScript');
+        expect(entries[1]?.key.ref?.name).toBe('Framework');
+        expect(entries[1]?.value).toBe('NestJS');
+        expect(entries[2]?.key.ref?.name).toBe('Database');
+        expect(entries[2]?.value).toBe('PostgreSQL');
     });
 
     test('should parse metadata block with alternative meta keyword', async () => {
-        // Arrange
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -85,55 +93,17 @@ describe('Metadata Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
-        const entries = bc!.metadata ?? [];
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+        const entries = bc.metadata;
 
-        // Assert
         expect(entries).toHaveLength(1);
+        expect(entries[0]?.key.ref?.name).toBe('Language');
         expect(entries[0]?.value).toBe('Java');
     });
 
-    test('should parse multiple metadata entries', async () => {
-        // Arrange
-        const input = s`
-            Metadata Language
-            Metadata Framework
-            Metadata Database
-            Metadata MessageBus
-            Domain Sales {}
-            bc OrderManagement for Sales {
-                description: "Manages customer orders"
-                metadata {
-                    Language: "TypeScript"
-                    Framework: "NestJS"
-                    Database: "PostgreSQL"
-                    MessageBus: "RabbitMQ"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
-        const entries = bc!.metadata ?? [];
-
-        // Assert
-        expect(entries).toHaveLength(4);
-
-        expect(entries[0]?.key.ref?.name).toBe('Language');
-        expect(entries[0]?.value).toBe('TypeScript');
-        expect(entries[2]?.key.ref?.name).toBe('Database');
-        expect(entries[2]?.value).toBe('PostgreSQL');
-    });
-
     test('should allow empty metadata block', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
@@ -141,19 +111,19 @@ describe('Metadata Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
-        const entries = bc!.metadata ?? [];
-
-        // Assert
-        expect(entries).toHaveLength(0);
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+        expect(bc.metadata).toHaveLength(0);
     });
+});
 
-    test('should handle metadata with special characters in values', async () => {
-        // Arrange
+// ============================================================================
+// METADATA VALUE FORMATS
+// ============================================================================
+
+describe('Metadata Value Formats', () => {
+    test('should handle metadata values with special characters', async () => {
         const input = s`
             Metadata Repository
             Metadata Url
@@ -166,20 +136,15 @@ describe('Metadata Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
-        const entries = bc!.metadata ?? [];
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
-        // Assert
-        expect(entries[0]?.value).toBe('github.com/company/payment-service');
-        expect(entries[1]?.value).toBe('https://api.payment.com:8080/v1');
+        expect(bc.metadata[0]?.value).toBe('github.com/company/payment-service');
+        expect(bc.metadata[1]?.value).toBe('https://api.payment.com:8080/v1');
     });
 
-    test('should support string values with single quotes', async () => {
-        // Arrange
+    test('should support single quotes in metadata values', async () => {
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -190,85 +155,21 @@ describe('Metadata Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
-        const entries = bc!.metadata ?? [];
-
-        // Assert
-        expect(entries[0]?.value).toBe('Python');
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+        expect(bc.metadata[0]?.value).toBe('Python');
     });
 });
 
-describe('Metadata with Documentation Blocks', () => {
-    let testServices: TestServices;
+// ============================================================================
+// METADATA WITH OTHER DOCUMENTATION BLOCKS
+// ============================================================================
 
-    beforeAll(() => {
-        testServices = setupTestSuite();
-    });
+describe('Metadata with Other Documentation Blocks', () => {
+    // 'coexist with team' subsumed by comprehensive test below
 
-    test('should combine metadata with description', async () => {
-        // Arrange
-        const input = s`
-            Metadata Language
-            Metadata Framework
-            Domain Sales {}
-            bc OrderContext for Sales {
-                description: "Manages order operations"
-                metadata {
-                    Language: "TypeScript"
-                    Framework: "Express"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
-
-        // Assert
-        expect(bc).toBeDefined();
-        expect(bc!.description).toBe('Manages order operations');
-        const metadata = bc!.metadata ?? [];
-        expect(metadata).toHaveLength(2);
-    });
-
-    test('should combine metadata with team assignment', async () => {
-        // Arrange
-        const input = s`
-            Metadata Language
-            Team PaymentTeam
-            Domain Sales {}
-            bc PaymentContext for Sales {
-                description: "Payment processing"
-                team: PaymentTeam
-                metadata {
-                    Language: "Java"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
-
-        // Assert
-        expect(bc).toBeDefined();
-        expect((bc!.team?.[0])?.ref?.name).toBe('PaymentTeam');
-        const metadata = bc!.metadata ?? [];
-        expect(metadata).toHaveLength(1);
-        expect(metadata[0]?.key.ref?.name).toBe('Language');
-        expect(metadata[0]?.value).toBe('Java');
-    });
-
-    test('should allow metadata mixed with other documentation blocks', async () => {
-        // Arrange
+    test('should coexist with classification, team, terminology, and description', async () => {
         const input = s`
             Metadata Language
             Metadata Database
@@ -289,35 +190,24 @@ describe('Metadata with Documentation Blocks', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find((c) => isBoundedContext(c));
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
-        // Assert
-        expect(bc).toBeDefined();
-        expect(bc!.description).toBe('Complex bounded context');
-        expect((bc!.team?.[0])?.ref?.name).toBe('DevTeam');
-        expect((bc!.classification?.[0])?.ref?.name).toBe('Core');
-
-        const metadata = bc!.metadata ?? [];
-        const terms = bc!.terminology ?? [];
-
-        expect(metadata).toHaveLength(2);
-        expect(terms).toHaveLength(1);
+        expect(bc.description).toBe('Complex bounded context');
+        expect(bc.team[0]?.ref?.name).toBe('DevTeam');
+        expect(bc.classification[0]?.ref?.name).toBe('Core');
+        expect(bc.metadata).toHaveLength(2);
+        expect(bc.terminology).toHaveLength(1);
     });
 });
 
+// ============================================================================
+// METADATA VALIDATION & NEGATIVE TESTS
+// ============================================================================
+
 describe('Metadata Validation', () => {
-    let testServices: TestServices;
-
-    beforeAll(() => {
-        testServices = setupTestSuite();
-    });
-
-    test('should report error for undefined metadata key', async () => {
-        // Arrange
+    test('should report linking error for undefined metadata key', async () => {
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -329,17 +219,24 @@ describe('Metadata Validation', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+        const entries = bc.metadata;
+        expect(entries).toHaveLength(2);
 
-        // Assert - Langium's cross-reference validation should catch this
-        // The actual error detection depends on Langium's reference resolution
-        // For now, we just verify the document parses
-        expect(document).toBeDefined();
+        // The defined key should resolve correctly
+        expect(entries[0]?.key.ref?.name).toBe('Language');
+
+        // The undefined key should fail to resolve (linking error)
+        expect(entries[1]?.key.ref).toBeUndefined();
+
+        // Langium should report a diagnostic error for the unresolved reference
+        const errors = getDiagnosticsBySeverity(document, 1);
+        expect(errors.length).toBeGreaterThanOrEqual(1);
+        expect(errors.some(d => d.message.includes('UndefinedKey') || d.message.includes('Could not resolve'))).toBe(true);
     });
 
-    test('should warn on duplicate metadata keys in same block', async () => {
-        // Arrange
+    test('should parse duplicate metadata keys without error', async () => {
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -351,10 +248,52 @@ describe('Metadata Validation', () => {
             }
         `;
 
-        // Act
+        // The language does not currently validate duplicate metadata keys
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        // The validation check for duplicates should generate warnings
-        // This tests that the structure parses correctly even with duplicates
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+        const entries = bc.metadata;
+
+        expect(entries).toHaveLength(2);
+        expect(entries[0]?.value).toBe('TypeScript');
+        expect(entries[1]?.value).toBe('Java');
+        // Both entries reference the same Metadata definition
+        expect(entries[0]?.key.ref?.name).toBe('Language');
+        expect(entries[1]?.key.ref?.name).toBe('Language');
+    });
+
+    test('should reject metadata entry without a value', async () => {
+        const input = s`
+            Metadata Language
+            Domain Sales {}
+            bc OrderContext for Sales {
+                metadata {
+                    Language
+                }
+            }
+        `;
+
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'Metadata entry without value'
+        );
+    });
+
+    test('should reject metadata block outside BoundedContext', async () => {
+        const input = s`
+            Metadata Language
+            Domain Sales {
+                metadata {
+                    Language: "TypeScript"
+                }
+            }
+        `;
+
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'Metadata block in Domain'
+        );
     });
 });

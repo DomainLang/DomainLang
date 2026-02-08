@@ -112,34 +112,4 @@ describe('Add command', () => {
         }
     });
 
-    test('verifies model.yaml is updated with new dependency', async () => {
-        // Arrange - Create model.yaml without dependencies and a mock lock file
-        const manifestPath = resolve(workspace, 'model.yaml');
-        await fs.writeFile(
-            manifestPath,
-            YAML.stringify({ name: 'test', version: '1.0.0' }),
-            'utf-8'
-        );
-
-        // Pre-create lock file to avoid actual installation
-        const lockPath = resolve(workspace, 'model.lock');
-        await fs.writeFile(
-            lockPath,
-            JSON.stringify({
-                version: '1',
-                dependencies: {},
-            }),
-            'utf-8'
-        );
-
-        // Note: This test is skipped because it would require mocking InstallService
-        // which is complex due to the way it's instantiated in the add function
-        expect(true).toBe(true);
-    });
-
-    test('renders success message in rich mode', async () => {
-        // Arrange - Skip this test for now since we can't easily mock InstallService
-        // and the test would require actual network calls
-        expect(true).toBe(true);
-    });
 });

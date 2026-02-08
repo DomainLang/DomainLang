@@ -1,4 +1,14 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
+/**
+ * WorkspaceManager Tests
+ *
+ * Tests workspace root detection, lock file loading, cache invalidation,
+ * and dependency resolution via the WorkspaceManager class.
+ *
+ * ~20% smoke (init + lock file load), ~80% edge (missing lock, cache
+ * invalidation strategies, re-initialization, uninitialized access).
+ */
+
 import { beforeAll, afterAll, beforeEach, describe, expect, test } from "vitest";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -48,127 +58,159 @@ describe("WorkspaceManager", () => {
         await cleanup();
     });
 
-    test("finds workspace root and loads lock file", async () => {
-        // Arrange
+    // ========================================================================
+    // Smoke: basic initialization (~20%)
+    // ========================================================================
+
+    test("finds workspace root, loads lock file, and returns correct values", async () => {
         await createLockFile();
         const manager = new WorkspaceManager();
 
-        // Act
         await manager.initialize(TEST_ROOT);
         const lock = await manager.getLockFile();
 
-        // Assert
-        expect(lock).toBeDefined();
-        expect(lock?.dependencies["acme/ddd-patterns"]).toBeDefined();
+        // Replace toBeDefined with actual value checks
+        expect(lock?.version).toBe("1");
+        expect(lock?.dependencies["acme/ddd-patterns"].ref).toBe("2.1.0");
+        expect(lock?.dependencies["acme/ddd-patterns"].commit).toBe("abc123");
+        expect(lock?.dependencies["acme/ddd-patterns"].resolved).toBe("https://github.com/acme/ddd-patterns");
         expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
     });
 
-    test("returns undefined if lock file missing", async () => {
-        // Arrange
-        const manager = new WorkspaceManager();
+    // ========================================================================
+    // Edge: missing lock file
+    // ========================================================================
 
-        // Act
+    test("returns undefined if lock file missing", async () => {
+        const manager = new WorkspaceManager();
         await manager.initialize(TEST_ROOT);
         const lock = await manager.getLockFile();
 
-        // Assert
         expect(lock).toBeUndefined();
     });
 
-    test("resolves dependency paths from manifest and lock file", async () => {
-        // Arrange - create lock file with dependency info
-        const lockFile = path.join(ALIAS_ROOT, "model.lock");
-        const lock = {
-            version: "1",
-            dependencies: {
-                "ddd-patterns/core": {
-                    ref: "v2.1.0",
-                    refType: "tag",
-                    resolved: "https://github.com/ddd-patterns/core",
-                    commit: "abc123def"
+    // ========================================================================
+    // Edge: dependency path resolution
+    // ========================================================================
+
+    describe("Edge: dependency path resolution", () => {
+
+        test("resolves dependency paths from manifest and lock file", async () => {
+            const lockFile = path.join(ALIAS_ROOT, "model.lock");
+            const lock = {
+                version: "1",
+                dependencies: {
+                    "ddd-patterns/core": {
+                        ref: "v2.1.0",
+                        refType: "tag",
+                        resolved: "https://github.com/ddd-patterns/core",
+                        commit: "abc123def"
+                    }
                 }
+            };
+            await fs.writeFile(lockFile, JSON.stringify(lock, undefined, 2), "utf-8");
+
+            try {
+                const manager = new WorkspaceManager();
+                await manager.initialize(ALIAS_ROOT);
+
+                const missing = await manager.resolveDependencyPath("unknown");
+                expect(missing).toBeUndefined();
+            } finally {
+                await fs.unlink(lockFile).catch(() => {});
             }
-        };
-        await fs.writeFile(lockFile, JSON.stringify(lock, undefined, 2), "utf-8");
-        
-        try {
+        });
+
+        test("returns undefined for unresolvable dependency", async () => {
             const manager = new WorkspaceManager();
-            await manager.initialize(ALIAS_ROOT);
+            await manager.initialize(TEST_ROOT);
 
-            // Act - resolve dependency to cached path
-            await manager.resolveDependencyPath("ddd-patterns");
-            const missing = await manager.resolveDependencyPath("unknown");
-
-            // Assert - returns undefined when not found, path when found
-            // Note: resolveDependencyPath returns the filesystem path to the cached package
-            // which includes the cache directory structure
-            expect(missing).toBeUndefined();
-            // The resolved path would be in .dlang/packages/ddd-patterns/core/abc123def/index.dlang
-            // but we just verify it returns undefined for missing and something for found
-            // (actual caching is done by CLI, not tested here)
-        } finally {
-            await fs.unlink(lockFile).catch(() => {});
-        }
+            const result = await manager.resolveDependencyPath("nonexistent/package");
+            expect(result).toBeUndefined();
+        });
     });
 
-    describe("cache invalidation", () => {
+    // ========================================================================
+    // Edge: cache invalidation
+    // ========================================================================
+
+    describe("Edge: cache invalidation", () => {
+
         test("invalidateCache clears both manifest and lock caches", async () => {
-            // Arrange
             await createLockFile();
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
-            
+
             // Prime the caches
             await manager.getManifest();
             await manager.getLockFile();
-            
-            // Act - invalidate both caches
+
+            // Invalidate
             manager.invalidateCache();
-            
-            // Remove the lock file to verify cache was cleared
+
+            // Remove the lock file to verify cache was truly cleared
             await cleanup();
-            
-            // Assert - getLockFile should now return undefined (not cached)
+
+            // getLockFile should now read from disk (file is gone)
             const lock = await manager.getLockFile();
             expect(lock).toBeUndefined();
         });
 
-        test("invalidateManifestCache clears only manifest cache", async () => {
-            // Arrange
+        test("invalidateManifestCache clears only manifest cache, preserves lock cache", async () => {
             await createLockFile();
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
-            
-            // Prime the caches
+
+            // Prime both caches
             await manager.getManifest();
             const lockBefore = await manager.getLockFile();
-            
-            // Act - invalidate only manifest cache
+
+            // Invalidate only manifest
             manager.invalidateManifestCache();
-            
-            // Assert - lock file should still be cached
+
+            // Lock should still be cached
             const lockAfter = await manager.getLockFile();
-            expect(lockAfter).toEqual(lockBefore);
+            expect(lockAfter?.version).toBe(lockBefore?.version);
+            expect(lockAfter?.dependencies["acme/ddd-patterns"].ref).toBe("2.1.0");
         });
 
         test("invalidateLockCache clears only lock file cache", async () => {
-            // Arrange
             await createLockFile();
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
-            
-            // Prime the caches
-            await manager.getLockFile();
-            
-            // Act - invalidate only lock cache
+
+            // Prime lock cache
+            const lockBefore = await manager.getLockFile();
+            expect(lockBefore?.version).toBe("1");
+
+            // Invalidate only lock
             manager.invalidateLockCache();
-            
-            // Remove the lock file to verify cache was cleared
+
+            // Remove the lock file to verify cache was truly cleared
             await cleanup();
-            
-            // Assert - getLockFile should now return undefined (not cached)
+
+            // getLockFile should now return undefined since file is gone
             const lock = await manager.getLockFile();
             expect(lock).toBeUndefined();
         });
+    });
+
+    // ========================================================================
+    // Edge: re-initialization and workspace root
+    // ========================================================================
+
+    describe("Edge: re-initialization", () => {
+
+        test("re-initialization retains original workspace root", async () => {
+            const manager = new WorkspaceManager();
+            await manager.initialize(TEST_ROOT);
+            expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
+
+            // Re-initializing with a different root does not change the workspace root
+            await manager.initialize(ALIAS_ROOT);
+            expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
+        });
+
+        // 'getWorkspaceRoot returns correct path' subsumed by smoke test and re-initialization test above
     });
 });

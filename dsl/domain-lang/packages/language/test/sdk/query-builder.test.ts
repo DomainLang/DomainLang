@@ -1,410 +1,332 @@
 /**
  * SDK QueryBuilder Tests
- * 
- * Comprehensive tests for QueryBuilder chaining, filtering, and iteration behavior.
- * Validates lazy evaluation and filter combinations.
+ *
+ * Tests QueryBuilder chaining, filtering, lazy evaluation, and terminal operations.
+ * ~20% smoke (basic where/name/first), ~80% edge (regex, chained filters, empty model,
+ * lazy evaluation short-circuit, FQN regex, Symbol.iterator).
  */
 
 import { describe, test, expect } from 'vitest';
 import { loadModelFromText } from '../../src/sdk/loader.js';
 
+// Shared model for many tests
+const MULTI_DOMAIN_MODEL = `
+    Namespace acme.sales {
+        Domain Sales { vision: "Sales vision" }
+        Domain SalesFinance { vision: "Combined" }
+    }
+    Namespace acme.finance {
+        Domain Finance { vision: "Finance vision" }
+    }
+    Domain TopLevel { vision: "Top-level domain" }
+`;
+
 describe('SDK QueryBuilder', () => {
-    
-    describe('where() - Custom Predicate Filtering', () => {
-        
-        test('filters items using custom predicate', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                Domain VeryLongNameDomain { vision: "v" }
-                Domain X { vision: "v" }
-            `);
-            
-            // Act
-            const longNameDomains = query.domains().where(d => d.name.length > 6);
-            const results = [...longNameDomains];
-            
-            // Assert
-            expect(results.length).toBe(1);
-            expect(results[0].name).toBe('VeryLongNameDomain');
-        });
-        
-        test('supports chaining multiple where() calls', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "Sales vision" }
-                Domain Finance { vision: "Finance vision" }
-                Domain SalesFinance { vision: "Combined" }
-            `);
-            
-            // Act
-            const results = [
-                ...query.domains()
-                    .where(d => d.name.includes('Sales'))
-                    .where(d => d.name.length > 5)
-            ];
-            
-            // Assert
-            expect(results.length).toBe(1);
-            expect(results[0].name).toBe('SalesFinance');
-        });
-        
-        test('returns empty iterator when predicate matches nothing', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain A { vision: "v" }
-                Domain B { vision: "v" }
-            `);
-            
-            // Act
-            const results = [...query.domains().where(d => d.name === 'NonExistent')];
-            
-            // Assert
-            expect(results.length).toBe(0);
-        });
-        
-        test('preserves lazy evaluation until terminal operation', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain A { vision: "v" }
-                Domain B { vision: "v" }
-                Domain C { vision: "v" }
-            `);
-            let callCount = 0;
-            
-            // Act - Create filter but don't consume
-            const builder = query.domains().where(() => {
-                callCount++;
-                return true;
-            });
-            expect(callCount).toBe(0); // Not called yet
-            
-            // Now consume one item with first()
-            builder.first();
-            
-            // Assert - Predicate called only once (for first item)
-            expect(callCount).toBe(1);
+
+    // ========================================================================
+    // Smoke: basic operations (~20%)
+    // ========================================================================
+
+    describe('Smoke: basic where/withName/first/count/toArray', () => {
+
+        test('where() filters by predicate, withName() matches exact name, first() returns first match', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+
+            // where
+            const longNames = query.domains().where(d => d.name.length > 6).toArray();
+            expect(longNames.map(d => d.name)).toEqual(
+                expect.arrayContaining(['SalesFinance', 'Finance', 'TopLevel'])
+            );
+
+            // withName exact
+            const sales = query.domains().withName('Sales').first();
+            expect(sales?.name).toBe('Sales');
+
+            // first
+            const first = query.domains().first();
+            expect(first?.name).toBe('Sales');
+
+            // count
+            expect(query.domains().count()).toBe(4);
+
+            // toArray preserves order
+            const arr = query.domains().toArray();
+            expect(arr.map(d => d.name)).toEqual(['Sales', 'SalesFinance', 'Finance', 'TopLevel']);
         });
     });
-    
-    describe('withName() - Name-based Filtering', () => {
-        
-        test('filters items by exact name match (case-sensitive)', async () => {
-            // Arrange
+
+    // ========================================================================
+    // Edge: where() filtering
+    // ========================================================================
+
+    describe('Edge: where() filtering', () => {
+
+        test('chaining multiple where() calls intersects predicates', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+
+            const results = query.domains()
+                .where(d => d.name.includes('Sales'))
+                .where(d => d.name.length > 5)
+                .toArray();
+
+            expect(results).toHaveLength(1);
+            expect(results[0].name).toBe('SalesFinance');
+        });
+
+        // 'where() returns empty when predicate matches nothing' subsumed by always-false test below
+
+        test('where() with always-false predicate returns empty', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+            expect(query.domains().where(() => false).count()).toBe(0);
+        });
+
+        test('where() with always-true predicate returns all', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+            expect(query.domains().where(() => true).count()).toBe(4);
+        });
+    });
+
+    // ========================================================================
+    // Edge: withName() and withFqn() string/regex
+    // ========================================================================
+
+    describe('Edge: withName() string and regex', () => {
+
+        test('withName is case-sensitive', async () => {
             const { query } = await loadModelFromText(`
                 Domain Sales { vision: "v" }
                 Domain sales { vision: "v" }
-                Domain Finance { vision: "v" }
             `);
-            
-            // Act
-            const results = [...query.domains().withName('Sales')];
-            
-            // Assert
-            expect(results.length).toBe(1);
+
+            expect(query.domains().withName('Sales').count()).toBe(1);
+            expect(query.domains().withName('sales').count()).toBe(1);
+            expect(query.domains().withName('SALES').count()).toBe(0);
+        });
+
+        test('withName(regex) matches partial patterns', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+
+            const salesish = query.domains().withName(/Sales/).toArray();
+            expect(salesish.map(d => d.name)).toEqual(
+                expect.arrayContaining(['Sales', 'SalesFinance'])
+            );
+            expect(salesish).toHaveLength(2);
+        });
+
+        test('withName(regex) anchored match', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+            const exact = query.domains().withName(/^Finance$/).toArray();
+            expect(exact).toHaveLength(1);
+            expect(exact[0].name).toBe('Finance');
+        });
+
+        test('withName returns empty for non-matching string', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+            expect(query.domains().withName('ZZZZZ').count()).toBe(0);
+        });
+
+        test('withName returns empty for non-matching regex', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+            expect(query.domains().withName(/^ZZZZZ$/).count()).toBe(0);
+        });
+    });
+
+    describe('Edge: withFqn() string and regex', () => {
+
+        test('withFqn resolves namespaced FQN', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+
+            const results = query.domains().withFqn('acme.sales.Sales').toArray();
+            expect(results).toHaveLength(1);
             expect(results[0].name).toBe('Sales');
         });
-        
-        test('returns empty when name not found', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const results = [...query.domains().withName('NonExistent')];
-            
-            // Assert
-            expect(results.length).toBe(0);
+
+        test('withFqn returns empty for non-matching FQN', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+            expect(query.domains().withFqn('nonexistent.path.Sales').count()).toBe(0);
         });
-        
-        test('can chain withName() multiple times', async () => {
-            // Arrange
+
+        test('withFqn(regex) matches FQN pattern', async () => {
+            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
+
+            const results = query.domains().withFqn(/acme\.sales\..*/).toArray();
+            expect(results.map(d => d.name)).toEqual(
+                expect.arrayContaining(['Sales', 'SalesFinance'])
+            );
+        });
+
+        test('withFqn distinguishes same-name domains in different namespaces', async () => {
             const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                Domain Finance { vision: "v" }
-                Domain Inventory { vision: "v" }
+                Namespace acme.alpha { Domain Orders { vision: "v" } }
+                Namespace acme.beta  { Domain Orders { vision: "v" } }
             `);
-            
-            // Act
-            const allResults = [
-                ...[
-                    ...query.domains().withName('Sales')
-                ]
-                    .concat([...query.domains().withName('Finance')])
-            ];
-            
-            // Assert
-            expect(allResults.length).toBe(2);
+
+            const alpha = query.domains().withFqn('acme.alpha.Orders').toArray();
+            expect(alpha).toHaveLength(1);
+
+            const beta = query.domains().withFqn('acme.beta.Orders').toArray();
+            expect(beta).toHaveLength(1);
+
+            const all = query.domains().withName('Orders').toArray();
+            expect(all).toHaveLength(2);
         });
     });
-    
-    describe('withFqn() - FQN-based Filtering', () => {
-        
-        test('filters items by fully qualified name', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Namespace acme.sales {
-                    Domain Orders { vision: "v" }
-                }
-                Namespace acme.finance {
-                    Domain Orders { vision: "v" }
-                }
-            `);
-            
-            // Act
-            const results = [...query.domains().withFqn('acme.sales.Orders')];
-            
-            // Assert
-            expect(results.length).toBe(1);
-            expect(results[0].name).toBe('Orders');
+
+    // ========================================================================
+    // Edge: first() terminal operation
+    // ========================================================================
+
+    describe('Edge: first() terminal operation', () => {
+
+        test('first() returns undefined when iterator is empty', async () => {
+            const { query } = await loadModelFromText(`Domain X { vision: "v" }`);
+            expect(query.domains().where(d => d.name === 'Z').first()).toBeUndefined();
         });
-        
-        test('returns empty when FQN not found', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const results = [...query.domains().withFqn('NonExistent.Domain')];
-            
-            // Assert
-            expect(results.length).toBe(0);
-        });
-    });
-    
-    describe('first() - Terminal Operation', () => {
-        
-        test('returns first item from iterator', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                Domain Finance { vision: "v" }
-                Domain Inventory { vision: "v" }
-            `);
-            
-            // Act
-            const first = query.domains().first();
-            
-            // Assert
-            expect(first).toBeDefined();
-            expect(first?.name).toBe('Sales');
-        });
-        
-        test('returns undefined when iterator is empty', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const result = query.domains().where(d => d.name === 'NonExistent').first();
-            
-            // Assert
-            expect(result).toBeUndefined();
-        });
-        
-        test('short-circuits iteration (lazy evaluation)', async () => {
-            // Arrange
+
+        test('first() respects filter short-circuit (lazy evaluation)', async () => {
             const { query } = await loadModelFromText(`
                 Domain A { vision: "v" }
                 Domain B { vision: "v" }
                 Domain C { vision: "v" }
             `);
             let iterationCount = 0;
-            
-            // Act - Consume with first() after tracking iterations
+
             const builder = query.domains().where(() => {
                 iterationCount++;
                 return true;
             });
             builder.first();
-            
-            // Assert - Only iterated once despite 3 items available
+
+            // Only iterated once despite 3 items available
             expect(iterationCount).toBe(1);
         });
-        
-        test('respects filter when finding first match', async () => {
-            // Arrange
+
+        test('first() finds first matching after where()', async () => {
             const { query } = await loadModelFromText(`
                 Domain Sales { vision: "v" }
                 Domain Finance { vision: "v" }
                 Domain Inventory { vision: "v" }
             `);
-            
-            // Act
+
             const result = query.domains()
                 .where(d => d.name.includes('n'))
                 .first();
-            
-            // Assert
             expect(result?.name).toBe('Finance');
         });
     });
-    
-    describe('count() - Terminal Operation', () => {
-        
-        test('returns total count of items', async () => {
-            // Arrange
+
+    // ========================================================================
+    // Edge: lazy evaluation behavior
+    // ========================================================================
+
+    describe('Edge: lazy evaluation behavior', () => {
+
+        test('where() predicate not called until consumption', async () => {
             const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                Domain Finance { vision: "v" }
-                Domain Inventory { vision: "v" }
+                Domain A { vision: "v" }
+                Domain B { vision: "v" }
             `);
-            
-            // Act
-            const count = query.domains().count();
-            
-            // Assert
-            expect(count).toBe(3);
+            let executionCount = 0;
+
+            const builder = query.domains().where(() => {
+                executionCount++;
+                return true;
+            });
+
+            expect(executionCount).toBe(0);
+
+            const count = builder.count();
+            expect(executionCount).toBe(2);
+            expect(count).toBe(2);
         });
-        
-        test('returns zero for empty result set', async () => {
-            // Arrange
+
+        test('Symbol.iterator enables for-of consumption', async () => {
             const { query } = await loadModelFromText(`
+                Domain Alpha { vision: "v" }
+                Domain Beta { vision: "v" }
+            `);
+
+            const names: string[] = [];
+            for (const d of query.domains()) {
+                names.push(d.name);
+            }
+            expect(names).toEqual(['Alpha', 'Beta']);
+        });
+
+        test('spread operator materializes builder', async () => {
+            const { query } = await loadModelFromText(`
+                Domain X { vision: "v" }
+                Domain Y { vision: "v" }
+            `);
+
+            const results = [...query.domains().where(d => d.name === 'Y')];
+            expect(results).toHaveLength(1);
+            expect(results[0].name).toBe('Y');
+        });
+    });
+
+    // ========================================================================
+    // Edge: empty model and boundary conditions
+    // ========================================================================
+
+    describe('Edge: empty model and boundary conditions', () => {
+
+        test('all operations work on model with no matching entities', async () => {
+            const { query } = await loadModelFromText('Team SampleTeam');
+
+            expect(query.domains().count()).toBe(0);
+            expect(query.domains().first()).toBeUndefined();
+            expect(query.domains().toArray()).toEqual([]);
+            expect([...query.domains()]).toEqual([]);
+            expect(query.domains().where(() => true).count()).toBe(0);
+            expect(query.domains().withName('X').count()).toBe(0);
+        });
+
+        test('single-item model works correctly for all terminal operations', async () => {
+            const { query } = await loadModelFromText('Domain Single { vision: "v" }');
+
+            expect(query.domains().count()).toBe(1);
+            expect(query.domains().first()?.name).toBe('Single');
+            expect(query.domains().toArray()).toHaveLength(1);
+            expect(query.domains().withName('Single').count()).toBe(1);
+            expect(query.domains().withName('Other').count()).toBe(0);
+        });
+    });
+
+    // ========================================================================
+    // Edge: complex filter chains
+    // ========================================================================
+
+    describe('Edge: complex filter chains', () => {
+
+        test('where + where + withName narrows to exact result', async () => {
+            const { query } = await loadModelFromText(`
+                Domain SalesOrders { vision: "v" }
+                Domain FinanceOrders { vision: "v" }
                 Domain Sales { vision: "v" }
             `);
-            
-            // Act
-            const count = query.domains().where(d => d.name === 'NonExistent').count();
-            
-            // Assert
-            expect(count).toBe(0);
+
+            const results = query.domains()
+                .where(d => d.name.includes('Orders'))
+                .where(d => d.name.startsWith('Sales'))
+                .toArray();
+
+            expect(results).toHaveLength(1);
+            expect(results[0].name).toBe('SalesOrders');
         });
-        
-        test('counts items after filtering', async () => {
-            // Arrange
+
+        test('count() after filtering returns correct filtered count', async () => {
             const { query } = await loadModelFromText(`
                 Domain A { vision: "v" }
                 Domain VeryLongName { vision: "v" }
                 Domain B { vision: "v" }
                 Domain LongNameDomain { vision: "v" }
             `);
-            
-            // Act
+
             const count = query.domains()
                 .where(d => d.name.length > 6)
                 .count();
-            
-            // Assert
             expect(count).toBe(2);
-        });
-    });
-    
-    describe('toArray() - Terminal Operation', () => {
-        
-        test('materializes iterator into array', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                Domain Finance { vision: "v" }
-            `);
-            
-            // Act
-            const array = query.domains().toArray();
-            
-            // Assert
-            expect(Array.isArray(array)).toBe(true);
-            expect(array.length).toBe(2);
-            expect(array[0].name).toBe('Sales');
-            expect(array[1].name).toBe('Finance');
-        });
-        
-        test('returns empty array when no results', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const array = query.domains().where(d => d.name === 'NonExistent').toArray();
-            
-            // Assert
-            expect(Array.isArray(array)).toBe(true);
-            expect(array.length).toBe(0);
-        });
-        
-        test('maintains item order in array', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Alpha { vision: "v" }
-                Domain Beta { vision: "v" }
-                Domain Gamma { vision: "v" }
-            `);
-            
-            // Act
-            const array = query.domains().toArray();
-            
-            // Assert
-            expect(array.map(d => d.name)).toEqual(['Alpha', 'Beta', 'Gamma']);
-        });
-    });
-    
-    describe('Complex Filtering Chains', () => {
-        
-        test('combines where() with withName() filters', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain SalesOrders { vision: "v" }
-                Domain FinanceOrders { vision: "v" }
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const results = [
-                ...query.domains()
-                    .where(d => d.name.includes('Orders'))
-                    .where(d => d.name.startsWith('Sales'))
-            ];
-            
-            // Assert
-            expect(results.length).toBe(1);
-            expect(results[0].name).toBe('SalesOrders');
-        });
-    });
-    
-    describe('Lazy Evaluation Behavior', () => {
-        
-        test('QueryBuilder does not execute until consumed', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                Domain Finance { vision: "v" }
-            `);
-            let executionCount = 0;
-            
-            // Act - Create builder with side-effect tracking
-            const builder = query.domains().where(() => {
-                executionCount++;
-                return true;
-            });
-            
-            // Assert - No execution yet
-            expect(executionCount).toBe(0);
-            
-            // Act - Consume with count()
-            const count = builder.count();
-            
-            // Assert - Now executed
-            expect(executionCount).toBe(2);
-            expect(count).toBe(2);
-        });
-    });
-    
-    describe('Edge Cases', () => {
-        
-        test('handles empty model gracefully', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Team SampleTeam
-            `);
-            
-            // Act
-            const results = [...query.domains()];
-            
-            // Assert
-            expect(results.length).toBe(0);
         });
     });
 });

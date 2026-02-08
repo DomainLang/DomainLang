@@ -127,7 +127,10 @@ export class PerformanceOptimizer {
                 const stat = await fs.stat(lockPath);
                 const cached = this.lockFileCache.get(workspaceRoot);
                 
-                if (cached && stat.mtimeMs > cached.timestamp) {
+                // Floor mtimeMs to integer precision to match Date.now() —
+                // some filesystems (e.g. APFS) report sub-millisecond mtime,
+                // which can exceed the integer timestamp from Date.now().
+                if (cached && Math.floor(stat.mtimeMs) > cached.timestamp) {
                     stale.push(workspaceRoot);
                 }
             } catch {

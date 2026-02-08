@@ -161,9 +161,56 @@ describe('Import-Based Scoping', () => {
     });
 
     describe('With valid imports - elements SHOULD resolve', () => {
-        test('BC reference to domain SHOULD resolve with valid import', async () => {
+        test('smoke: domain, BC, and team refs all resolve via import', async () => {
             await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'valid-import-domain');
+            const projectDir = path.join(tempDir, 'valid-import-all');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            // File A: defines Domain + Team
+            const fileA = path.join(projectDir, 'shared.dlang');
+            await createAndLoadDocument(fileA, `
+                Team SalesTeam
+                Domain Sales {
+                    vision: "Sales operations"
+                }
+                bc OrderContext for Sales {
+                    description: "Order management"
+                }
+            `);
+
+            // File B: imports shared.dlang, references Domain + Team + BC
+            const fileB = path.join(projectDir, 'main.dlang');
+            const docB = await createAndLoadDocument(fileB, `
+                import "./shared.dlang"
+
+                bc PaymentContext for Sales {
+                    description: "Should resolve Sales via import"
+                    team: SalesTeam
+                }
+
+                ContextMap SystemMap {
+                    contains OrderContext, PaymentContext
+                }
+            `);
+
+            // Assert: domain reference resolves
+            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
+            expect(bc.domain?.ref?.name).toBe('Sales');
+            expect(bc.domain?.error).toBeUndefined();
+
+            // Assert: team reference resolves
+            expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
+
+            // Assert: ContextMap BC reference resolves
+            const ctxMap = docB.parseResult.value.children.find(isContextMap) as ContextMap;
+            expect(ctxMap.boundedContexts).toHaveLength(2);
+            expect(ctxMap.boundedContexts[0].items[0].ref?.name).toBe('OrderContext');
+            expect(ctxMap.boundedContexts[1].items[0].ref?.name).toBe('PaymentContext');
+        });
+
+        test('multiple imports provide combined scope', async () => {
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'multi-import');
             await fs.mkdir(projectDir, { recursive: true });
 
             // File A: defines a Domain
@@ -174,86 +221,176 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
-            // File B: imports and references Sales
-            const fileB = path.join(projectDir, 'contexts.dlang');
-            const docB = await createAndLoadDocument(fileB, `
-                import "./domains.dlang"
-                
-                bc OrderContext for Sales {
-                    description: "Should resolve Sales via import"
-                }
-            `);
-
-            // Assert: The domain reference SHOULD resolve
-            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
-            expect(bc.domain?.ref).toBeDefined();
-            expect(bc.domain?.ref?.name).toBe('Sales');
-            expect(bc.domain?.error).toBeUndefined();
-        });
-
-        test('ContextMap reference to BC SHOULD resolve with valid import', async () => {
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'valid-import-bc');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            // File A: defines a BoundedContext
-            const fileA = path.join(projectDir, 'sales.dlang');
-            await createAndLoadDocument(fileA, `
-                Domain Sales {}
-                bc OrderContext for Sales {
-                    description: "Order management"
-                }
-            `);
-
-            // File B: imports and references OrderContext
-            const fileB = path.join(projectDir, 'maps.dlang');
-            const docB = await createAndLoadDocument(fileB, `
-                import "./sales.dlang"
-                
-                ContextMap SystemMap {
-                    contains OrderContext
-                }
-            `);
-
-            // Assert: The BC reference SHOULD resolve
-            const ctxMap = docB.parseResult.value.children.find(isContextMap) as ContextMap;
-            expect(ctxMap).toBeDefined();
-            expect(ctxMap.boundedContexts).toHaveLength(1);
-            
-            const bcRef = ctxMap.boundedContexts[0];
-            expect(bcRef.items.length).toBeGreaterThan(0);
-            expect(bcRef.items[0].ref?.name).toBe('OrderContext');
-        });
-
-        test('Team reference SHOULD resolve with valid import', async () => {
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'valid-import-team');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            // File A: defines a Team
-            const fileA = path.join(projectDir, 'teams.dlang');
-            await createAndLoadDocument(fileA, `
+            // File B: defines a Team
+            const fileB = path.join(projectDir, 'teams.dlang');
+            await createAndLoadDocument(fileB, `
                 Team SalesTeam
             `);
 
-            // File B: imports and references SalesTeam
-            const fileB = path.join(projectDir, 'context.dlang');
-            const docB = await createAndLoadDocument(fileB, `
+            // File C: imports both and references elements from each
+            const fileC = path.join(projectDir, 'contexts.dlang');
+            const docC = await createAndLoadDocument(fileC, `
+                import "./domains.dlang"
                 import "./teams.dlang"
-                
-                Domain Sales {}
+
                 bc OrderContext for Sales {
                     team: SalesTeam
                 }
             `);
 
-            // Assert: The team reference SHOULD resolve
+            const bc = docC.parseResult.value.children.find(isBoundedContext) as BoundedContext;
+            expect(bc.domain?.ref?.name).toBe('Sales');
+            expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
+        });
+
+        test('importing an empty file provides no additional scope', async () => {
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'empty-import');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            // File A: empty dlang file
+            const fileA = path.join(projectDir, 'empty.dlang');
+            await createAndLoadDocument(fileA, ``);
+
+            // File B: imports empty file, references non-existent domain
+            const fileB = path.join(projectDir, 'contexts.dlang');
+            const docB = await createAndLoadDocument(fileB, `
+                import "./empty.dlang"
+
+                bc OrderContext for Sales {
+                    description: "Sales not defined anywhere"
+                }
+            `);
+
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
             expect(bc).toBeDefined();
-            const teamRef = bc.team?.[0];
-            expect(teamRef?.ref).toBeDefined();
-            expect(teamRef?.ref?.name).toBe('SalesTeam');
+            expect(bc.domain?.ref).toBeUndefined();
+            expect(bc.domain?.error).toBeDefined();
+        });
+
+        test('Classification resolves across import', async () => {
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'classification-import');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            // File A: defines a Classification
+            const fileA = path.join(projectDir, 'classifications.dlang');
+            await createAndLoadDocument(fileA, `
+                Classification CoreDomain
+                Classification SupportingDomain
+            `);
+
+            // File B: imports classifications and references them
+            const fileB = path.join(projectDir, 'contexts.dlang');
+            const docB = await createAndLoadDocument(fileB, `
+                import "./classifications.dlang"
+
+                Domain Sales {}
+                bc OrderContext for Sales as CoreDomain {
+                    description: "Core order management"
+                }
+            `);
+
+            // Assert: Classification reference resolves via import
+            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
+            expect(bc).toBeDefined();
+            expect(bc.classification).toHaveLength(1);
+            expect(bc.classification[0].ref?.name).toBe('CoreDomain');
+        });
+
+        test('Classification does NOT resolve without import', async () => {
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'classification-no-import');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            // File A: defines a Classification
+            const fileA = path.join(projectDir, 'classifications.dlang');
+            await createAndLoadDocument(fileA, `
+                Classification CoreDomain
+            `);
+
+            // File B: tries to reference Classification without importing
+            const fileB = path.join(projectDir, 'contexts.dlang');
+            const docB = await createAndLoadDocument(fileB, `
+                Domain Sales {}
+                bc OrderContext for Sales as CoreDomain {
+                    description: "Should NOT resolve"
+                }
+            `);
+
+            // Assert: Classification reference should NOT resolve
+            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
+            expect(bc).toBeDefined();
+            expect(bc.classification).toHaveLength(1);
+            expect(bc.classification[0].ref).toBeUndefined();
+        });
+
+        test('ContextMap relationship arrow refs resolve across imports', async () => {
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'cmap-arrow-import');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            // File A: defines Domain + BCs
+            const fileA = path.join(projectDir, 'sales.dlang');
+            await createAndLoadDocument(fileA, `
+                Domain Sales {}
+                bc OrderContext for Sales
+                bc PaymentContext for Sales
+            `);
+
+            // File B: imports and creates ContextMap with relationship arrows
+            const fileB = path.join(projectDir, 'maps.dlang');
+            const docB = await createAndLoadDocument(fileB, `
+                import "./sales.dlang"
+
+                ContextMap SalesMap {
+                    contains OrderContext, PaymentContext
+                    OrderContext -> PaymentContext
+                }
+            `);
+
+            // Assert: ContextMap resolves and relationships parse
+            const ctxMap = docB.parseResult.value.children.find(isContextMap) as ContextMap;
+            expect(ctxMap).toBeDefined();
+            expect(ctxMap.name).toBe('SalesMap');
+            expect(ctxMap.boundedContexts).toHaveLength(2);
+            expect(ctxMap.boundedContexts[0].items[0].ref?.name).toBe('OrderContext');
+            expect(ctxMap.boundedContexts[1].items[0].ref?.name).toBe('PaymentContext');
+            // Relationship should have both sides resolved
+            expect(ctxMap.relationships).toHaveLength(1);
+            expect(ctxMap.relationships[0].left.link?.ref?.name).toBe('OrderContext');
+            expect(ctxMap.relationships[0].right.link?.ref?.name).toBe('PaymentContext');
+        });
+
+        test('Namespace-qualified refs resolve across imports', async () => {
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'namespace-import');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            // File A: defines namespaced Domain
+            const fileA = path.join(projectDir, 'domains.dlang');
+            await createAndLoadDocument(fileA, `
+                Namespace acme.sales {
+                    Domain Sales {
+                        vision: "Sales operations"
+                    }
+                }
+            `);
+
+            // File B: imports and references via qualified name
+            const fileB = path.join(projectDir, 'contexts.dlang');
+            const docB = await createAndLoadDocument(fileB, `
+                import "./domains.dlang"
+
+                bc OrderContext for acme.sales.Sales {
+                    description: "References namespaced domain"
+                }
+            `);
+
+            // Assert: Namespace-qualified domain ref resolves
+            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
+            expect(bc).toBeDefined();
+            expect(bc.domain?.ref?.name).toBe('Sales');
         });
     });
 

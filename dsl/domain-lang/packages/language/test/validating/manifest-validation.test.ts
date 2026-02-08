@@ -8,11 +8,11 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import { 
-    ManifestValidator, 
+import {
+    ManifestValidator,
     ManifestIssueCodes,
     isManifestValid,
-    validateManifest 
+    validateManifest
 } from '../../src/validation/manifest.js';
 import type { ModelManifest } from '../../src/services/types.js';
 import { IssueCodes } from '../../src/validation/constants.js';
@@ -26,6 +26,8 @@ describe('ManifestValidator', () => {
             const result = validator.validate(manifest);
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
+            expect(result.warningCount).toBe(0);
+            expect(result.diagnostics).toHaveLength(0);
         });
 
         test('accepts complete valid manifest', () => {
@@ -62,6 +64,7 @@ describe('ManifestValidator', () => {
             };
             const result = validator.validate(manifest);
             expect(result.valid).toBe(true);
+            expect(result.errorCount).toBe(0);
         });
     });
 
@@ -75,8 +78,9 @@ describe('ManifestValidator', () => {
             const result = validator.validate(manifest, { requirePublishable: true });
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d => d.code === ManifestIssueCodes.ModelMissingName);
-            expect(diagnostic).toBeDefined();
-            expect(diagnostic?.path).toBe('model.name');
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.path).toBe('model.name');
+            expect(diagnostic!.severity).toBe('error');
         });
 
         test('requires version for publishable packages', () => {
@@ -88,8 +92,9 @@ describe('ManifestValidator', () => {
             const result = validator.validate(manifest, { requirePublishable: true });
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d => d.code === ManifestIssueCodes.ModelMissingVersion);
-            expect(diagnostic).toBeDefined();
-            expect(diagnostic?.path).toBe('model.version');
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.path).toBe('model.version');
+            expect(diagnostic!.severity).toBe('error');
         });
 
         test('warns on invalid SemVer version', () => {
@@ -101,8 +106,9 @@ describe('ManifestValidator', () => {
             };
             const result = validator.validate(manifest);
             const diagnostic = result.diagnostics.find(d => d.code === ManifestIssueCodes.ModelInvalidVersion);
-            expect(diagnostic).toBeDefined();
-            expect(diagnostic?.severity).toBe('warning');
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.severity).toBe('warning');
+            expect(diagnostic!.message).toContain('invalid-version');
         });
 
         test('accepts valid SemVer versions', () => {
@@ -112,10 +118,10 @@ describe('ManifestValidator', () => {
                     model: { name: 'test', version }
                 };
                 const result = validator.validate(manifest);
-                const versionErrors = result.diagnostics.filter(d => 
+                const versionErrors = result.diagnostics.filter(d =>
                     d.code === ManifestIssueCodes.ModelInvalidVersion
                 );
-                expect(versionErrors.length).toBe(0);
+                expect(versionErrors).toHaveLength(0);
             }
         });
     });
@@ -133,15 +139,14 @@ describe('ManifestValidator', () => {
             };
             const result = validator.validate(manifest);
             expect(result.valid).toBe(false);
-            const diagnostic = result.diagnostics.find(d => 
+            const diagnostic = result.diagnostics.find(d =>
                 d.code === IssueCodes.ImportConflictingSourcePath
             );
-            expect(diagnostic).toBeDefined();
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.message).toContain('bad-dep');
         });
 
         test('dependency without explicit source uses key as source', () => {
-            // Our normalization adds source from key, so a dependency with just ref
-            // gets the key as the source during normalization - validation passes
             const manifest: ModelManifest = {
                 dependencies: {
                     'owner/repo': {
@@ -150,7 +155,6 @@ describe('ManifestValidator', () => {
                 }
             };
             const result = validator.validate(manifest);
-            // Validation passes because 'owner/repo' key becomes the source
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
         });
@@ -165,10 +169,11 @@ describe('ManifestValidator', () => {
             };
             const result = validator.validate(manifest);
             expect(result.valid).toBe(false);
-            const diagnostic = result.diagnostics.find(d => 
+            const diagnostic = result.diagnostics.find(d =>
                 d.code === IssueCodes.ImportMissingRef
             );
-            expect(diagnostic).toBeDefined();
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.message).toContain('missing-ref');
         });
 
         test('accepts valid ref specs', () => {
@@ -180,11 +185,10 @@ describe('ManifestValidator', () => {
                     }
                 };
                 const result = validator.validate(manifest);
-                // Should not have missing ref error
-                const missingRef = result.diagnostics.filter(d => 
+                const missingRef = result.diagnostics.filter(d =>
                     d.code === IssueCodes.ImportMissingRef
                 );
-                expect(missingRef.length).toBe(0);
+                expect(missingRef).toHaveLength(0);
             }
         });
 
@@ -198,10 +202,11 @@ describe('ManifestValidator', () => {
             };
             const result = validator.validate(manifest);
             expect(result.valid).toBe(false);
-            const diagnostic = result.diagnostics.find(d => 
+            const diagnostic = result.diagnostics.find(d =>
                 d.code === IssueCodes.ImportAbsolutePath
             );
-            expect(diagnostic).toBeDefined();
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.message).toContain('/absolute/path');
         });
 
         test('rejects invalid source format', () => {
@@ -214,10 +219,23 @@ describe('ManifestValidator', () => {
                 }
             };
             const result = validator.validate(manifest);
-            const diagnostic = result.diagnostics.find(d => 
+            const diagnostic = result.diagnostics.find(d =>
                 d.code === ManifestIssueCodes.DependencyInvalidSource
             );
-            expect(diagnostic).toBeDefined();
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.message).toContain('not-valid-format');
+        });
+
+        test('rejects dependency with neither source nor path', () => {
+            const manifest: ModelManifest = {
+                dependencies: {
+                    'empty-dep': {}
+                }
+            };
+            const result = validator.validate(manifest);
+            // Key 'empty-dep' is not owner/repo format, so normalization adds it as source
+            // but it won't match valid source format. Either way, we validate it produces diagnostics.
+            expect(result.diagnostics.length).toBeGreaterThan(0);
         });
     });
 
@@ -229,11 +247,12 @@ describe('ManifestValidator', () => {
                 }
             };
             const result = validator.validate(manifest);
-            const diagnostic = result.diagnostics.find(d => 
+            const diagnostic = result.diagnostics.find(d =>
                 d.code === ManifestIssueCodes.PathAliasMissingAtPrefix
             );
-            expect(diagnostic).toBeDefined();
-            expect(diagnostic?.severity).toBe('warning');
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.severity).toBe('warning');
+            expect(diagnostic!.message).toContain('lib');
         });
 
         test('rejects absolute path in alias target', () => {
@@ -244,15 +263,31 @@ describe('ManifestValidator', () => {
             };
             const result = validator.validate(manifest);
             expect(result.valid).toBe(false);
-            const diagnostic = result.diagnostics.find(d => 
+            const diagnostic = result.diagnostics.find(d =>
                 d.code === ManifestIssueCodes.PathAliasAbsolutePath
             );
-            expect(diagnostic).toBeDefined();
+            expect(diagnostic).not.toBeUndefined();
+            expect(diagnostic!.message).toContain('/absolute/path');
+        });
+
+        test('accepts valid path aliases with @ prefix and relative paths', () => {
+            const manifest: ModelManifest = {
+                paths: {
+                    '@': '.',
+                    '@lib': './lib',
+                    '@src': './src'
+                }
+            };
+            const result = validator.validate(manifest);
+            const pathDiagnostics = result.diagnostics.filter(d =>
+                d.path.startsWith('paths.')
+            );
+            expect(pathDiagnostics).toHaveLength(0);
         });
     });
 
     describe('convenience functions', () => {
-        test('isManifestValid returns boolean', () => {
+        test('isManifestValid returns true for valid and false for invalid', () => {
             expect(isManifestValid({})).toBe(true);
             expect(isManifestValid({
                 dependencies: {
@@ -261,14 +296,15 @@ describe('ManifestValidator', () => {
             })).toBe(false);
         });
 
-        test('validateManifest returns diagnostics array', () => {
+        test('validateManifest returns diagnostics with expected codes', () => {
             const diagnostics = validateManifest({
                 dependencies: {
                     'owner/repo': { source: 'owner/repo' }
                 }
             });
-            expect(Array.isArray(diagnostics)).toBe(true);
             expect(diagnostics.length).toBeGreaterThan(0);
+            // Should report missing ref for git dependency
+            expect(diagnostics.some(d => d.code === IssueCodes.ImportMissingRef)).toBe(true);
         });
     });
 });

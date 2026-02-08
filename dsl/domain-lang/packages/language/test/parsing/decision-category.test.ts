@@ -1,13 +1,13 @@
 /**
  * Decision Classification Tests
- * 
+ *
  * Tests that decisions can be categorized using Classification labels.
  */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
 import { isBoundedContext, isClassification } from '../../src/generated/ast.js';
 
 describe('Decision Classification', () => {
@@ -17,35 +17,28 @@ describe('Decision Classification', () => {
         testServices = setupTestSuite();
     });
 
-    test('should use Classification for decision categories', async () => {
-        // Arrange
+    test('should parse Classification definitions with correct names', async () => {
         const input = s`
             Classification Architectural
             Classification Business
             Classification Technical
         `;
-        
-        // Act
+
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const categories = model.children.filter(isClassification);
-        
-        // Assert
+        const categories = document.parseResult.value.children.filter(isClassification);
+
         expect(categories).toHaveLength(3);
-        expect(categories[0].name).toBe('Architectural');
-        expect(categories[1].name).toBe('Business');
-        expect(categories[2].name).toBe('Technical');
+        expect(categories.map(c => c.name)).toEqual(['Architectural', 'Business', 'Technical']);
     });
 
-    test('should reference Classification in decisions', async () => {
-        // Arrange
+    test('should resolve Classification references in decisions', async () => {
         const input = s`
             Classification Architectural
             Classification Business
-            
+
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 decisions {
                     decision [Architectural] UseEventSourcing: "We will use event sourcing for order history",
@@ -53,58 +46,50 @@ describe('Decision Classification', () => {
                 }
             }
         `;
-        
-        // Act
+
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find(isBoundedContext);
-        
-        // Assert
-        expect(bc).toBeDefined();
-        const decisions = bc!.decisions ?? [];
-        expect(decisions).toHaveLength(2);
-        expect(decisions[0].classification?.ref?.name).toBe('Architectural');
-        expect(decisions[1].classification?.ref?.name).toBe('Business');
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+
+        expect(bc.decisions).toHaveLength(2);
+        expect(bc.decisions[0].name).toBe('UseEventSourcing');
+        expect(bc.decisions[0].classification?.ref?.name).toBe('Architectural');
+        expect(bc.decisions[0].value).toContain('event sourcing');
+        expect(bc.decisions[1].name).toBe('RefundWindow');
+        expect(bc.decisions[1].classification?.ref?.name).toBe('Business');
     });
 
-    test('should support qualified names for decision Classification', async () => {
-        // Arrange
+    test('should resolve qualified Classification names in decisions', async () => {
         const input = s`
             Namespace governance {
                 Classification Architectural
                 Classification Business
             }
-            
+
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 decisions {
                     decision [governance.Architectural] UseEventSourcing: "Event sourcing for audit trail"
                 }
             }
         `;
-        
-        // Act
+
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find(isBoundedContext);
-        
-        // Assert
-        expect(bc).toBeDefined();
-        const decisions = bc!.decisions ?? [];
-        expect(decisions[0].classification?.ref?.name).toBe('Architectural');
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+
+        expect(bc.decisions).toHaveLength(1);
+        expect(bc.decisions[0].classification?.ref?.name).toBe('Architectural');
     });
 
     test('should share Classifications between context roles and decisions', async () => {
-        // Arrange
         const input = s`
             Classification Core
             Classification Architectural
-            
+
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales as Core {
                 decisions {
                     decision [Architectural] EventSourcing: "Use event sourcing",
@@ -112,18 +97,95 @@ describe('Decision Classification', () => {
                 }
             }
         `;
-        
-        // Act
+
         const document = await testServices.parse(input);
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const bc = model.children.find(isBoundedContext);
-        
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+
+        // Same Classification used for context role and decision category
+        expect(bc.classification[0]?.ref?.name).toBe('Core');
+        expect(bc.decisions[0].classification?.ref?.name).toBe('Architectural');
+        expect(bc.decisions[1].classification?.ref?.name).toBe('Core');
+    });
+
+    // ========================================================================
+    // EDGE CASES & NEGATIVE TESTS
+    // ========================================================================
+
+    test('should parse empty decisions block', async () => {
+        const input = s`
+            Domain Sales {}
+            BoundedContext OrderContext for Sales {
+                decisions { }
+            }
+        `;
+
+        const document = await testServices.parse(input);
+        expectValidDocument(document);
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+        expect(bc.decisions).toHaveLength(0);
+    });
+
+    test('should parse decision without category bracket', async () => {
+        // Arrange - decisions can omit the [Category] bracket per grammar
+        const input = s`
+            Domain Sales {}
+            BoundedContext OrderContext for Sales {
+                decisions {
+                    decision UsePostgres: "Use PostgreSQL as primary database"
+                }
+            }
+        `;
+
+        // Act
+        const document = await testServices.parse(input);
+
         // Assert
-        expect(bc).toBeDefined();
-        expect(bc!.classification?.[0]?.ref?.name).toBe('Core');
-        const decisions = bc!.decisions ?? [];
-        expect(decisions[0].classification?.ref?.name).toBe('Architectural');
-        expect(decisions[1].classification?.ref?.name).toBe('Core');
+        expectValidDocument(document);
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+        expect(bc.decisions).toHaveLength(1);
+        expect(bc.decisions[0].name).toBe('UsePostgres');
+        expect(bc.decisions[0].value).toBe('Use PostgreSQL as primary database');
+        expect(bc.decisions[0].classification).toBeUndefined();
+    });
+
+    test('should report linking error for unresolved Classification in decision', async () => {
+        const input = s`
+            Domain Sales {}
+            BoundedContext OrderContext for Sales {
+                decisions {
+                    decision [NonExistent] Foo: "Some decision"
+                }
+            }
+        `;
+
+        const document = await testServices.parse(input);
+        const bc = document.parseResult.value.children.find(isBoundedContext)!;
+
+        // The decision parses but the classification reference should fail to resolve
+        expect(bc.decisions).toHaveLength(1);
+        expect(bc.decisions[0].classification?.ref).toBeUndefined();
+
+        const errors = getDiagnosticsBySeverity(document, 1);
+        expect(errors.length).toBeGreaterThanOrEqual(1);
+        expect(errors.some(d => d.message.includes('NonExistent') || d.message.includes('Could not resolve'))).toBe(true);
+    });
+
+    test('should reject decision without a value string', async () => {
+        const input = s`
+            Classification Architectural
+            Domain Sales {}
+            BoundedContext OrderContext for Sales {
+                decisions {
+                    decision [Architectural] MissingValue
+                }
+            }
+        `;
+
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'Decision without value'
+        );
     });
 });

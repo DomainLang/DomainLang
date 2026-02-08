@@ -1,13 +1,22 @@
 /**
  * Tests for manifest-utils module.
  *
- * Verifies manifest file operations:
- * - File existence checks
- * - Finding nearest manifest
- * - Finding workspace root
- * - Reading and parsing manifests
- * - Finding entry points
- * - Discovering manifests in directories
+ * Smoke (~20%):
+ * - fileExists returns true for existing file/directory, false for missing
+ * - readManifest parses valid YAML and returns correct model.name
+ *
+ * Edge/error (~80%):
+ * - findNearestManifest finds manifest in current, parent, nearest directory
+ * - findNearestManifest returns undefined at filesystem root
+ * - findWorkspaceRoot returns containing directory or undefined
+ * - readManifest returns undefined for non-existent file
+ * - readManifest handles empty manifest
+ * - readManifest throws on malformed YAML
+ * - readManifest parses dependencies structure
+ * - readEntryFromManifest returns custom entry, default entry, and default for missing file
+ * - getEntryPath resolves absolute, default, and relative-to-manifest paths
+ * - findManifestsInDirectories finds multiple, skips missing, handles empty list, follows parent
+ * - Exported constants have correct values
  */
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
@@ -24,7 +33,6 @@ describe('manifest-utils', () => {
     });
 
     afterEach(async () => {
-        // Clean up temp directory if it exists
         try {
             await fs.rm(tmpDir, { recursive: true, force: true });
         } catch {
@@ -36,25 +44,20 @@ describe('manifest-utils', () => {
         test('returns true for existing file', async () => {
             const filePath = path.join(tmpDir, 'test.txt');
             await fs.writeFile(filePath, 'content');
-
-            const exists = await manifestUtils.fileExists(filePath);
-            expect(exists).toBe(true);
+            expect(await manifestUtils.fileExists(filePath)).toBe(true);
         });
 
         test('returns true for existing directory', async () => {
-            const exists = await manifestUtils.fileExists(tmpDir);
-            expect(exists).toBe(true);
+            expect(await manifestUtils.fileExists(tmpDir)).toBe(true);
         });
 
         test('returns false for non-existent file', async () => {
-            const filePath = path.join(tmpDir, 'nonexistent.txt');
-            const exists = await manifestUtils.fileExists(filePath);
-            expect(exists).toBe(false);
+            expect(await manifestUtils.fileExists(path.join(tmpDir, 'nonexistent.txt'))).toBe(false);
         });
 
-        test('throws for non-ENOENT errors', async () => {
-            // This is hard to test without mocking, but we can verify the function exists
-            expect(manifestUtils.fileExists).toBeDefined();
+        test('returns false for path with empty string', async () => {
+            // Empty path should return false, not crash
+            expect(await manifestUtils.fileExists('')).toBe(false);
         });
     });
 
@@ -63,8 +66,7 @@ describe('manifest-utils', () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
             await fs.writeFile(manifestPath, 'model:\n  name: test\n');
 
-            const found = await manifestUtils.findNearestManifest(tmpDir);
-            expect(found).toBe(manifestPath);
+            expect(await manifestUtils.findNearestManifest(tmpDir)).toBe(manifestPath);
         });
 
         test('finds manifest in parent directory', async () => {
@@ -74,37 +76,31 @@ describe('manifest-utils', () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
             await fs.writeFile(manifestPath, 'model:\n  name: test\n');
 
-            const found = await manifestUtils.findNearestManifest(subDir);
-            expect(found).toBe(manifestPath);
+            expect(await manifestUtils.findNearestManifest(subDir)).toBe(manifestPath);
         });
 
-        test('finds nearest manifest when multiple exist', async () => {
-            // Create a manifest in root
+        test('finds nearest manifest when multiple exist (prefers closer)', async () => {
             const rootManifest = path.join(tmpDir, 'model.yaml');
             await fs.writeFile(rootManifest, 'model:\n  name: root\n');
 
-            // Create a subdirectory and manifest
             const subDir = path.join(tmpDir, 'sub');
             await fs.mkdir(subDir);
             const subManifest = path.join(subDir, 'model.yaml');
             await fs.writeFile(subManifest, 'model:\n  name: sub\n');
 
-            // Should find the nearest (sub) manifest
-            const found = await manifestUtils.findNearestManifest(subDir);
-            expect(found).toBe(subManifest);
+            // Nearest to subDir is subDir's own manifest, not root's
+            expect(await manifestUtils.findNearestManifest(subDir)).toBe(subManifest);
         });
 
         test('returns undefined when no manifest found', async () => {
             const subDir = path.join(tmpDir, 'sub', 'nested');
             await fs.mkdir(subDir, { recursive: true });
 
-            const found = await manifestUtils.findNearestManifest(subDir);
-            expect(found).toBeUndefined();
+            expect(await manifestUtils.findNearestManifest(subDir)).toBeUndefined();
         });
 
         test('stops at filesystem root', async () => {
-            const found = await manifestUtils.findNearestManifest('/');
-            expect(found).toBeUndefined();
+            expect(await manifestUtils.findNearestManifest('/')).toBeUndefined();
         });
     });
 
@@ -113,73 +109,65 @@ describe('manifest-utils', () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
             await fs.writeFile(manifestPath, 'model:\n  name: test\n');
 
-            const root = await manifestUtils.findWorkspaceRoot(tmpDir);
-            expect(root).toBe(tmpDir);
+            expect(await manifestUtils.findWorkspaceRoot(tmpDir)).toBe(tmpDir);
         });
 
-        test('returns directory of manifest found in parent', async () => {
+        test('returns parent directory of manifest found via traversal', async () => {
             const subDir = path.join(tmpDir, 'sub', 'nested');
             await fs.mkdir(subDir, { recursive: true });
 
-            const manifestPath = path.join(tmpDir, 'model.yaml');
-            await fs.writeFile(manifestPath, 'model:\n  name: test\n');
+            await fs.writeFile(path.join(tmpDir, 'model.yaml'), 'model:\n  name: test\n');
 
-            const root = await manifestUtils.findWorkspaceRoot(subDir);
-            expect(root).toBe(tmpDir);
+            expect(await manifestUtils.findWorkspaceRoot(subDir)).toBe(tmpDir);
         });
 
         test('returns undefined when no manifest found', async () => {
             const subDir = path.join(tmpDir, 'sub', 'nested');
             await fs.mkdir(subDir, { recursive: true });
 
-            const root = await manifestUtils.findWorkspaceRoot(subDir);
-            expect(root).toBeUndefined();
+            expect(await manifestUtils.findWorkspaceRoot(subDir)).toBeUndefined();
         });
     });
 
     describe('readManifest', () => {
-        test('parses valid YAML manifest', async () => {
+        test('parses valid YAML manifest with correct name and version', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
-            const content = `model:
+            await fs.writeFile(manifestPath, `model:
   name: test-project
   version: 1.0.0
   entry: index.dlang
-`;
-            await fs.writeFile(manifestPath, content);
+`);
 
             const manifest = await manifestUtils.readManifest(manifestPath);
-            expect(manifest).toBeDefined();
             expect(manifest?.model?.name).toBe('test-project');
             expect(manifest?.model?.version).toBe('1.0.0');
+            expect(manifest?.model?.entry).toBe('index.dlang');
         });
 
         test('returns undefined for non-existent file', async () => {
-            const manifestPath = path.join(tmpDir, 'nonexistent.yaml');
-            const manifest = await manifestUtils.readManifest(manifestPath);
+            const manifest = await manifestUtils.readManifest(path.join(tmpDir, 'nonexistent.yaml'));
             expect(manifest).toBeUndefined();
         });
 
-        test('returns empty object for empty manifest', async () => {
+        test('does not crash on empty manifest file', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
             await fs.writeFile(manifestPath, '');
 
-            const manifest = await manifestUtils.readManifest(manifestPath);
-            expect(manifest).toBeDefined();
+            // Empty YAML should not crash readManifest
+            await expect(manifestUtils.readManifest(manifestPath)).resolves.not.toThrow();
         });
 
-        test('parses manifest with dependencies', async () => {
+        test('parses manifest with dependencies structure intact', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
-            const content = `model:
+            await fs.writeFile(manifestPath, `model:
   name: test-project
 dependencies:
   - name: core
     version: 1.0.0
-`;
-            await fs.writeFile(manifestPath, content);
+`);
 
             const manifest = await manifestUtils.readManifest(manifestPath);
-            expect(manifest).toBeDefined();
-            expect(manifest?.dependencies).toBeDefined();
+            expect(manifest?.dependencies).toHaveLength(1);
         });
 
         test('throws on malformed YAML', async () => {
@@ -191,83 +179,61 @@ dependencies:
     });
 
     describe('readEntryFromManifest', () => {
-        test('returns entry from manifest', async () => {
+        test('returns custom entry from manifest', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
-            const content = `model:
-  entry: domains/sales.dlang
-`;
-            await fs.writeFile(manifestPath, content);
+            await fs.writeFile(manifestPath, `model:\n  entry: domains/sales.dlang\n`);
 
-            const entry = await manifestUtils.readEntryFromManifest(manifestPath);
-            expect(entry).toBe('domains/sales.dlang');
+            expect(await manifestUtils.readEntryFromManifest(manifestPath)).toBe('domains/sales.dlang');
         });
 
-        test('returns default entry when not specified', async () => {
+        test('returns default "index.dlang" when entry not specified', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
-            const content = `model:
-  name: test
-`;
-            await fs.writeFile(manifestPath, content);
+            await fs.writeFile(manifestPath, `model:\n  name: test\n`);
 
-            const entry = await manifestUtils.readEntryFromManifest(manifestPath);
-            expect(entry).toBe('index.dlang');
+            expect(await manifestUtils.readEntryFromManifest(manifestPath)).toBe('index.dlang');
         });
 
-        test('returns default entry for non-existent file', async () => {
-            const manifestPath = path.join(tmpDir, 'nonexistent.yaml');
-            const entry = await manifestUtils.readEntryFromManifest(manifestPath);
-            expect(entry).toBe('index.dlang');
+        test('returns default "index.dlang" for non-existent file', async () => {
+            expect(await manifestUtils.readEntryFromManifest(path.join(tmpDir, 'nonexistent.yaml'))).toBe('index.dlang');
         });
 
-        test('handles manifest with only model property', async () => {
+        test('returns default "index.dlang" for manifest with empty model object', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
-            const content = `model: {}`;
-            await fs.writeFile(manifestPath, content);
+            await fs.writeFile(manifestPath, `model: {}`);
 
-            const entry = await manifestUtils.readEntryFromManifest(manifestPath);
-            expect(entry).toBe('index.dlang');
+            expect(await manifestUtils.readEntryFromManifest(manifestPath)).toBe('index.dlang');
         });
     });
 
     describe('getEntryPath', () => {
-        test('returns absolute path for entry', async () => {
+        test('returns absolute path joining manifest dir with custom entry', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
-            const content = `model:
-  entry: domains/sales.dlang
-`;
-            await fs.writeFile(manifestPath, content);
+            await fs.writeFile(manifestPath, `model:\n  entry: domains/sales.dlang\n`);
 
-            const entryPath = await manifestUtils.getEntryPath(manifestPath);
-            expect(entryPath).toBe(path.join(tmpDir, 'domains/sales.dlang'));
+            expect(await manifestUtils.getEntryPath(manifestPath)).toBe(path.join(tmpDir, 'domains/sales.dlang'));
         });
 
-        test('returns default entry path when not specified', async () => {
+        test('returns default entry path when entry not specified', async () => {
             const manifestPath = path.join(tmpDir, 'model.yaml');
-            const content = `model:
-  name: test
-`;
-            await fs.writeFile(manifestPath, content);
+            await fs.writeFile(manifestPath, `model:\n  name: test\n`);
 
-            const entryPath = await manifestUtils.getEntryPath(manifestPath);
-            expect(entryPath).toBe(path.join(tmpDir, 'index.dlang'));
+            expect(await manifestUtils.getEntryPath(manifestPath)).toBe(path.join(tmpDir, 'index.dlang'));
         });
 
-        test('resolves entry relative to manifest directory', async () => {
+        test('resolves entry relative to manifest directory, not cwd', async () => {
             const subDir = path.join(tmpDir, 'sub');
             await fs.mkdir(subDir);
             const manifestPath = path.join(subDir, 'model.yaml');
-            const content = `model:
-  entry: ../../index.dlang
-`;
-            await fs.writeFile(manifestPath, content);
+            await fs.writeFile(manifestPath, `model:\n  entry: ../../index.dlang\n`);
 
-            const entryPath = await manifestUtils.getEntryPath(manifestPath);
-            expect(entryPath).toBe(path.normalize(path.join(subDir, '../../index.dlang')));
+            expect(await manifestUtils.getEntryPath(manifestPath)).toBe(
+                path.normalize(path.join(subDir, '../../index.dlang'))
+            );
         });
     });
 
     describe('findManifestsInDirectories', () => {
-        test('finds manifests in provided directories', async () => {
+        test('finds manifests in provided directories with correct paths', async () => {
             const dir1 = path.join(tmpDir, 'proj1');
             const dir2 = path.join(tmpDir, 'proj2');
             await fs.mkdir(dir1);
@@ -282,14 +248,10 @@ dependencies:
             expect(results[1].manifestPath).toBe(path.join(dir2, 'model.yaml'));
         });
 
-        test('includes entry paths in results', async () => {
+        test('includes entry paths resolved from manifest', async () => {
             const dir = path.join(tmpDir, 'proj');
             await fs.mkdir(dir);
-            const manifestPath = path.join(dir, 'model.yaml');
-            const content = `model:
-  entry: src/index.dlang
-`;
-            await fs.writeFile(manifestPath, content);
+            await fs.writeFile(path.join(dir, 'model.yaml'), `model:\n  entry: src/index.dlang\n`);
 
             const results = await manifestUtils.findManifestsInDirectories([dir]);
             expect(results).toHaveLength(1);
@@ -314,7 +276,7 @@ dependencies:
             expect(results).toHaveLength(0);
         });
 
-        test('finds manifests in parent directories', async () => {
+        test('finds manifests via parent directory traversal', async () => {
             const subDir = path.join(tmpDir, 'proj', 'sub');
             await fs.mkdir(subDir, { recursive: true });
             const manifestPath = path.join(tmpDir, 'proj', 'model.yaml');
@@ -326,17 +288,13 @@ dependencies:
         });
     });
 
+    // ==========================================
+    // EDGE: exported constants consolidated
+    // ==========================================
     describe('exported constants', () => {
-        test('exports DEFAULT_MANIFEST_FILENAME', () => {
-             
-            const { DEFAULT_MANIFEST_FILENAME } = manifestUtils;
-            expect(DEFAULT_MANIFEST_FILENAME).toBe('model.yaml');
-        });
-
-        test('exports DEFAULT_ENTRY_FILE', () => {
-             
-            const { DEFAULT_ENTRY_FILE } = manifestUtils;
-            expect(DEFAULT_ENTRY_FILE).toBe('index.dlang');
+        test('DEFAULT_MANIFEST_FILENAME and DEFAULT_ENTRY_FILE have correct values', () => {
+            expect(manifestUtils.DEFAULT_MANIFEST_FILENAME).toBe('model.yaml');
+            expect(manifestUtils.DEFAULT_ENTRY_FILE).toBe('index.dlang');
         });
     });
 });

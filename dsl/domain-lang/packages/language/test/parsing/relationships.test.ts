@@ -10,7 +10,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getAllBoundedContexts, s } from '../test-helpers.js';
 import type { ContextMap, Relationship } from '../../src/generated/ast.js';
 import { isContextMap } from '../../src/generated/ast.js';
 
@@ -34,7 +34,12 @@ function getRelationships(document: any): Relationship[] {
 // ============================================================================
 
 describe('Relationship Arrow Types', () => {
-    test('should parse downstream arrow (->) ', async () => {
+    test.each([
+        ['->', 'downstream'],
+        ['<-', 'upstream'],
+        ['<->', 'bidirectional'],
+        ['><', 'mutual dependency'],
+    ] as const)('should parse %s (%s) arrow', async (arrow, _description) => {
         // Arrange
         const input = s`
             Domain Sales {}
@@ -43,7 +48,7 @@ describe('Relationship Arrow Types', () => {
             
             ContextMap TestMap {
                 contains OrderContext, PaymentContext
-                OrderContext -> PaymentContext
+                OrderContext ${arrow} PaymentContext
             }
         `;
 
@@ -53,73 +58,7 @@ describe('Relationship Arrow Types', () => {
         // Assert
         expectValidDocument(document);
         const relationships = getRelationships(document);
-        expect(relationships[0].arrow).toBe('->');
-    });
-
-    test('should parse upstream arrow (<-)', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext <- PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].arrow).toBe('<-');
-    });
-
-    test('should parse bidirectional arrow (<->)', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext <-> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].arrow).toBe('<->');
-    });
-
-    test('should parse mutual dependency arrow (><)', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext >< PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].arrow).toBe('><');
+        expect(relationships[0].arrow).toBe(arrow);
     });
 
     // NOTE: U/D, u/d, C/S, c/s arrow aliases removed - use symbolic arrows (-> <- <-> ><) with explicit type
@@ -130,8 +69,18 @@ describe('Relationship Arrow Types', () => {
 // ============================================================================
 
 describe('DDD Pattern Annotations', () => {
-    test('should parse Open Host Service [OHS]', async () => {
+    test.each([
+        ['OHS', 'left', '->'],
+        ['CF', 'right', '->'],
+        ['ACL', 'left', '->'],
+        ['PL', 'left', '->'],
+        ['P', 'left', '<->'],
+        ['SK', 'left', '<->'],
+        ['BBoM', 'left', '->'],
+    ] as const)('should parse [%s] on %s side', async (pattern, side, arrow) => {
         // Arrange
+        const leftPattern = side === 'left' ? `[${pattern}] ` : '';
+        const rightPattern = side === 'right' ? `[${pattern}] ` : '';
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -139,7 +88,7 @@ describe('DDD Pattern Annotations', () => {
             
             ContextMap TestMap {
                 contains OrderContext, PaymentContext
-                [OHS] OrderContext -> PaymentContext
+                ${leftPattern}OrderContext ${arrow} ${rightPattern}PaymentContext
             }
         `;
 
@@ -149,139 +98,8 @@ describe('DDD Pattern Annotations', () => {
         // Assert
         expectValidDocument(document);
         const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('OHS');
-    });
-
-    test('should parse Conformist [CF]', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext -> [CF] PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].rightPatterns).toContain('CF');
-    });
-
-    test('should parse Anti-Corruption Layer [ACL]', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [ACL] OrderContext -> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('ACL');
-    });
-
-    test('should parse Published Language [PL]', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [PL] OrderContext -> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('PL');
-    });
-
-    test('should parse Partnership [P]', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [P] OrderContext <-> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('P');
-    });
-
-    test('should parse Shared Kernel [SK]', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [SK] OrderContext <-> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('SK');
-    });
-
-    test('should parse Big Ball of Mud [BBoM]', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [BBoM] OrderContext -> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('BBoM');
+        const patterns = side === 'left' ? relationships[0].leftPatterns : relationships[0].rightPatterns;
+        expect(patterns).toContain(pattern);
     });
 
     test('should parse patterns on both sides', async () => {
@@ -338,7 +156,18 @@ describe('DDD Pattern Annotations', () => {
 // ============================================================================
 
 describe('DDD Pattern Annotations - Long-form Aliases', () => {
-    test('should parse [PublishedLanguage] (long-form of PL)', async () => {
+    test.each([
+        ['PublishedLanguage', 'left', '->'],
+        ['OpenHostService', 'left', '->'],
+        ['Conformist', 'right', '->'],
+        ['AntiCorruptionLayer', 'right', '->'],
+        ['Partnership', 'left', '<->'],
+        ['SharedKernel', 'left', '<->'],
+        ['BigBallOfMud', 'left', '->'],
+    ] as const)('should parse [%s] on %s side', async (pattern, side, arrow) => {
+        // Arrange
+        const leftPattern = side === 'left' ? `[${pattern}] ` : '';
+        const rightPattern = side === 'right' ? `[${pattern}] ` : '';
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -346,115 +175,18 @@ describe('DDD Pattern Annotations - Long-form Aliases', () => {
             
             ContextMap TestMap {
                 contains OrderContext, PaymentContext
-                [PublishedLanguage] OrderContext -> PaymentContext
+                ${leftPattern}OrderContext ${arrow} ${rightPattern}PaymentContext
             }
         `;
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('PublishedLanguage');
-    });
 
-    test('should parse [OpenHostService] (long-form of OHS)', async () => {
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [OpenHostService] OrderContext -> PaymentContext
-            }
-        `;
+        // Act
         const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('OpenHostService');
-    });
 
-    test('should parse [Conformist] (long-form of CF)', async () => {
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext -> [Conformist] PaymentContext
-            }
-        `;
-        const document = await testServices.parse(input);
+        // Assert
         expectValidDocument(document);
         const relationships = getRelationships(document);
-        expect(relationships[0].rightPatterns).toContain('Conformist');
-    });
-
-    test('should parse [AntiCorruptionLayer] (long-form of ACL)', async () => {
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext -> [AntiCorruptionLayer] PaymentContext
-            }
-        `;
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].rightPatterns).toContain('AntiCorruptionLayer');
-    });
-
-    test('should parse [Partnership] (long-form of P)', async () => {
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [Partnership] OrderContext <-> PaymentContext
-            }
-        `;
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('Partnership');
-    });
-
-    test('should parse [SharedKernel] (long-form of SK)', async () => {
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [SharedKernel] OrderContext <-> PaymentContext
-            }
-        `;
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('SharedKernel');
-    });
-
-    test('should parse [BigBallOfMud] (long-form of BBoM)', async () => {
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                [BigBallOfMud] OrderContext -> PaymentContext
-            }
-        `;
-        const document = await testServices.parse(input);
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].leftPatterns).toContain('BigBallOfMud');
+        const patterns = side === 'left' ? relationships[0].leftPatterns : relationships[0].rightPatterns;
+        expect(patterns).toContain(pattern);
     });
 
     test('should parse mixed short and long-form patterns', async () => {
@@ -483,7 +215,13 @@ describe('DDD Pattern Annotations - Long-form Aliases', () => {
 // ============================================================================
 
 describe('Relationship Types', () => {
-    test('should parse Partnership type', async () => {
+    test.each([
+        ['Partnership', '<->'],
+        ['SharedKernel', '<->'],
+        ['CustomerSupplier', '->'],
+        ['UpstreamDownstream', '->'],
+        ['SeparateWays', '><'],
+    ] as const)('should parse %s type', async (type, arrow) => {
         // Arrange
         const input = s`
             Domain Sales {}
@@ -492,7 +230,7 @@ describe('Relationship Types', () => {
             
             ContextMap TestMap {
                 contains OrderContext, PaymentContext
-                OrderContext <-> PaymentContext : Partnership
+                OrderContext ${arrow} PaymentContext : ${type}
             }
         `;
 
@@ -502,95 +240,7 @@ describe('Relationship Types', () => {
         // Assert
         expectValidDocument(document);
         const relationships = getRelationships(document);
-        expect(relationships[0].type).toBe('Partnership');
-    });
-
-    test('should parse SharedKernel type', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext <-> PaymentContext : SharedKernel
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].type).toBe('SharedKernel');
-    });
-
-    test('should parse CustomerSupplier type', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext -> PaymentContext : CustomerSupplier
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].type).toBe('CustomerSupplier');
-    });
-
-    test('should parse UpstreamDownstream type', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext -> PaymentContext : UpstreamDownstream
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].type).toBe('UpstreamDownstream');
-    });
-
-    test('should parse SeparateWays type', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext >< PaymentContext : SeparateWays
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const relationships = getRelationships(document);
-        expect(relationships[0].type).toBe('SeparateWays');
+        expect(relationships[0].type).toBe(type);
     });
 });
 
@@ -646,6 +296,17 @@ describe('Combined Patterns and Types', () => {
         expectValidDocument(document);
         const relationships = getRelationships(document);
         expect(relationships).toHaveLength(3);
+
+        expect(relationships[0].arrow).toBe('->');
+        expect(relationships[0].leftPatterns).toContain('OHS');
+        expect(relationships[0].rightPatterns).toContain('CF');
+        expect(relationships[0].type).toBe('CustomerSupplier');
+
+        expect(relationships[1].arrow).toBe('<->');
+        expect(relationships[1].type).toBe('Partnership');
+
+        expect(relationships[2].arrow).toBe('<-');
+        expect(relationships[2].leftPatterns).toContain('ACL');
     });
 });
 
@@ -671,6 +332,11 @@ describe('bc Internal Relationships', () => {
 
         // Assert
         expectValidDocument(document);
+        const bcs = getAllBoundedContexts(document);
+        const bc = bcs.find(b => b.relationships.length > 0);
+        expect(bc).toBeDefined();
+        expect(bc!.relationships).toHaveLength(1);
+        expect(bc!.relationships[0].arrow).toBe('->');
     });
 
     test('should parse this reference with patterns', async () => {
@@ -690,6 +356,14 @@ describe('bc Internal Relationships', () => {
 
         // Assert
         expectValidDocument(document);
+        const bcs = getAllBoundedContexts(document);
+        const bc = bcs.find(b => b.relationships.length > 0);
+        expect(bc).toBeDefined();
+        expect(bc!.relationships).toHaveLength(1);
+        expect(bc!.relationships[0].arrow).toBe('->');
+        expect(bc!.relationships[0].leftPatterns).toContain('OHS');
+        expect(bc!.relationships[0].rightPatterns).toContain('CF');
+        expect(bc!.relationships[0].type).toBe('CustomerSupplier');
     });
 
     test('should parse multiple relationships in BC', async () => {
@@ -711,6 +385,84 @@ describe('bc Internal Relationships', () => {
 
         // Assert
         expectValidDocument(document);
+        const bcs = getAllBoundedContexts(document);
+        const bc = bcs.find(b => b.relationships.length > 0);
+        expect(bc).toBeDefined();
+        expect(bc!.relationships).toHaveLength(2);
+        expect(bc!.relationships[0].arrow).toBe('->');
+        expect(bc!.relationships[1].arrow).toBe('<->');
+    });
+
+    test('should parse this <- arrow in BC relationship', async () => {
+        // Arrange
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales
+            bc PaymentContext for Sales {
+                relationships {
+                    this <- OrderContext
+                }
+            }
+        `;
+
+        // Act
+        const document = await testServices.parse(input);
+
+        // Assert
+        expectValidDocument(document);
+        const bcs = getAllBoundedContexts(document);
+        const bc = bcs.find(b => b.relationships.length > 0);
+        expect(bc).toBeDefined();
+        expect(bc!.relationships).toHaveLength(1);
+        expect(bc!.relationships[0].arrow).toBe('<-');
+    });
+
+    test('should parse this >< (separate ways) in BC relationship', async () => {
+        // Arrange
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales
+            bc LegacySystem for Sales {
+                relationships {
+                    this >< OrderContext : SeparateWays
+                }
+            }
+        `;
+
+        // Act
+        const document = await testServices.parse(input);
+
+        // Assert
+        expectValidDocument(document);
+        const bcs = getAllBoundedContexts(document);
+        const bc = bcs.find(b => b.relationships.length > 0);
+        expect(bc).toBeDefined();
+        expect(bc!.relationships).toHaveLength(1);
+        expect(bc!.relationships[0].arrow).toBe('><');
+        expect(bc!.relationships[0].type).toBe('SeparateWays');
+    });
+
+    test('should parse BBoM pattern in BC relationship with this', async () => {
+        // Arrange
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales
+            bc LegacyContext for Sales {
+                relationships {
+                    [BBoM] this -> OrderContext
+                }
+            }
+        `;
+
+        // Act
+        const document = await testServices.parse(input);
+
+        // Assert
+        expectValidDocument(document);
+        const bcs = getAllBoundedContexts(document);
+        const bc = bcs.find(b => b.relationships.length > 0);
+        expect(bc).toBeDefined();
+        expect(bc!.relationships[0].leftPatterns).toContain('BBoM');
     });
 
     test('should parse relationships with commas', async () => {
@@ -719,7 +471,7 @@ describe('bc Internal Relationships', () => {
             Domain Sales {}
             bc OrderContext for Sales
             bc PaymentContext for Sales
-            
+
             ContextMap TestMap {
                 contains OrderContext, PaymentContext
                 OrderContext -> PaymentContext,
@@ -734,5 +486,70 @@ describe('bc Internal Relationships', () => {
         expectValidDocument(document);
         const relationships = getRelationships(document);
         expect(relationships).toHaveLength(2);
+        expect(relationships[0].arrow).toBe('->');
+        expect(relationships[1].arrow).toBe('<-');
+    });
+});
+
+// ============================================================================
+// NEGATIVE TESTS
+// ============================================================================
+
+describe('Negative: Invalid Relationships', () => {
+    test('should reject ContextMap with invalid syntax inside block', async () => {
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales
+            bc PaymentContext for Sales
+
+            ContextMap TestMap {
+                contains OrderContext, PaymentContext
+                -> ->
+            }
+        `;
+
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'Invalid syntax in ContextMap'
+        );
+    });
+
+    test('should produce linking errors for BC relationships referencing non-existent contexts', async () => {
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales
+            bc PaymentContext for Sales {
+                relationships {
+                    this -> NonExistent
+                }
+            }
+        `;
+
+        const document = await testServices.parse(input);
+        // Parser succeeds but linker should flag the unresolved reference
+        const diagnostics = document.diagnostics ?? [];
+        expect(diagnostics.length).toBeGreaterThan(0);
+        expect(diagnostics.some(d => d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve'))).toBe(true);
+    });
+
+    test('should produce diagnostics for relationship referencing non-existent BC', async () => {
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales
+
+            ContextMap TestMap {
+                contains OrderContext
+                OrderContext -> NonExistentContext
+            }
+        `;
+
+        const document = await testServices.parse(input);
+
+        // Parser succeeds but validation should produce diagnostics
+        // (linking errors for non-existent references)
+        const diagnostics = document.diagnostics ?? [];
+        expect(diagnostics.length).toBeGreaterThan(0);
+        expect(diagnostics.some(d => d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve'))).toBe(true);
     });
 });

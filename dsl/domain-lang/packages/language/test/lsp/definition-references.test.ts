@@ -1,11 +1,16 @@
 /**
  * Tests for Go to Definition and Find References LSP features.
- * 
- * Verifies that:
- * 1. Go to Definition works within the same file
- * 2. Go to Definition works across imported files
- * 3. Go to Definition works for elements in package cache (.dlang/cache)
- * 4. Find References finds all usages across files
+ *
+ * Smoke tests:
+ * - Basic same-file definition navigation works
+ * - Cross-file definition navigation works
+ *
+ * Edge/error cases:
+ * - Definition on non-reference position returns empty
+ * - Definition on unresolved reference returns empty
+ * - Nested import definition navigates to correct file and line
+ * - Find References returns correct count and URIs
+ * - Find References with includeDeclaration includes the definition itself
  */
 
 import { describe, test, beforeAll, afterAll, expect } from 'vitest';
@@ -48,14 +53,23 @@ describe('Go to Definition and Find References', () => {
         }
     }
 
-    describe('Go to Definition', () => {
-        test('should navigate to domain definition in same file', async () => {
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'same-file-def');
-            await fs.mkdir(projectDir, { recursive: true });
+    async function getDefinitionAt(doc: LangiumDocument<Model>, line: number, character: number) {
+        const params: DefinitionParams = {
+            textDocument: { uri: doc.uri.toString() },
+            position: { line, character }
+        };
+        const definitionProvider = services.DomainLang.lsp.DefinitionProvider;
+        return definitionProvider?.getDefinition(doc, params);
+    }
 
-            const filePath = path.join(projectDir, 'model.dlang');
-            const doc = await createAndLoadDocument(filePath, `
+    // ==========================================
+    // SMOKE: same-file definition navigation
+    // ==========================================
+    test('navigates to domain definition in same file with correct target range', async () => {
+        await clearAllDocuments();
+        const projectDir = path.join(tempDir, 'same-file-def');
+        const filePath = path.join(projectDir, 'model.dlang');
+        const doc = await createAndLoadDocument(filePath, `
 Domain Sales {
     vision: "Sales operations"
 }
@@ -63,92 +77,92 @@ Domain Sales {
 bc OrderContext for Sales {
     description: "Order management"
 }
-            `);
+        `);
 
-            // Find position of "Sales" reference in the BC definition (line 6)
-            const lines = doc.textDocument.getText().split('\n');
-            const bcLine = lines.findIndex(l => l.includes('for Sales'));
-            const salesRefCol = lines[bcLine].indexOf('Sales');
+        const lines = doc.textDocument.getText().split('\n');
+        const bcLine = lines.findIndex(l => l.includes('for Sales'));
+        const salesRefCol = lines[bcLine].indexOf('Sales');
 
-            const params: DefinitionParams = {
-                textDocument: { uri: doc.uri.toString() },
-                position: { line: bcLine, character: salesRefCol + 2 } // Inside "Sales"
-            };
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const result = (await getDefinitionAt(doc, bcLine, salesRefCol + 2))!;
 
-            const definitionProvider = services.DomainLang.lsp.DefinitionProvider;
-            const result = await definitionProvider?.getDefinition(doc, params);
+        expect(result).toHaveLength(1);
+        expect(result[0].targetUri).toBe(doc.uri.toString());
+        // "Domain Sales" is on line 1 (0-indexed, blank line 0)
+        expect(result[0].targetRange.start.line).toBe(1);
+    });
 
-            expect(result).toBeDefined();
-            expect(result).toHaveLength(1);
-            
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
-            const link = result![0];
-            expect(link.targetUri).toBe(doc.uri.toString());
-            // Should point to "Sales" domain definition (line 1)
-            expect(link.targetRange.start.line).toBe(1);
-        });
+    // ==========================================
+    // SMOKE: cross-file definition navigation
+    // ==========================================
+    test('navigates to definition in imported file', async () => {
+        await clearAllDocuments();
+        const projectDir = path.join(tempDir, 'cross-file-def');
 
-        test('should navigate to definition in imported file', async () => {
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'cross-file-def');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            // Create domains file
-            const domainsPath = path.join(projectDir, 'domains.dlang');
-            await createAndLoadDocument(domainsPath, `
+        const domainsPath = path.join(projectDir, 'domains.dlang');
+        await createAndLoadDocument(domainsPath, `
 Domain Sales {
     vision: "Sales operations"
 }
-            `);
+        `);
 
-            // Initialize workspace manager
-            await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
+        await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
 
-            // Create file that imports and references the domain
-            const contextsPath = path.join(projectDir, 'contexts.dlang');
-            const doc = await createAndLoadDocument(contextsPath, `
+        const contextsPath = path.join(projectDir, 'contexts.dlang');
+        const doc = await createAndLoadDocument(contextsPath, `
 import "./domains.dlang"
 
 bc OrderContext for Sales {
     description: "Order management"
 }
-            `);
+        `);
 
-            // Find position of "Sales" reference in the BC definition
-            const lines = doc.textDocument.getText().split('\n');
-            const bcLine = lines.findIndex(l => l.includes('for Sales'));
-            const salesRefCol = lines[bcLine].indexOf('Sales');
+        const lines = doc.textDocument.getText().split('\n');
+        const bcLine = lines.findIndex(l => l.includes('for Sales'));
+        const salesRefCol = lines[bcLine].indexOf('Sales');
 
-            const params: DefinitionParams = {
-                textDocument: { uri: doc.uri.toString() },
-                position: { line: bcLine, character: salesRefCol + 2 }
-            };
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const result = (await getDefinitionAt(doc, bcLine, salesRefCol + 2))!;
 
-            const definitionProvider = services.DomainLang.lsp.DefinitionProvider;
-            const result = await definitionProvider?.getDefinition(doc, params);
+        expect(result).toHaveLength(1);
+        expect(result[0].targetUri).toBe(URI.file(domainsPath).toString());
+    });
 
-            expect(result).toBeDefined();
-            expect(result).toHaveLength(1);
-            
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
-            const link = result![0];
-            // Should navigate to the domains.dlang file
-            expect(link.targetUri).toBe(URI.file(domainsPath).toString());
-        });
+    // ==========================================
+    // EDGE: definition on keyword returns empty
+    // ==========================================
+    test('returns no definition when cursor is on a keyword', async () => {
+        await clearAllDocuments();
+        const projectDir = path.join(tempDir, 'keyword-pos');
+        const filePath = path.join(projectDir, 'model.dlang');
+        const doc = await createAndLoadDocument(filePath, `
+Domain Sales {
+    vision: "Sales operations"
+}
+        `);
 
-        test('should navigate to definition in nested import', async () => {
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'nested-def');
-            await fs.mkdir(path.join(projectDir, 'shared'), { recursive: true });
+        // Position cursor on the "Domain" keyword itself (line 1, char 0)
+        const result = await getDefinitionAt(doc, 1, 0);
 
-            // Create team definition in shared folder
-            const teamsPath = path.join(projectDir, 'shared', 'teams.dlang');
-            await createAndLoadDocument(teamsPath, `
+        // Should return undefined or empty -- no definition target for keyword
+        const hasResults = result && result.length > 0;
+        expect(hasResults).toBeFalsy();
+    });
+
+    // ==========================================
+    // EDGE: nested import & path alias navigation
+    // ==========================================
+    test('navigates to definition via path alias import with correct target URI', async () => {
+        await clearAllDocuments();
+        const projectDir = path.join(tempDir, 'nested-def');
+        await fs.mkdir(path.join(projectDir, 'shared'), { recursive: true });
+
+        const teamsPath = path.join(projectDir, 'shared', 'teams.dlang');
+        await createAndLoadDocument(teamsPath, `
 Team SalesTeam
-            `);
+        `);
 
-            // Create model.yaml for path alias
-            await fs.writeFile(path.join(projectDir, 'model.yaml'), `
+        await fs.writeFile(path.join(projectDir, 'model.yaml'), `
 model:
   name: test/nested-def
   version: 1.0.0
@@ -156,14 +170,12 @@ model:
 
 paths:
   "@shared": "./shared"
-            `);
+        `);
 
-            // Initialize workspace manager
-            await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
+        await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
 
-            // Create index file that uses path alias import
-            const indexPath = path.join(projectDir, 'index.dlang');
-            const doc = await createAndLoadDocument(indexPath, `
+        const indexPath = path.join(projectDir, 'index.dlang');
+        const doc = await createAndLoadDocument(indexPath, `
 import "@shared/teams.dlang"
 
 Domain Sales {
@@ -174,38 +186,30 @@ bc OrderContext for Sales {
     team: SalesTeam
     description: "Orders"
 }
-            `);
+        `);
 
-            // Find position of "SalesTeam" reference
-            const lines = doc.textDocument.getText().split('\n');
-            const teamLine = lines.findIndex(l => l.includes('team: SalesTeam'));
-            const teamRefCol = lines[teamLine].indexOf('SalesTeam');
+        const lines = doc.textDocument.getText().split('\n');
+        const teamLine = lines.findIndex(l => l.includes('team: SalesTeam'));
+        const teamRefCol = lines[teamLine].indexOf('SalesTeam');
 
-            const params: DefinitionParams = {
-                textDocument: { uri: doc.uri.toString() },
-                position: { line: teamLine, character: teamRefCol + 2 }
-            };
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const result = (await getDefinitionAt(doc, teamLine, teamRefCol + 2))!;
 
-            const definitionProvider = services.DomainLang.lsp.DefinitionProvider;
-            const result = await definitionProvider?.getDefinition(doc, params);
-
-            expect(result).toBeDefined();
-            expect(result).toHaveLength(1);
-            
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
-            const link = result![0];
-            // Should navigate to the teams.dlang file
-            expect(link.targetUri).toBe(URI.file(teamsPath).toString());
-        });
+        expect(result).toHaveLength(1);
+        // Must point to the teams.dlang file, not the current file
+        expect(result[0].targetUri).toBe(URI.file(teamsPath).toString());
+        // SalesTeam definition should be on line 1 (line 0 is blank)
+        expect(result[0].targetRange.start.line).toBe(1);
     });
 
+    // ==========================================
+    // EDGE: find references across files with count & URI verification
+    // ==========================================
     describe('Find References', () => {
-        test('should find all references to a domain across files', async () => {
+        test('finds all references to a domain across files with correct URIs', async () => {
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'find-refs');
-            await fs.mkdir(projectDir, { recursive: true });
 
-            // Create domains file
             const domainsPath = path.join(projectDir, 'domains.dlang');
             const domainDoc = await createAndLoadDocument(domainsPath, `
 Domain Sales {
@@ -213,10 +217,8 @@ Domain Sales {
 }
             `);
 
-            // Initialize workspace manager
             await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
 
-            // Create file that imports and references the domain
             const contextsPath = path.join(projectDir, 'contexts.dlang');
             await createAndLoadDocument(contextsPath, `
 import "./domains.dlang"
@@ -230,19 +232,46 @@ bc BillingContext for Sales {
 }
             `);
 
-            // Find the Sales domain node
             const model = domainDoc.parseResult.value;
             const salesDomain = model.children.find(c => c.$type === 'Domain');
             expect(salesDomain).toBeDefined();
 
-            // Find all references
             const references = services.DomainLang.references.References;
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Safe after toBeDefined() check
-            const refs = references.findReferences(salesDomain!, { includeDeclaration: false });
-            const refArray = refs.toArray();
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const refArray = references.findReferences(salesDomain!, { includeDeclaration: false }).toArray();
 
-            // Should find at least 2 references (OrderContext and BillingContext)
+            // Two BCs reference Sales: OrderContext and BillingContext
             expect(refArray.length).toBeGreaterThanOrEqual(2);
+            // All references should point to the contexts file (not the definition file)
+            const refUris = refArray.map(r => r.sourceUri.toString());
+            expect(refUris.every(u => u.includes('contexts.dlang'))).toBe(true);
+        });
+
+        test('includeDeclaration also returns the definition site', async () => {
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'find-refs-decl');
+
+            const filePath = path.join(projectDir, 'model.dlang');
+            const doc = await createAndLoadDocument(filePath, `
+Domain Sales {
+    vision: "Sales"
+}
+
+bc OrderContext for Sales
+            `);
+
+            const model = doc.parseResult.value;
+            const salesDomain = model.children.find(c => c.$type === 'Domain');
+            expect(salesDomain).toBeDefined();
+
+            const references = services.DomainLang.references.References;
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const withDecl = references.findReferences(salesDomain!, { includeDeclaration: true }).toArray();
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const withoutDecl = references.findReferences(salesDomain!, { includeDeclaration: false }).toArray();
+
+            // including declaration should yield at least one more entry
+            expect(withDecl.length).toBeGreaterThan(withoutDecl.length);
         });
     });
 });

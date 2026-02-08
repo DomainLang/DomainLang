@@ -69,21 +69,17 @@ describe('SemVer utilities', () => {
     });
 
     describe('detectRefType', () => {
-        test('detects commit SHAs', () => {
-            expect(detectRefType('abc123def')).toBe('commit');
-            expect(detectRefType('1234567890abcdef1234567890abcdef12345678')).toBe('commit');
-        });
-
-        test('detects tags', () => {
-            expect(detectRefType('v1.0.0')).toBe('tag');
-            expect(detectRefType('1.2.3')).toBe('tag');
-            expect(detectRefType('v1.0.0-alpha')).toBe('tag');
-        });
-
-        test('detects branches', () => {
-            expect(detectRefType('main')).toBe('branch');
-            expect(detectRefType('develop')).toBe('branch');
-            expect(detectRefType('feature/foo')).toBe('branch');
+        test.each([
+            ['abc123def', 'commit'],
+            ['1234567890abcdef1234567890abcdef12345678', 'commit'],
+            ['v1.0.0', 'tag'],
+            ['1.2.3', 'tag'],
+            ['v1.0.0-alpha', 'tag'],
+            ['main', 'branch'],
+            ['develop', 'branch'],
+            ['feature/foo', 'branch'],
+        ] as const)('detectRefType(%s) → %s', (ref, expected) => {
+            expect(detectRefType(ref)).toBe(expected);
         });
     });
 
@@ -182,30 +178,17 @@ describe('SemVer utilities', () => {
     });
 
     describe('isPreRelease', () => {
-        test('detects alpha releases', () => {
-            expect(isPreRelease('v1.0.0-alpha')).toBe(true);
-            expect(isPreRelease('1.0.0-alpha.1')).toBe(true);
-        });
-
-        test('detects beta releases', () => {
-            expect(isPreRelease('v1.0.0-beta')).toBe(true);
-        });
-
-        test('detects rc releases', () => {
-            expect(isPreRelease('v1.0.0-rc.1')).toBe(true);
-        });
-
-        test('detects dev releases', () => {
-            expect(isPreRelease('v1.0.0-dev')).toBe(true);
-        });
-
-        test('detects snapshot releases', () => {
-            expect(isPreRelease('v1.0.0-snapshot')).toBe(true);
-        });
-
-        test('returns false for stable releases', () => {
-            expect(isPreRelease('v1.0.0')).toBe(false);
-            expect(isPreRelease('1.2.3')).toBe(false);
+        test.each([
+            ['v1.0.0-alpha', true],
+            ['1.0.0-alpha.1', true],
+            ['v1.0.0-beta', true],
+            ['v1.0.0-rc.1', true],
+            ['v1.0.0-dev', true],
+            ['v1.0.0-snapshot', true],
+            ['v1.0.0', false],
+            ['1.2.3', false],
+        ] as const)('isPreRelease(%s) → %s', (ref, expected) => {
+            expect(isPreRelease(ref)).toBe(expected);
         });
     });
 

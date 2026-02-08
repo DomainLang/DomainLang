@@ -1,13 +1,13 @@
 /**
  * Syntax Variant Tests
- * 
+ *
  * Tests all keyword alternatives and syntactic sugar defined in the grammar.
  * Ensures that all documented syntax variants parse correctly.
  */
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, getFirstBoundedContext, getFirstDomain, s } from '../test-helpers.js';
+import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getFirstBoundedContext, getAllBoundedContexts, getFirstDomain, s } from '../test-helpers.js';
 
 let testServices: TestServices;
 
@@ -20,10 +20,13 @@ beforeAll(() => {
 // ============================================================================
 
 describe('Domain Keyword Variants', () => {
-    test('should parse Domain with capital D', async () => {
+    test.each([
+        ['Domain', 'capitalized keyword'],
+        ['dom', 'shorthand'],
+    ])('should parse %s (%s)', async (keyword) => {
         // Arrange
         const input = s`
-            Domain Sales {
+            ${keyword} Sales {
                 vision: "Sales vision"
             }
         `;
@@ -33,15 +36,18 @@ describe('Domain Keyword Variants', () => {
 
         // Assert
         expectValidDocument(document);
-        expect(getFirstDomain(document).name).toBe('Sales');
+        const domain = getFirstDomain(document);
+        expect(domain.name).toBe('Sales');
+        expect(domain.vision).toBe('Sales vision');
     });
 
-    test('should parse dom shorthand', async () => {
+    test.each([
+        ['Domain', 'capitalized keyword'],
+        ['dom', 'shorthand'],
+    ])('should parse %s (%s) without body', async (keyword) => {
         // Arrange
         const input = s`
-            dom Sales {
-                vision: "Sales vision"
-            }
+            ${keyword} Sales
         `;
 
         // Act
@@ -49,7 +55,9 @@ describe('Domain Keyword Variants', () => {
 
         // Assert
         expectValidDocument(document);
-        expect(getFirstDomain(document).name).toBe('Sales');
+        const domain = getFirstDomain(document);
+        expect(domain.name).toBe('Sales');
+        expect(domain.vision).toBeUndefined();
     });
 });
 
@@ -58,34 +66,16 @@ describe('Domain Keyword Variants', () => {
 // ============================================================================
 
 describe('BoundedContext Keyword Variants', () => {
-    test('should parse BoundedContext keyword', async () => {
-        // Arrange
+    test.each([
+        ['BoundedContext', 'full keyword'],
+        ['bc', 'shorthand'],
+    ])('should parse %s (%s)', async (keyword) => {
         const input = s`
             Domain Sales {}
-            BoundedContext OrderContext for Sales
+            ${keyword} OrderContext for Sales
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        expect(getFirstBoundedContext(document).name).toBe('OrderContext');
-    });
-
-    // NOTE: boundedcontext (lowercase, concatenated) alias removed - use BoundedContext or BC
-
-    test('should parse bc shorthand', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         expect(getFirstBoundedContext(document).name).toBe('OrderContext');
     });
@@ -96,16 +86,12 @@ describe('BoundedContext Keyword Variants', () => {
 // ============================================================================
 
 describe('Team Keyword', () => {
-    test('should parse Team keyword', async () => {
-        // Arrange
+    test('should parse Team keyword with correct name', async () => {
         const input = s`
             Team SalesTeam
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const teams = document.parseResult.value.children.filter(c => c.$type === 'Team');
         expect(teams).toHaveLength(1);
@@ -118,16 +104,12 @@ describe('Team Keyword', () => {
 // ============================================================================
 
 describe('Classification Keyword', () => {
-    test('should parse Classification keyword', async () => {
-        // Arrange
+    test('should parse Classification keyword with correct name', async () => {
         const input = s`
             Classification Core
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const classifications = document.parseResult.value.children.filter(c => c.$type === 'Classification');
         expect(classifications).toHaveLength(1);
@@ -140,13 +122,16 @@ describe('Classification Keyword', () => {
 // ============================================================================
 
 describe('ContextMap Keyword Variants', () => {
-    test('should parse ContextMap with capital letters', async () => {
+    test.each([
+        ['ContextMap', 'full keyword'],
+        ['cmap', 'shorthand'],
+    ])('should parse %s (%s) with contains', async (keyword) => {
         // Arrange
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
-            
-            ContextMap SalesMap {
+
+            ${keyword} SalesMap {
                 contains OrderContext
             }
         `;
@@ -161,8 +146,6 @@ describe('ContextMap Keyword Variants', () => {
         expect(contextMaps[0].name).toBe('SalesMap');
         expect(contextMaps[0].boundedContexts).toHaveLength(1);
     });
-
-    // NOTE: contextmap (lowercase, concatenated) alias removed - use ContextMap
 });
 
 // ============================================================================
@@ -170,49 +153,26 @@ describe('ContextMap Keyword Variants', () => {
 // ============================================================================
 
 describe('DomainMap Keyword Variants', () => {
-    test('should parse DomainMap with capital letters', async () => {
-        // Arrange
+    test.each([
+        ['DomainMap', 'full keyword'],
+        ['dmap', 'shorthand'],
+    ])('should parse %s (%s) with contains', async (keyword) => {
         const input = s`
             Domain Sales {
                 vision: "Sales domain"
             }
-            
-            DomainMap BusinessMap {
+
+            ${keyword} BusinessMap {
                 contains Sales
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const domainMaps = document.parseResult.value.children.filter(c => c.$type === 'DomainMap');
         expect(domainMaps).toHaveLength(1);
         expect(domainMaps[0].name).toBe('BusinessMap');
         expect(domainMaps[0].domains).toHaveLength(1);
-    });
-
-    test('should parse dmap shorthand', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {
-                vision: "Sales domain"
-            }
-            
-            dmap BusinessMap {
-                contains Sales
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const domainMaps = document.parseResult.value.children.filter(c => c.$type === 'DomainMap');
-        expect(domainMaps).toHaveLength(1);
-        expect(domainMaps[0].name).toBe('BusinessMap');
     });
 });
 
@@ -221,20 +181,19 @@ describe('DomainMap Keyword Variants', () => {
 // ============================================================================
 
 describe('Namespace Keyword Variants', () => {
-    test('should parse ns shorthand', async () => {
-        // Arrange
+    test.each([
+        ['Namespace', 'capitalized keyword'],
+        ['ns', 'shorthand'],
+    ])('should parse %s (%s) with children', async (keyword) => {
         const input = s`
-            ns sales {
+            ${keyword} sales {
                 Domain Sales {
                     vision: "Sales domain"
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const namespaces = document.parseResult.value.children.filter(c => c.$type === 'NamespaceDeclaration');
         expect(namespaces).toHaveLength(1);
@@ -242,13 +201,11 @@ describe('Namespace Keyword Variants', () => {
         expect(namespaces[0].children).toHaveLength(1);
     });
 
-    test('should parse Namespace with capital N', async () => {
+    test('should parse ns with dot notation', async () => {
         // Arrange
         const input = s`
-            Namespace sales {
-                Domain Sales {
-                    vision: "Sales domain"
-                }
+            ns Acme.Sales {
+                Domain Sales {}
             }
         `;
 
@@ -259,7 +216,7 @@ describe('Namespace Keyword Variants', () => {
         expectValidDocument(document);
         const namespaces = document.parseResult.value.children.filter(c => c.$type === 'NamespaceDeclaration');
         expect(namespaces).toHaveLength(1);
-        expect(namespaces[0].name).toBe('sales');
+        expect(namespaces[0].name).toBe('Acme.Sales');
     });
 });
 
@@ -269,34 +226,26 @@ describe('Namespace Keyword Variants', () => {
 
 describe('bc Inline Assignment Variants', () => {
     test('should parse as keyword for classification', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
             Classification Core
             bc OrderContext for Sales as Core
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.classification?.[0]?.ref?.name).toBe('Core');
     });
 
     test('should parse by keyword for team', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
             Team SalesTeam
             bc OrderContext for Sales by SalesTeam
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
@@ -308,8 +257,7 @@ describe('bc Inline Assignment Variants', () => {
 // ============================================================================
 
 describe('bc Documentation Block Variants', () => {
-    test('should parse team: keyword', async () => {
-        // Arrange
+    test('should parse team: keyword in block', async () => {
         const input = s`
             Team SalesTeam
             Domain Sales {}
@@ -318,15 +266,14 @@ describe('bc Documentation Block Variants', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.team).toHaveLength(1);
+        expect(bc.team[0]?.ref?.name).toBe('SalesTeam');
     });
 
-    test('should parse classification keyword', async () => {
-        // Arrange
+    test('should parse classification keyword in block', async () => {
         const input = s`
             Classification Core
             Domain Sales {}
@@ -335,20 +282,50 @@ describe('bc Documentation Block Variants', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.classification).toHaveLength(1);
+        expect(bc.classification[0]?.ref?.name).toBe('Core');
     });
 
-    test('should parse businessModel keyword', async () => {
-        // Arrange
+    test('should parse businessModel keyword in block', async () => {
         const input = s`
             Classification SaaS
             Domain Sales {}
             bc OrderContext for Sales {
                 businessModel: SaaS
+            }
+        `;
+
+        const document = await testServices.parse(input);
+        expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.businessModel?.ref?.name).toBe('SaaS');
+    });
+
+    test('should parse evolution keyword with resolved Classification reference', async () => {
+        const input = s`
+            Classification Mature
+            Domain Sales {}
+            bc OrderContext for Sales {
+                evolution: Mature
+            }
+        `;
+
+        const document = await testServices.parse(input);
+        expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.evolution?.ref?.name).toBe('Mature');
+    });
+
+    test('should parse archetype keyword with resolved Classification reference', async () => {
+        // Arrange
+        const input = s`
+            Classification Gateway
+            Domain Sales {}
+            bc OrderContext for Sales {
+                archetype: Gateway
             }
         `;
 
@@ -358,41 +335,7 @@ describe('bc Documentation Block Variants', () => {
         // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        expect(bc.businessModel?.ref?.name).toBe('SaaS');
-    });
-
-    test('should parse evolution keyword', async () => {
-        // Arrange
-        const input = s`
-            Classification Mature
-            Domain Sales {}
-            bc OrderContext for Sales {
-                evolution: Mature
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-    });
-
-    test('should parse evolution keyword (Wardley stages)', async () => {
-        // Arrange
-        const input = s`
-            Classification Product
-            Domain Sales {}
-            bc OrderContext for Sales {
-                evolution: Product
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
+        expect(bc.archetype?.ref?.name).toBe('Gateway');
     });
 });
 
@@ -401,44 +344,26 @@ describe('bc Documentation Block Variants', () => {
 // ============================================================================
 
 describe('Relationships Block Variants', () => {
-    test('should parse relationships keyword', async () => {
-        // Arrange
+    test.each([
+        ['relationships', 'relationships keyword'],
+        ['integrations', 'integrations alias'],
+    ])('should parse %s (%s) with arrow and target', async (keyword) => {
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
-            bc PaymentContext for Sales
             bc InventoryContext for Sales {
-                relationships {
+                ${keyword} {
                     this -> OrderContext
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-    });
-
-    test('should parse integrations keyword', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            bc InventoryContext for Sales {
-                integrations {
-                    this -> OrderContext
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
+        const bcs = getAllBoundedContexts(document);
+        const inventoryBC = bcs.find(bc => bc.name === 'InventoryContext')!;
+        expect(inventoryBC.relationships).toHaveLength(1);
+        expect(inventoryBC.relationships[0].arrow).toBe('->');
     });
 });
 
@@ -447,31 +372,35 @@ describe('Relationships Block Variants', () => {
 // ============================================================================
 
 describe('Decisions Block Variants', () => {
-    test('should parse decisions keyword', async () => {
-        // Arrange
+    test.each([
+        ['decisions', 'decisions keyword'],
+        ['rules', 'rules alias'],
+    ])('should parse %s (%s) with decision name and value', async (keyword) => {
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
-                decisions {
+                ${keyword} {
                     decision EventSourcing: "Use event sourcing"
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.decisions).toHaveLength(1);
+        expect(bc.decisions[0].name).toBe('EventSourcing');
+        expect(bc.decisions[0].value).toBe('Use event sourcing');
     });
 
-    test('should parse rules keyword', async () => {
+    test('should parse rules alias with policy and rule items', async () => {
         // Arrange
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
                 rules {
-                    decision EventSourcing: "Use event sourcing"
+                    policy RefundPolicy: "30-day refunds"
+                    rule MinOrder: "Minimum order is $10"
                 }
             }
         `;
@@ -481,6 +410,12 @@ describe('Decisions Block Variants', () => {
 
         // Assert
         expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.decisions).toHaveLength(2);
+        expect(bc.decisions[0].name).toBe('RefundPolicy');
+        expect(bc.decisions[0].value).toBe('30-day refunds');
+        expect(bc.decisions[1].name).toBe('MinOrder');
+        expect(bc.decisions[1].value).toBe('Minimum order is $10');
     });
 });
 
@@ -489,112 +424,29 @@ describe('Decisions Block Variants', () => {
 // ============================================================================
 
 describe('Decision Type Variants', () => {
-    test('should parse decision keyword', async () => {
-        // Arrange
+    test.each([
+        ['decision', 'EventSourcing', 'Use event sourcing'],
+        ['Decision', 'EventSourcing', 'Use event sourcing'],
+        ['policy', 'RefundPolicy', '30-day refunds'],
+        ['Policy', 'RefundPolicy', '30-day refunds'],
+        ['rule', 'UniqueIds', 'All IDs must be unique'],
+        ['Rule', 'UniqueIds', 'All IDs must be unique'],
+    ])('should parse %s keyword', async (keyword, name, description) => {
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
                 decisions {
-                    decision EventSourcing: "Use event sourcing"
+                    ${keyword} ${name}: "${description}"
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-    });
-
-    test('should parse Decision with capital D', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales {
-                decisions {
-                    Decision EventSourcing: "Use event sourcing"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-    });
-
-    test('should parse policy keyword', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales {
-                decisions {
-                    policy RefundPolicy: "30-day refunds"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-    });
-
-    test('should parse Policy with capital P', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales {
-                decisions {
-                    Policy RefundPolicy: "30-day refunds"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-    });
-
-    test('should parse rule keyword', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales {
-                decisions {
-                    rule UniqueIds: "All IDs must be unique"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-    });
-
-    test('should parse Rule with capital R', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales {
-                decisions {
-                    Rule UniqueIds: "All IDs must be unique"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.decisions).toHaveLength(1);
+        expect(bc.decisions[0].name).toBe(name);
+        expect(bc.decisions[0].value).toBe(description);
     });
 });
 
@@ -603,48 +455,82 @@ describe('Decision Type Variants', () => {
 // ============================================================================
 
 describe('Assignment Operator Variants', () => {
-    test('should parse colon assignment', async () => {
+    test.each([
+        [':', 'colon'],
+        ['is', 'is keyword'],
+        ['=', 'equals'],
+    ])('should parse %s (%s) assignment for domain vision', async (operator) => {
         // Arrange
         const input = s`
             Domain Sales {
+                vision ${operator} "Sales vision"
+            }
+        `;
+
+        // Act
+        const document = await testServices.parse(input);
+
+        // Assert
+        expectValidDocument(document);
+        const domain = getFirstDomain(document);
+        expect(domain.vision).toBe('Sales vision');
+    });
+
+    test.each([
+        [':', 'colon'],
+        ['is', 'is keyword'],
+        ['=', 'equals'],
+    ])('should parse %s (%s) assignment for BC description', async (operator) => {
+        // Arrange
+        const input = s`
+            Domain Sales {}
+            bc OrderContext for Sales {
+                description ${operator} "Order lifecycle"
+            }
+        `;
+
+        // Act
+        const document = await testServices.parse(input);
+
+        // Assert
+        expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        expect(bc.description).toBe('Order lifecycle');
+    });
+});
+
+// ============================================================================
+// NEGATIVE TESTS
+// ============================================================================
+
+describe('Syntax Variant Negative Cases', () => {
+    test('should reject unknown keyword as Domain alternative', async () => {
+        const input = s`
+            subdomain Sales {
                 vision: "Sales vision"
             }
         `;
 
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'Unknown keyword subdomain'
+        );
     });
 
-    test('should parse is keyword assignment', async () => {
-        // Arrange
+    // 'ContextMap without braces' covered by model-structure-parsing.test.ts negative tests
+
+    test('should reject DomainMap without braces', async () => {
         const input = s`
-            Domain Sales {
-                vision is "Sales vision"
-            }
+            Domain Sales {}
+            DomainMap BusinessMap
+                contains Sales
         `;
 
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-    });
-
-    test('should parse equals assignment', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {
-                vision = "Sales vision"
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'DomainMap without braces'
+        );
     });
 });

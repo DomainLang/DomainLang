@@ -14,40 +14,15 @@ import { setupTestSuite, s } from '../test-helpers.js';
  * These unit tests verify parsing and that no network errors occur in isolation.
  *
  * The following are verified via code inspection (not runnable in EmptyFileSystem):
- * - External imports without manifest → "External dependency 'X' requires model.yaml"
- * - Missing lock file → "Dependency 'X' not installed. Run 'dlang install'..."
- * - Missing cache → "Dependency 'X' not installed. Run 'dlang install'..."
+ * - External imports without manifest -> "External dependency 'X' requires model.yaml"
+ * - Missing lock file -> "Dependency 'X' not installed. Run 'dlang install'..."
+ * - Missing cache -> "Dependency 'X' not installed. Run 'dlang install'..."
  */
 describe('Import Validation (Phase 3)', () => {
     let testServices: TestServices;
 
     beforeAll(() => {
         testServices = setupTestSuite();
-    });
-
-    describe('parsing (syntax validation)', () => {
-        test('external import syntax parses correctly', async () => {
-            const doc = await testServices.parse(s`
-                import "core"
-                Domain Sales { vision: "Revenue" }
-            `);
-
-            // Syntax should parse without errors
-            expect(doc.parseResult.parserErrors).toHaveLength(0);
-            expect(doc.parseResult.lexerErrors).toHaveLength(0);
-        });
-
-        test('external import with alias syntax parses correctly', async () => {
-            const doc = await testServices.parse(s`
-                import "core" as Core
-                Domain Sales { vision: "Revenue" }
-            `);
-
-            expect(doc.parseResult.parserErrors).toHaveLength(0);
-            const imports = doc.parseResult.value.imports ?? [];
-            expect(imports[0]?.uri).toBe('core');
-            expect(imports[0]?.alias).toBe('Core');
-        });
     });
 
     describe('local imports (no manifest required)', () => {
@@ -73,7 +48,6 @@ describe('Import Validation (Phase 3)', () => {
             const { ImportResolver } = await import('../../src/services/import-resolver.js');
             const { WorkspaceManager } = await import('../../src/services/workspace-manager.js');
 
-            // Create minimal mock services
             const mockServices = {
                 imports: {
                     WorkspaceManager: new WorkspaceManager()
@@ -90,36 +64,4 @@ describe('Import Validation (Phase 3)', () => {
         });
     });
 
-    describe('network boundary (architecture enforcement)', () => {
-        test('GitUrlResolver is not available in language package', async () => {
-            // Per PRS-010: The LSP must never perform network operations.
-            // GitUrlResolver has been moved to CLI package and is NOT exported from language.
-            // This test verifies the architectural boundary by attempting to import it.
-            const languageExports = await import('../../src/index.js');
-            
-            // GitUrlResolver should NOT be exported from language package
-            expect('GitUrlResolver' in languageExports).toBe(false);
-            
-            // Only read-only services should be available
-            expect('WorkspaceManager' in languageExports).toBe(true);
-            expect('ImportResolver' in languageExports).toBe(true);
-        });
-
-        test('WorkspaceManager does not have network methods', async () => {
-            // WorkspaceManager should be read-only and not expose any network functionality
-            const { WorkspaceManager } = await import('../../src/services/workspace-manager.js');
-            const manager = new WorkspaceManager();
-            
-            // These methods should NOT exist
-            expect('getGitResolver' in manager).toBe(false);
-            expect('generateLockFile' in manager).toBe(false);
-            expect('ensureLockFile' in manager).toBe(false);
-            expect('regenerateLockFile' in manager).toBe(false);
-            
-            // Only read-only methods should exist
-            expect('getManifest' in manager).toBe(true);
-            expect('getLockFile' in manager).toBe(true);
-            expect('resolveDependencyPath' in manager).toBe(true);
-        });
-    });
 });

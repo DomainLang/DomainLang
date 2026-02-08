@@ -1,6 +1,16 @@
+/**
+ * Multi-Target Reference Tests
+ *
+ * Tests for ContextMap `contains` clauses where a name like "CustomerManagement"
+ * maps to multiple BoundedContexts (MultiReference resolution).
+ *
+ * Distribution target: ~20% smoke, ~80% edge/error.
+ */
+
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import type { ContextMap } from '../../src/generated/ast.js';
 import { isContextMap } from '../../src/generated/ast.js';
 
 let testServices: TestServices;
@@ -9,77 +19,58 @@ beforeAll(() => {
     testServices = setupTestSuite();
 });
 
+/**
+ * Helper to extract the first ContextMap from a parsed document.
+ */
+function getFirstContextMap(document: { parseResult: { value: { children: unknown[] } } }): ContextMap {
+    const cm = document.parseResult.value.children.find(isContextMap);
+    expect(cm).toBeDefined();
+    return cm as ContextMap;
+}
+
 describe('Scoping: Multi-Target References', () => {
-    test('resolves multiple bounded contexts with same name', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            Domain Support {}
-            
-            BoundedContext CustomerManagement for Sales {
-                description: "Sales customer management"
-            }
-            
-            BoundedContext CustomerManagement for Support {
-                description: "Support customer management"
-            }
-            
-            ContextMap AllCustomerContexts {
-                contains CustomerManagement
-            }
-        `;
 
-        // Act
-        const document = await testServices.parse(input);
+    // Smoke and core contains-clause tests (same-named BCs, non-existent refs,
+    // mixed existing/missing, unique names) covered by multi-reference-resolution.test.ts
 
-        // Assert
+    test('relationship references to ambiguous BC names resolve to first match', async () => {
+        const document = await testServices.parse(s`
+            Domain A {}
+            Domain B {}
+            BoundedContext Dup for A
+            BoundedContext Dup for B
+            BoundedContext Unique for A
+
+            ContextMap AmbiguousMap {
+                contains Dup, Unique
+                Dup -> Unique : CustomerSupplier
+            }
+        `);
+
         expectValidDocument(document);
-        
-        const contextMap = document.parseResult.value.children.find(child => isContextMap(child));
-        expect(contextMap).toBeDefined();
-        
-        if (contextMap && isContextMap(contextMap)) {
-            // ContextMap uses boundedContexts property
-            expect(contextMap.boundedContexts).toHaveLength(1);
-            const contextRef = contextMap.boundedContexts[0];
-            expect(contextRef.items).toBeDefined();
-            expect(contextRef.items.length).toBeGreaterThan(0);
-        }
+
+        const contextMap = getFirstContextMap(document);
+        expect(contextMap.relationships).toHaveLength(1);
+
+        const rel = contextMap.relationships[0];
+        // Relationship link should resolve to some BC named Dup
+        expect(rel.left.link?.ref?.name).toBe('Dup');
+        expect(rel.right.link?.ref?.name).toBe('Unique');
     });
 
-    test('handles same-named contexts in different domains', async () => {
-        // Arrange
-        const input = s`
-            Domain Marketing {}
+    test('ContextMap with empty contains clause has no bounded context refs', async () => {
+        const document = await testServices.parse(s`
             Domain Sales {}
-            
-            BoundedContext Campaigns for Marketing {
-                description: "Marketing campaigns"
-            }
-            
-            BoundedContext Campaigns for Sales {
-                description: "Sales campaigns"
-            }
-            
-            ContextMap AllCampaigns {
-                contains Campaigns
-            }
-        `;
 
-        // Act
-        const document = await testServices.parse(input);
+            ContextMap EmptyContainsMap {
+            }
+        `);
 
-        // Assert
         expectValidDocument(document);
-        
-        const contextMap = document.parseResult.value.children.find(child => isContextMap(child));
-        expect(contextMap).toBeDefined();
-        
-        if (contextMap && isContextMap(contextMap)) {
-            expect(contextMap.boundedContexts).toHaveLength(1);
-            const contextRef = contextMap.boundedContexts[0];
-            expect(contextRef.items).toBeDefined();
-            expect(contextRef.items.length).toBeGreaterThan(0);
-        }
+
+        const contextMap = getFirstContextMap(document);
+        expect(contextMap.name).toBe('EmptyContainsMap');
+        expect(contextMap.boundedContexts).toHaveLength(0);
+        expect(contextMap.relationships).toHaveLength(0);
     });
 });

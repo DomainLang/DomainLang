@@ -1,18 +1,20 @@
 /**
  * Comprehensive Validation Tests
- * 
- * Tests all validation rules defined in src/validation/ directory.
- * Each validator should have both positive (valid) and negative (invalid) test cases.
+ *
+ * Tests validation rules defined in src/validation/ directory.
+ * Warning-message tests (domain vision, BC description, BC domain) are in enhanced-messages.test.ts.
+ * This file focuses on error paths and smoke tests for valid inputs.
  */
 
-import { describe, test, beforeAll } from 'vitest';
+import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { 
-    setupTestSuite, 
-    expectValidationErrors, 
-    expectValidationWarnings, 
+import {
+    setupTestSuite,
+    expectValidationErrors,
+    expectValidationWarnings,
     expectValidDocument,
-    s 
+    getDiagnosticsBySeverity,
+    s
 } from '../test-helpers.js';
 
 describe('Validation Tests', () => {
@@ -27,52 +29,15 @@ describe('Validation Tests', () => {
     // ========================================================================
 
     describe('Domain Validation', () => {
-        test('warns when domain lacks vision', async () => {
-            // Arrange
-            const input = s`
-                Domain Sales {
-                    description: "Sales operations"
-                    // Missing vision
-                }
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidationWarnings(document, [
-                "missing a vision statement"
-            ]);
-        });
-
-        test('accepts domain with vision', async () => {
-            // Arrange
-            const input = s`
-                Domain Sales {
-                    description: "Sales operations"
-                    vision: "Streamlined sales process"
-                }
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-        });
+        // "warns when domain lacks vision" covered by enhanced-messages.test.ts
 
         test('should detect circular domain hierarchy', async () => {
-            // Arrange - Circular hierarchy: A → B → C → A
-            const input = s`
+            const document = await testServices.parse(s`
                 Domain A in B {}
                 Domain B in C {}
                 Domain C in A {}
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert - Each domain in the cycle reports the error
             expectValidationErrors(document, [
                 'Circular domain hierarchy detected',
                 'Circular domain hierarchy detected',
@@ -81,33 +46,41 @@ describe('Validation Tests', () => {
         });
 
         test('should detect self-referencing domain', async () => {
-            // Arrange - Domain references itself
-            const input = s`
+            const document = await testServices.parse(s`
                 Domain SelfRef in SelfRef {}
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert - Should detect circular reference
             expectValidationErrors(document, [
                 'Circular domain hierarchy detected'
             ]);
         });
 
-        test('accepts valid domain hierarchy', async () => {
-            // Arrange
-            const input = s`
-                Domain Root {}
-                Domain Child in Root {}
-                Domain GrandChild in Child {}
-            `;
+        test('accepts valid domain hierarchy without warnings or errors', async () => {
+            const document = await testServices.parse(s`
+                Domain Root {
+                    vision: "Root vision"
+                }
+                Domain Child in Root {
+                    vision: "Child vision"
+                }
+                Domain GrandChild in Child {
+                    vision: "GrandChild vision"
+                }
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
             expectValidDocument(document);
+        });
+
+        test('warns on multiple domains each missing vision', async () => {
+            const document = await testServices.parse(s`
+                Domain A { description: "A" }
+                Domain B { description: "B" }
+            `);
+
+            expectValidationWarnings(document, [
+                "missing a vision statement",
+                "missing a vision statement"
+            ]);
         });
     });
 
@@ -116,59 +89,21 @@ describe('Validation Tests', () => {
     // ========================================================================
 
     describe('Bounded Context Validation', () => {
-        test('warns when bounded context lacks description', async () => {
-            // Arrange
-            const input = s`
+        // "warns when BC lacks description" covered by enhanced-messages.test.ts
+        // "warns when BC has no domain" covered by enhanced-messages.test.ts
+
+        test('accepts bounded context with description and domain (smoke test)', async () => {
+            const document = await testServices.parse(s`
                 Domain Sales {
-                    vision: "Handle all sales activities"
+                    vision: "Sales vision"
                 }
-                BoundedContext OrderContext for Sales {
-                    // Missing description
-                    team: SomeTeam
-                }
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidationWarnings(document, [
-                "missing a description"
-            ]);
-        });
-
-        test('accepts bounded context with description', async () => {
-            // Arrange
-            const input = s`
-                Domain Sales {}
-                BoundedContext OrderContext for Sales {
+                Team SalesTeam
+                Classification Core
+                BoundedContext OrderContext for Sales as Core by SalesTeam {
                     description: "Handles order processing"
                 }
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-        });
-
-        // Team reference validation is tested in linking.test.ts (Team Reference Linking)
-
-        test('accepts valid team reference', async () => {
-            // Arrange
-            const input = s`
-                Domain Sales {}
-                Team SalesTeam
-                BoundedContext OrderContext for Sales {
-                    team: SalesTeam
-                }
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
             expectValidDocument(document);
         });
     });
@@ -179,42 +114,32 @@ describe('Validation Tests', () => {
 
     describe('Namespace Declaration Validation', () => {
         test('should detect duplicate Namespace names', async () => {
-            // Arrange
-            const input = s`
+            const document = await testServices.parse(s`
                 Namespace TestNamespace {
                     Domain Domain1 {}
                 }
-                
+
                 Namespace TestNamespace {
                     Domain Domain2 {}
                 }
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
             expectValidationErrors(document, [
                 "Duplicate element"
             ]);
         });
 
-        test('accepts unique Namespace names', async () => {
-            // Arrange
-            const input = s`
+        test('accepts unique Namespace names (smoke test)', async () => {
+            const document = await testServices.parse(s`
                 Namespace Namespace1 {
-                    Domain Domain1 {}
+                    Domain Domain1 { vision: "Vision1" }
                 }
-                
+
                 Namespace Namespace2 {
-                    Domain Domain2 {}
+                    Domain Domain2 { vision: "Vision2" }
                 }
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
             expectValidDocument(document);
         });
     });
@@ -225,211 +150,95 @@ describe('Validation Tests', () => {
 
     describe('Classification Validation', () => {
         test('should detect duplicate classification names', async () => {
-            // Arrange
-            const input = s`
+            const document = await testServices.parse(s`
                 Classification Core
                 Classification Core
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
             expectValidationErrors(document, [
                 "Duplicate element"
             ]);
         });
 
-        test('accepts unique classification names', async () => {
-            // Arrange
-            const input = s`
+        test('accepts unique classification names (smoke test)', async () => {
+            const document = await testServices.parse(s`
                 Classification Core
                 Classification Supporting
                 Classification Generic
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
             expectValidDocument(document);
         });
     });
 
     // ========================================================================
-    // MODEL VALIDATION
+    // TEAM VALIDATION
     // ========================================================================
 
-    describe('Model Validation', () => {
-        test('should detect duplicate element names at top level', async () => {
-            // Arrange
-            const input = s`
-                Domain TestDomain {}
-                BoundedContext TestDomain for TestDomain
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            // Different types but same name should be allowed or not?
-            expectValidDocument(document); // May need to change based on requirements
-        });
-
-        // Import validation is tested in:
-        // - import-resolver.test.ts (file resolution, manifest requirements)
-        // - import-validation-phase3.test.ts (syntax, network boundary)
-    });
-
-    // ========================================================================
-    // IMPORT VALIDATION
-    // ========================================================================
-
-    describe('Import Validation', () => {
-        // Import file existence and manifest validation are tested in:
-        // - import-resolver.test.ts
-        // - import-validation-phase3.test.ts
-        // - workspace-manager-manifest.test.ts
-
-        test('accepts valid local import', async () => {
-            // Arrange
-            const input = s`
-                import "./valid-path.dlang"
-                Domain Test {}
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-        });
-
-        test('accepts valid GitHub import', async () => {
-            // Arrange
-            const input = s`
-                import "owner/repo@v1.0.0"
-                Domain Test {}
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-        });
-    });
-
-    // ========================================================================
-    // CROSS-REFERENCE VALIDATION
-    // ========================================================================
-
-    describe('Cross-Reference Validation', () => {
-        // Note: Unresolved reference detection is tested in linking.test.ts
-        // which verifies that:
-        // - Invalid domain references have .ref undefined and .error defined
-        // - Invalid team references have .ref undefined and .error defined
-        // - Invalid classification references have .ref undefined and .error defined
-        // See: linking.test.ts "Domain Reference Linking", "Team Reference Linking",
-        //      "Classification Reference Linking" describe blocks
-
-        test('accepts valid cross-references', async () => {
-            // Arrange
-            const input = s`
-                Domain Sales {}
+    describe('Team Validation', () => {
+        test('should detect duplicate Team names', async () => {
+            const document = await testServices.parse(s`
                 Team SalesTeam
-                Classification Core
-                
-                BoundedContext TestBC for Sales {
-                    classification: Core
-                    team: SalesTeam
-                }
-            `;
+                Team SalesTeam
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
+            expectValidationErrors(document, [
+                "Duplicate element"
+            ]);
+        });
 
-            // Assert
+        test('accepts unique Team names (smoke test)', async () => {
+            const document = await testServices.parse(s`
+                Team SalesTeam
+                Team EngineeringTeam
+            `);
+
             expectValidDocument(document);
         });
     });
 
     // ========================================================================
-    // RELATIONSHIP VALIDATION
+    // CONTEXT MAP VALIDATION
     // ========================================================================
 
-    describe('Relationship Validation', () => {
-        // Note: Unresolved bounded context references in relationships are tested in
-        // linking.test.ts "ContextMap Relationship Linking" and "This Reference Linking"
-        // which verify .ref and .error properties on relationship links
+    describe('Context Map Validation', () => {
+        test('warns when context map has no contexts', async () => {
+            const document = await testServices.parse(s`
+                ContextMap EmptyMap {}
+            `);
 
-        test('accepts valid relationships', async () => {
-            // Arrange
-            const input = s`
-                Domain Sales {}
-                BoundedContext BC1 for Sales
-                BoundedContext BC2 for Sales
-                
+            const warnings = getDiagnosticsBySeverity(document, 2);
+            expect(warnings.some(w => w.message.includes('contains no bounded contexts'))).toBe(true);
+        });
+
+        test('accepts valid context map with relationships (smoke test)', async () => {
+            const document = await testServices.parse(s`
+                Domain Sales { vision: "Sales" }
+                BoundedContext BC1 for Sales { description: "BC1" }
+                BoundedContext BC2 for Sales { description: "BC2" }
+
                 ContextMap TestMap {
                     contains BC1, BC2
                     [OHS] BC1 -> [CF] BC2 : CustomerSupplier
                 }
-            `;
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
             expectValidDocument(document);
         });
     });
 
     // ========================================================================
-    // NAMESPACE AND SCOPING VALIDATION
+    // DOMAIN MAP VALIDATION
     // ========================================================================
 
-    describe('Namespace and Scoping Validation', () => {
-        test('should handle qualified name resolution', async () => {
-            // Arrange
-            const input = s`
-                Namespace com.example {
-                    Domain Sales {}
-                }
-                
-                BoundedContext TestBC for com.example.Sales
-            `;
+    describe('Domain Map Validation', () => {
+        test('warns when domain map has no domains', async () => {
+            const document = await testServices.parse(s`
+                DomainMap EmptyMap {}
+            `);
 
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-        });
-
-        // Note: Qualified name resolution is tested in linking.test.ts
-        // "Complex Linking Scenarios" > "should resolve nested Namespace qualified names"
-        // which verifies .ref resolution for qualified paths
-
-        test('should validate nested Namespace access', async () => {
-            // Arrange
-            const input = s`
-                Namespace com.example.sales {
-                    Domain Sales {}
-                    
-                    Namespace orders {
-                        BoundedContext OrderContext for Sales
-                    }
-                }
-                
-                // Reference from outside namespace
-                BoundedContext ExternalBC for com.example.sales.Sales
-            `;
-
-            // Act
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
+            const warnings = getDiagnosticsBySeverity(document, 2);
+            expect(warnings.some(w => w.message.includes('contains no domains'))).toBe(true);
         });
     });
 });

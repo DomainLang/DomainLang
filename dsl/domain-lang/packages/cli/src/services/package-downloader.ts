@@ -20,7 +20,7 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fetchWithRetry } from './fetch-utils.js';
+import { fetchWithRetry, type RetryOptions } from './fetch-utils.js';
 import type { CredentialProvider } from './credential-provider.js';
 import type { PackageCache } from './package-cache.js';
 
@@ -247,7 +247,10 @@ export class PackageDownloader {
         
         this.emit({ type: 'downloading', pkg, bytesReceived: 0 });
 
-        const response = await this.fetchGitHub(url);
+        // Skip retries for tarball downloads — they are expensive binary
+        // transfers that should fail fast and let the caller decide on retry
+        // strategy for the overall download workflow.
+        const response = await this.fetchGitHub(url, { maxRetries: 0 });
 
         if (!response.ok) {
             throw new Error(
@@ -315,8 +318,11 @@ export class PackageDownloader {
 
     /**
      * Fetch from GitHub API with authentication and retry logic.
+     *
+     * @param url - GitHub API URL to fetch
+     * @param retryOpts - Optional retry configuration override
      */
-    private async fetchGitHub(url: string): Promise<Response> {
+    private async fetchGitHub(url: string, retryOpts?: RetryOptions): Promise<Response> {
         const credentials = await this.credentialProvider.getGitHubCredentials('github.com');
         const authHeader = this.credentialProvider.getAuthorizationHeader(credentials);
 
@@ -329,7 +335,7 @@ export class PackageDownloader {
             headers['Authorization'] = authHeader;
         }
 
-        const response = await fetchWithRetry(url, { headers });
+        const response = await fetchWithRetry(url, { headers, retryOptions: retryOpts });
 
         // Parse rate limit headers
         this.parseRateLimitHeaders(response);

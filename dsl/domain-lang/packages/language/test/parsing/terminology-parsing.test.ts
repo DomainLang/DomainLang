@@ -1,13 +1,13 @@
 /**
  * Terminology and Glossary Tests
- * 
+ *
  * Tests for DomainTerm parsing including synonyms, examples, and meaning definitions.
  * Validates the ubiquitous language feature of DDD.
  */
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, getFirstBoundedContext, s } from '../test-helpers.js';
+import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getFirstBoundedContext, s } from '../test-helpers.js';
 
 let testServices: TestServices;
 
@@ -20,11 +20,10 @@ beforeAll(() => {
 // ============================================================================
 
 describe('Basic Terminology Parsing', () => {
-    test('should parse simple term definition', async () => {
-        // Arrange
+    test('should parse simple term with name and meaning', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Order: "A customer purchase request"
@@ -32,25 +31,22 @@ describe('Basic Terminology Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
-        expect(terms).toBeDefined();
+        const terms = bc.terminology;
+
         expect(terms).toHaveLength(1);
         expect(terms[0].name).toBe('Order');
         expect(terms[0].meaning).toBe('A customer purchase request');
+        expect(terms[0].synonyms).toHaveLength(0);
+        expect(terms[0].examples).toHaveLength(0);
     });
 
     test('should parse term without meaning', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Order
@@ -58,23 +54,19 @@ describe('Basic Terminology Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
+        const terms = bc.terminology;
+
         expect(terms[0].name).toBe('Order');
         expect(terms[0].meaning).toBeUndefined();
     });
 
-    test('should parse multiple terms', async () => {
-        // Arrange
+    test('should parse multiple terms with correct names', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Order: "A customer purchase request"
@@ -84,57 +76,46 @@ describe('Basic Terminology Parsing', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
+        const terms = bc.terminology;
+
         expect(terms).toHaveLength(3);
-        expect(terms.map((t: any) => t.name)).toEqual(['Order', 'Customer', 'Product']);
+        expect(terms.map(t => t.name)).toEqual(['Order', 'Customer', 'Product']);
     });
 });
 
 // ============================================================================
-// TERM KEYWORD VARIANTS
+// TERM AND BLOCK KEYWORD VARIANTS
 // ============================================================================
 
-describe('Term Keyword Variants', () => {
-    test('should parse Term with capital T', async () => {
-        // Arrange
+describe('Term and Block Keyword Variants', () => {
+    test.each([
+        ['term', 'lowercase term keyword'],
+        ['Term', 'capitalized Term keyword'],
+    ])('should parse %s keyword variant', async (keyword) => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
-                    Term Order: "A customer purchase request"
+                    ${keyword} Order: "A customer purchase request"
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        expect(terms[0].name).toBe('Order');
+        expect(bc.terminology[0].name).toBe('Order');
+        expect(bc.terminology[0].meaning).toBe('A customer purchase request');
     });
-});
 
-// ============================================================================
-// TERMINOLOGY BLOCK KEYWORD VARIANTS
-// ============================================================================
-
-describe('Terminology Block Keyword Variants', () => {
-    test('should parse glossary keyword', async () => {
-        // Arrange
+    test('should parse glossary block keyword as terminology alias', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 glossary {
                     term Order: "A customer purchase request"
@@ -142,14 +123,12 @@ describe('Terminology Block Keyword Variants', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        expect(terms).toBeDefined();
+        expect(bc.terminology).toHaveLength(1);
+        expect(bc.terminology[0].name).toBe('Order');
+        expect(bc.terminology[0].meaning).toBe('A customer purchase request');
     });
 });
 
@@ -158,11 +137,10 @@ describe('Terminology Block Keyword Variants', () => {
 // ============================================================================
 
 describe('Term Synonyms', () => {
-    test('should parse term with aka keyword', async () => {
-        // Arrange
+    test('should parse single synonym with aka keyword', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Customer: "A person who places orders" aka Client
@@ -170,23 +148,20 @@ describe('Term Synonyms', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
-        expect(terms[0].synonyms).toHaveLength(1);
-        expect(terms[0].synonyms[0]).toBe('Client');
+        const term = bc.terminology[0];
+
+        expect(term.name).toBe('Customer');
+        expect(term.synonyms).toHaveLength(1);
+        expect(term.synonyms[0]).toBe('Client');
     });
 
-    test('should parse term with multiple synonyms using aka', async () => {
-        // Arrange
+    test('should parse multiple synonyms with aka keyword', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Customer: "A person who places orders" aka Client, Buyer, Purchaser
@@ -194,23 +169,17 @@ describe('Term Synonyms', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
-        expect(terms[0].synonyms).toHaveLength(3);
-        expect(terms[0].synonyms).toEqual(['Client', 'Buyer', 'Purchaser']);
+        const term = getFirstBoundedContext(document).terminology[0];
+
+        expect(term.synonyms).toEqual(['Client', 'Buyer', 'Purchaser']);
     });
 
-    test('should parse term with synonyms keyword', async () => {
-        // Arrange
+    test('should parse synonyms keyword as aka alias', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Product: "An item for sale" synonyms Item, Good, Merchandise
@@ -218,15 +187,11 @@ describe('Term Synonyms', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
-        expect(terms[0].synonyms).toEqual(['Item', 'Good', 'Merchandise']);
+        const term = getFirstBoundedContext(document).terminology[0];
+
+        expect(term.synonyms).toEqual(['Item', 'Good', 'Merchandise']);
     });
 });
 
@@ -236,10 +201,9 @@ describe('Term Synonyms', () => {
 
 describe('Term Examples', () => {
     test('should parse term with examples keyword', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Product: "An item for sale" examples "Laptop", "Mouse"
@@ -247,19 +211,12 @@ describe('Term Examples', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
-        expect(terms[0].examples).toHaveLength(2);
-        expect(terms[0].examples).toEqual(['Laptop', 'Mouse']);
+        const term = getFirstBoundedContext(document).terminology[0];
+
+        expect(term.examples).toEqual(['Laptop', 'Mouse']);
     });
-
-
 });
 
 // ============================================================================
@@ -267,11 +224,10 @@ describe('Term Examples', () => {
 // ============================================================================
 
 describe('Complex Term Definitions', () => {
-    test('should parse term with meaning, synonyms, and examples', async () => {
-        // Arrange
+    test('should parse term with meaning, synonyms, and examples combined', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Customer: "A person or organization that purchases products" aka Client, Buyer examples "Acme Corp", "John Doe"
@@ -279,26 +235,20 @@ describe('Complex Term Definitions', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        const term = terms[0];
-        
+        const term = getFirstBoundedContext(document).terminology[0];
+
         expect(term.name).toBe('Customer');
         expect(term.meaning).toBe('A person or organization that purchases products');
         expect(term.synonyms).toEqual(['Client', 'Buyer']);
         expect(term.examples).toEqual(['Acme Corp', 'John Doe']);
     });
 
-    test('should parse multiple complex terms', async () => {
-        // Arrange
+    test('should parse multiple complex terms with varied features', async () => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Order: "Purchase request" aka Purchase examples "ORD-001", "ORD-002"
@@ -308,17 +258,19 @@ describe('Complex Term Definitions', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        
+        const terms = getFirstBoundedContext(document).terminology;
+
         expect(terms).toHaveLength(3);
+        expect(terms[0].name).toBe('Order');
         expect(terms[0].synonyms).toEqual(['Purchase']);
+        expect(terms[0].examples).toEqual(['ORD-001', 'ORD-002']);
+        expect(terms[1].name).toBe('LineItem');
         expect(terms[1].synonyms).toEqual(['OrderLine']);
+        expect(terms[1].examples).toHaveLength(0);
+        expect(terms[2].name).toBe('Discount');
+        expect(terms[2].synonyms).toHaveLength(0);
         expect(terms[2].examples).toHaveLength(2);
     });
 });
@@ -328,61 +280,26 @@ describe('Complex Term Definitions', () => {
 // ============================================================================
 
 describe('Term Assignment Operators', () => {
-    test('should parse term with colon assignment', async () => {
-        // Arrange
+    test.each([
+        [':', 'colon'],
+        ['is', 'is keyword'],
+        ['=', 'equals'],
+    ])('should parse term with %s (%s) assignment and preserve meaning', async (operator) => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
-                    term Order: "A purchase request"
+                    term Order ${operator} "A purchase request"
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-    });
-
-    test('should parse term with is assignment', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    term Order is "A purchase request"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-    });
-
-    test('should parse term with equals assignment', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    term Order = "A purchase request"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
+        const term = getFirstBoundedContext(document).terminology[0];
+        expect(term.name).toBe('Order');
+        expect(term.meaning).toBe('A purchase request');
     });
 });
 
@@ -392,74 +309,45 @@ describe('Term Assignment Operators', () => {
 
 describe('Terminology Edge Cases', () => {
     test('should handle empty terminology block', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology { }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        expect(terms).toHaveLength(0);
+        expect(bc.terminology).toHaveLength(0);
     });
 
-    test('should parse terms with hyphens in names', async () => {
-        // Arrange
+    test.each([
+        { char: 'hyphens', name: 'line-item', meaning: 'A single line in an order' },
+        { char: 'underscores', name: 'order_id', meaning: 'Unique order identifier' },
+    ])('should parse terms with $char in names', async ({ name, meaning }) => {
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
-                    term line-item: "A single line in an order"
+                    term ${name}: "${meaning}"
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        expect(terms[0].name).toBe('line-item');
-    });
-
-    test('should parse terms with underscores in names', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    term order_id: "Unique order identifier"
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
-        expect(terms[0].name).toBe('order_id');
+        const term = getFirstBoundedContext(document).terminology[0];
+        expect(term.name).toBe(name);
+        expect(term.meaning).toBe(meaning);
     });
 
     test('should handle terms with comma separators', async () => {
-        // Arrange
         const input = s`
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Order: "A purchase request",
@@ -468,13 +356,50 @@ describe('Terminology Edge Cases', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology ?? [];
+        const terms = getFirstBoundedContext(document).terminology;
         expect(terms).toHaveLength(2);
+        expect(terms[0].name).toBe('Order');
+        expect(terms[1].name).toBe('Customer');
+    });
+});
+
+// ============================================================================
+// NEGATIVE TESTS
+// ============================================================================
+
+describe('Terminology Negative Tests', () => {
+    test('should reject terminology block outside a BoundedContext', async () => {
+        const input = s`
+            Domain Sales {
+                terminology {
+                    term Order: "A purchase request"
+                }
+            }
+        `;
+
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'Terminology outside BC'
+        );
+    });
+
+    test('should reject term with numeric-only name', async () => {
+        const input = s`
+            Domain Sales {}
+            BoundedContext OrderContext for Sales {
+                terminology {
+                    term 123: "Invalid name"
+                }
+            }
+        `;
+
+        await expectGrammarRuleRejectsInput(
+            testServices.parse,
+            input,
+            'Term with numeric name'
+        );
     });
 });

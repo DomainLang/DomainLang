@@ -1,13 +1,20 @@
 /**
  * Tests for DomainLangHoverProvider.
  *
- * Verifies hover functionality for DomainLang elements.
+ * Verifies hover functionality for DomainLang elements including
+ * type labels, element names, code signatures, documentation comments,
+ * keyword explanations, references, and edge cases.
  */
 
 import { describe, test, expect, beforeAll } from 'vitest';
 import { setupTestSuite, type TestServices, s } from '../test-helpers.js';
 import type { HoverParams } from 'vscode-languageserver';
 import { Position } from 'vscode-languageserver';
+
+/** Typed hover result matching the provider's return shape. */
+interface HoverResult {
+    contents: { kind: string; value: string };
+}
 
 describe('DomainLangHoverProvider', () => {
     let testServices: TestServices;
@@ -17,16 +24,16 @@ describe('DomainLangHoverProvider', () => {
     });
 
     /**
-     * Helper to get hover content at a specific position
+     * Helper to get hover content at a specific position.
      */
     const getHoverAt = async (
         text: string,
         line: number,
         character: number
-    ): Promise<unknown> => {
+    ): Promise<HoverResult | undefined> => {
         const document = await testServices.parse(text);
         const hoverProvider = testServices.services.DomainLang.lsp.HoverProvider;
-        
+
         if (!hoverProvider) {
             throw new Error('HoverProvider not available');
         }
@@ -36,209 +43,327 @@ describe('DomainLangHoverProvider', () => {
             position: Position.create(line, character)
         };
 
-        return hoverProvider.getHoverContent(document, params) as unknown;
+        return hoverProvider.getHoverContent(document, params) as Promise<HoverResult | undefined>;
     };
 
+    // ================================================================
+    // Smoke tests: verify type label and name for each major type
+    // ================================================================
+
     describe('Domain hovers', () => {
-        test('provides hover for domain', async () => {
+        test('shows markdown content with type label and element name', async () => {
             const hover = await getHoverAt(
                 s`Domain Sales { vision: "Customer sales management" }`,
                 0,
-                7
+                7 // 'S' in Sales
             );
 
             expect(hover).toBeDefined();
+            expect(hover!.contents.kind).toBe('markdown');
+            expect(hover!.contents.value).toContain('(domain)');
+            expect(hover!.contents.value).toContain('Sales');
         });
 
-        test('provides hover for nested domain', async () => {
+        test('contains code block with domain signature', async () => {
             const hover = await getHoverAt(
-                s`Domain Accounting in Finance {}`,
+                s`Domain Sales {}`,
                 0,
                 7
             );
 
             expect(hover).toBeDefined();
+            expect(hover!.contents.value).toContain('```domain-lang');
+            expect(hover!.contents.value).toContain('Domain Sales');
+        });
+
+        test('includes parent in nested domain signature', async () => {
+            const hover = await getHoverAt(
+                s`
+                Domain Finance {}
+                Domain Accounting in Finance {}
+                `,
+                1,
+                7 // 'A' in Accounting
+            );
+
+            expect(hover).toBeDefined();
+            const value = hover!.contents.value;
+            expect(value).toContain('(domain)');
+            expect(value).toContain('Accounting');
+            expect(value).toContain('Domain Accounting in Finance');
+        });
+
+        test('includes vision in hover fields', async () => {
+            const hover = await getHoverAt(
+                s`Domain Sales { vision: "Streamlined sales process" }`,
+                0,
+                7
+            );
+
+            expect(hover).toBeDefined();
+            expect(hover!.contents.value).toContain('Streamlined sales process');
         });
     });
 
     describe('Bounded context hovers', () => {
-        test('provides hover for bounded context', async () => {
+        test('shows type label and element name', async () => {
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
-                bc OrderContext for Sales as Core by TeamA { description: "Order processing" }
+                bc OrderContext for Sales {}
                 `,
                 1,
-                8
+                3 // 'O' in OrderContext
             );
 
-            expect(hover !== undefined).toBeTruthy();
+            expect(hover).toBeDefined();
+            expect(hover!.contents.value).toContain('(boundedcontext)');
+            expect(hover!.contents.value).toContain('OrderContext');
         });
 
-        test('provides hover for bounded context with attributes', async () => {
+        test('contains code block with full signature including for/as/by', async () => {
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
                 Team TeamA {}
                 Classification Core {}
-                bc OrderContext for Sales as Core by TeamA { 
-                    description: "Order context"
-                }
+                bc OrderContext for Sales as Core by TeamA {}
                 `,
-                4,
-                8
+                3,
+                3 // 'O' in OrderContext
             );
 
             expect(hover).toBeDefined();
+            const value = hover!.contents.value;
+            expect(value).toContain('(boundedcontext)');
+            expect(value).toContain('```domain-lang');
+            expect(value).toContain('BoundedContext OrderContext');
+            expect(value).toContain('for Sales');
+            expect(value).toContain('as Core');
+            expect(value).toContain('by TeamA');
+        });
+
+        test('includes description in hover fields', async () => {
+            const hover = await getHoverAt(
+                s`
+                Domain Sales {}
+                bc OrderContext for Sales { description: "Manages order lifecycle" }
+                `,
+                1,
+                3
+            );
+
+            expect(hover).toBeDefined();
+            expect(hover!.contents.value).toContain('Manages order lifecycle');
         });
     });
 
     describe('Team hovers', () => {
-        test('provides hover for team', async () => {
+        test('shows type label and element name', async () => {
             const hover = await getHoverAt(
                 s`Team SalesTeam {}`,
                 0,
-                5
+                5 // 'S' in SalesTeam
             );
 
             expect(hover).toBeDefined();
-        });
-
-        test('provides hover for team with description', async () => {
-            const hover = await getHoverAt(
-                s`Team SalesTeam { description: "Sales team" }`,
-                0,
-                5
-            );
-
-            expect(hover).toBeDefined();
-        });
-
-        test('includes documentation comment in team hover', async () => {
-            const hover = await getHoverAt(
-                s`/**
- * This is the sales team responsible for customer acquisition
- */
-Team SalesTeam`,
-                3,
-                5
-            ) as { contents?: { value?: string } };
-
-            expect(hover).toBeDefined();
-            expect(hover.contents).toBeDefined();
-            const content = hover.contents?.value ?? '';
-            expect(content).toContain('sales team');
-            expect(content).toContain('customer acquisition');
+            expect(hover!.contents.value).toContain('(team)');
+            expect(hover!.contents.value).toContain('SalesTeam');
         });
     });
 
     describe('Classification hovers', () => {
-        test('provides hover for classification', async () => {
+        test('shows type label and element name', async () => {
             const hover = await getHoverAt(
                 s`Classification Core {}`,
                 0,
-                12
+                15 // 'C' in Core
             );
 
             expect(hover).toBeDefined();
+            expect(hover!.contents.value).toContain('(classification)');
+            expect(hover!.contents.value).toContain('Core');
         });
+    });
 
-        test('provides hover for classification with description', async () => {
-            const hover = await getHoverAt(
-                s`Classification Core { description: "Core systems" }`,
-                0,
-                12
-            );
+    // ================================================================
+    // Documentation comments
+    // ================================================================
 
-            expect(hover).toBeDefined();
-        });
-
-        test('includes documentation comment in classification hover', async () => {
-            const hover = await getHoverAt(
-                s`/**
+    describe('Documentation comments in hover', () => {
+        test.each([
+            {
+                construct: 'domain',
+                input: s`/**
+ * The commerce domain handles all commercial operations
+ */
+Domain Commerce {}`,
+                line: 3,
+                col: 7,
+                typeLabel: '(domain)',
+                name: 'Commerce',
+                docSnippets: ['commerce domain', 'commercial operations'],
+            },
+            {
+                construct: 'team',
+                input: s`/**
+ * This is the sales team responsible for customer acquisition
+ */
+Team SalesTeam`,
+                line: 3,
+                col: 5,
+                typeLabel: '(team)',
+                name: 'SalesTeam',
+                docSnippets: ['sales team', 'customer acquisition'],
+            },
+            {
+                construct: 'classification',
+                input: s`/**
  * Core domain - essential for business success
  */
 Classification Core`,
-                3,
-                15
-            ) as { contents?: { value?: string } };
+                line: 3,
+                col: 15,
+                typeLabel: '(classification)',
+                name: 'Core',
+                docSnippets: ['Core domain', 'business success'],
+            },
+        ])('includes doc comment in $construct hover', async ({ input, line, col, typeLabel, name, docSnippets }) => {
+            const hover = await getHoverAt(input, line, col);
 
             expect(hover).toBeDefined();
-            expect(hover.contents).toBeDefined();
-            const content = hover.contents?.value ?? '';
-            expect(content).toContain('Core domain');
-            expect(content).toContain('business success');
+            const value = hover!.contents.value;
+            expect(value).toContain(typeLabel);
+            expect(value).toContain(name);
+            for (const snippet of docSnippets) {
+                expect(value).toContain(snippet);
+            }
         });
     });
 
+    // ================================================================
+    // Keyword hovers
+    // ================================================================
+
     describe('Keyword hovers', () => {
-        test('provides hover for Domain keyword', async () => {
+        test('shows explanation for Domain keyword', async () => {
             const hover = await getHoverAt(
                 s`Domain Sales {}`,
                 0,
-                1
+                1 // 'o' in Domain keyword
             );
 
             expect(hover).toBeDefined();
+            const value = hover!.contents.value;
+            expect(value).toContain('**Domain**');
+            expect(value).toContain('sphere of knowledge');
+            expect(value).toContain('Can be nested');
         });
 
-        test('provides hover for in keyword', async () => {
+        test('shows explanation for bc keyword', async () => {
+            const hover = await getHoverAt(
+                s`
+                Domain Sales {}
+                bc OrderContext for Sales {}
+                `,
+                1,
+                0 // 'b' in bc keyword
+            );
+
+            expect(hover).toBeDefined();
+            const value = hover!.contents.value;
+            expect(value).toContain('**BoundedContext**');
+            expect(value).toContain('managing complexity');
+        });
+    });
+
+    // ================================================================
+    // Reference hovers: hovering on a reference shows the target element
+    // ================================================================
+
+    describe('Reference hovers', () => {
+        test('hovering on domain reference in BC shows domain info', async () => {
+            // Line 1: "bc OrderContext for Sales {}" -- 'S' in Sales at char 20
+            const hover = await getHoverAt(
+                s`
+                Domain Sales {}
+                bc OrderContext for Sales {}
+                `,
+                1,
+                20 // 'S' in 'Sales' reference
+            );
+
+            expect(hover).toBeDefined();
+            const value = hover!.contents.value;
+            expect(value).toContain('(domain)');
+            expect(value).toContain('Sales');
+        });
+
+        test('hovering on parent reference in nested domain shows parent domain', async () => {
+            // "Domain Parent {} Domain Child in Parent {}"
+            // P(33)a(34)r(35)e(36)n(37)t(38) -- second 'Parent' is a reference
             const hover = await getHoverAt(
                 s`Domain Parent {} Domain Child in Parent {}`,
                 0,
-                35
+                33 // 'P' in second 'Parent' (reference)
             );
 
             expect(hover).toBeDefined();
+            const value = hover!.contents.value;
+            expect(value).toContain('(domain)');
+            expect(value).toContain('Parent');
         });
     });
 
-    describe('Import hovers', () => {
-        test('provides hover for import statement', async () => {
+    // ================================================================
+    // Non-element positions (should return undefined)
+    // ================================================================
+
+    describe('Non-element positions', () => {
+        test('returns undefined for position outside document bounds', async () => {
             const hover = await getHoverAt(
-                s`import "owner/repo@v1.0.0"`,
-                0,
-                5
+                s`Domain Sales {}`,
+                10,
+                0
             );
 
-            expect(hover).toBeDefined();
-        });
-    });
-
-    describe('Edge cases', () => {
-        test('returns undefined for position outside document', async () => {
-            const document = await testServices.parse(s`Domain Sales {}`);
-            const hoverProvider = testServices.services.DomainLang.lsp.HoverProvider;
-
-            if (!hoverProvider) {
-                throw new Error('HoverProvider not available');
-            }
-
-            const params: HoverParams = {
-                textDocument: { uri: document.textDocument.uri },
-                position: Position.create(10, 0)
-            };
-
-            const hover = await hoverProvider.getHoverContent(document, params);
             expect(hover).toBeUndefined();
         });
 
-        test('handles documents with errors gracefully', async () => {
-            const hoverProvider = testServices.services.DomainLang.lsp.HoverProvider;
+        test('returns undefined for empty line between elements', async () => {
+            const hover = await getHoverAt(
+                s`
+                Domain Sales {}
 
-            if (!hoverProvider) {
-                throw new Error('HoverProvider not available');
-            }
+                Team TeamA {}
+                `,
+                1, // the empty line
+                0
+            );
+
+            expect(hover).toBeUndefined();
+        });
+    });
+
+    // ================================================================
+    // Error handling
+    // ================================================================
+
+    describe('Error handling', () => {
+        test('returns undefined for position in malformed document', async () => {
+            const hoverProvider = testServices.services.DomainLang.lsp.HoverProvider;
+            if (!hoverProvider) throw new Error('HoverProvider not available');
 
             const document = await testServices.parse(s`Domain {}`);
-
             const params: HoverParams = {
                 textDocument: { uri: document.textDocument.uri },
                 position: Position.create(0, 7)
             };
 
+            // The provider catches errors internally; for a Domain with no name,
+            // there is no valid declaration or keyword at the brace position
             const hover = await hoverProvider.getHoverContent(document, params);
-            expect(hover === undefined || hover !== undefined).toBe(true);
+            expect(hover).toBeUndefined();
         });
     });
 });

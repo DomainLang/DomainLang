@@ -1,9 +1,29 @@
 /**
  * Linking Tests
- * 
+ *
  * Tests cross-reference resolution and linking behavior across the grammar.
  * Covers domain references, team references, classification references,
  * and relationship link resolution.
+ *
+ * Smoke (~20%):
+ * - ContextMap resolves named relationship participants
+ * - BC domain reference resolves
+ *
+ * Edge/error (~80%):
+ * - Unresolved references in ContextMap produce errors
+ * - DDD pattern annotations resolve to correct BC names
+ * - Relationship type annotations parse correctly
+ * - Forward references resolve
+ * - Unresolved domain reference produces error
+ * - Parent domain hierarchy resolves
+ * - Team references resolve in inline and doc block syntax
+ * - Qualified team references resolve across namespaces
+ * - Classification references resolve in inline, domain type, and decision syntax
+ * - Qualified classification references resolve
+ * - DomainMap resolved and unresolved
+ * - This-reference in relationships
+ * - Cross-namespace and nested qualified name resolution
+ * - Metadata references in BC metadata block resolve
  */
 
 import { describe, test, beforeAll, expect } from 'vitest';
@@ -39,33 +59,31 @@ function extractContextMaps(elements: StructureElement[]): ContextMap[] {
 // ============================================================================
 
 describe('ContextMap Relationship Linking', () => {
-    test('should report unresolved references in ContextMap', async () => {
-        // Arrange
+
+    // EDGE: unresolved references produce error objects
+    test('unresolved references in ContextMap produce linking errors with no ref', async () => {
         const input = s`
             ContextMap FaultyMap {
                 PaymentBC <- OrdersBC
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const ctxMap = document.parseResult.value.children.find(isContextMap);
         expect(ctxMap).toBeDefined();
         if (!ctxMap) return;
 
-        const rel = ctxMap.relationships[0];
         expect(ctxMap.relationships).toHaveLength(1);
+        const rel = ctxMap.relationships[0];
         expect(rel.left.link?.ref).toBeUndefined();
         expect(rel.left.link?.error).toBeDefined();
         expect(rel.right.link?.ref).toBeUndefined();
         expect(rel.right.link?.error).toBeDefined();
     });
 
-    test('should resolve references in ContextMap when present', async () => {
-        // Arrange
+    // SMOKE: resolved references in ContextMap
+    test('resolved references in ContextMap have no error and correct participant names', async () => {
         const input = s`
             Namespace TestNamespace {
                 ContextMap CorrectMap {
@@ -78,31 +96,27 @@ describe('ContextMap Relationship Linking', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const ctxMap = extractContextMaps(model.children)[0];
+        const ctxMap = extractContextMaps(document.parseResult.value.children)[0];
         expect(ctxMap).toBeDefined();
         if (!ctxMap) return;
 
-        const rel = ctxMap.relationships[0];
         expect(ctxMap.relationships).toHaveLength(1);
-        expect(rel.left.link?.ref).toBeDefined();
+        const rel = ctxMap.relationships[0];
+        expect(rel.left.link?.ref?.name).toBe('PaymentBC');
         expect(rel.left.link?.error).toBeUndefined();
-        expect(rel.right.link?.ref).toBeDefined();
+        expect(rel.right.link?.ref?.name).toBe('OrdersBC');
         expect(rel.right.link?.error).toBeUndefined();
     });
 
-    test('should resolve all DDD pattern annotations', async () => {
-        // Arrange
+    // EDGE: DDD pattern annotations resolve to correct BC names
+    test('DDD pattern annotations resolve to correct BC names', async () => {
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
             bc PaymentContext for Sales
-            
+
             ContextMap PatternMap {
                 contains OrderContext, PaymentContext
                 [OHS] OrderContext -> [CF] PaymentContext
@@ -111,46 +125,25 @@ describe('ContextMap Relationship Linking', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const ctxMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
         expect(ctxMap.relationships).toHaveLength(3);
-        
-        ctxMap.relationships.forEach(rel => {
-            expect(rel.left.link?.ref).toBeDefined();
-            expect(rel.right.link?.ref).toBeDefined();
-        });
+
+        // First relationship: OHS OrderContext -> CF PaymentContext
+        expect(ctxMap.relationships[0].left.link?.ref?.name).toBe('OrderContext');
+        expect(ctxMap.relationships[0].right.link?.ref?.name).toBe('PaymentContext');
+
+        // Second relationship: ACL PaymentContext <- PL OrderContext
+        expect(ctxMap.relationships[1].left.link?.ref?.name).toBe('PaymentContext');
+        expect(ctxMap.relationships[1].right.link?.ref?.name).toBe('OrderContext');
+
+        // Third relationship: SK OrderContext <-> PaymentContext
+        expect(ctxMap.relationships[2].left.link?.ref?.name).toBe('OrderContext');
+        expect(ctxMap.relationships[2].right.link?.ref?.name).toBe('PaymentContext');
     });
 
-    test('should resolve relationship type annotations', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-            
-            ContextMap TypedMap {
-                contains OrderContext, PaymentContext
-                OrderContext -> PaymentContext : Partnership
-                OrderContext <- PaymentContext : SharedKernel
-                OrderContext <-> PaymentContext : CustomerSupplier
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const ctxMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
-        expect(ctxMap.relationships).toHaveLength(3);
-        expect(ctxMap.relationships[0].type).toBe('Partnership');
-        expect(ctxMap.relationships[1].type).toBe('SharedKernel');
-        expect(ctxMap.relationships[2].type).toBe('CustomerSupplier');
-    });
+    // Relationship type annotations covered by parsing/relationships.test.ts
 });
 
 // ============================================================================
@@ -158,46 +151,40 @@ describe('ContextMap Relationship Linking', () => {
 // ============================================================================
 
 describe('Domain Reference Linking', () => {
-    test('should resolve domain reference in bounded context', async () => {
-        // Arrange
+
+    // SMOKE: basic domain reference
+    test('BC domain reference resolves to correct domain name', async () => {
         const input = s`
             Domain Sales {
                 vision: "Sales domain"
             }
-            
+
             BoundedContext OrderContext for Sales
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        expect(bc.domain?.ref).toBeDefined();
         expect(bc.domain?.ref?.name).toBe('Sales');
     });
 
-    test('should resolve parent domain in subdomain hierarchy', async () => {
-        // Arrange
+    // EDGE: parent domain subdomain hierarchy resolution
+    test('parent domain references resolve through multi-level hierarchy', async () => {
         const input = s`
             Domain Commerce {
                 vision: "Root commerce domain"
             }
-            
+
             Domain Sales in Commerce {
                 vision: "Sales subdomain"
             }
-            
+
             Domain RetailSales in Sales {
                 vision: "Retail sales subdomain"
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const model = document.parseResult.value;
         const salesDomain = model.children.find(n => isDomain(n) && n.name === 'Sales') as Domain;
@@ -207,38 +194,31 @@ describe('Domain Reference Linking', () => {
         expect(retailDomain.parent?.ref?.name).toBe('Sales');
     });
 
-    test('should handle forward references', async () => {
-        // Arrange
+    // EDGE: forward references (BC defined before domain)
+    test('forward references resolve when domain is defined after BC', async () => {
         const input = s`
             BoundedContext OrderContext for Sales {
                 description: "References domain defined later"
             }
-            
+
             Domain Sales {
                 vision: "Defined after BC"
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        expect(bc.domain?.ref).toBeDefined();
         expect(bc.domain?.ref?.name).toBe('Sales');
     });
 
-    test('should report unresolved domain reference', async () => {
-        // Arrange
+    // EDGE: unresolved domain reference
+    test('unresolved domain reference produces error with undefined ref', async () => {
         const input = s`
             BoundedContext OrderContext for NonExistentDomain
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.domain?.ref).toBeUndefined();
@@ -251,68 +231,52 @@ describe('Domain Reference Linking', () => {
 // ============================================================================
 
 describe('Team Reference Linking', () => {
-    test('should resolve team reference in BC inline syntax', async () => {
-        // Arrange
-        const input = s`
+
+    // EDGE: team in inline "by" syntax and doc block syntax
+    test('team references resolve in both inline "by" keyword and documentation block syntax', async () => {
+        // Inline "by" syntax
+        const inlineDoc = await testServices.parse(s`
             Domain Sales {}
             Team SalesTeam
-            
+
             bc OrderContext for Sales by SalesTeam
-        `;
+        `);
+        expectValidDocument(inlineDoc);
+        const inlineBc = getFirstBoundedContext(inlineDoc);
+        expect(inlineBc.team?.[0]?.ref?.name).toBe('SalesTeam');
 
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        expect(bc.team?.[0]?.ref).toBeDefined();
-        expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
-    });
-
-    test('should resolve team reference in BC documentation block', async () => {
-        // Arrange
-        const input = s`
+        // Documentation block syntax
+        const blockDoc = await testServices.parse(s`
             Domain Sales {}
             Team ProductTeam
-            
+
             BoundedContext OrderContext for Sales {
                 team: ProductTeam
             }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const team = bc.team?.[0];
-        expect(team?.ref?.name).toBe('ProductTeam');
+        `);
+        expectValidDocument(blockDoc);
+        const blockBc = getFirstBoundedContext(blockDoc);
+        expect(blockBc.team?.[0]?.ref?.name).toBe('ProductTeam');
     });
 
-    test('should resolve qualified team reference', async () => {
-        // Arrange
+    // EDGE: qualified team reference across namespace
+    test('qualified team reference across namespaces resolves correctly', async () => {
         const input = s`
             Namespace company.teams {
                 Team EngineeringTeam
             }
-            
+
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 team: company.teams.EngineeringTeam
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        const team = bc.team?.[0];
-        expect(team?.ref?.name).toBe('EngineeringTeam');
+        expect(bc.team?.[0]?.ref?.name).toBe('EngineeringTeam');
     });
 });
 
@@ -321,52 +285,45 @@ describe('Team Reference Linking', () => {
 // ============================================================================
 
 describe('Classification Reference Linking', () => {
-    test('should resolve classification reference in BC inline syntax', async () => {
-        // Arrange
+
+    // EDGE: classification in inline "as" syntax
+    test('classification in inline "as" syntax resolves correctly', async () => {
         const input = s`
             Domain Sales {}
             Classification Core
-            
+
             bc OrderContext for Sales as Core
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
-        expect(bc.classification?.[0]?.ref).toBeDefined();
         expect(bc.classification?.[0]?.ref?.name).toBe('Core');
     });
 
-    test('should resolve type in domain type block', async () => {
-        // Arrange
+    // EDGE: type in domain type block
+    test('classification type in domain type block resolves correctly', async () => {
         const input = s`
             Classification Strategic
-            
+
             Domain Sales {
                 vision: "Core sales"
                 type: Strategic
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const model = document.parseResult.value;
-        const domain = model.children.find(c => c.$type === 'Domain') as any;
+        const domain = document.parseResult.value.children.find(c => c.$type === 'Domain') as any;
         expect(domain.type?.ref?.name).toBe('Strategic');
     });
 
-    test('should resolve classification in decision bracket syntax', async () => {
-        // Arrange
+    // EDGE: classification in decision bracket syntax
+    test('classification in decision bracket syntax resolves correctly', async () => {
         const input = s`
             Classification Architectural
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 decisions {
                     decision [Architectural] UseEvents: "Use event sourcing"
@@ -374,25 +331,22 @@ describe('Classification Reference Linking', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         const decisions = bc.decisions ?? [];
         expect(decisions[0]?.classification?.ref?.name).toBe('Architectural');
     });
 
-    test('should resolve qualified classification reference', async () => {
-        // Arrange
+    // EDGE: qualified classification reference
+    test('qualified classification reference across namespaces resolves correctly', async () => {
         const input = s`
             Namespace governance {
                 Classification Technical
             }
-            
+
             Domain Sales {}
-            
+
             BoundedContext OrderContext for Sales {
                 decisions {
                     decision [governance.Technical] Database: "Use PostgreSQL"
@@ -400,10 +354,7 @@ describe('Classification Reference Linking', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         const decisions = bc.decisions ?? [];
@@ -416,8 +367,9 @@ describe('Classification Reference Linking', () => {
 // ============================================================================
 
 describe('DomainMap Linking', () => {
-    test('should resolve domain references in DomainMap', async () => {
-        // Arrange
+
+    // EDGE: resolved domain references with correct names
+    test('DomainMap resolves domain references with correct sorted names', async () => {
         const input = s`
             Domain Sales {
                 vision: "Sales domain"
@@ -425,60 +377,50 @@ describe('DomainMap Linking', () => {
             Domain Marketing {
                 vision: "Marketing domain"
             }
-            
+
             DomainMap BusinessDomains {
                 contains Sales, Marketing
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const domainMap = document.parseResult.value.children.find(isDomainMap) as DomainMap;
-        expect(domainMap).toBeDefined();
         expect(domainMap.domains).toHaveLength(2);
-        
-        const domainNames = domainMap.domains.map(d => d.items[0]?.ref?.name).sort();
+
+        const domainNames = domainMap.domains.map(d => d.items[0]?.ref?.name).sort((a, b) => (a ?? '').localeCompare(b ?? ''));
         expect(domainNames).toEqual(['Marketing', 'Sales']);
     });
 
-    test('should resolve qualified domain references in DomainMap', async () => {
-        // Arrange
+    // EDGE: qualified domain references
+    test('qualified domain references in DomainMap resolve across namespaces', async () => {
         const input = s`
             Namespace company {
                 Domain Sales {
                     vision: "Company sales"
                 }
             }
-            
+
             DomainMap Portfolio {
                 contains company.Sales
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const domainMap = document.parseResult.value.children.find(isDomainMap) as DomainMap;
         expect(domainMap.domains[0].items[0]?.ref?.name).toBe('Sales');
     });
 
-    test('should handle unresolved domain references in DomainMap', async () => {
-        // Arrange
+    // EDGE: unresolved domain references
+    test('unresolved domain references in DomainMap produce undefined ref', async () => {
         const input = s`
             DomainMap EmptyMap {
                 contains NonExistentDomain
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const domainMap = document.parseResult.value.children.find(isDomainMap) as DomainMap;
         expect(domainMap.domains[0].items[0]?.ref).toBeUndefined();
@@ -490,13 +432,14 @@ describe('DomainMap Linking', () => {
 // ============================================================================
 
 describe('This Reference Linking', () => {
-    test('should resolve this reference in BC relationships block', async () => {
-        // Arrange
+
+    // EDGE: "this" reference resolves in BC relationships block
+    test('this reference in BC relationships block resolves participant and has ThisRef type', async () => {
         const input = s`
             Domain Sales {}
             BoundedContext OrderContext for Sales
             BoundedContext PaymentContext for Sales
-            
+
             BoundedContext OrderContext for Sales {
                 description: "Self-referencing context"
                 relationships {
@@ -505,14 +448,11 @@ describe('This Reference Linking', () => {
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        const bcs = document.parseResult.value.children.filter(isBoundedContext) as BoundedContext[];
+        const bcs = document.parseResult.value.children.filter(isBoundedContext);
         const bcWithRelationships = bcs.find(bc => bc.relationships.length > 0);
-        
+
         expect(bcWithRelationships).toBeDefined();
         if (bcWithRelationships) {
             const rel = bcWithRelationships.relationships[0];
@@ -528,8 +468,9 @@ describe('This Reference Linking', () => {
 // ============================================================================
 
 describe('Complex Linking Scenarios', () => {
-    test('should resolve cross-Namespace references', async () => {
-        // Arrange
+
+    // EDGE: cross-namespace reference
+    test('cross-namespace team reference resolves correctly', async () => {
         const input = s`
             Namespace sales {
                 Domain Sales {
@@ -537,34 +478,29 @@ describe('Complex Linking Scenarios', () => {
                 }
                 Team SalesTeam
             }
-            
+
             Namespace billing {
                 Domain Billing {
                     vision: "Billing domain"
                 }
-                
+
                 BoundedContext PaymentContext for Billing {
                     team: sales.SalesTeam
                 }
             }
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
-        // Verify cross-Namespace team reference resolved
         const billingNs = document.parseResult.value.children.find(
             c => isNamespaceDeclaration(c) && c.name === 'billing'
         ) as any;
         const paymentBC = billingNs?.children.find(isBoundedContext) as BoundedContext;
-        const team = paymentBC?.team?.[0];
-        expect(team?.ref?.name).toBe('SalesTeam');
+        expect(paymentBC?.team?.[0]?.ref?.name).toBe('SalesTeam');
     });
 
-    test('should resolve nested Namespace qualified names', async () => {
-        // Arrange
+    // EDGE: nested namespace qualified names
+    test('nested namespace qualified names resolve through full path', async () => {
         const input = s`
             Namespace com.company {
                 Namespace sales {
@@ -573,16 +509,37 @@ describe('Complex Linking Scenarios', () => {
                     }
                 }
             }
-            
+
             BoundedContext OrderContext for com.company.sales.Sales
         `;
 
-        // Act
         const document = await testServices.parse(input);
-
-        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.domain?.ref?.name).toBe('Sales');
     });
-})
+
+    // EDGE: metadata reference in BC metadata block
+    test('metadata references in BC metadata block resolve correctly', async () => {
+        const input = s`
+            Domain Sales {}
+            Metadata Language
+            Metadata Framework
+
+            bc OrderContext for Sales {
+                metadata {
+                    Language: "TypeScript"
+                    Framework: "Express"
+                }
+            }
+        `;
+
+        const document = await testServices.parse(input);
+        expectValidDocument(document);
+        const bc = getFirstBoundedContext(document);
+        const metadata = bc.metadata ?? [];
+        expect(metadata).toHaveLength(2);
+        expect(metadata[0]?.key?.ref?.name).toBe('Language');
+        expect(metadata[1]?.key?.ref?.name).toBe('Framework');
+    });
+});

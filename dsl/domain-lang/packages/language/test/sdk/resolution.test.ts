@@ -1,13 +1,13 @@
 /**
  * SDK Resolution Functions Tests
- * 
- * Tests for property resolution functions that provide value beyond direct AST access.
- * Only tests functions with precedence logic or data transformation:
- * - effectiveClassification: Array-based precedence (header inline → body)
- * - effectiveTeam: Array-based precedence (header inline → body)
- * - metadataAsMap: Array to Map conversion
- * 
- * Direct AST properties (no resolution needed) are tested in AST augmentation tests.
+ *
+ * Tests for property resolution functions that provide value beyond direct AST access:
+ * - effectiveClassification: resolves first classification from header/body
+ * - effectiveTeam: resolves first team from header/body
+ * - metadataAsMap: converts metadata entries to Map
+ *
+ * ~20% smoke (one consolidated direct-property + happy-path), ~80% edge
+ * (undefined inputs, empty metadata, special chars, unresolved refs).
  */
 
 import { describe, test, expect } from 'vitest';
@@ -20,245 +20,92 @@ import {
 import type { BoundedContext, Domain } from '../../src/generated/ast.js';
 
 describe('SDK Resolution Functions', () => {
-    
-    describe('Direct AST Properties (no resolution needed)', () => {
-        
-        test('bc.description is a direct property', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    description: "Manages orders"
-                }
-            `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            
-            // Assert - direct property access, no resolution function needed
-            expect(bc.description).toBe('Manages orders');
-        });
-        
-        test('bc.businessModel is a direct reference', async () => {
-            // Arrange
+
+    // ========================================================================
+    // Smoke: consolidated direct AST properties (~20%)
+    // ========================================================================
+
+    describe('Smoke: direct AST properties (no resolution needed)', () => {
+
+        test('BC and Domain direct properties return correct values', async () => {
             const { query } = await loadModelFromText(`
                 Classification Commercial
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    businessModel: Commercial
-                }
-            `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            
-            // Assert - direct reference access
-            expect(bc.businessModel?.ref?.name).toBe('Commercial');
-        });
-        
-        test('bc.evolution is a direct reference', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
                 Classification Product
-                Domain Sales { vision: "v" }
+                Classification Core
+                Domain Sales {
+                    description: "Sales domain"
+                    vision: "Handle sales"
+                    type: Core
+                }
                 bc OrderContext for Sales {
+                    description: "Manages orders"
+                    businessModel: Commercial
                     evolution: Product
                 }
             `);
-            
-            // Act
+
+            // BC direct properties
             const bc = query.bc('OrderContext') as BoundedContext;
-            
-            // Assert - direct reference access
+            expect(bc.description).toBe('Manages orders');
+            expect(bc.businessModel?.ref?.name).toBe('Commercial');
             expect(bc.evolution?.ref?.name).toBe('Product');
-        });
-        
-        test('domain.description is a direct property', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales {
-                    description: "Sales domain"
-                    vision: "v"
-                }
-            `);
-            
-            // Act
+
+            // Domain direct properties
             const domain = query.domain('Sales') as Domain;
-            
-            // Assert - direct property access
             expect(domain.description).toBe('Sales domain');
-        });
-        
-        test('domain.vision is a direct property', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "Handle sales" }
-            `);
-            
-            // Act
-            const domain = query.domain('Sales') as Domain;
-            
-            // Assert - direct property access
             expect(domain.vision).toBe('Handle sales');
-        });
-        
-        test('domain.type is a direct reference', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Classification Core
-                Domain Sales {
-                    vision: "v"
-                    type: Core
-                }
-            `);
-            
-            // Act
-            const domain = query.domain('Sales') as Domain;
-            
-            // Assert - direct reference access
             expect(domain.type?.ref?.name).toBe('Core');
         });
     });
-    
-    describe('effectiveClassification()', () => {
-        
-        test('resolves bounded context classification from header', async () => {
-            // Arrange
+
+    // ========================================================================
+    // Edge: effectiveClassification()
+    // ========================================================================
+
+    // effectiveClassification() edge cases covered by resolution-precedence.test.ts
+
+    // ========================================================================
+    // Edge: effectiveTeam()
+    // ========================================================================
+
+    describe('Edge: effectiveTeam()', () => {
+        // Header/body resolution and undefined cases covered by resolution-precedence.test.ts
+
+        test('returns team even when classification is also set', async () => {
             const { query } = await loadModelFromText(`
                 Classification Core
-                Classification Supporting
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales as Core
-                bc ShippingContext for Sales as Supporting
-            `);
-            
-            // Act
-            const orderBc = query.bc('OrderContext') as BoundedContext;
-            const shippingBc = query.bc('ShippingContext') as BoundedContext;
-            
-            // Assert
-            expect(effectiveClassification(orderBc)?.name).toBe('Core');
-            expect(effectiveClassification(shippingBc)?.name).toBe('Supporting');
-        });
-        
-        test('returns undefined when classification not specified', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const resolved = effectiveClassification(bc);
-            
-            // Assert
-            expect(resolved).toBeUndefined();
-        });
-    });
-    
-    describe('effectiveTeam()', () => {
-        
-        test('resolves responsible team from header', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
                 Team SalesTeam
-                Team PaymentTeam
                 Domain Sales { vision: "v" }
-                bc OrderContext for Sales by SalesTeam
-                bc PaymentContext for Sales by PaymentTeam
+                bc OrderContext for Sales as Core by SalesTeam
             `);
-            
-            // Act
-            const orderBc = query.bc('OrderContext') as BoundedContext;
-            const paymentBc = query.bc('PaymentContext') as BoundedContext;
-            
-            // Assert
-            expect(effectiveTeam(orderBc)?.name).toBe('SalesTeam');
-            expect(effectiveTeam(paymentBc)?.name).toBe('PaymentTeam');
-        });
-        
-        test('returns undefined when team not assigned', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-            
-            // Act
+
             const bc = query.bc('OrderContext') as BoundedContext;
-            const resolved = effectiveTeam(bc);
-            
-            // Assert
-            expect(resolved).toBeUndefined();
+            expect(effectiveTeam(bc)?.name).toBe('SalesTeam');
+            expect(effectiveClassification(bc)?.name).toBe('Core');
         });
     });
-    
-    describe('metadataAsMap()', () => {
-        
-        test('resolves metadata key-value pairs', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Metadata tier
-                Metadata sla
-                Metadata region
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    metadata {
-                        tier: "critical"
-                        sla: "99.99%"
-                        region: "us-east-1"
-                    }
-                }
-            `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const metadata = metadataAsMap(bc);
-            
-            // Assert
-            expect(metadata.get('tier')).toBe('critical');
-            expect(metadata.get('sla')).toBe('99.99%');
-            expect(metadata.get('region')).toBe('us-east-1');
-        });
-        
-        test('returns empty map when no metadata block', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const metadata = metadataAsMap(bc);
-            
-            // Assert
-            expect(metadata.size).toBe(0);
-        });
-        
+
+    // ========================================================================
+    // Edge: metadataAsMap()
+    // ========================================================================
+
+    describe('Edge: metadataAsMap()', () => {
+
+        // Happy path and empty-no-metadata cases covered by resolution-precedence.test.ts
+
         test('returns empty map when metadata block is empty', async () => {
-            // Arrange
             const { query } = await loadModelFromText(`
                 Domain Sales { vision: "v" }
                 bc OrderContext for Sales {
                     metadata { }
                 }
             `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const metadata = metadataAsMap(bc);
-            
-            // Assert
+
+            const metadata = metadataAsMap(query.bc('OrderContext') as BoundedContext);
             expect(metadata.size).toBe(0);
         });
-    });
-    
-    describe('Metadata with Various Node Structures', () => {
-        
-        test('resolves metadata with special characters in values', async () => {
-            // Arrange
+
+        test('handles special characters in metadata values', async () => {
             const { query } = await loadModelFromText(`
                 Metadata pattern
                 Domain Sales { vision: "v" }
@@ -268,30 +115,27 @@ describe('SDK Resolution Functions', () => {
                     }
                 }
             `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const metadata = metadataAsMap(bc);
-            
-            // Assert
+
+            const metadata = metadataAsMap(query.bc('OrderContext') as BoundedContext);
             expect(metadata.get('pattern')).toBe('[a-zA-Z0-9_]*');
         });
-        
-        test('handles bc without metadata', async () => {
-            // Arrange
+
+        // 'returns empty map for BC with description but no metadata' covered by resolution-precedence.test.ts
+
+        test('non-existent key returns undefined from map', async () => {
             const { query } = await loadModelFromText(`
+                Metadata tier
                 Domain Sales { vision: "v" }
                 bc OrderContext for Sales {
-                    description: "test"
+                    metadata {
+                        tier: "critical"
+                    }
                 }
             `);
-            
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const metadata = metadataAsMap(bc);
-            
-            // Assert
-            expect(metadata.size).toBe(0);
+
+            const metadata = metadataAsMap(query.bc('OrderContext') as BoundedContext);
+            expect(metadata.get('tier')).toBe('critical');
+            expect(metadata.get('nonexistent')).toBeUndefined();
         });
     });
 });
