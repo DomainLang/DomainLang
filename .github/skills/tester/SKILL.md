@@ -313,6 +313,75 @@ test('resolves import across files', async () => {
 });
 ```
 
+## 🔴 CLI Tests: Critical Patterns
+
+**CLI tests have specific requirements to avoid OOM errors and test worker crashes.**
+
+### Filesystem Mocking - NEVER auto-mock node:fs
+
+**🚫 NEVER do this** (causes OOM in Vitest forks pool):
+```typescript
+vi.mock('node:fs');  // ❌ Kills the test worker
+vi.mock('node:fs/promises');  // ❌ Same issue
+vi.spyOn(defaultFileSystem, 'existsSync');  // ❌ Also problematic
+```
+
+**✅ Instead, use dependency injection for pure functions:**
+```typescript
+// In the implementation, accept optional fs parameter:
+export async function countFiles(dir: string, fs: FileSystemService = defaultFileSystem) { ... }
+
+// In tests, pass a mock:
+const mockFs = createMockFs({ existsSync: vi.fn(() => true) });
+const count = await countFiles('/path', mockFs);
+```
+
+**✅ For component tests, mock the entire filesystem module:**
+```typescript
+vi.mock('../../src/services/filesystem.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../src/services/filesystem.js')>();
+    return {
+        ...actual,
+        defaultFileSystem: {
+            existsSync: vi.fn(() => true),
+            readdir: vi.fn(async () => []),
+            // ... other methods as needed
+        },
+    };
+});
+```
+
+### Process.exit Mocking - ALWAYS mock for runDirect
+
+Commands using `runDirect()` call `process.exit()`. **ALWAYS mock it:**
+
+```typescript
+beforeEach(() => {
+    vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('exit');  // Prevents worker from dying
+    });
+});
+
+test('command exits with code 0', async () => {
+    try {
+        await runCommand(context);
+    } catch { /* process.exit throws */ }
+    
+    expect(process.exit).toHaveBeenCalledWith(0);
+});
+```
+
+### CLI Test File Organization
+
+Split CLI tests to prevent OOM and maintain clarity:
+
+| Pattern | Purpose |
+|---------|---------|
+| `*-functions.test.ts` | Pure function tests with DI |
+| `*.test.tsx` | Component tests with module mocks |
+
+**Example:** Keep `cache-clear-functions.test.ts` separate from `cache-clear.test.tsx`.
+
 ## Coverage Goals
 
 | Area | Target | Rationale |

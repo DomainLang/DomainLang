@@ -264,6 +264,93 @@ describe('DependencyAnalyzer', () => {
 });
 ```
 
+## 🔴 CLI Tests: Filesystem and Process Mocking
+
+**CRITICAL:** CLI tests have specific patterns to avoid OOM errors and test worker crashes.
+
+### Filesystem Mocking
+
+**🚫 NEVER** use auto-mocking (`vi.mock('node:fs')`) or `vi.spyOn()` on the `defaultFileSystem` singleton in CLI tests. This causes OOM errors in the Vitest forks pool.
+
+**✅ CORRECT: Use dependency injection** for function tests:
+
+```typescript
+// Functions accept optional fs parameter
+export async function calculateDirectorySize(
+    dirPath: string,
+    fs: FileSystemService = defaultFileSystem,
+): Promise<number> { ... }
+
+// Tests pass mock filesystem
+test('calculates size correctly', async () => {
+    const mockFs = createMockFs({
+        existsSync: vi.fn(() => true),
+        readdir: vi.fn(async () => [createDirEntry('file.txt', false)]),
+        stat: vi.fn(async () => ({ size: 1024, ... })),
+    });
+
+    const size = await calculateDirectorySize('/dir', mockFs);
+    expect(size).toBe(1024);
+});
+```
+
+**✅ CORRECT: Use `vi.mock()` module replacement** for component tests:
+
+```typescript
+// Mock the entire filesystem module, replacing defaultFileSystem
+vi.mock('../../src/services/filesystem.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../src/services/filesystem.js')>();
+    return {
+        ...actual,
+        defaultFileSystem: {
+            existsSync: vi.fn(() => true),
+            readdir: vi.fn(async () => []),
+            stat: vi.fn(async () => ({ size: 0, isDirectory: () => false, isFile: () => true, mtime: new Date() })),
+        },
+    };
+});
+
+// Then import and configure mocks in tests
+import { defaultFileSystem } from '../../src/services/filesystem.js';
+
+beforeEach(() => {
+    vi.mocked(defaultFileSystem.existsSync).mockReturnValue(true);
+});
+```
+
+### Process.exit Mocking
+
+CLI commands using `runDirect()` call `process.exit()`. **You MUST mock it** to prevent killing the test worker:
+
+```typescript
+let exitSpy: MockInstance;
+
+beforeEach(() => {
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('exit');
+    });
+});
+
+test('exits with code 0 on success', async () => {
+    try {
+        await runSomeCommand(context);
+    } catch { /* expected: process.exit throws */ }
+
+    expect(exitSpy).toHaveBeenCalledWith(0);
+});
+```
+
+### Test File Organization for CLI
+
+Split CLI tests by concern to prevent OOM:
+
+| File Pattern | Purpose |
+|--------------|---------|
+| `*-functions.test.ts` | Pure function tests using dependency injection |
+| `*.test.tsx` | React component tests with module mocks |
+
+**Example:** `cache-clear-functions.test.ts` tests core logic, `cache-clear.test.tsx` tests UI components.
+
 ## Using Test Fixtures
 
 ```typescript
