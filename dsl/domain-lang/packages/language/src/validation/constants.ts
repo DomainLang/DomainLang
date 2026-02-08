@@ -82,8 +82,10 @@ const DOCS_BASE = `${REPO_BASE}/dsl/domain-lang/docs`;
  * @param docPath - Relative path from docs/ folder
  * @param anchor - Optional section anchor (without #)
  */
-const buildDocLink = (docPath: string, anchor?: string): string => 
-    `${DOCS_BASE}/${docPath}${anchor ? `#${anchor}` : ''}`;
+const buildDocLink = (docPath: string, anchor?: string): string => {
+    const anchorPart = anchor ? `#${anchor}` : '';
+    return `${DOCS_BASE}/${docPath}${anchorPart}`;
+};
 
 /**
  * Creates a CodeDescription for clickable documentation links in VS Code.
@@ -134,8 +136,11 @@ export const ValidationMessages = {
      * @param inlineClassification - The inline classification name (from 'as')
      * @param blockClassification - The block classification name (from 'classification:')
      */
-    BOUNDED_CONTEXT_CLASSIFICATION_CONFLICT: (bcName: string, inlineClassification?: string, blockClassification?: string) =>
-        `Classification specified both inline${inlineClassification ? ` ('as ${inlineClassification}')` : ''} and in block${blockClassification ? ` ('classification: ${blockClassification}')` : ''}. Inline value takes precedence.`,
+    BOUNDED_CONTEXT_CLASSIFICATION_CONFLICT: (bcName: string, inlineClassification?: string, blockClassification?: string) => {
+        const inlinePart = inlineClassification ? ` ('as ${inlineClassification}')` : '';
+        const blockPart = blockClassification ? ` ('classification: ${blockClassification}')` : '';
+        return `Classification specified both inline${inlinePart} and in block${blockPart}. Inline value takes precedence.`;
+    },
     
     /**
      * Warning when team is specified both inline and in a block.
@@ -144,8 +149,11 @@ export const ValidationMessages = {
      * @param inlineTeam - The inline team name (from 'by')
      * @param blockTeam - The block team name (from 'team:')
      */
-    BOUNDED_CONTEXT_TEAM_CONFLICT: (bcName: string, inlineTeam?: string, blockTeam?: string) =>
-        `Team specified both inline${inlineTeam ? ` ('by ${inlineTeam}')` : ''} and in block${blockTeam ? ` ('team: ${blockTeam}')` : ''}. Inline value takes precedence.`,
+    BOUNDED_CONTEXT_TEAM_CONFLICT: (bcName: string, inlineTeam?: string, blockTeam?: string) => {
+        const inlinePart = inlineTeam ? ` ('by ${inlineTeam}')` : '';
+        const blockPart = blockTeam ? ` ('team: ${blockTeam}')` : '';
+        return `Team specified both inline${inlinePart} and in block${blockPart}. Inline value takes precedence.`;
+    },
     
     /**
      * Error message when an element is defined multiple times.
