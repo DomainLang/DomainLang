@@ -6,11 +6,10 @@
  */
 import { render as inkRender } from 'ink-testing-library';
 import { Box } from 'ink';
-import React, { useState } from 'react';
-import { act } from 'react';
+import React, { useState, act } from 'react';
 
 /**
- * Wrapper around ink-testing-library's render that ensures act() is called.
+ * Wrapper around Ink's built-in render (compatible with React 19).
  * @param tree - React element to render
  * @param terminalWidth - Optional terminal width to simulate
  */

@@ -54,9 +54,8 @@ export const StatusMessage: React.FC<StatusMessageProps> = ({
 
     return (
         <Box flexDirection="column">
-            <Text>
-                {emoji && <Text>{emoji}</Text>}
-                <Text color={color}>{message}</Text>
+            <Text color={color}>
+                {emoji}{message}
             </Text>
             {details && (
                 <Text color={colors.secondary}>   {details}</Text>
