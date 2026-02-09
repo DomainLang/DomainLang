@@ -1,13 +1,13 @@
 /**
  * DomainLang Scope Provider
  *
- * Implements import-based scoping for the DomainLang DSL.
+ * Implements import-based scoping with alias support and package-boundary transitive imports.
  *
- * **Key Concept:**
- * Unlike languages with global namespaces, DomainLang enforces strict import-based scoping:
- * - Elements are only visible if they are defined in the current document OR explicitly imported
- * - The global scope is restricted to imported documents only
- * - Transitive imports do NOT provide scope (only direct imports)
+ * **Key Concepts (per ADR-003):**
+ * - Elements are only visible if defined in current document OR explicitly imported
+ * - Import aliases control visibility: `import "pkg" as ddd` makes types visible as `ddd.*` only
+ * - Package-boundary transitive imports: External packages (.dlang/packages/) can re-export
+ * - Local file imports remain non-transitive (explicit dependencies only)
  *
  * **Why this matters:**
  * Without this, Langium's DefaultScopeProvider would make ALL indexed documents visible
@@ -17,6 +17,7 @@
  * 3. Create confusion about dependencies between files
  *
  * @see https://langium.org/docs/recipes/scoping/ for Langium scoping patterns
+ * @see ADR-003 for alias and package-boundary design decisions
  */
 
 import type {
@@ -30,10 +31,13 @@ import {
     AstUtils,
     DefaultScopeProvider,
     EMPTY_SCOPE,
-    MapScope
+    MapScope,
+    stream
 } from 'langium';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { DomainLangIndexManager } from './domain-lang-index-manager.js';
+import type { PackageBoundaryDetector } from '../services/package-boundary-detector.js';
+import type { ImportInfo } from '../services/types.js';
 
 /**
  * Custom scope provider that restricts cross-file references to imported documents only.
@@ -42,22 +46,29 @@ import type { DomainLangIndexManager } from './domain-lang-index-manager.js';
  */
 export class DomainLangScopeProvider extends DefaultScopeProvider {
     /**
-     * Reference to IndexManager for getting resolved imports.
+     * Reference to IndexManager for getting resolved imports with aliases.
      */
     private readonly domainLangIndexManager: DomainLangIndexManager;
+
+    /**
+     * Detects package boundaries for transitive import resolution.
+     */
+    private readonly packageBoundaryDetector: PackageBoundaryDetector;
 
     constructor(services: DomainLangServices) {
         super(services);
         this.domainLangIndexManager = services.shared.workspace.IndexManager as DomainLangIndexManager;
+        this.packageBoundaryDetector = services.imports.PackageBoundaryDetector;
     }
 
     /**
-     * Override getGlobalScope to restrict it to imported documents only.
+     * Override getGlobalScope to implement alias-scoped and package-boundary transitive imports.
      *
      * The default Langium behavior includes ALL documents in the workspace.
-     * We restrict this to:
+     * We restrict and transform scope to:
      * 1. The current document's own exported symbols
-     * 2. Exported symbols from directly imported documents
+     * 2. Symbols from directly imported documents (with alias prefixing)
+     * 3. Symbols from package-boundary transitive imports (external packages only)
      *
      * @param referenceType - The AST type being referenced
      * @param context - Information about the reference
@@ -70,18 +81,8 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
                 return EMPTY_SCOPE;
             }
 
-            // Get the set of URIs that are in scope for this document
-            const importedUris = this.getImportedDocumentUris(document);
-
-            // Filter the global index to only include descriptions from imported documents
-            const filteredDescriptions = this.filterDescriptionsByImports(
-                referenceType,
-                document,
-                importedUris
-            );
-
-            // Create a scope from the filtered descriptions
-            return new MapScope(filteredDescriptions);
+            const descriptions = this.computeVisibleDescriptions(referenceType, document);
+            return new MapScope(descriptions);
         } catch (error) {
             console.error('Error in getGlobalScope:', error);
             return EMPTY_SCOPE;
@@ -89,51 +90,161 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
     }
 
     /**
-     * Gets the set of document URIs that are directly imported by the given document.
+     * Computes all visible descriptions for a document, including:
+     * - Current document's own symbols
+     * - Direct imports (with alias prefixing)
+     * - Package-boundary transitive imports
      *
-     * Uses the resolved imports tracked by DomainLangIndexManager during indexing.
-     * This ensures accurate resolution including path aliases.
-     *
-     * @param document - The document to get imports for
-     * @returns Set of imported document URIs (as strings)
+     * @param referenceType - The AST type being referenced
+     * @param document - The document making the reference
+     * @returns Stream of visible descriptions
      */
-    private getImportedDocumentUris(document: LangiumDocument): Set<string> {
+    private computeVisibleDescriptions(
+        referenceType: string,
+        document: LangiumDocument
+    ): Stream<AstNodeDescription> {
         const docUri = document.uri.toString();
+        const allVisibleDescriptions: AstNodeDescription[] = [];
 
-        // Get resolved imports from the index manager (tracked during indexing)
-        const resolvedImports = this.domainLangIndexManager.getResolvedImports(docUri);
+        // 1. Always include current document's own symbols
+        const ownDescriptions = this.indexManager.allElements(referenceType)
+            .filter(desc => desc.documentUri.toString() === docUri);
+        allVisibleDescriptions.push(...ownDescriptions.toArray());
 
-        // Always include the current document itself
-        const importedUris = new Set<string>([docUri]);
+        // 2. Get import info (with aliases)
+        const importInfo = this.domainLangIndexManager.getImportInfo(docUri);
 
-        // Add all resolved import URIs
-        for (const resolvedUri of resolvedImports) {
-            importedUris.add(resolvedUri);
+        // Track which documents we've already included to avoid duplicates
+        const processedUris = new Set<string>([docUri]);
+
+        // 3. Process each direct import
+        for (const imp of importInfo) {
+            if (!imp.resolvedUri || processedUris.has(imp.resolvedUri)) {
+                continue;
+            }
+
+            // Add descriptions from the directly imported document
+            this.addDescriptionsFromImport(
+                imp,
+                referenceType,
+                processedUris,
+                allVisibleDescriptions
+            );
+
+            // 4. Check for package-boundary transitive imports
+            this.addPackageBoundaryTransitiveImports(
+                imp,
+                referenceType,
+                document,
+                processedUris,
+                allVisibleDescriptions
+            );
         }
 
-        return importedUris;
+        return stream(allVisibleDescriptions);
     }
 
     /**
-     * Filters the global index to only include descriptions from imported documents.
+     * Adds descriptions from a single import, applying alias prefixing if needed.
      *
+     * @param imp - Import information (specifier, alias, resolved URI)
+     * @param referenceType - The AST type being referenced
+     * @param processedUris - Set of already-processed URIs to avoid duplicates
+     * @param output - Array to append visible descriptions to
+     */
+    private addDescriptionsFromImport(
+        imp: ImportInfo,
+        referenceType: string,
+        processedUris: Set<string>,
+        output: AstNodeDescription[]
+    ): void {
+        const descriptions = this.indexManager.allElements(referenceType)
+            .filter(desc => desc.documentUri.toString() === imp.resolvedUri);
+
+        if (imp.alias) {
+            // With alias: prefix all names with alias
+            // Example: CoreDomain → ddd.CoreDomain
+            for (const desc of descriptions) {
+                output.push(this.createAliasedDescription(desc, imp.alias));
+            }
+        } else {
+            // Without alias: use original names
+            output.push(...descriptions.toArray());
+        }
+
+        processedUris.add(imp.resolvedUri);
+    }
+
+    /**
+     * Adds package-boundary transitive imports for external packages.
+     *
+     * When document A imports package document B (e.g., index.dlang),
+     * and B imports internal package files C, D, etc. (same package root),
+     * then A can see types from C, D, etc. (package re-exports).
+     *
+     * Local file imports remain non-transitive.
+     *
+     * @param imp - Import information for the direct import
      * @param referenceType - The AST type being referenced
      * @param currentDocument - The document making the reference
-     * @param importedUris - Set of URIs that are in scope
-     * @returns Stream of filtered descriptions
+     * @param processedUris - Set of already-processed URIs to avoid duplicates
+     * @param output - Array to append visible descriptions to
      */
-    private filterDescriptionsByImports(
+    private addPackageBoundaryTransitiveImports(
+        imp: ImportInfo,
         referenceType: string,
         currentDocument: LangiumDocument,
-        importedUris: Set<string>
-    ): Stream<AstNodeDescription> {
-        // Get all descriptions of the reference type from the index
-        const allDescriptions = this.indexManager.allElements(referenceType);
+        processedUris: Set<string>,
+        output: AstNodeDescription[]
+    ): void {
+        // Get the imports of the imported document (B's imports)
+        const transitiveImports = this.domainLangIndexManager.getImportInfo(imp.resolvedUri);
 
-        // Filter to only those from imported documents
-        return allDescriptions.filter(desc => {
-            const descDocUri = desc.documentUri.toString();
-            return importedUris.has(descDocUri);
-        });
+        for (const transitiveImp of transitiveImports) {
+            if (!transitiveImp.resolvedUri || processedUris.has(transitiveImp.resolvedUri)) {
+                continue;
+            }
+
+            // Check if both documents are in the same external package
+            // (package boundary = same commit directory within .dlang/packages/)
+            const samePackage = this.packageBoundaryDetector.areInSamePackageSync(
+                imp.resolvedUri,
+                transitiveImp.resolvedUri
+            );
+
+            if (samePackage) {
+                // Within package boundary: include transitive imports
+                // Apply the top-level import's alias (if any)
+                this.addDescriptionsFromImport(
+                    {
+                        specifier: transitiveImp.specifier,
+                        alias: imp.alias, // Use the top-level import's alias
+                        resolvedUri: transitiveImp.resolvedUri
+                    },
+                    referenceType,
+                    processedUris,
+                    output
+                );
+            }
+        }
+    }
+
+    /**
+     * Creates an alias-prefixed version of a description.
+     *
+     * Example: CoreDomain with alias "ddd" → ddd.CoreDomain
+     *
+     * @param original - Original description
+     * @param alias - Import alias to prefix with
+     * @returns New description with prefixed name
+     */
+    private createAliasedDescription(
+        original: AstNodeDescription,
+        alias: string
+    ): AstNodeDescription {
+        return {
+            ...original,
+            name: `${alias}.${original.name}`
+        };
     }
 }

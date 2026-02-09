@@ -5,6 +5,7 @@ import { resolveImportPath } from '../utils/import-utils.js';
 import type { Model } from '../generated/ast.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
+import type { ImportInfo } from '../services/types.js';
 
 /**
  * Custom IndexManager that extends Langium's default to:
@@ -39,12 +40,12 @@ export class DomainLangIndexManager extends DefaultIndexManager {
     private readonly importDependencies = new Map<string, Set<string>>();
     
     /**
-     * Maps document URI to its import specifiers and their resolved URIs.
-     * Used to detect when file moves could affect import resolution.
+     * Maps document URI to its import information (specifier, alias, resolved URI).
+     * Used for scope resolution with aliases and detecting when file moves affect imports.
      * Key: importing document URI
-     * Value: Map of import specifier → resolved URI
+     * Value: Array of ImportInfo objects
      */
-    private readonly documentImportSpecifiers = new Map<string, Map<string, string>>();
+    private readonly documentImportInfo = new Map<string, ImportInfo[]>();
     
     /**
      * Tracks documents that have had their imports loaded to avoid redundant work.
@@ -158,7 +159,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      * Tracks import dependencies for a document.
      * For each import in the document, records:
      * 1. That the imported URI is depended upon (for direct change detection)
-     * 2. The import specifier used (for file move detection)
+     * 2. The import specifier and alias (for scope resolution)
      */
     private async trackImportDependencies(document: LangiumDocument): Promise<void> {
         const importingUri = document.uri.toString();
@@ -166,7 +167,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
         // First, remove old dependencies from this document
         // (in case imports changed)
         this.removeDocumentFromDependencies(importingUri);
-        this.documentImportSpecifiers.delete(importingUri);
+        this.documentImportInfo.delete(importingUri);
 
         // Skip if document isn't ready (no parse result)
         if (document.state < DocumentState.Parsed) {
@@ -178,7 +179,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return;
         }
 
-        const specifierMap = new Map<string, string>();
+        const importInfoList: ImportInfo[] = [];
         
         for (const imp of model.imports) {
             if (!imp.uri) continue;
@@ -187,8 +188,12 @@ export class DomainLangIndexManager extends DefaultIndexManager {
                 const resolvedUri = await this.resolveImport(document, imp.uri);
                 const importedUri = resolvedUri.toString();
 
-                // Track the specifier → resolved URI mapping
-                specifierMap.set(imp.uri, importedUri);
+                // Track the full import info (specifier, alias, resolved URI)
+                importInfoList.push({
+                    specifier: imp.uri,
+                    alias: imp.alias,
+                    resolvedUri: importedUri
+                });
 
                 // Add to reverse dependency graph: importedUri → importingUri
                 let dependents = this.importDependencies.get(importedUri);
@@ -199,12 +204,16 @@ export class DomainLangIndexManager extends DefaultIndexManager {
                 dependents.add(importingUri);
             } catch {
                 // Import resolution failed - still track the specifier with empty resolution
-                specifierMap.set(imp.uri, '');
+                importInfoList.push({
+                    specifier: imp.uri,
+                    alias: imp.alias,
+                    resolvedUri: ''
+                });
             }
         }
         
-        if (specifierMap.size > 0) {
-            this.documentImportSpecifiers.set(importingUri, specifierMap);
+        if (importInfoList.length > 0) {
+            this.documentImportInfo.set(importingUri, importInfoList);
         }
     }
 
@@ -299,7 +308,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      */
     clearImportDependencies(): void {
         this.importDependencies.clear();
-        this.documentImportSpecifiers.clear();
+        this.documentImportInfo.clear();
         this.importsLoaded.clear();
     }
 
@@ -330,19 +339,30 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      * @returns Set of resolved import URIs, or empty set if none
      */
     getResolvedImports(documentUri: string): Set<string> {
-        const specifierMap = this.documentImportSpecifiers.get(documentUri);
-        if (!specifierMap) {
+        const importInfoList = this.documentImportInfo.get(documentUri);
+        if (!importInfoList) {
             return new Set();
         }
         
         const resolved = new Set<string>();
-        for (const resolvedUri of specifierMap.values()) {
+        for (const info of importInfoList) {
             // Only include successfully resolved imports (non-empty string)
-            if (resolvedUri) {
-                resolved.add(resolvedUri);
+            if (info.resolvedUri) {
+                resolved.add(info.resolvedUri);
             }
         }
         return resolved;
+    }
+
+    /**
+     * Gets the full import information (including aliases) for a document.
+     * Used by the scope provider to implement alias-prefixed name resolution.
+     * 
+     * @param documentUri - The URI of the document
+     * @returns Array of ImportInfo objects, or empty array if none
+     */
+    getImportInfo(documentUri: string): ImportInfo[] {
+        return this.documentImportInfo.get(documentUri) ?? [];
     }
 
     /**
@@ -438,8 +458,8 @@ export class DomainLangIndexManager extends DefaultIndexManager {
     private findDocumentsMatchingPaths(changedPaths: Set<string>): Set<string> {
         const affected = new Set<string>();
 
-        for (const [docUri, specifierMap] of this.documentImportSpecifiers) {
-            if (this.hasMatchingSpecifierOrResolvedUri(specifierMap, changedPaths)) {
+        for (const [docUri, importInfoList] of this.documentImportInfo) {
+            if (this.hasMatchingSpecifierOrResolvedUri(importInfoList, changedPaths)) {
                 affected.add(docUri);
             }
         }
@@ -457,19 +477,19 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      * 
      * We check both to ensure moves of aliased imports trigger revalidation.
      */
-    private hasMatchingSpecifierOrResolvedUri(specifierMap: Map<string, string>, changedPaths: Set<string>): boolean {
-        for (const [specifier, resolvedUri] of specifierMap.entries()) {
-            const normalizedSpecifier = specifier.replace(/^[.@/]+/, '');
+    private hasMatchingSpecifierOrResolvedUri(importInfoList: ImportInfo[], changedPaths: Set<string>): boolean {
+        for (const info of importInfoList) {
+            const normalizedSpecifier = info.specifier.replace(/^[.@/]+/, '');
             
             for (const changedPath of changedPaths) {
                 // Check the raw specifier (handles relative imports)
-                if (specifier.includes(changedPath) || changedPath.endsWith(normalizedSpecifier)) {
+                if (info.specifier.includes(changedPath) || changedPath.endsWith(normalizedSpecifier)) {
                     return true;
                 }
                 
                 // Check the resolved URI (handles path aliases like @domains/...)
                 // The resolved URI contains the full file path which matches moved files
-                if (resolvedUri?.includes(changedPath)) {
+                if (info.resolvedUri?.includes(changedPath)) {
                     return true;
                 }
             }

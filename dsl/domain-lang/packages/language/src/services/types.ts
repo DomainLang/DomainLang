@@ -43,6 +43,31 @@
 // ============================================================================
 
 /**
+ * Information about an import statement tracked during indexing.
+ * 
+ * Used by IndexManager to track both the import's resolved location
+ * and its alias (if any) for scope resolution.
+ * 
+ * @example
+ * ```typescript
+ * // import "larsbaunwall/ddd-types" as ddd
+ * const info: ImportInfo = {
+ *   specifier: "larsbaunwall/ddd-types",
+ *   alias: "ddd",
+ *   resolvedUri: "file:///.dlang/packages/larsbaunwall/ddd-types/abc123/index.dlang"
+ * };
+ * ```
+ */
+export interface ImportInfo {
+    /** The import specifier as written in source (e.g., "./file.dlang", "owner/repo") */
+    readonly specifier: string;
+    /** Optional alias from 'as' clause (e.g., "ddd" in 'import "pkg" as ddd') */
+    readonly alias?: string;
+    /** Resolved absolute URI of the imported document */
+    readonly resolvedUri: string;
+}
+
+/**
  * Type of git reference for version pinning.
  * 
  * Used as discriminant in ref-related types:
