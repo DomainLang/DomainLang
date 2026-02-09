@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.8.0](https://github.com/DomainLang/DomainLang/compare/v0.7.0...v0.8.0) (2026-02-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **scoping:** Import aliases are now required to reference imported types
+
+### Features
+
+* **cli:** add ink validate command and ui kit ([5ac71cf](https://github.com/DomainLang/DomainLang/commit/5ac71cf8a10bb0a8d9dac3cccef1967230b53c0b))
+* **cli:** enhance UI components and hooks ([0eec018](https://github.com/DomainLang/DomainLang/commit/0eec01887898be5a172a8b55b8c0f7e3efd954cf))
+* **cli:** implement package management commands ([88b63c3](https://github.com/DomainLang/DomainLang/commit/88b63c3084bb7d3b2d343b082c2c5d462ca29aef))
+* **cli:** implement package management service layer ([a98b864](https://github.com/DomainLang/DomainLang/commit/a98b8642bb12c6460bb9f22a29c962e54f31724d))
+* **lsp:** add alias-aware code completion ([696dd82](https://github.com/DomainLang/DomainLang/commit/696dd8252d76d93ecde698de2d199bab333469b7))
+* **lsp:** add document symbol provider with icon mappings and detail text ([a9514d2](https://github.com/DomainLang/DomainLang/commit/a9514d2c869e90c4b1746aa5995ec9e6d404fca4))
+* **lsp:** enhance hover with go-to-definition links and import aliases ([4b65475](https://github.com/DomainLang/DomainLang/commit/4b654750b8834d3eb262af7fad21f0708a6b363f))
+* **lsp:** enhance hover with structured builders and rich context ([42b5b81](https://github.com/DomainLang/DomainLang/commit/42b5b81a9bdc9895c5429ec03c768ec2305ed097))
+* **lsp:** register document symbol and node kind providers ([3634f21](https://github.com/DomainLang/DomainLang/commit/3634f21f769197d616ae3e07819db5efbd867ed0))
+* **scoping:** implement import alias support per ADR-003 ([7a1bc66](https://github.com/DomainLang/DomainLang/commit/7a1bc6699d9779ea161addbef2a7390effe8cb65))
+* **sdk:** add createModelLoader factory for multi-document models ([e34635b](https://github.com/DomainLang/DomainLang/commit/e34635b4a00027d39a03b628e11dec866491ef25))
+* **validation:** add duplicate relationship detection ([4955095](https://github.com/DomainLang/DomainLang/commit/4955095c8177960001fccc065599f777e7c56948))
+
+
+### Bug Fixes
+
+* add eslint-disable comments and explicit types to language tests ([a1d494e](https://github.com/DomainLang/DomainLang/commit/a1d494ea3cfd15428b1a9ac4e4dd7f2c8ee96c7d))
+* **cli:** complete vitest v4 migration (forks pool + class mocks) ([7183cc3](https://github.com/DomainLang/DomainLang/commit/7183cc326f5c0840a8bbff12883fa10808eaf993))
+* **cli:** downgrade React/Ink for test compatibility and fix StatusMessage ([afb351b](https://github.com/DomainLang/DomainLang/commit/afb351b2a0c264e4ad8dd5f89fab00aac49f3af5))
+* **cli:** merge duplicate crypto imports ([5de48dd](https://github.com/DomainLang/DomainLang/commit/5de48dd4333d74865199f6cbc598a4b799584993))
+* **coverage:** update thresholds for lines and functions to improve test coverage metrics ([7746e02](https://github.com/DomainLang/DomainLang/commit/7746e022661a7801f28003738b555af8cb50f39e))
+* **examples:** correct banking-system.dlang grammar ([500d9b2](https://github.com/DomainLang/DomainLang/commit/500d9b2a9a1260e11ee518c0e35a4ed21d1ec8de))
+* **language:** add null check for DocumentSymbolProvider in tests ([05c0016](https://github.com/DomainLang/DomainLang/commit/05c001662d5c76660e2edd9f4caac16e60a2eae0))
+* **lsp:** correct symbol kind mapping for relationships in NodeKindProvider ([6101eff](https://github.com/DomainLang/DomainLang/commit/6101eff46b7a6be02bb52c778872a29c48a02028))
+* **test:** resolve TypeScript compilation errors in tests ([f32ec3d](https://github.com/DomainLang/DomainLang/commit/f32ec3d8d1783d83ff2835d043fdac8ccad34c7a))
+
+
+### Documentation
+
+* **cli:** add comprehensive test audit report ([d3fd9c6](https://github.com/DomainLang/DomainLang/commit/d3fd9c65251731f1b11e4fac27f091d94c662cfc))
+* **cli:** fix formatting in the README description ([5ac342f](https://github.com/DomainLang/DomainLang/commit/5ac342f7d591be825ee33720b122aad4d9a0ce22))
+* update coverage threshold for branches in vitest configuration ([acf4e72](https://github.com/DomainLang/DomainLang/commit/acf4e72fe87b170077158f12a2ac4c13f432e29a))
+
+
+### Code Refactoring
+
+* **cli:** add supporting infrastructure ([bdd4cc0](https://github.com/DomainLang/DomainLang/commit/bdd4cc0c2970c69a3e8d4daff3b695ef317059f1))
+* **cli:** consolidate duplicate HTTP status tests ([551c835](https://github.com/DomainLang/DomainLang/commit/551c8352d02edb93aef111fcccb0f450de997d42))
+* **cli:** introduce FileSystemService abstraction for all fs operations ([c75802d](https://github.com/DomainLang/DomainLang/commit/c75802d07398c04a67074906923dbce2d3e6bb0c))
+* **cli:** remove legacy CLI implementation files ([a8a459f](https://github.com/DomainLang/DomainLang/commit/a8a459f2a137858b38faa1daa758728494c9ae6d))
+* **cli:** resolve SonarQube code quality issues in fetch utilities ([ea23422](https://github.com/DomainLang/DomainLang/commit/ea2342273e7955f7bf98c929d4e8ffe86c84711b))
+* **cli:** update command infrastructure ([27b5024](https://github.com/DomainLang/DomainLang/commit/27b5024b3dd9dd1985eef096d10a6c55f4bed4c0))
+* **lsp:** consolidate imports in document-symbol-provider ([77014b6](https://github.com/DomainLang/DomainLang/commit/77014b690664e0aec8ef1a4c1722b6d9d84636ab))
+* **lsp:** eliminate dual WorkspaceManager and fix async/error handling ([fac2a28](https://github.com/DomainLang/DomainLang/commit/fac2a282388751427000561661b5cfdfbe653310))
+* **sdk:** resolve SonarQube code quality issues in query API ([886dc77](https://github.com/DomainLang/DomainLang/commit/886dc771307fb64f5d6e7bcb47eda574bda04e88))
+* **services:** register PackageBoundaryDetector service ([5f0a1b7](https://github.com/DomainLang/DomainLang/commit/5f0a1b7c1cb240d05514ee38941fbee6db0afe5c))
+* **tests:** streamline cache-clear tests and improve filesystem mocking ([e6616eb](https://github.com/DomainLang/DomainLang/commit/e6616ebbad5dbb8f835b2b2f0e42ae0d686c5a83))
+* **validation:** resolve SonarQube nested template literal issues ([4670c64](https://github.com/DomainLang/DomainLang/commit/4670c64c593d25549147b3f6c1e6e6c0074faf40))
+
 ## [0.7.0](https://github.com/DomainLang/DomainLang/compare/v0.6.0...v0.7.0) (2026-02-03)
 
 
