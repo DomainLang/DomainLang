@@ -119,7 +119,7 @@ export function buildBcSignature(bc: BoundedContext): string {
 }
 
 /**
- * Builds the properties section (classification, team, businessModel, evolution).
+ * Builds the properties section (domain, classification, team, businessModel, evolution).
  */
 function buildBcPropertyFields(
     bc: BoundedContext,
@@ -128,10 +128,12 @@ function buildBcPropertyFields(
     refLink: RefLinkFn
 ): string[] {
     const fields: string[] = [];
+    const domain = bc.domain?.ref;
     const businessModel = bc.businessModel?.ref;
     const evolution = bc.evolution?.ref;
 
-    if (classification || team || businessModel || evolution) fields.push('---');
+    if (domain || classification || team || businessModel || evolution) fields.push('---');
+    if (domain) fields.push(`📁 **Domain:** ${refLink(domain)}`);
     if (classification) fields.push(`🔖 **Classification:** ${refLink(classification)}`);
     if (team) fields.push(`👥 **Team:** ${refLink(team)}`);
     if (businessModel) fields.push(`💼 **Business Model:** ${refLink(businessModel)}`);

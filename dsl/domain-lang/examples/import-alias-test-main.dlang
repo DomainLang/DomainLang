@@ -1,0 +1,19 @@
+// ============================================================================
+// Import Alias Test - Main File
+// ============================================================================
+// This file imports shared declarations with an alias to test hover display.
+//
+// Manual test steps:
+// 1. Open this file in VS Code with DomainLang extension
+// 2. Hover over "shared.SharedDomain" in the BoundedContext declaration
+// 3. Expected: Hover tooltip should show "shared.SharedDomain (domain)"
+// 4. Hover over "shared.SharedTeam" in the BoundedContext
+// 5. Expected: Hover tooltip should show "shared.SharedTeam (team)"
+// 6. Hover over "shared.CoreClassification" in the BoundedContext
+// 7. Expected: Hover tooltip should show "shared.CoreClassification (classification)"
+
+import "./import-alias-test-shared.dlang" as shared
+
+bc OrderContext for shared.SharedDomain as shared.CoreClassification by shared.SharedTeam {
+    description: "Test bounded context using imported types with alias"
+}

@@ -1,0 +1,13 @@
+// ============================================================================
+// Import Alias Test - Shared Declarations
+// ============================================================================
+// This file contains shared domain definitions for testing import alias display in hovers.
+
+Domain SharedDomain {
+    vision: "Shared business domain"
+}
+
+Team SharedTeam
+
+Classification CoreClassification
+

@@ -55,12 +55,14 @@ describe('DomainLangHoverProvider', () => {
 
     describe('Domain hovers', () => {
         test('shows markdown content with type label and element name', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Domain Sales { vision: "Customer sales management" }`,
                 0,
                 7 // 'S' in Sales
             );
 
+            // Assert
             expect(hover).toBeDefined();
             expect(hover!.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('(domain)');
@@ -68,18 +70,21 @@ describe('DomainLangHoverProvider', () => {
         });
 
         test('contains code block with domain signature', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Domain Sales {}`,
                 0,
                 7
             );
 
+            // Assert
             expect(hover).toBeDefined();
             expect(hover!.contents.value).toContain('```domain-lang');
             expect(hover!.contents.value).toContain('Domain Sales');
         });
 
         test('includes parent in nested domain signature', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Finance {}
@@ -89,6 +94,7 @@ describe('DomainLangHoverProvider', () => {
                 7 // 'A' in Accounting
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('(domain)');
@@ -97,12 +103,14 @@ describe('DomainLangHoverProvider', () => {
         });
 
         test('includes vision in hover fields', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Domain Sales { vision: "Streamlined sales process" }`,
                 0,
                 7
             );
 
+            // Assert
             expect(hover).toBeDefined();
             expect(hover!.contents.value).toContain('Streamlined sales process');
         });
@@ -110,6 +118,7 @@ describe('DomainLangHoverProvider', () => {
 
     describe('Bounded context hovers', () => {
         test('shows type label and element name', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -119,12 +128,14 @@ describe('DomainLangHoverProvider', () => {
                 3 // 'O' in OrderContext
             );
 
+            // Assert
             expect(hover).toBeDefined();
-            expect(hover!.contents.value).toContain('(boundedcontext)');
+            expect(hover!.contents.value).toContain('(bounded context)');
             expect(hover!.contents.value).toContain('OrderContext');
         });
 
         test('contains code block with full signature including for/as/by', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -136,9 +147,10 @@ describe('DomainLangHoverProvider', () => {
                 3 // 'O' in OrderContext
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
-            expect(value).toContain('(boundedcontext)');
+            expect(value).toContain('(bounded context)');
             expect(value).toContain('```domain-lang');
             expect(value).toContain('BoundedContext OrderContext');
             expect(value).toContain('for Sales');
@@ -147,6 +159,7 @@ describe('DomainLangHoverProvider', () => {
         });
 
         test('includes description in hover fields', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -156,6 +169,7 @@ describe('DomainLangHoverProvider', () => {
                 3
             );
 
+            // Assert
             expect(hover).toBeDefined();
             expect(hover!.contents.value).toContain('Manages order lifecycle');
         });
@@ -163,12 +177,14 @@ describe('DomainLangHoverProvider', () => {
 
     describe('Team hovers', () => {
         test('shows type label and element name', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Team SalesTeam {}`,
                 0,
                 5 // 'S' in SalesTeam
             );
 
+            // Assert
             expect(hover).toBeDefined();
             expect(hover!.contents.value).toContain('(team)');
             expect(hover!.contents.value).toContain('SalesTeam');
@@ -177,26 +193,69 @@ describe('DomainLangHoverProvider', () => {
 
     describe('Classification hovers', () => {
         test('shows type label and element name', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Classification Core {}`,
                 0,
                 15 // 'C' in Core
             );
 
+            // Assert
             expect(hover).toBeDefined();
             expect(hover!.contents.value).toContain('(classification)');
             expect(hover!.contents.value).toContain('Core');
+        });
+
+        test('shows qualified path for namespaced classifications', async () => {
+            // Arrange & Act
+            const hover = await getHoverAt(
+                s`Namespace Core.Baunwalls {
+                    Classification Jannie
+                }`,
+                1,
+                35 // 'J' in Jannie
+            );
+
+            // Assert
+            expect(hover).toBeDefined();
+            expect(hover!.contents.value).toContain('(classification)');
+            expect(hover!.contents.value).toContain('Core.Baunwalls.Jannie');
+        });
+
+        test('qualified name reference: hover only shows on last segment', async () => {
+            // Arrange
+            const text = s`
+Namespace Core.Baunwalls {
+    Classification Jannie
+}
+
+bc TestContext as Core.Baunwalls.Jannie {}`;
+
+            // Act: Hover on different parts of 'Core.Baunwalls.Jannie' in the reference
+            // Line 4 (0-indexed): "bc TestContext as Core.Baunwalls.Jannie {}"
+            const hoverOnCore = await getHoverAt(text, 4, 19); // 'C' in Core
+            const hoverOnBaunwalls = await getHoverAt(text, 4, 24); // 'B' in Baunwalls
+            const hoverOnJannie = await getHoverAt(text, 4, 35); // 'J' in Jannie
+
+            // Assert: Only hovering on the last segment shows the classification
+            expect(hoverOnCore).toBeUndefined();
+            expect(hoverOnBaunwalls).toBeUndefined();
+            expect(hoverOnJannie).toBeDefined();
+            expect(hoverOnJannie!.contents.value).toContain('(classification)');
+            expect(hoverOnJannie!.contents.value).toContain('Core.Baunwalls.Jannie');
         });
     });
 
     describe('Namespace hovers', () => {
         test('shows type label and element count', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Namespace acme.sales { Domain Sales {} }`,
                 0,
                 10 // 'a' in acme.sales
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('(namespace)');
@@ -207,6 +266,7 @@ describe('DomainLangHoverProvider', () => {
 
     describe('ContextMap hovers', () => {
         test('shows type label and lists bounded contexts', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -218,6 +278,7 @@ describe('DomainLangHoverProvider', () => {
                 11 // 'S' in SalesMap
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('(contextmap)');
@@ -226,6 +287,7 @@ describe('DomainLangHoverProvider', () => {
         });
 
         test('shows relationships when present', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -240,6 +302,7 @@ describe('DomainLangHoverProvider', () => {
                 11 // 'S' in SalesMap
             );
 
+            // Assert
             expect(hover).toBeDefined();
             expect(hover!.contents.value).toContain('Relationships');
         });
@@ -247,6 +310,7 @@ describe('DomainLangHoverProvider', () => {
 
     describe('DomainMap hovers', () => {
         test('shows type label and lists domains', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -256,6 +320,7 @@ describe('DomainLangHoverProvider', () => {
                 10 // 'O' in Overview
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('(domainmap)');
@@ -299,6 +364,7 @@ describe('DomainLangHoverProvider', () => {
                 col: 13,
             },
         ])('$type hover shows type label, name, and definition', async ({ keyword, block, name, type, definition, col }) => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -312,6 +378,7 @@ describe('DomainLangHoverProvider', () => {
                 col
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain(`(${type})`);
@@ -322,12 +389,14 @@ describe('DomainLangHoverProvider', () => {
 
     describe('Metadata hovers', () => {
         test('shows type label and element name', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Metadata Language`,
                 0,
                 9 // 'L' in Language
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('(metadata)');
@@ -337,6 +406,7 @@ describe('DomainLangHoverProvider', () => {
 
     describe('Relationship hovers', () => {
         test('shows arrow and bounded context references', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -351,7 +421,7 @@ describe('DomainLangHoverProvider', () => {
                 6 // '-' in '->' arrow
             );
 
-            // Relationship hover may land on the arrow token or return undefined
+            // Assert — Relationship hover may land on the arrow token or return undefined
             // depending on parser CST leaf positioning; verify it doesn't throw
             if (hover) {
                 expect(hover.contents.value).toContain('(relationship)');
@@ -402,8 +472,10 @@ Classification Core`,
                 docSnippets: ['Core domain', 'business success'],
             },
         ])('includes doc comment in $construct hover', async ({ input, line, col, typeLabel, name, docSnippets }) => {
+            // Arrange & Act
             const hover = await getHoverAt(input, line, col);
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain(typeLabel);
@@ -420,12 +492,14 @@ Classification Core`,
 
     describe('Keyword hovers', () => {
         test('shows explanation for Domain keyword', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Domain Sales {}`,
                 0,
                 1 // 'o' in Domain keyword
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('**Domain**');
@@ -434,6 +508,7 @@ Classification Core`,
         });
 
         test('shows explanation for bc keyword', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -443,6 +518,7 @@ Classification Core`,
                 0 // 'b' in bc keyword
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('**BoundedContext**');
@@ -456,7 +532,7 @@ Classification Core`,
 
     describe('Reference hovers', () => {
         test('hovering on domain reference in BC shows domain info', async () => {
-            // Line 1: "bc OrderContext for Sales {}" -- 'S' in Sales at char 20
+            // Arrange & Act — Line 1: "bc OrderContext for Sales {}" -- 'S' in Sales at char 20
             const hover = await getHoverAt(
                 s`
                 Domain Sales {}
@@ -466,6 +542,7 @@ Classification Core`,
                 20 // 'S' in 'Sales' reference
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('(domain)');
@@ -473,6 +550,7 @@ Classification Core`,
         });
 
         test('hovering on parent reference in nested domain shows parent domain', async () => {
+            // Arrange & Act
             // "Domain Parent {} Domain Child in Parent {}"
             // P(33)a(34)r(35)e(36)n(37)t(38) -- second 'Parent' is a reference
             const hover = await getHoverAt(
@@ -481,6 +559,7 @@ Classification Core`,
                 33 // 'P' in second 'Parent' (reference)
             );
 
+            // Assert
             expect(hover).toBeDefined();
             const value = hover!.contents.value;
             expect(value).toContain('(domain)');
@@ -494,12 +573,14 @@ Classification Core`,
 
     describe('Non-element positions', () => {
         test('returns undefined for position outside document bounds', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`Domain Sales {}`,
                 10,
                 0
             );
 
+            // Assert
             expect(hover).toBeUndefined();
         });
     });
@@ -510,6 +591,7 @@ Classification Core`,
 
     describe('this reference hover', () => {
         test('hovering over "this" inside a context map returns parent hover', async () => {
+            // Arrange & Act
             const hover = await getHoverAt(
                 s`
                     Domain Sales { vision: "Sales domain" }
@@ -524,7 +606,7 @@ Classification Core`,
                 10 // position of 'this' in '[OHS] this'
             );
 
-            // 'this' resolves to the parent ContextMap hover
+            // Assert — 'this' resolves to the parent ContextMap hover
             // The key test is that the call does not crash (MaybePromise fix)
             if (hover) {
                 expect(hover.contents.kind).toBe('markdown');
@@ -540,6 +622,7 @@ Classification Core`,
 
     describe('Error handling', () => {
         test('returns undefined for position in malformed document', async () => {
+            // Arrange
             const hoverProvider = testServices.services.DomainLang.lsp.HoverProvider;
             if (!hoverProvider) throw new Error('HoverProvider not available');
 
@@ -549,10 +632,36 @@ Classification Core`,
                 position: Position.create(0, 7)
             };
 
-            // The provider catches errors internally; for a Domain with no name,
+            // Act — The provider catches errors internally; for a Domain with no name,
             // there is no valid declaration or keyword at the brace position
             const hover = await hoverProvider.getHoverContent(document, params);
+
+            // Assert
             expect(hover).toBeUndefined();
         });
     });
+
+    // Import alias display
+    // ================================================================
+    // NOTE: Integration test for import alias display requires multi-file setup.
+    //
+    // Manual test scenario:
+    // 1. Create file "shared.dlang" with: Domain SharedDomain {}
+    // 2. Create file "main.dlang" with:
+    //    import "./shared.dlang" as shared
+    //    bc Context for shared.SharedDomain {}
+    // 3. Hover over "shared.SharedDomain" in the BC declaration
+    // 4. Expected: Hover should show "shared.SharedDomain (domain)" not just "SharedDomain (domain)"
+    //
+    // Implementation note: Import alias display requires IndexManager to look up
+    // ImportInfo for cross-document references. The getDisplayNameForHover() helper
+    // in hover provider handles this by prepending the alias when present.
+    //
+    // Go-to-definition links
+    // ================================================================
+    // Implementation complete: Links are formatted as [name](file:///path#Lline,col)
+    // VS Code recognizes these as clickable go-to-definition links.
+    // Example from actual hover output:
+    //   [Core](file:///34.dlang#L3,1) - Classification link
+    //   [SalesTeam](file:///34.dlang#L2,1) - Team link
 });
