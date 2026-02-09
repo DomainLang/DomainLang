@@ -404,6 +404,54 @@ When you import a file, all its top-level elements become available:
 - Context Maps and Domain Maps
 - Namespaces and their contents
 
+## Import aliases vs namespaces
+
+**Import aliases** and **namespaces** serve different purposes:
+
+| Feature | Import Alias | Namespace |
+| ------- | ------------ | --------- |
+| **Syntax** | `import "./file.dlang" as lib` | `namespace acme.sales { ... }` |
+| **Purpose** | Organize imports, prevent file-level conflicts | Organize types hierarchically in model |
+| **Scope** | Local to importing file | Global across entire model |
+| **Usage** | `lib.Domain` (required prefix) | `acme.sales.Domain` (full qualified name) |
+| **When** | Managing external dependencies | Structuring your domain model |
+
+**Use import aliases when:**
+
+- Importing types from other files
+- Preventing naming conflicts between packages
+- Making it clear where imported types come from
+- Working with external dependencies
+
+**Use namespaces when:**
+
+- Organizing types within your own model
+- Creating hierarchical domain structure (e.g., `company.product.subdomain`)
+- Ensuring globally unique type names
+- Modeling organizational boundaries
+
+**Example combining both:**
+
+```dlang
+// In external package "acme/patterns"
+namespace acme.patterns {
+    Classification Strategic
+    Classification Core
+}
+
+// In your project
+import "acme/patterns" as patterns
+namespace mycompany.sales {
+    Domain Sales {
+        vision: "Revenue generation"
+    }
+    
+    bc Orders for Sales as patterns.Core {}
+    //                         ^^^^^^^^ - import alias prefix
+    //  ^^^^^ - in mycompany.sales namespace
+}
+```
+
 ## Best practices
 
 ::: tip One Concept Per File
