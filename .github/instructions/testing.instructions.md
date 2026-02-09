@@ -16,6 +16,10 @@ applyTo: "**/*.test.ts"
 1. **One focus per test** - Test one behavior in isolation
 1. **Never change code to make testing easier** - Tests adapt to code, not vice versa
 1. **Tests should be mutually exclusive** - Tests should cover distinct scenarios without overlap
+1. **Coverage Thresholds are BLOCKING** - Run `npm run test:coverage` before commit:
+   - If coverage is below configured thresholds in `vitest.config.ts`, **STOP**
+   - Either add tests to meet the threshold OR ask user for approval to lower it
+   - Never automatically lower thresholds without explicit user approval
 
 ## Required Test Template
 

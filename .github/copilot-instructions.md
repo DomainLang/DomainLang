@@ -72,10 +72,13 @@ See `.github/instructions/` for language-specific rules (TypeScript, Langium, te
 
 - **NEVER** commit without explicit approval
 - Use [conventional commits](https://www.conventionalcommits.org): `type(scope): subject`
-- **ALWAYS** run: `npm run lint && npm run build && npm test` before commit
+- **ALWAYS** run: `npm run lint && npm run build && npm run test:coverage` before commit
 - **ALWAYS** commit package.json + package-lock.json together atomically
 - **NEVER** commit code that doesn't compile or has lint errors/warnings
-- **NEVER** commit code with test coverage below thresholds
+- **NEVER** commit code with test coverage below configured thresholds
+- **NEVER** lower coverage thresholds without explicit user approval - if coverage is below thresholds, either:
+  1. Add tests to meet the threshold, OR
+  2. Ask user for approval to lower the threshold with justification
 
 **Commit types:**
 - `feat:` → minor version bump (new features)
