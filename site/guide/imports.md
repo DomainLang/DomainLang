@@ -404,6 +404,61 @@ When you import a file, all its top-level elements become available:
 - Context Maps and Domain Maps
 - Namespaces and their contents
 
+### External library visibility
+
+When importing from an external library (a GitHub package), **only types defined in or re-imported in the library's `index.dlang` are visible** to consumers.
+
+**Example external library structure:**
+
+```text
+acme/ddd-core/
+├── model.yaml
+├── index.dlang          # Entry point - defines public API
+├── internal/
+│   └── helpers.dlang    # Internal implementation
+└── shared/
+    └── teams.dlang      # Reusable types
+```
+
+**index.dlang (library entry point):**
+
+```dlang
+// Re-export types from internal files
+import "./shared/teams.dlang"
+
+// Define additional types directly
+Classification CoreDomain
+Classification SupportingDomain
+
+// Types in internal/ are NOT re-imported, so they remain private
+```
+
+**Consumer project:**
+
+```dlang
+import "acme/ddd-core" as core
+
+// ✅ Available: types defined in index.dlang
+bc Orders as core.CoreDomain {}
+
+// ✅ Available: types re-imported in index.dlang
+bc Billing by core.PlatformTeam {}  // PlatformTeam from shared/teams.dlang
+
+// ❌ Not available: types in internal files not re-imported
+bc Shipping by core.InternalHelper {}  // ERROR: InternalHelper not visible
+```
+
+This encapsulation allows library authors to:
+
+- Define a clear public API in `index.dlang`
+- Keep internal implementation details private
+- Refactor internal structure without breaking consumers
+- Control which types are part of the stable interface
+
+::: tip Library Design
+When publishing a library, carefully choose what to expose in `index.dlang`. Only include types that should be part of your public API.
+:::
+
 ## Import aliases vs namespaces
 
 **Import aliases** and **namespaces** serve different purposes:
