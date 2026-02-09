@@ -9,10 +9,10 @@
  * - Import-aware: Provides completions for local paths, aliases, and dependencies
  */
 
-import type { AstNode, LangiumDocument } from 'langium';
-import { GrammarAST } from 'langium';
+import type { AstNode, AstNodeDescription, LangiumDocument, ReferenceInfo } from 'langium';
+import { AstUtils, GrammarAST } from 'langium';
 import { CompletionAcceptor, CompletionContext, DefaultCompletionProvider, NextFeature } from 'langium/lsp';
-import { CompletionItemKind, CompletionList, InsertTextFormat } from 'vscode-languageserver';
+import { CompletionItemKind, CompletionList, InsertTextFormat, TextEdit } from 'vscode-languageserver';
 import type { CancellationToken, CompletionItem, CompletionParams } from 'vscode-languageserver-protocol';
 import * as ast from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
@@ -126,6 +126,10 @@ const TOP_LEVEL_SNIPPETS = [
 export class DomainLangCompletionProvider extends DefaultCompletionProvider {
     private readonly workspaceManager: WorkspaceManager;
 
+    override readonly completionOptions = {
+        triggerCharacters: ['.']
+    };
+
     constructor(services: DomainLangServices) {
         super(services);
         this.workspaceManager = services.imports.WorkspaceManager;
@@ -160,7 +164,203 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
             return CompletionList.create(items, true);
         }
 
-        return super.getCompletion(document, params, cancelToken);
+        const result = await super.getCompletion(document, params, cancelToken);
+        return this.segmentDottedCompletions(result, text, offset, document);
+    }
+
+    /**
+     * Post-process completion results to replace full-FQN items with segmented items
+     * when the cursor is at a dotted path.
+     *
+     * **Why this is necessary:**
+     * Langium's `buildContexts` creates a "data type rule" context that triggers our
+     * `completionForCrossReference` override, which correctly produces segmented items.
+     * However, when the CST is broken (e.g., partial `Core.B` doesn't fully parse as
+     * a QualifiedName), `findDataTypeRuleStart` returns `undefined` and only token-based
+     * contexts fire. These contexts have features that are ID terminals (not cross-references),
+     * so `completionForCrossReference` is never called. Langium's default pipeline then
+     * produces full-FQN items like `Core.Baunwalls.Jannie`.
+     *
+     * This post-processing step catches those FQN items and segments them,
+     * ensuring consistent behavior regardless of parse state.
+     */
+    private segmentDottedCompletions(
+        result: CompletionList | undefined,
+        text: string,
+        offset: number,
+        _document: LangiumDocument
+    ): CompletionList | undefined {
+        if (!result?.items?.length) return result;
+
+        // Detect dotted path at cursor by scanning backwards
+        const dottedPath = this.extractDottedPathAtCursor(text, offset);
+        if (!dottedPath) return result;
+
+        const { fullTyped, fullStart } = dottedPath;
+        const lastDotIndex = fullTyped.lastIndexOf('.');
+        const prefix = fullTyped.substring(0, lastDotIndex + 1);
+        const partial = fullTyped.substring(lastDotIndex + 1);
+
+        // If completionForCrossReference already produced segmented items, just clean up
+        if (this.hasSegmentedItems(result.items, prefix)) {
+            return this.removeLeakedFqnItems(result, prefix);
+        }
+
+        // No segmented items — transform FQN items into segmented items
+        const positions = this.calculateTextPositions(text, offset, fullStart);
+        const newItems = this.transformToSegmentedItems(
+            result.items, prefix, partial, fullTyped, positions
+        );
+        return CompletionList.create(newItems, true);
+    }
+
+    /** Check if any items are already segmented by our completionForCrossReference. */
+    private hasSegmentedItems(items: CompletionItem[], prefix: string): boolean {
+        return items.some(item =>
+            !item.label.includes('.') && item.filterText?.startsWith(prefix)
+        );
+    }
+
+    /** Remove full-FQN items that leaked alongside segmented items. */
+    private removeLeakedFqnItems(
+        result: CompletionList,
+        prefix: string
+    ): CompletionList {
+        const prefixRoot = prefix.substring(0, prefix.length - 1);
+        result.items = result.items.filter(item =>
+            !item.label.includes('.') || !item.label.startsWith(prefixRoot)
+        );
+        return result;
+    }
+
+    /** Calculate line/character positions from text offsets. */
+    private calculateTextPositions(
+        text: string,
+        offset: number,
+        fullStart: number
+    ): { startPos: { line: number; character: number }; endPos: { line: number; character: number } } {
+        const startPos = { line: 0, character: 0 };
+        const endPos = { line: 0, character: 0 };
+        let line = 0;
+        let col = 0;
+        for (let i = 0; i < text.length && i <= offset; i++) {
+            if (i === fullStart) { startPos.line = line; startPos.character = col; }
+            if (i === offset) { endPos.line = line; endPos.character = col; }
+            if (text[i] === '\n') { line++; col = 0; } else { col++; }
+        }
+        if (offset === text.length) { endPos.line = line; endPos.character = col; }
+        return { startPos, endPos };
+    }
+
+    /** Transform FQN completion items into segmented (next-segment-only) items. */
+    private transformToSegmentedItems(
+        items: CompletionItem[],
+        prefix: string,
+        partial: string,
+        fullTyped: string,
+        positions: { startPos: { line: number; character: number }; endPos: { line: number; character: number } }
+    ): CompletionItem[] {
+        const seenSegments = new Set<string>();
+        const newItems: CompletionItem[] = [];
+
+        for (const item of items) {
+            const segmented = this.segmentSingleItem(
+                item, prefix, partial, fullTyped, positions, seenSegments
+            );
+            if (segmented) newItems.push(segmented);
+        }
+        return newItems;
+    }
+
+    /** Transform a single FQN item into a segmented item, or keep non-matching items. */
+    private segmentSingleItem(
+        item: CompletionItem,
+        prefix: string,
+        partial: string,
+        fullTyped: string,
+        positions: { startPos: { line: number; character: number }; endPos: { line: number; character: number } },
+        seenSegments: Set<string>
+    ): CompletionItem | undefined {
+        const itemName = item.label;
+
+        // Keep non-matching items (keywords, snippets, etc.)
+        if (!itemName.startsWith(prefix)) {
+            if (!itemName.includes('.') || !this.sharesDottedPrefix(itemName, fullTyped)) {
+                return item;
+            }
+            return undefined;
+        }
+
+        const remainder = itemName.substring(prefix.length);
+        const dotIndex = remainder.indexOf('.');
+        const segment = dotIndex === -1 ? remainder : remainder.substring(0, dotIndex);
+
+        if (!segment || seenSegments.has(segment)) return undefined;
+        if (partial && !segment.toLowerCase().startsWith(partial.toLowerCase())) return undefined;
+
+        seenSegments.add(segment);
+
+        const isLeaf = dotIndex === -1;
+        const fullInsertText = prefix + segment;
+        return {
+            label: segment,
+            kind: isLeaf ? (item.kind ?? CompletionItemKind.Reference) : CompletionItemKind.Module,
+            detail: isLeaf ? itemName : 'Namespace',
+            sortText: segment,
+            filterText: fullInsertText,
+            textEdit: TextEdit.replace(
+                { start: positions.startPos, end: positions.endPos },
+                fullInsertText
+            ),
+        };
+    }
+
+    /**
+     * Check if two dotted names share a common prefix up to the first differing segment.
+     */
+    private sharesDottedPrefix(a: string, b: string): boolean {
+        const aParts = a.split('.');
+        const bParts = b.split('.');
+        return aParts.length > 0 && bParts.length > 0 && aParts[0] === bParts[0];
+    }
+
+    /**
+     * Scan backwards from cursor to find a dotted identifier path.
+     * Returns the full typed text and start position, or undefined if no dots found.
+     *
+     * This is intentionally cursor-based (not tokenOffset-based) to be robust
+     * across all Langium completion contexts.
+     */
+    private extractDottedPathAtCursor(
+        text: string,
+        offset: number
+    ): { fullTyped: string; fullStart: number } | undefined {
+        // Walk backwards from cursor through the current partial identifier
+        let pos = offset - 1;
+        while (pos >= 0 && /\w/.test(text[pos])) pos--;
+
+        // Walk backwards through `.ID` pairs to find start of dotted path
+        pos = this.walkBackThroughDotIdPairs(text, pos);
+
+        const fullStart = pos + 1;
+        const fullTyped = text.substring(fullStart, offset);
+
+        if (!fullTyped.includes('.')) return undefined;
+        return { fullTyped, fullStart };
+    }
+
+    /** Walk backwards through `.ID` pairs from the given position. */
+    private walkBackThroughDotIdPairs(text: string, pos: number): number {
+        while (pos >= 0) {
+            const preSpace = pos;
+            while (pos >= 0 && text[pos] === ' ') pos--;
+            if (pos < 0 || text[pos] !== '.') return preSpace;
+            pos--; // skip dot
+            while (pos >= 0 && text[pos] === ' ') pos--;
+            if (pos < 0 || !/\w/.test(text[pos])) return preSpace;
+            while (pos >= 0 && /\w/.test(text[pos])) pos--;
+        }
+        return pos;
     }
 
     /**
@@ -214,6 +414,133 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
             // Fall back to default completion on error
             await super.completionFor(context, next, acceptor);
         }
+    }
+
+    /**
+     * Override cross-reference completion to provide dot-segmented completions.
+     *
+     * When the user types a dotted prefix (e.g., `Core.`), only the next
+     * namespace segment is shown instead of the full qualified name —
+     * matching how modern IDEs handle hierarchical completions.
+     *
+     * Example: Scope contains `Core.CoreDomain`, `Core.BaunWalls.Jannie`, `Core.BaunWalls.Anna`
+     * - No dots typed → default FQN labels: `Core.CoreDomain`, `Core.BaunWalls.Jannie`, ...
+     * - `Core.` typed → segmented: `CoreDomain`, `BaunWalls`
+     * - `Core.BaunWalls.` typed → segmented: `Jannie`, `Anna`
+     */
+    protected override completionForCrossReference(
+        context: CompletionContext,
+        next: NextFeature<GrammarAST.CrossReference>,
+        acceptor: CompletionAcceptor
+    ): void | Promise<void> {
+        const text = context.textDocument.getText();
+        const fullStart = this.findDottedPathStart(text, context.tokenOffset);
+        const fullTyped = text.substring(fullStart, context.offset);
+
+        // Without dots, use Langium's default FQN-based completion
+        if (!fullTyped.includes('.')) {
+            return super.completionForCrossReference(context, next, acceptor);
+        }
+
+        // Build ReferenceInfo to query the scope — replicating what super does
+        // but without going through super's fuzzy-matching pipeline.
+        const assignment = AstUtils.getContainerOfType(
+            next.feature, GrammarAST.isAssignment
+        );
+        if (!assignment || !context.node) return;
+
+        let node: AstNode = context.node;
+        if (next.type) {
+            node = {
+                $type: next.type,
+                $container: node,
+                $containerProperty: next.property,
+            } as AstNode;
+            AstUtils.assignMandatoryProperties(this.astReflection, node);
+        }
+        const reference = { $refText: '' } as unknown;
+        const refInfo: ReferenceInfo = {
+            reference: reference as ReferenceInfo['reference'],
+            container: node,
+            property: assignment.feature,
+        };
+
+        const candidates = this.getReferenceCandidates(refInfo, context);
+        this.acceptSegmentedCandidates(context, candidates, fullTyped, fullStart, acceptor);
+    }
+
+    /**
+     * Walk backwards from `tokenOffset` through preceding `.ID` pairs
+     * to find the start of the full dotted path.
+     * QualifiedName = ID ('.' ID)* — Langium tokenises each ID separately.
+     */
+    private findDottedPathStart(text: string, tokenOffset: number): number {
+        let fullStart = tokenOffset;
+        while (fullStart > 0) {
+            let pos = fullStart - 1;
+            while (pos >= 0 && text[pos] === ' ') pos--;
+            if (pos < 0 || text[pos] !== '.') break;
+            const idEnd = pos;
+            pos--;
+            while (pos >= 0 && text[pos] === ' ') pos--;
+            while (pos >= 0 && /\w/.test(text[pos])) pos--;
+            pos++;
+            if (pos >= idEnd) break;
+            fullStart = pos;
+        }
+        return fullStart;
+    }
+
+    /**
+     * Iterate scope candidates and emit segmented completion items.
+     * Splits FQN candidates by the typed prefix, extracting only the next segment.
+     */
+    private acceptSegmentedCandidates(
+        context: CompletionContext,
+        candidates: ReturnType<DefaultCompletionProvider['getReferenceCandidates']>,
+        fullTyped: string,
+        fullStart: number,
+        acceptor: CompletionAcceptor
+    ): void {
+        const lastDotIndex = fullTyped.lastIndexOf('.');
+        const prefix = fullTyped.substring(0, lastDotIndex + 1);
+        const partial = fullTyped.substring(lastDotIndex + 1);
+
+        const seenSegments = new Set<string>();
+        const startPos = context.textDocument.positionAt(fullStart);
+        const endPos = context.textDocument.positionAt(context.offset);
+
+        candidates.forEach((candidate: AstNodeDescription) => {
+            const fullName = candidate.name;
+            if (!fullName.startsWith(prefix)) return;
+
+            const remainder = fullName.substring(prefix.length);
+            const dotIndex = remainder.indexOf('.');
+            const segment = dotIndex === -1 ? remainder : remainder.substring(0, dotIndex);
+
+            if (!segment || seenSegments.has(segment)) return;
+            if (partial && !segment.toLowerCase().startsWith(partial.toLowerCase())) return;
+
+            seenSegments.add(segment);
+
+            const isLeaf = dotIndex === -1;
+            const fullInsertText = prefix + segment;
+            acceptor(context, {
+                label: segment,
+                kind: isLeaf ? this.nodeKindProvider.getCompletionItemKind(candidate) : CompletionItemKind.Module,
+                detail: isLeaf ? fullName : 'Namespace',
+                sortText: segment,
+                // filterText MUST include the full dotted prefix so VS Code's
+                // client-side filter can match "Core.B" against "Core.BaunWalls".
+                // Without this, VS Code uses `label` ('BaunWalls') for filtering,
+                // which fails to match the typed text 'Core.B'.
+                filterText: fullInsertText,
+                textEdit: {
+                    newText: fullInsertText,
+                    range: { start: startPos, end: endPos },
+                },
+            });
+        });
     }
 
     private async safeCompletionFor(
@@ -279,61 +606,43 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         next: NextFeature
     ): boolean {
         // Check 1: NextFeature indicates we're completing uri property of ImportStatement
-        // This is the most reliable check - Langium tells us exactly what it's completing
         if (next.type === 'ImportStatement' && next.property === 'uri') {
             return true;
         }
         
         // Check 2: The feature is an Assignment to 'uri' property
-        if (GrammarAST.isAssignment(next.feature)) {
-            const assignment = next.feature;
-            if (assignment.feature === 'uri') {
-                return true;
-            }
-        }
-        
-        // Check 3: We're already inside an ImportStatement node
-        if (ast.isImportStatement(node)) {
+        if (GrammarAST.isAssignment(next.feature) && next.feature.feature === 'uri') {
             return true;
         }
         
-        // Check 4: Container is ImportStatement
-        if (node.$container && ast.isImportStatement(node.$container)) {
+        // Check 3: Any ancestor (including self) is ImportStatement
+        if (this.isInImportStatementHierarchy(node)) {
             return true;
         }
         
-        // Check 5: Any ancestor is ImportStatement
+        // Check 4: Text-based pattern matching (fallback for edge cases)
+        return this.isImportTextPattern(context);
+    }
+
+    /** Check if the node or any ancestor is an ImportStatement. */
+    private isInImportStatementHierarchy(node: AstNode): boolean {
         let current: AstNode | undefined = node;
         while (current) {
-            if (ast.isImportStatement(current)) {
-                return true;
-            }
+            if (ast.isImportStatement(current)) return true;
             current = current.$container;
         }
-        
-        // Check 6: Text-based pattern matching (fallback)
-        // Only do text analysis if textDocument.getText is available (not in tests)
-        if (typeof context.textDocument?.getText === 'function') {
-            try {
-                const text = context.textDocument.getText();
-                const offset = context.offset;
-                const textBefore = text.substring(0, offset);
-                
-                // Match patterns like:
-                // - import "|
-                // - import "@|
-                // - import "./|
-                // - import "owner/|
-                const importStringPattern = /\bimport\s+"[^"]*$/i;
-                if (importStringPattern.test(textBefore)) {
-                    return true;
-                }
-            } catch {
-                // Ignore errors in text analysis
-            }
-        }
-        
         return false;
+    }
+
+    /** Check if text before cursor matches an import string pattern. */
+    private isImportTextPattern(context: CompletionContext): boolean {
+        if (typeof context.textDocument?.getText !== 'function') return false;
+        try {
+            const textBefore = context.textDocument.getText().substring(0, context.offset);
+            return /\bimport\s+"[^"]*$/i.test(textBefore);
+        } catch {
+            return false;
+        }
     }
 
     /**
