@@ -41,7 +41,10 @@ describe('Cross-document integration', () => {
                 `,
             },
         ])('detects duplicate $construct names in same document', async ({ input }) => {
+            // Arrange & Act
             const document = await testServices.parse(input);
+
+            // Assert
             const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
             expect(errors.length).toBeGreaterThanOrEqual(1);
             expect(errors.some(e => e.message.includes('already defined') || e.message.includes('Duplicate'))).toBe(true);
@@ -50,11 +53,13 @@ describe('Cross-document integration', () => {
 
     describe('Namespace isolation', () => {
         test('same name in different namespaces does not conflict', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Namespace com.sales { Domain Orders { vision: "Sales orders" } }
                 Namespace com.billing { Domain Orders { vision: "Billing orders" } }
             `);
 
+            // Assert
             expectValidDocument(document);
         });
     });

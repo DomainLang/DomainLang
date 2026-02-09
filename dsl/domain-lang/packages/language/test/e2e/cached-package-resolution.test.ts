@@ -52,7 +52,7 @@ describe('Cached Package Resolution E2E', () => {
     // ==========================================
     describe('Scenario 1: Relative imports within cached package', () => {
         test('relative import within cached package resolves correctly', async () => {
-            // Setup: Create a cached package with internal structure
+            // Arrange - Create a cached package with internal structure
             const pkgDir = path.join(cacheRoot, 'acme', 'lib', 'abc123');
             await fs.mkdir(pkgDir, { recursive: true });
 
@@ -70,10 +70,13 @@ model:
             // Create types.dlang in same directory
             await fs.writeFile(path.join(pkgDir, 'types.dlang'), 'Domain Types {}');
 
+            // Act
             const { resolver } = createResolver();
             
             // Resolve from index.dlang's directory (simulating file opened in cache)
             const uri = await resolver.resolveFrom(pkgDir, './types.dlang');
+
+            // Assert
             expect(uri.fsPath).toBe(path.join(pkgDir, 'types.dlang'));
         });
     });
@@ -83,6 +86,7 @@ model:
     // ==========================================
     describe('Scenario 2: Path aliases within cached package', () => {
         test('path alias from cached package manifest resolves correctly', async () => {
+            // Arrange
             const pkgDir = path.join(cacheRoot, 'acme', 'core', 'def456');
             await fs.mkdir(pkgDir, { recursive: true });
 
@@ -103,10 +107,13 @@ paths:
             await fs.mkdir(utilsDir, { recursive: true });
             await fs.writeFile(path.join(utilsDir, 'helpers.dlang'), 'Domain Helpers {}');
 
+            // Act
             const { resolver } = createResolver();
             
             // Resolve @utils/helpers.dlang from within cached package
             const uri = await resolver.resolveFrom(pkgDir, '@utils/helpers.dlang');
+
+            // Assert
             expect(uri.fsPath).toBe(path.join(utilsDir, 'helpers.dlang'));
         });
     });
@@ -116,7 +123,7 @@ paths:
     // ==========================================
     describe('Scenario 3: Transitive dependency resolution', () => {
         test('cached package importing another cached package resolves to top-level cache', async () => {
-            // Setup package A (depends on package B)
+            // Arrange - Setup package A (depends on package B)
             const pkgADir = path.join(cacheRoot, 'owner-a', 'repo-a', 'commit-a');
             await fs.mkdir(pkgADir, { recursive: true });
 
@@ -156,11 +163,13 @@ model:
 
             await fs.writeFile(path.join(pkgBDir, 'index.dlang'), 'Domain B {}');
 
+            // Act
             const { resolver } = createResolver();
             
             // Resolve from package A trying to import package B
             const uri = await resolver.resolveFrom(pkgADir, 'owner-b/repo-b');
             
+            // Assert
             // Should resolve to package B in TOP-LEVEL cache, not nested cache
             expect(uri.fsPath).toBe(path.join(pkgBDir, 'index.dlang'));
             
@@ -175,6 +184,7 @@ model:
     // ==========================================
     describe('Scenario 4: getCacheDir() from cached package', () => {
         test('getCacheDir() returns project root cache when initialized from cached package', async () => {
+            // Arrange
             const pkgDir = path.join(cacheRoot, 'test', 'pkg', 'abc123');
             await fs.mkdir(pkgDir, { recursive: true });
 
@@ -184,6 +194,7 @@ model:
   entry: index.dlang
 `);
 
+            // Act
             const { workspaceManager } = createResolver();
             
             // Initialize from inside cached package
@@ -192,11 +203,13 @@ model:
             // getCacheDir() should return top-level project cache
             const cacheDir = workspaceManager.getCacheDir();
             
+            // Assert
             expect(cacheDir).toBe(cacheRoot);
             expect(cacheDir).not.toContain(path.join(pkgDir, '.dlang'));
         });
 
         test('getCacheDir() works correctly from nested subdirectory in cached package', async () => {
+            // Arrange
             const pkgDir = path.join(cacheRoot, 'test', 'nested', 'xyz789');
             const subDir = path.join(pkgDir, 'src', 'deep', 'nested');
             await fs.mkdir(subDir, { recursive: true });
@@ -207,6 +220,7 @@ model:
   entry: index.dlang
 `);
 
+            // Act
             const { workspaceManager } = createResolver();
             
             // Initialize from deeply nested directory
@@ -214,6 +228,8 @@ model:
             
             // Should still return top-level project cache
             const cacheDir = workspaceManager.getCacheDir();
+
+            // Assert
             expect(cacheDir).toBe(cacheRoot);
         });
     });
@@ -223,6 +239,7 @@ model:
     // ==========================================
     describe('Scenario 5: Regular project behavior unchanged', () => {
         test('getCacheDir() works normally for non-cached projects', async () => {
+            // Arrange
             const regularProject = path.join(tempDir, 'regular-project');
             await fs.mkdir(regularProject, { recursive: true });
 
@@ -232,10 +249,12 @@ model:
   entry: index.dlang
 `);
 
+            // Act
             const { workspaceManager } = createResolver();
             await workspaceManager.initialize(regularProject);
-            
             const cacheDir = workspaceManager.getCacheDir();
+
+            // Assert
             expect(cacheDir).toBe(path.join(regularProject, '.dlang', 'packages'));
         });
     });

@@ -21,6 +21,7 @@ beforeAll(() => {
 
 describe('Basic Terminology Parsing', () => {
     test('should parse simple term with name and meaning', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -32,6 +33,8 @@ describe('Basic Terminology Parsing', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         const terms = bc.terminology;
@@ -44,6 +47,7 @@ describe('Basic Terminology Parsing', () => {
     });
 
     test('should parse term without meaning', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -55,6 +59,8 @@ describe('Basic Terminology Parsing', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         const terms = bc.terminology;
@@ -64,6 +70,7 @@ describe('Basic Terminology Parsing', () => {
     });
 
     test('should parse multiple terms with correct names', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -77,6 +84,8 @@ describe('Basic Terminology Parsing', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         const terms = bc.terminology;
@@ -95,6 +104,7 @@ describe('Term and Block Keyword Variants', () => {
         ['term', 'lowercase term keyword'],
         ['Term', 'capitalized Term keyword'],
     ])('should parse %s keyword variant', async (keyword) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -106,6 +116,8 @@ describe('Term and Block Keyword Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.terminology[0].name).toBe('Order');
@@ -113,6 +125,7 @@ describe('Term and Block Keyword Variants', () => {
     });
 
     test('should parse glossary block keyword as terminology alias', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -124,6 +137,8 @@ describe('Term and Block Keyword Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.terminology).toHaveLength(1);
@@ -138,6 +153,7 @@ describe('Term and Block Keyword Variants', () => {
 
 describe('Term Synonyms', () => {
     test('should parse single synonym with aka keyword', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -149,6 +165,8 @@ describe('Term Synonyms', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         const term = bc.terminology[0];
@@ -159,6 +177,7 @@ describe('Term Synonyms', () => {
     });
 
     test('should parse multiple synonyms with aka keyword', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -170,6 +189,8 @@ describe('Term Synonyms', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
@@ -177,6 +198,7 @@ describe('Term Synonyms', () => {
     });
 
     test('should parse synonyms keyword as aka alias', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -188,6 +210,8 @@ describe('Term Synonyms', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
@@ -201,6 +225,7 @@ describe('Term Synonyms', () => {
 
 describe('Term Examples', () => {
     test('should parse term with examples keyword', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -212,6 +237,8 @@ describe('Term Examples', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
@@ -225,6 +252,7 @@ describe('Term Examples', () => {
 
 describe('Complex Term Definitions', () => {
     test('should parse term with meaning, synonyms, and examples combined', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -236,6 +264,8 @@ describe('Complex Term Definitions', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
@@ -246,6 +276,7 @@ describe('Complex Term Definitions', () => {
     });
 
     test('should parse multiple complex terms with varied features', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -259,6 +290,8 @@ describe('Complex Term Definitions', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const terms = getFirstBoundedContext(document).terminology;
 
@@ -285,6 +318,7 @@ describe('Term Assignment Operators', () => {
         ['is', 'is keyword'],
         ['=', 'equals'],
     ])('should parse term with %s (%s) assignment and preserve meaning', async (operator) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -296,6 +330,8 @@ describe('Term Assignment Operators', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
         expect(term.name).toBe('Order');
@@ -309,6 +345,7 @@ describe('Term Assignment Operators', () => {
 
 describe('Terminology Edge Cases', () => {
     test('should handle empty terminology block', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -318,6 +355,8 @@ describe('Terminology Edge Cases', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.terminology).toHaveLength(0);
@@ -327,6 +366,7 @@ describe('Terminology Edge Cases', () => {
         { char: 'hyphens', name: 'line-item', meaning: 'A single line in an order' },
         { char: 'underscores', name: 'order_id', meaning: 'Unique order identifier' },
     ])('should parse terms with $char in names', async ({ name, meaning }) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -338,6 +378,8 @@ describe('Terminology Edge Cases', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
         expect(term.name).toBe(name);
@@ -345,6 +387,7 @@ describe('Terminology Edge Cases', () => {
     });
 
     test('should handle terms with comma separators', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
 
@@ -357,6 +400,8 @@ describe('Terminology Edge Cases', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const terms = getFirstBoundedContext(document).terminology;
         expect(terms).toHaveLength(2);
@@ -371,6 +416,7 @@ describe('Terminology Edge Cases', () => {
 
 describe('Terminology Negative Tests', () => {
     test('should reject terminology block outside a BoundedContext', async () => {
+        // Arrange
         const input = s`
             Domain Sales {
                 terminology {
@@ -379,6 +425,7 @@ describe('Terminology Negative Tests', () => {
             }
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,
@@ -387,6 +434,7 @@ describe('Terminology Negative Tests', () => {
     });
 
     test('should reject term with numeric-only name', async () => {
+        // Arrange
         const input = s`
             Domain Sales {}
             BoundedContext OrderContext for Sales {
@@ -396,6 +444,7 @@ describe('Terminology Negative Tests', () => {
             }
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,

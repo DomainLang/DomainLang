@@ -41,12 +41,14 @@ describe('Import Validation (Phase 3)', () => {
 
     describe('local imports (no manifest required)', () => {
         test('relative file imports with .dlang extension do not require model.yaml', async () => {
+            // Arrange & Act
             // Per PRS-010: ./path.dlang is a direct file import
             const doc = await testServices.parse(s`
                 import "./local-file.dlang"
                 Domain Sales { vision: "Revenue" }
             `);
 
+            // Assert
             // File imports should NOT produce "requires model.yaml" error
             const manifestErrors = (doc.diagnostics ?? []).filter(d =>
                 d.message.toLowerCase().includes('requires model.yaml')
@@ -57,6 +59,7 @@ describe('Import Validation (Phase 3)', () => {
 
     describe('module imports (directory-first resolution)', () => {
         test('module import without extension uses directory-first resolution', async () => {
+            // Arrange
             // Per PRS-010: import "./shared/types" (no .dlang) uses directory-first resolution
             // It tries ./shared/types/index.dlang first, then ./shared/types.dlang
             const { ImportResolver } = await import('../../src/services/import-resolver.js');
@@ -70,6 +73,7 @@ describe('Import Validation (Phase 3)', () => {
 
             const resolver = new ImportResolver(mockServices as never);
 
+            // Act & Assert
             // Module import (no .dlang extension) should fail with directory-first error
             // when neither directory/index.dlang nor file.dlang exists
             await expect(
@@ -82,6 +86,7 @@ describe('Import Validation (Phase 3)', () => {
         // TODO(PRS-010): Re-enable once manifest validation rejects conflicting source+path.
         // Blocked by: Manifest validation rule not yet implemented.
         test.skip('rejects dependency with both source and path', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val-'));
 
             // Create shared directory and file so import can resolve
@@ -102,11 +107,13 @@ describe('Import Validation (Phase 3)', () => {
                 'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
             );
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             const errors = (doc.diagnostics ?? []).filter(d => 
                 d.message.toLowerCase().includes('source') && d.message.toLowerCase().includes('path')
             );
@@ -114,6 +121,7 @@ describe('Import Validation (Phase 3)', () => {
         });
 
         test('rejects dependency with neither source nor path', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val2-'));
 
             // Create manifest with no source or path
@@ -126,11 +134,13 @@ describe('Import Validation (Phase 3)', () => {
                 'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
             );
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             const errors = (doc.diagnostics ?? []).filter(d => 
                 d.message.toLowerCase().includes('source') || d.message.toLowerCase().includes('path')
             );
@@ -140,6 +150,7 @@ describe('Import Validation (Phase 3)', () => {
         // TODO(PRS-010): Re-enable once manifest validation requires ref for source dependencies.
         // Blocked by: Manifest validation rule not yet implemented.
         test.skip('rejects source dependency without ref', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val3-'));
 
             // Create manifest with source but no ref
@@ -152,11 +163,13 @@ describe('Import Validation (Phase 3)', () => {
                 'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
             );
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             const errors = (doc.diagnostics ?? []).filter(d => d.message.toLowerCase().includes('ref'));
             expect(errors.length).toBeGreaterThan(0);
         });
@@ -166,6 +179,7 @@ describe('Import Validation (Phase 3)', () => {
         // TODO(PRS-010): Re-enable once path dependency validation rejects absolute paths.
         // Blocked by: Path security validation not yet implemented.
         test.skip('rejects absolute paths in path dependencies', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val4-'));
 
             // Create shared file so import resolves
@@ -186,11 +200,13 @@ describe('Import Validation (Phase 3)', () => {
                 'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
             );
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             const errors = (doc.diagnostics ?? []).filter(d => d.message.toLowerCase().includes('absolute'));
             expect(errors.length).toBeGreaterThan(0);
         });
@@ -198,6 +214,7 @@ describe('Import Validation (Phase 3)', () => {
         // TODO(PRS-010): Re-enable once path dependency validation rejects workspace escapes.
         // Blocked by: Workspace boundary security validation not yet implemented.
         test.skip('rejects paths that escape workspace boundary', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val5-'));
 
             // Create subdirectory to work in
@@ -222,11 +239,13 @@ describe('Import Validation (Phase 3)', () => {
                 'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
             );
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(subDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             const errors = (doc.diagnostics ?? []).filter(d => 
                 d.message.toLowerCase().includes('workspace') || d.message.toLowerCase().includes('boundary')
             );
@@ -234,6 +253,7 @@ describe('Import Validation (Phase 3)', () => {
         });
 
         test('accepts valid relative path within workspace', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val6-'));
 
             // Create lib directory
@@ -254,11 +274,13 @@ describe('Import Validation (Phase 3)', () => {
                 'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
             );
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             // Should not have workspace boundary errors
             const errors = (doc.diagnostics ?? []).filter(d => 
                 d.message.toLowerCase().includes('workspace') || 
@@ -273,6 +295,7 @@ describe('Import Validation (Phase 3)', () => {
         // TODO(PRS-010): Re-enable once LSP reports missing lock file for external imports.
         // Blocked by: Phase 3 external dependency validation not fully wired in LSP.
         test.skip('rejects external import without lock file', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val7-'));
 
             // Create dummy shared file so import can try to resolve
@@ -294,11 +317,13 @@ describe('Import Validation (Phase 3)', () => {
             );
             // NO lock file created
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             const errors = (doc.diagnostics ?? []).filter(d => d.message.toLowerCase().includes('not installed'));
             expect(errors.length).toBeGreaterThan(0);
         });
@@ -306,6 +331,7 @@ describe('Import Validation (Phase 3)', () => {
         // TODO(PRS-010): Re-enable once LSP reports missing cache for external imports.
         // Blocked by: Phase 3 external dependency validation not fully wired in LSP.
         test.skip('rejects external import with lock file but missing cache', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val8-'));
 
             // Create manifest with external dependency
@@ -327,16 +353,19 @@ describe('Import Validation (Phase 3)', () => {
             );
             // NO cache directory created
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             const errors = (doc.diagnostics ?? []).filter(d => d.message.toLowerCase().includes('not installed'));
             expect(errors.length).toBeGreaterThan(0);
         });
 
         test('accepts external import with valid lock file and cache', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val9-'));
 
             const commitHash = 'abc123def456';
@@ -366,11 +395,13 @@ describe('Import Validation (Phase 3)', () => {
                 'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
             );
 
+            // Act
             const services = createDomainLangServices(NodeFileSystem);
             const uri = URI.file(path.join(tempDir, 'test.dlang'));
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
+            // Assert
             // Should not have "not installed" errors
             const errors = (doc.diagnostics ?? []).filter(d => d.message.toLowerCase().includes('not installed'));
             expect(errors).toHaveLength(0);

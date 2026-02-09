@@ -63,13 +63,15 @@ describe("WorkspaceManager", () => {
     // ========================================================================
 
     test("finds workspace root, loads lock file, and returns correct values", async () => {
+        // Arrange
         await createLockFile();
         const manager = new WorkspaceManager();
 
+        // Act
         await manager.initialize(TEST_ROOT);
         const lock = await manager.getLockFile();
 
-        // Replace toBeDefined with actual value checks
+        // Assert
         expect(lock?.version).toBe("1");
         expect(lock?.dependencies["acme/ddd-patterns"].ref).toBe("2.1.0");
         expect(lock?.dependencies["acme/ddd-patterns"].commit).toBe("abc123");
@@ -82,10 +84,14 @@ describe("WorkspaceManager", () => {
     // ========================================================================
 
     test("returns undefined if lock file missing", async () => {
+        // Arrange
         const manager = new WorkspaceManager();
+
+        // Act
         await manager.initialize(TEST_ROOT);
         const lock = await manager.getLockFile();
 
+        // Assert
         expect(lock).toBeUndefined();
     });
 
@@ -96,6 +102,7 @@ describe("WorkspaceManager", () => {
     describe("Edge: dependency path resolution", () => {
 
         test("resolves dependency paths from manifest and lock file", async () => {
+            // Arrange
             const lockFile = path.join(ALIAS_ROOT, "model.lock");
             const lock = {
                 version: "1",
@@ -114,7 +121,10 @@ describe("WorkspaceManager", () => {
                 const manager = new WorkspaceManager();
                 await manager.initialize(ALIAS_ROOT);
 
+                // Act
                 const missing = await manager.resolveDependencyPath("unknown");
+
+                // Assert
                 expect(missing).toBeUndefined();
             } finally {
                 await fs.unlink(lockFile).catch(() => {});
@@ -122,10 +132,14 @@ describe("WorkspaceManager", () => {
         });
 
         test("returns undefined for unresolvable dependency", async () => {
+            // Arrange
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
 
+            // Act
             const result = await manager.resolveDependencyPath("nonexistent/package");
+
+            // Assert
             expect(result).toBeUndefined();
         });
     });
@@ -137,59 +151,52 @@ describe("WorkspaceManager", () => {
     describe("Edge: cache invalidation", () => {
 
         test("invalidateCache clears both manifest and lock caches", async () => {
+            // Arrange
             await createLockFile();
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
-
-            // Prime the caches
             await manager.getManifest();
             await manager.getLockFile();
 
-            // Invalidate
+            // Act
             manager.invalidateCache();
 
-            // Remove the lock file to verify cache was truly cleared
+            // Assert — Remove the lock file to verify cache was truly cleared
             await cleanup();
-
-            // getLockFile should now read from disk (file is gone)
             const lock = await manager.getLockFile();
             expect(lock).toBeUndefined();
         });
 
         test("invalidateManifestCache clears only manifest cache, preserves lock cache", async () => {
+            // Arrange
             await createLockFile();
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
-
-            // Prime both caches
             await manager.getManifest();
             const lockBefore = await manager.getLockFile();
 
-            // Invalidate only manifest
+            // Act
             manager.invalidateManifestCache();
 
-            // Lock should still be cached
+            // Assert
             const lockAfter = await manager.getLockFile();
             expect(lockAfter?.version).toBe(lockBefore?.version);
             expect(lockAfter?.dependencies["acme/ddd-patterns"].ref).toBe("2.1.0");
         });
 
         test("invalidateLockCache clears only lock file cache", async () => {
+            // Arrange
             await createLockFile();
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
-
-            // Prime lock cache
             const lockBefore = await manager.getLockFile();
             expect(lockBefore?.version).toBe("1");
 
-            // Invalidate only lock
+            // Act
             manager.invalidateLockCache();
 
-            // Remove the lock file to verify cache was truly cleared
+            // Assert — Remove the lock file to verify cache was truly cleared
             await cleanup();
-
-            // getLockFile should now return undefined since file is gone
             const lock = await manager.getLockFile();
             expect(lock).toBeUndefined();
         });
@@ -202,25 +209,28 @@ describe("WorkspaceManager", () => {
     describe("Edge: multi-root workspace support", () => {
 
         test("re-initialization switches to the new workspace root", async () => {
+            // Arrange
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
             expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
 
-            // Re-initializing with a different root SHOULD switch to a new workspace context
-            // This enables multi-project workspaces where sub-projects have their own model.yaml
+            // Act
             await manager.initialize(ALIAS_ROOT);
+
+            // Assert
             expect(manager.getWorkspaceRoot()).toBe(ALIAS_ROOT);
         });
         
         test("initializing from different paths to same root reuses context", async () => {
+            // Arrange
             const manager = new WorkspaceManager();
-            
-            // First init from subdirectory
             const subDir = path.join(TEST_ROOT, 'src');
+
+            // Act
             await manager.initialize(subDir);
             expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
-            
-            // Second init from same workspace root
+
+            // Assert — Second init from same workspace root
             await manager.initialize(TEST_ROOT);
             expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
         });

@@ -41,6 +41,7 @@ describe('Import Resolution E2E', () => {
     // ==========================================
     describe('Scenario 1: External import from manifest', () => {
         test('external import with lock file and cache resolves to correct fsPath', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'external-with-cache');
             await fs.mkdir(projectDir, { recursive: true });
 
@@ -82,13 +83,17 @@ Namespace domainlang.core {
 }
 `);
 
+            // Act
             const { resolver } = createResolver();
             const uri = await resolver.resolveFrom(projectDir, 'std');
+
+            // Assert
             expect(uri.fsPath).toBe(path.join(cacheDir, 'index.dlang'));
         });
 
         // SMOKE: short-form dependency (owner/package: version) resolves correctly
         test('short-form dependency (owner/package: version) resolves correctly', async () => {
+            // Arrange
             // This tests the common pattern where the key is both the import specifier
             // and the GitHub owner/package source
             const projectDir = path.join(tempDir, 'short-form-dep');
@@ -130,8 +135,11 @@ Classification CoreDomain
 Classification SupportingDomain
 `);
 
+            // Act
             const { resolver } = createResolver();
             const uri = await resolver.resolveFrom(projectDir, 'larsbaunwall/ddd-types');
+
+            // Assert
             expect(uri.fsPath).toBe(path.join(cacheDir, 'index.dlang'));
         });
 
@@ -139,6 +147,7 @@ Classification SupportingDomain
 
         // EDGE: external import without lock file
         test('external import without lock file rejects with "not installed"', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'external-no-lock');
             await fs.mkdir(projectDir, { recursive: true });
 
@@ -153,6 +162,7 @@ dependencies:
     ref: v1.0.0
 `);
 
+            // Act & Assert
             const { resolver } = createResolver();
             await expect(
                 resolver.resolveFrom(projectDir, 'std/core')
@@ -168,11 +178,13 @@ dependencies:
     describe('Scenario 2: Local file import', () => {
         // EDGE: import without ./ prefix treated as external
         test('import without ./ prefix is treated as external and rejects without manifest', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'no-prefix');
             await fs.mkdir(projectDir, { recursive: true });
 
             await fs.writeFile(path.join(projectDir, 'types.dlang'), `Domain Types {}`);
 
+            // Act & Assert
             const { resolver } = createResolver();
             await expect(
                 resolver.resolveFrom(projectDir, 'types.dlang')
@@ -183,19 +195,24 @@ dependencies:
     describe('Scenario 3: Local module import (directory-first)', () => {
         // EDGE: local module with index.dlang works without model.yaml
         test('local module import with index.dlang works without model.yaml', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'local-module-no-manifest');
             const moduleDir = path.join(projectDir, 'shared', 'types');
             await fs.mkdir(moduleDir, { recursive: true });
 
             await fs.writeFile(path.join(moduleDir, 'index.dlang'), `Domain Types {}`);
 
+            // Act
             const { resolver } = createResolver();
             const uri = await resolver.resolveFrom(projectDir, './shared/types');
+
+            // Assert
             expect(uri.fsPath).toBe(path.join(moduleDir, 'index.dlang'));
         });
 
         // EDGE: model.yaml with custom entry overrides default
         test('local module with model.yaml resolves to custom entry point', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'local-module-with-manifest');
             const moduleDir = path.join(projectDir, 'shared', 'types');
             await fs.mkdir(moduleDir, { recursive: true });
@@ -212,13 +229,17 @@ Namespace shared.types {
 }
 `);
 
+            // Act
             const { resolver } = createResolver();
             const uri = await resolver.resolveFrom(projectDir, './shared/types');
+
+            // Assert
             expect(uri.fsPath).toBe(path.join(moduleDir, 'main.dlang'));
         });
 
         // EDGE: model.yaml without entry field still falls back to index.dlang
         test('local module with model.yaml but no entry field falls back to index.dlang', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'local-module-default-entry');
             const moduleDir = path.join(projectDir, 'utils');
             await fs.mkdir(moduleDir, { recursive: true });
@@ -234,8 +255,11 @@ Namespace utils {
 }
 `);
 
+            // Act
             const { resolver } = createResolver();
             const uri = await resolver.resolveFrom(projectDir, './utils');
+
+            // Assert
             expect(uri.fsPath).toBe(path.join(moduleDir, 'index.dlang'));
         });
     });

@@ -34,17 +34,20 @@ describe('Multi-Target References', () => {
     // SMOKE: BC belongs to exactly one domain
     // ==========================================
     test('BoundedContext domain ref resolves to correct single domain name', async () => {
+        // Arrange
         const input = s`
             Domain Sales { description: "Sales operations" }
             Domain Marketing { description: "Marketing operations" }
             bc CustomerExperience for Sales { description: "Sales experience" }
         `;
 
+        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
         const model = document.parseResult.value;
         const bc = model.children.find(c => isBoundedContext(c) && c.name === 'CustomerExperience') as BoundedContext;
 
+        // Assert
         // Single reference - a BC can only belong to ONE domain
         expect(bc.domain!.ref?.name).toBe('Sales');
     });
@@ -53,6 +56,7 @@ describe('Multi-Target References', () => {
     // EDGE: same-name BCs from different domains multi-resolve
     // ==========================================
     test('ContextMap multi-resolves same-name BCs from different domains with correct item count and names', async () => {
+        // Arrange
         const input = `
             Domain Sales {}
             Domain Billing {}
@@ -65,12 +69,14 @@ describe('Multi-Target References', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
 
         const model = document.parseResult.value;
         const contextMap = model.children.find(c => isContextMap(c) && c.name === 'AllOrders') as ContextMap;
 
+        // Assert
         // Single reference name that resolves to multiple targets
         expect(contextMap.boundedContexts).toHaveLength(1);
         const ordersRef = contextMap.boundedContexts[0];
@@ -86,6 +92,7 @@ describe('Multi-Target References', () => {
     // EDGE: DomainMap references each domain once
     // ==========================================
     test('DomainMap resolves each domain once via separate multi-references', async () => {
+        // Arrange
         const input = `
             Domain Sales { description: "Sales domain" }
             Domain Marketing { description: "Marketing domain" }
@@ -96,12 +103,14 @@ describe('Multi-Target References', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
 
         const model = document.parseResult.value;
         const domainMap = model.children.find(c => isDomainMap(c) && c.name === 'CorporatePortfolio') as DomainMap;
 
+        // Assert
         // Three separate multi-references, each with 1 item
         expect(domainMap.domains).toHaveLength(3);
 
@@ -116,6 +125,7 @@ describe('Multi-Target References', () => {
     // EDGE: ContextMap resolves distinct BCs
     // ==========================================
     test('ContextMap with distinct BC names resolves each to single target', async () => {
+        // Arrange
         const input = `
             Domain Sales {}
 
@@ -128,12 +138,14 @@ describe('Multi-Target References', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
         expectValidDocument(document);
 
         const model = document.parseResult.value;
         const contextMap = model.children.find(c => isContextMap(c) && c.name === 'CoreSystems') as ContextMap;
 
+        // Assert
         // Three separate multi-references, each resolving to one target
         expect(contextMap.boundedContexts).toHaveLength(3);
 
@@ -148,6 +160,7 @@ describe('Multi-Target References', () => {
     // EDGE: missing targets leave refs unresolved
     // ==========================================
     test('existing targets resolve even when some references are missing', async () => {
+        // Arrange
         const input = `
             Domain Sales {}
 
@@ -158,9 +171,12 @@ describe('Multi-Target References', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
         const model = document.parseResult.value;
         const contextMap = model.children.find(c => isContextMap(c) && c.name === 'PortfolioContexts') as ContextMap;
+
+        // Assert
         expect(contextMap.boundedContexts).toHaveLength(2);
 
         const items = contextMap.boundedContexts.flatMap(d => d.items);
@@ -175,15 +191,18 @@ describe('Multi-Target References', () => {
     // EDGE: empty DomainMap has zero domain references
     // ==========================================
     test('empty DomainMap with no contains clause has zero domain references', async () => {
+        // Arrange
         const input = `
             Domain Sales {}
             DomainMap EmptyPortfolio {}
         `;
 
+        // Act
         const document = await testServices.parse(input);
         const model = document.parseResult.value;
         const domainMap = model.children.find(c => isDomainMap(c) && c.name === 'EmptyPortfolio') as DomainMap;
 
+        // Assert
         expect(domainMap.domains).toHaveLength(0);
     });
 
@@ -191,6 +210,7 @@ describe('Multi-Target References', () => {
     // EDGE: all references missing yields zero resolved
     // ==========================================
     test('ContextMap where all referenced BCs are missing yields zero resolved items', async () => {
+        // Arrange
         const input = `
             Domain Sales {}
 
@@ -199,10 +219,12 @@ describe('Multi-Target References', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
         const model = document.parseResult.value;
         const contextMap = model.children.find(c => isContextMap(c) && c.name === 'Ghosts') as ContextMap;
 
+        // Assert
         // Two reference slots exist
         expect(contextMap.boundedContexts).toHaveLength(2);
         // But neither should have a resolved ref

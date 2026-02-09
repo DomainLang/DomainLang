@@ -30,12 +30,15 @@ beforeAll(() => {
 
 describe('Metadata Definition Parsing', () => {
     test('should parse Metadata definitions with correct names', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Language
             Metadata Framework
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const metadatas = document.parseResult.value.children.filter(isMetadata);
 
@@ -51,6 +54,7 @@ describe('Metadata Definition Parsing', () => {
 
 describe('Metadata Block in BoundedContext', () => {
     test('should parse metadata entries with all assignment operators', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Language
             Metadata Framework
@@ -67,6 +71,8 @@ describe('Metadata Block in BoundedContext', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
@@ -83,6 +89,7 @@ describe('Metadata Block in BoundedContext', () => {
     });
 
     test('should parse metadata block with alternative meta keyword', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -94,6 +101,8 @@ describe('Metadata Block in BoundedContext', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         const entries = bc.metadata;
@@ -104,6 +113,7 @@ describe('Metadata Block in BoundedContext', () => {
     });
 
     test('should allow empty metadata block', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
@@ -112,6 +122,8 @@ describe('Metadata Block in BoundedContext', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         expect(bc.metadata).toHaveLength(0);
@@ -124,6 +136,7 @@ describe('Metadata Block in BoundedContext', () => {
 
 describe('Metadata Value Formats', () => {
     test('should handle metadata values with special characters', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Repository
             Metadata Url
@@ -137,6 +150,8 @@ describe('Metadata Value Formats', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
@@ -145,6 +160,7 @@ describe('Metadata Value Formats', () => {
     });
 
     test('should support single quotes in metadata values', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -156,6 +172,8 @@ describe('Metadata Value Formats', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         expect(bc.metadata[0]?.value).toBe('Python');
@@ -170,6 +188,7 @@ describe('Metadata with Other Documentation Blocks', () => {
     // 'coexist with team' subsumed by comprehensive test below
 
     test('should coexist with classification, team, terminology, and description', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Language
             Metadata Database
@@ -191,6 +210,8 @@ describe('Metadata with Other Documentation Blocks', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
@@ -208,6 +229,7 @@ describe('Metadata with Other Documentation Blocks', () => {
 
 describe('Metadata Validation', () => {
     test('should report linking error for undefined metadata key', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -220,6 +242,8 @@ describe('Metadata Validation', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         const entries = bc.metadata;
         expect(entries).toHaveLength(2);
@@ -237,6 +261,7 @@ describe('Metadata Validation', () => {
     });
 
     test('should parse duplicate metadata keys without error', async () => {
+        // Arrange & Act
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -250,6 +275,8 @@ describe('Metadata Validation', () => {
 
         // The language does not currently validate duplicate metadata keys
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         const entries = bc.metadata;
@@ -263,6 +290,7 @@ describe('Metadata Validation', () => {
     });
 
     test('should reject metadata entry without a value', async () => {
+        // Arrange
         const input = s`
             Metadata Language
             Domain Sales {}
@@ -273,6 +301,7 @@ describe('Metadata Validation', () => {
             }
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,
@@ -281,6 +310,7 @@ describe('Metadata Validation', () => {
     });
 
     test('should reject metadata block outside BoundedContext', async () => {
+        // Arrange
         const input = s`
             Metadata Language
             Domain Sales {
@@ -290,6 +320,7 @@ describe('Metadata Validation', () => {
             }
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,

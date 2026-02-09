@@ -73,12 +73,15 @@ describe('BoundedContext Keyword Variants', () => {
         ['BoundedContext', 'full keyword'],
         ['bc', 'shorthand'],
     ])('should parse %s (%s)', async (keyword) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             ${keyword} OrderContext for Sales
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         expect(getFirstBoundedContext(document).name).toBe('OrderContext');
     });
@@ -90,11 +93,14 @@ describe('BoundedContext Keyword Variants', () => {
 
 describe('Team Keyword', () => {
     test('should parse Team keyword with correct name', async () => {
+        // Arrange & Act
         const input = s`
             Team SalesTeam
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const teams = document.parseResult.value.children.filter(c => c.$type === 'Team');
         expect(teams).toHaveLength(1);
@@ -108,11 +114,14 @@ describe('Team Keyword', () => {
 
 describe('Classification Keyword', () => {
     test('should parse Classification keyword with correct name', async () => {
+        // Arrange & Act
         const input = s`
             Classification Core
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const classifications = document.parseResult.value.children.filter(c => c.$type === 'Classification');
         expect(classifications).toHaveLength(1);
@@ -160,6 +169,7 @@ describe('DomainMap Keyword Variants', () => {
         ['DomainMap', 'full keyword'],
         ['dmap', 'shorthand'],
     ])('should parse %s (%s) with contains', async (keyword) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {
                 vision: "Sales domain"
@@ -171,6 +181,8 @@ describe('DomainMap Keyword Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const domainMaps = document.parseResult.value.children.filter(c => c.$type === 'DomainMap');
         expect(domainMaps).toHaveLength(1);
@@ -188,6 +200,7 @@ describe('Namespace Keyword Variants', () => {
         ['Namespace', 'capitalized keyword'],
         ['ns', 'shorthand'],
     ])('should parse %s (%s) with children', async (keyword) => {
+        // Arrange & Act
         const input = s`
             ${keyword} sales {
                 Domain Sales {
@@ -197,6 +210,8 @@ describe('Namespace Keyword Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const namespaces = document.parseResult.value.children.filter(c => c.$type === 'NamespaceDeclaration');
         expect(namespaces).toHaveLength(1);
@@ -229,6 +244,7 @@ describe('Namespace Keyword Variants', () => {
 
 describe('bc Inline Assignment Variants', () => {
     test('should parse as keyword for classification', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             Classification Core
@@ -236,12 +252,15 @@ describe('bc Inline Assignment Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.classification?.[0]?.ref?.name).toBe('Core');
     });
 
     test('should parse by keyword for team', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             Team SalesTeam
@@ -249,6 +268,8 @@ describe('bc Inline Assignment Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
@@ -261,6 +282,7 @@ describe('bc Inline Assignment Variants', () => {
 
 describe('bc Documentation Block Variants', () => {
     test('should parse team: keyword in block', async () => {
+        // Arrange & Act
         const input = s`
             Team SalesTeam
             Domain Sales {}
@@ -270,6 +292,8 @@ describe('bc Documentation Block Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.team).toHaveLength(1);
@@ -277,6 +301,7 @@ describe('bc Documentation Block Variants', () => {
     });
 
     test('should parse classification keyword in block', async () => {
+        // Arrange & Act
         const input = s`
             Classification Core
             Domain Sales {}
@@ -286,6 +311,8 @@ describe('bc Documentation Block Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.classification).toHaveLength(1);
@@ -293,6 +320,7 @@ describe('bc Documentation Block Variants', () => {
     });
 
     test('should parse businessModel keyword in block', async () => {
+        // Arrange & Act
         const input = s`
             Classification SaaS
             Domain Sales {}
@@ -302,12 +330,15 @@ describe('bc Documentation Block Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.businessModel?.ref?.name).toBe('SaaS');
     });
 
     test('should parse evolution keyword with resolved Classification reference', async () => {
+        // Arrange & Act
         const input = s`
             Classification Mature
             Domain Sales {}
@@ -317,6 +348,8 @@ describe('bc Documentation Block Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.evolution?.ref?.name).toBe('Mature');
@@ -351,6 +384,7 @@ describe('Relationships Block Variants', () => {
         ['relationships', 'relationships keyword'],
         ['integrations', 'integrations alias'],
     ])('should parse %s (%s) with arrow and target', async (keyword) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -362,6 +396,8 @@ describe('Relationships Block Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bcs = getAllBoundedContexts(document);
         const inventoryBC = bcs.find(bc => bc.name === 'InventoryContext')!;
@@ -379,6 +415,7 @@ describe('Decisions Block Variants', () => {
         ['decisions', 'decisions keyword'],
         ['rules', 'rules alias'],
     ])('should parse %s (%s) with decision name and value', async (keyword) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
@@ -389,6 +426,8 @@ describe('Decisions Block Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.decisions).toHaveLength(1);
@@ -435,6 +474,7 @@ describe('Decision Type Variants', () => {
         ['rule', 'UniqueIds', 'All IDs must be unique'],
         ['Rule', 'UniqueIds', 'All IDs must be unique'],
     ])('should parse %s keyword', async (keyword, name, description) => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
@@ -445,6 +485,8 @@ describe('Decision Type Variants', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.decisions).toHaveLength(1);
@@ -508,12 +550,14 @@ describe('Assignment Operator Variants', () => {
 
 describe('Syntax Variant Negative Cases', () => {
     test('should reject unknown keyword as Domain alternative', async () => {
+        // Arrange
         const input = s`
             subdomain Sales {
                 vision: "Sales vision"
             }
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,
@@ -524,12 +568,14 @@ describe('Syntax Variant Negative Cases', () => {
     // 'ContextMap without braces' covered by model-structure-parsing.test.ts negative tests
 
     test('should reject DomainMap without braces', async () => {
+        // Arrange
         const input = s`
             Domain Sales {}
             DomainMap BusinessMap
                 contains Sales
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,

@@ -22,6 +22,7 @@ describe('domain-lang naming utilities', () => {
     // ========================================================================
 
     it('computes fully qualified names for nested namespaces', async () => {
+        // Arrange
         const document = await parse(`
             Namespace strategic.core {
                 Namespace operations {
@@ -35,7 +36,7 @@ describe('domain-lang naming utilities', () => {
         const innerNamespace = rootNamespace.children.find(isNamespaceDeclaration)!;
         const domain = innerNamespace.children.find(isDomain)!;
 
-        // Provider path
+        // Act & Assert
         expect(qualifiedNames.getQualifiedName(domain.$container, domain.name))
             .toBe('strategic.core.operations.Sales');
 
@@ -51,22 +52,27 @@ describe('domain-lang naming utilities', () => {
     describe('Edge: joinQualifiedName', () => {
 
         it('joins parent and child with dot separator', () => {
+            // Act & Assert
             expect(joinQualifiedName('acme', 'Sales')).toBe('acme.Sales');
         });
 
         it('returns child only when parent is empty string', () => {
+            // Act & Assert
             expect(joinQualifiedName('', 'Sales')).toBe('Sales');
         });
 
         it('handles dotted parent name', () => {
+            // Act & Assert
             expect(joinQualifiedName('acme.core', 'Sales')).toBe('acme.core.Sales');
         });
 
         it('handles deeply nested dotted name', () => {
+            // Act & Assert
             expect(joinQualifiedName('a.b.c.d', 'e')).toBe('a.b.c.d.e');
         });
 
         it('handles single-character names', () => {
+            // Act & Assert
             expect(joinQualifiedName('a', 'b')).toBe('a.b');
         });
     });
@@ -78,49 +84,54 @@ describe('domain-lang naming utilities', () => {
     describe('Edge: QualifiedNameProvider', () => {
 
         it('root-level domain (no namespace) returns simple name', async () => {
+            // Arrange
             const document = await parse(`
                 Domain Sales {}
             `);
-
             const model = document.parseResult.value;
             const domain = model.children.find(isDomain)!;
 
-            // Container is the Model, which produces empty prefix
+            // Act
             const qualified = qualifiedNames.getQualifiedName(domain.$container, domain.name);
+
+            // Assert
             expect(qualified).toBe('Sales');
         });
 
         it('single-level namespace returns namespace.name', async () => {
+            // Arrange
             const document = await parse(`
                 Namespace acme {
                     Domain Sales {}
                 }
             `);
-
             const model = document.parseResult.value;
             const ns = model.children.find(isNamespaceDeclaration)!;
             const domain = ns.children.find(isDomain)!;
 
+            // Act & Assert
             expect(qualifiedNames.getQualifiedName(domain.$container, domain.name))
                 .toBe('acme.Sales');
         });
 
         it('dotted namespace name expands to full FQN', async () => {
+            // Arrange
             const document = await parse(`
                 Namespace acme.retail.sales {
                     Domain Orders {}
                 }
             `);
-
             const model = document.parseResult.value;
             const ns = model.children.find(isNamespaceDeclaration)!;
             const domain = ns.children.find(isDomain)!;
 
+            // Act & Assert
             expect(qualifiedNames.getQualifiedName(domain.$container, domain.name))
                 .toBe('acme.retail.sales.Orders');
         });
 
         it('deeply nested namespace blocks produce full FQN', async () => {
+            // Arrange
             const document = await parse(`
                 Namespace a {
                     Namespace b {
@@ -130,23 +141,25 @@ describe('domain-lang naming utilities', () => {
                     }
                 }
             `);
-
             const model = document.parseResult.value;
             const nsA = model.children.find(isNamespaceDeclaration)!;
             const nsB = nsA.children.find(isNamespaceDeclaration)!;
             const nsC = nsB.children.find(isNamespaceDeclaration)!;
             const domain = nsC.children.find(isDomain)!;
 
+            // Act & Assert
             expect(qualifiedNames.getQualifiedName(domain.$container, domain.name))
                 .toBe('a.b.c.X');
         });
 
         it('string qualifier is used as-is prefix', () => {
+            // Act & Assert
             expect(qualifiedNames.getQualifiedName('custom.prefix', 'Element'))
                 .toBe('custom.prefix.Element');
         });
 
         it('empty string qualifier returns just the name', () => {
+            // Act & Assert
             expect(qualifiedNames.getQualifiedName('', 'Element'))
                 .toBe('Element');
         });
@@ -159,20 +172,22 @@ describe('domain-lang naming utilities', () => {
     describe('Edge: toQualifiedName', () => {
 
         it('works with single-level namespace', async () => {
+            // Arrange
             const document = await parse(`
                 Namespace sales {
                     Domain X {}
                 }
             `);
-
             const model = document.parseResult.value;
             const ns = model.children.find(isNamespaceDeclaration)!;
             const domain = ns.children.find(isDomain)!;
 
+            // Act & Assert
             expect(toQualifiedName(ns, domain.name)).toBe('sales.X');
         });
 
         it('works with two levels of nested namespaces', async () => {
+            // Arrange
             const document = await parse(`
                 Namespace company {
                     Namespace sales {
@@ -180,12 +195,12 @@ describe('domain-lang naming utilities', () => {
                     }
                 }
             `);
-
             const model = document.parseResult.value;
             const companyNs = model.children.find(isNamespaceDeclaration)!;
             const salesNs = companyNs.children.find(isNamespaceDeclaration)!;
             const domain = salesNs.children.find(isDomain)!;
 
+            // Act & Assert
             expect(toQualifiedName(salesNs, domain.name)).toBe('company.sales.Orders');
         });
     });

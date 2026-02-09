@@ -66,6 +66,7 @@ describe('Go to Definition and Find References', () => {
     // SMOKE: same-file definition navigation
     // ==========================================
     test('navigates to domain definition in same file with correct target range', async () => {
+        // Arrange
         await clearAllDocuments();
         const projectDir = path.join(tempDir, 'same-file-def');
         const filePath = path.join(projectDir, 'model.dlang');
@@ -83,9 +84,11 @@ bc OrderContext for Sales {
         const bcLine = lines.findIndex(l => l.includes('for Sales'));
         const salesRefCol = lines[bcLine].indexOf('Sales');
 
+        // Act
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const result = (await getDefinitionAt(doc, bcLine, salesRefCol + 2))!;
 
+        // Assert
         expect(result).toHaveLength(1);
         expect(result[0].targetUri).toBe(doc.uri.toString());
         // "Domain Sales" is on line 1 (0-indexed, blank line 0)
@@ -96,6 +99,7 @@ bc OrderContext for Sales {
     // SMOKE: cross-file definition navigation
     // ==========================================
     test('navigates to definition in imported file', async () => {
+        // Arrange
         await clearAllDocuments();
         const projectDir = path.join(tempDir, 'cross-file-def');
 
@@ -121,9 +125,11 @@ bc OrderContext for Sales {
         const bcLine = lines.findIndex(l => l.includes('for Sales'));
         const salesRefCol = lines[bcLine].indexOf('Sales');
 
+        // Act
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const result = (await getDefinitionAt(doc, bcLine, salesRefCol + 2))!;
 
+        // Assert
         expect(result).toHaveLength(1);
         expect(result[0].targetUri).toBe(URI.file(domainsPath).toString());
     });
@@ -132,6 +138,7 @@ bc OrderContext for Sales {
     // EDGE: definition on keyword returns empty
     // ==========================================
     test('returns no definition when cursor is on a keyword', async () => {
+        // Arrange
         await clearAllDocuments();
         const projectDir = path.join(tempDir, 'keyword-pos');
         const filePath = path.join(projectDir, 'model.dlang');
@@ -142,9 +149,11 @@ Domain Sales {
         `);
 
         // Position cursor on the "Domain" keyword itself (line 1, char 0)
+
+        // Act
         const result = await getDefinitionAt(doc, 1, 0);
 
-        // Should return undefined or empty -- no definition target for keyword
+        // Assert — Should return undefined or empty -- no definition target for keyword
         const hasResults = result && result.length > 0;
         expect(hasResults).toBeFalsy();
     });
@@ -153,6 +162,7 @@ Domain Sales {
     // EDGE: nested import & path alias navigation
     // ==========================================
     test('navigates to definition via path alias import with correct target URI', async () => {
+        // Arrange
         await clearAllDocuments();
         const projectDir = path.join(tempDir, 'nested-def');
         await fs.mkdir(path.join(projectDir, 'shared'), { recursive: true });
@@ -192,8 +202,11 @@ bc OrderContext for Sales {
         const teamLine = lines.findIndex(l => l.includes('team: SalesTeam'));
         const teamRefCol = lines[teamLine].indexOf('SalesTeam');
 
+        // Act
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const result = (await getDefinitionAt(doc, teamLine, teamRefCol + 2))!;
+
+        // Assert
 
         expect(result).toHaveLength(1);
         // Must point to the teams.dlang file, not the current file
@@ -207,6 +220,7 @@ bc OrderContext for Sales {
     // ==========================================
     describe('Find References', () => {
         test('finds all references to a domain across files with correct URIs', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'find-refs');
 
@@ -236,11 +250,12 @@ bc BillingContext for Sales {
             const salesDomain = model.children.find(c => c.$type === 'Domain');
             expect(salesDomain).toBeDefined();
 
+            // Act
             const references = services.DomainLang.references.References;
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const refArray = references.findReferences(salesDomain!, { includeDeclaration: false }).toArray();
 
-            // Two BCs reference Sales: OrderContext and BillingContext
+            // Assert — Two BCs reference Sales: OrderContext and BillingContext
             expect(refArray.length).toBeGreaterThanOrEqual(2);
             // All references should point to the contexts file (not the definition file)
             const refUris = refArray.map(r => r.sourceUri.toString());
@@ -248,6 +263,7 @@ bc BillingContext for Sales {
         });
 
         test('includeDeclaration also returns the definition site', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'find-refs-decl');
 
@@ -264,13 +280,14 @@ bc OrderContext for Sales
             const salesDomain = model.children.find(c => c.$type === 'Domain');
             expect(salesDomain).toBeDefined();
 
+            // Act
             const references = services.DomainLang.references.References;
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const withDecl = references.findReferences(salesDomain!, { includeDeclaration: true }).toArray();
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const withoutDecl = references.findReferences(salesDomain!, { includeDeclaration: false }).toArray();
 
-            // including declaration should yield at least one more entry
+            // Assert — including declaration should yield at least one more entry
             expect(withDecl.length).toBeGreaterThan(withoutDecl.length);
         });
     });

@@ -39,6 +39,7 @@ describe('Local File Imports', () => {
         ['parent directory', '../common/types.dlang'],
         ['workspace alias @/', '@/contexts/sales.dlang'],
     ])('should parse %s import: %s', async (_label, uri) => {
+        // Arrange & Act
         const input = s`
             import "${uri}"
 
@@ -46,6 +47,8 @@ describe('Local File Imports', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
@@ -134,6 +137,7 @@ describe('Local File Imports', () => {
 
 describe('Manifest Dependency Imports', () => {
     test('should parse simple dependency import', async () => {
+        // Arrange & Act
         const input = s`
             import "core"
 
@@ -141,6 +145,8 @@ describe('Manifest Dependency Imports', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
@@ -149,6 +155,7 @@ describe('Manifest Dependency Imports', () => {
     });
 
     test('should parse dependency import with alias', async () => {
+        // Arrange & Act
         const input = s`
             import "core" as Core
 
@@ -156,6 +163,8 @@ describe('Manifest Dependency Imports', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
@@ -164,6 +173,7 @@ describe('Manifest Dependency Imports', () => {
     });
 
     test('should parse dependency with path notation', async () => {
+        // Arrange & Act
         const input = s`
             import "patterns/strategic"
 
@@ -171,6 +181,8 @@ describe('Manifest Dependency Imports', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
@@ -184,6 +196,7 @@ describe('Manifest Dependency Imports', () => {
 
 describe('Multiple Imports', () => {
     test('should parse multiple mixed import styles with correct URIs and aliases', async () => {
+        // Arrange & Act
         const input = s`
             import "./local.dlang"
             import "@/workspace.dlang"
@@ -193,6 +206,8 @@ describe('Multiple Imports', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const imports = getImports(document);
 
@@ -206,6 +221,7 @@ describe('Multiple Imports', () => {
     });
 
     test('should place imports before model children in AST', async () => {
+        // Arrange & Act
         const input = s`
             import "./types.dlang"
             import "./teams.dlang"
@@ -221,6 +237,8 @@ describe('Multiple Imports', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const model = document.parseResult.value;
 
@@ -235,6 +253,7 @@ describe('Multiple Imports', () => {
 
 describe('Import Edge Cases', () => {
     test('should handle import with single quotes', async () => {
+        // Arrange & Act
         const input = s`
             import './types.dlang'
 
@@ -242,6 +261,8 @@ describe('Import Edge Cases', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
@@ -249,6 +270,7 @@ describe('Import Edge Cases', () => {
     });
 
     test('should handle import with spaces in path', async () => {
+        // Arrange & Act
         const input = s`
             import "./my folder/types.dlang"
 
@@ -256,6 +278,8 @@ describe('Import Edge Cases', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
@@ -263,12 +287,15 @@ describe('Import Edge Cases', () => {
     });
 
     test('should handle empty model with only imports', async () => {
+        // Arrange & Act
         const input = s`
             import "./types.dlang"
             import "core"
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         const imports = getImports(document);
         expect(imports).toHaveLength(2);
         expect(imports[0].uri).toBe('./types.dlang');
@@ -276,6 +303,7 @@ describe('Import Edge Cases', () => {
     });
 
     test('should treat version-in-URI as part of the URI string', async () => {
+        // Arrange & Act
         const input = s`
             import "core@v1.0.0"
 
@@ -283,6 +311,8 @@ describe('Import Edge Cases', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         const imports = getImports(document);
         // The @v1.0.0 is part of the URI string literal, not separate syntax
         expect(imports).toHaveLength(1);
@@ -296,12 +326,14 @@ describe('Import Edge Cases', () => {
 
 describe('Grammar Rejection', () => {
     test('should reject named imports syntax', async () => {
+        // Arrange
         const input = s`
             import { Domain, BoundedContext } from "core"
 
             Domain Sales {}
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,
@@ -310,12 +342,14 @@ describe('Grammar Rejection', () => {
     });
 
     test('should reject inline integrity field', async () => {
+        // Arrange
         const input = s`
             import "core" integrity "sha256:abc123"
 
             Domain Sales {}
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,
@@ -324,12 +358,14 @@ describe('Grammar Rejection', () => {
     });
 
     test('should reject import without URI string', async () => {
+        // Arrange
         const input = s`
             import core
 
             Domain Sales {}
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,

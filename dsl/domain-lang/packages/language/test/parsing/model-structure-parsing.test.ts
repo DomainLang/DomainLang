@@ -33,7 +33,10 @@ describe('Grammar Completeness Tests', () => {
 
     describe('Section 1: Entry Point & Model Structure', () => {
         test('Model - empty model has no children or imports', async () => {
+            // Arrange & Act
             const document = await testServices.parse(`// Empty model`);
+
+            // Assert
             expectValidDocument(document);
             const model = document.parseResult.value;
             expect(model.children).toHaveLength(0);
@@ -41,6 +44,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('Model - with imports and children parses correct counts', async () => {
+            // Arrange & Act
             const input = s`
                 import "./types.dlang"
                 Domain Test {}
@@ -48,6 +52,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
@@ -56,6 +62,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('StructureElement - all variants parse with correct types and nesting', async () => {
+            // Arrange & Act
             const input = s`
                 Domain TestDomain {}
                 BoundedContext TestBC for TestDomain
@@ -72,6 +79,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const model = document.parseResult.value;
 
@@ -92,12 +101,15 @@ describe('Grammar Completeness Tests', () => {
 
     describe('Section 2: DDD Strategic Design', () => {
         test('Domain - minimal syntax and parent domain', async () => {
+            // Arrange & Act
             const input = s`
                 Domain Parent {}
                 Domain Child in Parent {}
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const domains = document.parseResult.value.children.filter(isDomain);
 
@@ -109,6 +121,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('Domain - with qualified parent name resolves reference', async () => {
+            // Arrange & Act
             const input = s`
                 Namespace com.example {
                     Domain Parent {}
@@ -117,6 +130,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const domains = document.parseResult.value.children.filter(isDomain);
             const child = domains.find(d => d.name === 'Child')!;
@@ -147,6 +162,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('Domain - all documentation blocks parse with correct values', async () => {
+            // Arrange & Act
             const input = s`
                 Classification Core
 
@@ -158,6 +174,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const domain = document.parseResult.value.children.find(isDomain)!;
 
@@ -168,12 +186,15 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('BoundedContext - minimal with domain reference', async () => {
+            // Arrange & Act
             const input = s`
                 Domain Test {}
                 BoundedContext TestBC for Test
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const bc = document.parseResult.value.children.find(isBoundedContext)!;
             expect(bc.name).toBe('TestBC');
@@ -183,6 +204,7 @@ describe('Grammar Completeness Tests', () => {
         // 'inline classification and team' covered by syntax-variants.test.ts
 
         test('BoundedContext - all documentation blocks populate correctly', async () => {
+            // Arrange & Act
             const input = s`
                 Domain Test {}
                 Team TestTeam
@@ -218,6 +240,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const bc = document.parseResult.value.children.find(isBoundedContext) as BoundedContext;
 
@@ -247,6 +271,7 @@ describe('Grammar Completeness Tests', () => {
 
     describe('Section 7: Module System', () => {
         test('Namespace - nested structure with correct hierarchy', async () => {
+            // Arrange & Act
             const input = s`
                 Namespace com.example.sales {
                     Domain Sales {}
@@ -259,6 +284,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const ns = document.parseResult.value.children.find(isNamespaceDeclaration)!;
 
@@ -270,6 +297,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('QualifiedName - complex dotted names resolve correctly', async () => {
+            // Arrange & Act
             const input = s`
                 Namespace com.example.deep.pkg.name {
                     Domain Test {}
@@ -279,6 +307,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const bc = document.parseResult.value.children.find(isBoundedContext)!;
             expect(bc.name).toBe('TestBC');
@@ -292,6 +322,7 @@ describe('Grammar Completeness Tests', () => {
 
     describe('Section 8: Terminals & Lexical Grammar', () => {
         test('ID terminal - various formats parse as domain names', async () => {
+            // Arrange & Act
             const input = s`
                 Domain simple {}
                 Domain with_underscores {}
@@ -301,6 +332,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const domains = document.parseResult.value.children.filter(isDomain);
 
@@ -311,6 +344,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('STRING terminal - both quote types preserve content', async () => {
+            // Arrange & Act
             const input = s`
                 Domain Test {
                     description: "Double quoted string"
@@ -319,6 +353,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const domain = document.parseResult.value.children.find(isDomain)!;
 
@@ -327,6 +363,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('Comments - do not affect parsing', async () => {
+            // Arrange & Act
             const input = s`
                 // Single line comment
                 /* Multi-line
@@ -338,6 +375,8 @@ describe('Grammar Completeness Tests', () => {
             `;
 
             const document = await testServices.parse(input);
+
+            // Assert
             expectValidDocument(document);
             const domain = document.parseResult.value.children.find(isDomain)!;
             expect(domain.name).toBe('Test');
@@ -353,6 +392,7 @@ describe('Grammar Completeness Tests', () => {
 
     describe('Negative: Invalid Syntax', () => {
         test('rejects unclosed block', async () => {
+            // Arrange, Act & Assert
             await expectGrammarRuleRejectsInput(
                 testServices.parse,
                 'Domain Test {',
@@ -361,6 +401,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('rejects empty domain name', async () => {
+            // Arrange, Act & Assert
             await expectGrammarRuleRejectsInput(
                 testServices.parse,
                 'Domain {}',
@@ -369,6 +410,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('rejects nested BoundedContext inside BoundedContext', async () => {
+            // Arrange, Act & Assert
             await expectGrammarRuleRejectsInput(
                 testServices.parse,
                 s`
@@ -382,6 +424,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('rejects ContextMap without opening brace', async () => {
+            // Arrange, Act & Assert
             await expectGrammarRuleRejectsInput(
                 testServices.parse,
                 s`
@@ -394,6 +437,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('rejects domain with invalid nested keyword', async () => {
+            // Arrange, Act & Assert
             await expectGrammarRuleRejectsInput(
                 testServices.parse,
                 s`
@@ -406,6 +450,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('rejects relationship outside context map or BC block', async () => {
+            // Arrange, Act & Assert
             await expectGrammarRuleRejectsInput(
                 testServices.parse,
                 s`
@@ -419,6 +464,7 @@ describe('Grammar Completeness Tests', () => {
         });
 
         test('rejects namespace with missing block', async () => {
+            // Arrange, Act & Assert
             await expectGrammarRuleRejectsInput(
                 testServices.parse,
                 'Namespace com.example',

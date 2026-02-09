@@ -25,8 +25,13 @@ describe('ManifestValidator', () => {
 
     describe('valid manifests', () => {
         test('accepts minimal valid manifest', () => {
+            // Arrange
             const manifest: ModelManifest = {};
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
             expect(result.warningCount).toBe(0);
@@ -34,6 +39,7 @@ describe('ManifestValidator', () => {
         });
 
         test('accepts complete valid manifest', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 model: {
                     name: 'my-package',
@@ -54,18 +60,27 @@ describe('ManifestValidator', () => {
                     }
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
         });
 
         test('accepts short-form dependencies', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 dependencies: {
                     'domainlang/core': 'v1.0.0'
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
         });
@@ -73,12 +88,17 @@ describe('ManifestValidator', () => {
 
     describe('model section validation', () => {
         test('requires name for publishable packages', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 model: {
                     version: '1.0.0'
                 }
             };
+
+            // Act
             const result = validator.validate(manifest, { requirePublishable: true });
+
+            // Assert
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d => d.code === ManifestIssueCodes.ModelMissingName);
             expect(diagnostic).not.toBeUndefined();
@@ -87,12 +107,17 @@ describe('ManifestValidator', () => {
         });
 
         test('requires version for publishable packages', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 model: {
                     name: 'my-package'
                 }
             };
+
+            // Act
             const result = validator.validate(manifest, { requirePublishable: true });
+
+            // Assert
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d => d.code === ManifestIssueCodes.ModelMissingVersion);
             expect(diagnostic).not.toBeUndefined();
@@ -101,13 +126,18 @@ describe('ManifestValidator', () => {
         });
 
         test('warns on invalid SemVer version', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 model: {
                     name: 'my-package',
                     version: 'invalid-version'
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             const diagnostic = result.diagnostics.find(d => d.code === ManifestIssueCodes.ModelInvalidVersion);
             expect(diagnostic).not.toBeUndefined();
             expect(diagnostic!.severity).toBe('warning');
@@ -115,12 +145,17 @@ describe('ManifestValidator', () => {
         });
 
         test('accepts valid SemVer versions', () => {
+            // Arrange
             const validVersions = ['1.0.0', '2.3.4-beta', '0.0.1+build'];
             for (const version of validVersions) {
                 const manifest: ModelManifest = {
                     model: { name: 'test', version }
                 };
+
+                // Act
                 const result = validator.validate(manifest);
+
+                // Assert
                 const versionErrors = result.diagnostics.filter(d =>
                     d.code === ManifestIssueCodes.ModelInvalidVersion
                 );
@@ -131,6 +166,7 @@ describe('ManifestValidator', () => {
 
     describe('dependency validation', () => {
         test('rejects conflicting source and path', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 dependencies: {
                     'bad-dep': {
@@ -140,7 +176,11 @@ describe('ManifestValidator', () => {
                     }
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d =>
                 d.code === IssueCodes.ImportConflictingSourcePath
@@ -150,6 +190,7 @@ describe('ManifestValidator', () => {
         });
 
         test('dependency without explicit source uses key as source', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 dependencies: {
                     'owner/repo': {
@@ -157,12 +198,17 @@ describe('ManifestValidator', () => {
                     }
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
         });
 
         test('requires ref for git dependencies', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 dependencies: {
                     'missing-ref': {
@@ -170,7 +216,11 @@ describe('ManifestValidator', () => {
                     }
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d =>
                 d.code === IssueCodes.ImportMissingRef
@@ -180,6 +230,7 @@ describe('ManifestValidator', () => {
         });
 
         test('accepts valid ref specs', () => {
+            // Arrange
             const validRefs = ['v1.0.0', 'main', 'abc1234567', '1.2.3'];
             for (const ref of validRefs) {
                 const manifest: ModelManifest = {
@@ -187,7 +238,11 @@ describe('ManifestValidator', () => {
                         'owner/repo': { ref }
                     }
                 };
+
+                // Act
                 const result = validator.validate(manifest);
+
+                // Assert
                 const missingRef = result.diagnostics.filter(d =>
                     d.code === IssueCodes.ImportMissingRef
                 );
@@ -196,6 +251,7 @@ describe('ManifestValidator', () => {
         });
 
         test('rejects absolute paths in path dependencies', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 dependencies: {
                     'absolute': {
@@ -203,7 +259,11 @@ describe('ManifestValidator', () => {
                     }
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d =>
                 d.code === IssueCodes.ImportAbsolutePath
@@ -213,6 +273,7 @@ describe('ManifestValidator', () => {
         });
 
         test('rejects invalid source format', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 dependencies: {
                     'bad-source': {
@@ -221,7 +282,11 @@ describe('ManifestValidator', () => {
                     }
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             const diagnostic = result.diagnostics.find(d =>
                 d.code === ManifestIssueCodes.DependencyInvalidSource
             );
@@ -230,12 +295,17 @@ describe('ManifestValidator', () => {
         });
 
         test('rejects dependency with neither source nor path', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 dependencies: {
                     'empty-dep': {}
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             // Key 'empty-dep' is not owner/repo format, so normalization adds it as source
             // but it won't match valid source format. Either way, we validate it produces diagnostics.
             expect(result.diagnostics.length).toBeGreaterThan(0);
@@ -244,12 +314,17 @@ describe('ManifestValidator', () => {
 
     describe('path alias validation', () => {
         test('warns on path alias without @ prefix', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 paths: {
                     'lib': './lib'
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             const diagnostic = result.diagnostics.find(d =>
                 d.code === ManifestIssueCodes.PathAliasMissingAtPrefix
             );
@@ -259,12 +334,17 @@ describe('ManifestValidator', () => {
         });
 
         test('rejects absolute path in alias target', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 paths: {
                     '@lib': '/absolute/path'
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             expect(result.valid).toBe(false);
             const diagnostic = result.diagnostics.find(d =>
                 d.code === ManifestIssueCodes.PathAliasAbsolutePath
@@ -274,6 +354,7 @@ describe('ManifestValidator', () => {
         });
 
         test('accepts valid path aliases with @ prefix and relative paths', () => {
+            // Arrange
             const manifest: ModelManifest = {
                 paths: {
                     '@': '.',
@@ -281,7 +362,11 @@ describe('ManifestValidator', () => {
                     '@src': './src'
                 }
             };
+
+            // Act
             const result = validator.validate(manifest);
+
+            // Assert
             const pathDiagnostics = result.diagnostics.filter(d =>
                 d.path.startsWith('paths.')
             );
@@ -291,6 +376,7 @@ describe('ManifestValidator', () => {
 
     describe('convenience functions', () => {
         test('isManifestValid returns true for valid and false for invalid', () => {
+            // Act & Assert
             expect(isManifestValid({})).toBe(true);
             expect(isManifestValid({
                 dependencies: {
@@ -300,11 +386,14 @@ describe('ManifestValidator', () => {
         });
 
         test('validateManifest returns diagnostics with expected codes', () => {
+            // Arrange & Act
             const diagnostics = validateManifest({
                 dependencies: {
                     'owner/repo': { source: 'owner/repo' }
                 }
             });
+
+            // Assert
             expect(diagnostics.length).toBeGreaterThan(0);
             // Should report missing ref for git dependency
             expect(diagnostics.some(d => d.code === IssueCodes.ImportMissingRef)).toBe(true);

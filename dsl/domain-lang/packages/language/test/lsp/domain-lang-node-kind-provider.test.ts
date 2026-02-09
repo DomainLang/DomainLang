@@ -10,8 +10,8 @@ import { describe, test, beforeAll, expect } from 'vitest';
 import { CompletionItemKind, SymbolKind } from 'vscode-languageserver';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, s, expectValidDocument } from '../test-helpers.js';
-import { AstUtils } from 'langium';
-import type { AstNode } from 'langium';
+import { AstUtils, URI } from 'langium';
+import type { AstNode, AstNodeDescription } from 'langium';
 import {
     isDomain,
     isBoundedContext,
@@ -21,14 +21,16 @@ import {
     isNamespaceDeclaration,
     isRelationship,
 } from '../../src/generated/ast.js';
-import { DomainLangNodeKindProvider } from '../../src/lsp/domain-lang-node-kind-provider.js';
+import type { DomainLangNodeKindProvider } from '../../src/lsp/domain-lang-node-kind-provider.js';
 
 let testServices: TestServices;
 let provider: DomainLangNodeKindProvider;
 
 beforeAll(() => {
     testServices = setupTestSuite();
-    provider = new DomainLangNodeKindProvider();
+    // Use DI-injected provider from Langium shared services (not direct instantiation)
+    // This ensures the provider is configured exactly as the LSP server uses it
+    provider = testServices.services.shared.lsp.NodeKindProvider as DomainLangNodeKindProvider;
 });
 
 /**
@@ -74,28 +76,34 @@ describe('NodeKindProvider CompletionItemKind mapping', () => {
 
 describe('NodeKindProvider AstNodeDescription handling', () => {
     test('resolves AstNodeDescription with attached node', async () => {
+        // Arrange
         const domainNode = await findFirst(s`Domain Sales {}`, isDomain);
-        // Create an AstNodeDescription-like object
-        const description = {
+        const description: AstNodeDescription = {
             name: 'Sales',
             type: 'Domain',
-            documentUri: { toString: (): string => 'file:///test.dlang' } as any,
+            documentUri: URI.parse('file:///test.dlang'),
             path: '',
             node: domainNode,
         };
+
+        // Act & Assert
         expect(provider.getSymbolKind(description)).toBe(SymbolKind.Namespace);
     });
 
     test('falls back to default for AstNodeDescription without node', () => {
-        const description = {
+        // Arrange
+        const description: AstNodeDescription = {
             name: 'Unknown',
             type: 'SomeType',
-            documentUri: { toString: (): string => 'file:///test.dlang' } as any,
+            documentUri: URI.parse('file:///test.dlang'),
             path: '',
             node: undefined,
         };
-        // Should call super.getSymbolKind which returns a default
+
+        // Act
         const kind = provider.getSymbolKind(description);
+
+        // Assert
         expect(kind).toBeDefined();
     });
 });

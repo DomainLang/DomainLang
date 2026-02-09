@@ -38,6 +38,7 @@ describe('DomainLangWorkspaceManager', () => {
 
     describe('Mode A: Workspace with model.yaml', () => {
         test('loads entry file and follows import graph', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-a-'));
 
             // Create project structure
@@ -55,9 +56,11 @@ describe('DomainLangWorkspaceManager', () => {
             );
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
+
+            // Act
             await workspaceManager.initializeWorkspace(folders);
 
-            // Should have loaded entry + imported file
+            // Assert — Should have loaded entry + imported file
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const dlangDocs = docs.filter(d => d.uri.fsPath.endsWith('.dlang'));
             
@@ -92,6 +95,7 @@ describe('DomainLangWorkspaceManager', () => {
         });
 
         test('handles missing entry file gracefully', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-a3-'));
 
             await fs.writeFile(
@@ -101,13 +105,14 @@ describe('DomainLangWorkspaceManager', () => {
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
             
-            // Should not throw - continues with other modules
+            // Act & Assert — Should not throw - continues with other modules
             await expect(workspaceManager.initializeWorkspace(folders)).resolves.toBeUndefined();
         });
     });
 
     describe('Mode B: Standalone files', () => {
         test('loads .dlang files recursively when no model.yaml exists', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-b-'));
 
             await fs.writeFile(
@@ -122,8 +127,11 @@ describe('DomainLangWorkspaceManager', () => {
             );
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
+
+            // Act
             await workspaceManager.initializeWorkspace(folders);
 
+            // Assert
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const paths = docs.map(d => path.basename(d.uri.fsPath));
             
@@ -132,6 +140,7 @@ describe('DomainLangWorkspaceManager', () => {
         });
 
         test('skips .dlang/packages directory', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-b2-'));
 
             // Create .dlang/packages structure (where packages are cached)
@@ -148,8 +157,11 @@ describe('DomainLangWorkspaceManager', () => {
             );
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
+
+            // Act
             await workspaceManager.initializeWorkspace(folders);
 
+            // Assert
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const paths = docs.map(d => d.uri.fsPath);
             
@@ -160,6 +172,7 @@ describe('DomainLangWorkspaceManager', () => {
 
     describe('Mode C: Mixed mode', () => {
         test('loads modules and standalone files', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-c-'));
 
             // Module with model.yaml
@@ -181,8 +194,11 @@ describe('DomainLangWorkspaceManager', () => {
             );
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
+
+            // Act
             await workspaceManager.initializeWorkspace(folders);
 
+            // Assert
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const basenames = docs.map(d => path.basename(d.uri.fsPath));
             
@@ -226,6 +242,7 @@ describe('DomainLangWorkspaceManager', () => {
 
     describe('Edge cases', () => {
         test('handles read errors gracefully', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-edge-'));
 
             await fs.writeFile(
@@ -238,15 +255,16 @@ describe('DomainLangWorkspaceManager', () => {
                 { name: 'invalid', uri: URI.file('/nonexistent/path').toString() }
             ];
             
-            // Should not throw - logs warning and continues
+            // Act & Assert — Should not throw - logs warning and continues
             await expect(workspaceManager.initializeWorkspace(folders)).resolves.toBeUndefined();
             
-            // Should have loaded the valid file
+            // Assert — Should have loaded the valid file
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             expect(docs.some(d => d.uri.fsPath.endsWith('valid.dlang'))).toBe(true);
         });
 
         test('does not load already-loaded documents', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-edge2-'));
 
             const filePath = path.join(tempDir, 'duplicate.dlang');
@@ -257,15 +275,18 @@ describe('DomainLangWorkspaceManager', () => {
             await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
+
+            // Act
             await workspaceManager.initializeWorkspace(folders);
 
-            // Should not create duplicate documents
+            // Assert — Should not create duplicate documents
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const duplicates = docs.filter(d => d.uri.toString() === uri.toString());
             expect(duplicates).toHaveLength(1);
         });
 
         test('skips non-.dlang files', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-edge3-'));
 
             await fs.writeFile(path.join(tempDir, 'file.txt'), 'Text file');
@@ -273,8 +294,11 @@ describe('DomainLangWorkspaceManager', () => {
             await fs.writeFile(path.join(tempDir, 'file.dlang'), 'Domain Test { vision: "Test" }');
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
+
+            // Act
             await workspaceManager.initializeWorkspace(folders);
 
+            // Assert
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const paths = docs.map(d => path.basename(d.uri.fsPath));
             
@@ -284,6 +308,7 @@ describe('DomainLangWorkspaceManager', () => {
         });
 
         test('handles multiple model.yaml files in workspace', async () => {
+            // Arrange
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-edge4-'));
 
             // Module 1
@@ -299,12 +324,14 @@ describe('DomainLangWorkspaceManager', () => {
             await fs.writeFile(path.join(module2Dir, 'index.dlang'), 'Domain M2 { vision: "2" }');
 
             const folders: WorkspaceFolder[] = [{ name: 'test', uri: URI.file(tempDir).toString() }];
+
+            // Act
             await workspaceManager.initializeWorkspace(folders);
 
+            // Assert — Should load both module entry files
             const docs = services.shared.workspace.LangiumDocuments.all.toArray();
             const dlangDocs = docs.filter(d => d.uri.fsPath.endsWith('.dlang'));
             
-            // Should load both module entry files
             expect(dlangDocs.length).toBeGreaterThanOrEqual(2);
         });
     });

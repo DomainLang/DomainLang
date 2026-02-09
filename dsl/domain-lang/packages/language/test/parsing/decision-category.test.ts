@@ -18,6 +18,7 @@ describe('Decision Classification', () => {
     });
 
     test('should parse Classification definitions with correct names', async () => {
+        // Arrange & Act
         const input = s`
             Classification Architectural
             Classification Business
@@ -25,6 +26,8 @@ describe('Decision Classification', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const categories = document.parseResult.value.children.filter(isClassification);
 
@@ -33,6 +36,7 @@ describe('Decision Classification', () => {
     });
 
     test('should resolve Classification references in decisions', async () => {
+        // Arrange & Act
         const input = s`
             Classification Architectural
             Classification Business
@@ -48,6 +52,8 @@ describe('Decision Classification', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
@@ -60,6 +66,7 @@ describe('Decision Classification', () => {
     });
 
     test('should resolve qualified Classification names in decisions', async () => {
+        // Arrange & Act
         const input = s`
             Namespace governance {
                 Classification Architectural
@@ -76,6 +83,8 @@ describe('Decision Classification', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
@@ -84,6 +93,7 @@ describe('Decision Classification', () => {
     });
 
     test('should share Classifications between context roles and decisions', async () => {
+        // Arrange & Act
         const input = s`
             Classification Core
             Classification Architectural
@@ -99,6 +109,8 @@ describe('Decision Classification', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
@@ -113,6 +125,7 @@ describe('Decision Classification', () => {
     // ========================================================================
 
     test('should parse empty decisions block', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             BoundedContext OrderContext for Sales {
@@ -121,6 +134,8 @@ describe('Decision Classification', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         expect(bc.decisions).toHaveLength(0);
@@ -150,6 +165,7 @@ describe('Decision Classification', () => {
     });
 
     test('should report linking error for unresolved Classification in decision', async () => {
+        // Arrange & Act
         const input = s`
             Domain Sales {}
             BoundedContext OrderContext for Sales {
@@ -160,6 +176,8 @@ describe('Decision Classification', () => {
         `;
 
         const document = await testServices.parse(input);
+
+        // Assert
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
         // The decision parses but the classification reference should fail to resolve
@@ -172,6 +190,7 @@ describe('Decision Classification', () => {
     });
 
     test('should reject decision without a value string', async () => {
+        // Arrange
         const input = s`
             Classification Architectural
             Domain Sales {}
@@ -182,6 +201,7 @@ describe('Decision Classification', () => {
             }
         `;
 
+        // Act & Assert
         await expectGrammarRuleRejectsInput(
             testServices.parse,
             input,

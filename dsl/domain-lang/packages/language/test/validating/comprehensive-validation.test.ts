@@ -32,12 +32,14 @@ describe('Validation Tests', () => {
         // "warns when domain lacks vision" covered by enhanced-messages.test.ts
 
         test('should detect circular domain hierarchy', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Domain A in B {}
                 Domain B in C {}
                 Domain C in A {}
             `);
 
+            // Assert
             expectValidationErrors(document, [
                 'Circular domain hierarchy detected',
                 'Circular domain hierarchy detected',
@@ -46,16 +48,19 @@ describe('Validation Tests', () => {
         });
 
         test('should detect self-referencing domain', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Domain SelfRef in SelfRef {}
             `);
 
+            // Assert
             expectValidationErrors(document, [
                 'Circular domain hierarchy detected'
             ]);
         });
 
         test('accepts valid domain hierarchy without warnings or errors', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Domain Root {
                     vision: "Root vision"
@@ -68,15 +73,18 @@ describe('Validation Tests', () => {
                 }
             `);
 
+            // Assert
             expectValidDocument(document);
         });
 
         test('warns on multiple domains each missing vision', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Domain A { description: "A" }
                 Domain B { description: "B" }
             `);
 
+            // Assert
             expectValidationWarnings(document, [
                 "missing a vision statement",
                 "missing a vision statement"
@@ -93,6 +101,7 @@ describe('Validation Tests', () => {
         // "warns when BC has no domain" covered by enhanced-messages.test.ts
 
         test('accepts bounded context with description and domain (smoke test)', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Domain Sales {
                     vision: "Sales vision"
@@ -104,6 +113,7 @@ describe('Validation Tests', () => {
                 }
             `);
 
+            // Assert
             expectValidDocument(document);
         });
     });
@@ -114,6 +124,7 @@ describe('Validation Tests', () => {
 
     describe('Namespace Declaration Validation', () => {
         test('should detect duplicate Namespace names', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Namespace TestNamespace {
                     Domain Domain1 {}
@@ -124,12 +135,14 @@ describe('Validation Tests', () => {
                 }
             `);
 
+            // Assert
             expectValidationErrors(document, [
                 "Duplicate element"
             ]);
         });
 
         test('accepts unique Namespace names (smoke test)', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Namespace Namespace1 {
                     Domain Domain1 { vision: "Vision1" }
@@ -140,6 +153,7 @@ describe('Validation Tests', () => {
                 }
             `);
 
+            // Assert
             expectValidDocument(document);
         });
     });
@@ -150,23 +164,27 @@ describe('Validation Tests', () => {
 
     describe('Classification Validation', () => {
         test('should detect duplicate classification names', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Classification Core
                 Classification Core
             `);
 
+            // Assert
             expectValidationErrors(document, [
                 "Duplicate element"
             ]);
         });
 
         test('accepts unique classification names (smoke test)', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Classification Core
                 Classification Supporting
                 Classification Generic
             `);
 
+            // Assert
             expectValidDocument(document);
         });
     });
@@ -177,22 +195,26 @@ describe('Validation Tests', () => {
 
     describe('Team Validation', () => {
         test('should detect duplicate Team names', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Team SalesTeam
                 Team SalesTeam
             `);
 
+            // Assert
             expectValidationErrors(document, [
                 "Duplicate element"
             ]);
         });
 
         test('accepts unique Team names (smoke test)', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Team SalesTeam
                 Team EngineeringTeam
             `);
 
+            // Assert
             expectValidDocument(document);
         });
     });
@@ -203,15 +225,18 @@ describe('Validation Tests', () => {
 
     describe('Context Map Validation', () => {
         test('warns when context map has no contexts', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 ContextMap EmptyMap {}
             `);
 
+            // Assert
             const warnings = getDiagnosticsBySeverity(document, 2);
             expect(warnings.some(w => w.message.includes('contains no bounded contexts'))).toBe(true);
         });
 
         test('accepts valid context map with relationships (smoke test)', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 Domain Sales { vision: "Sales" }
                 BoundedContext BC1 for Sales { description: "BC1" }
@@ -223,6 +248,7 @@ describe('Validation Tests', () => {
                 }
             `);
 
+            // Assert
             expectValidDocument(document);
         });
     });
@@ -233,10 +259,12 @@ describe('Validation Tests', () => {
 
     describe('Domain Map Validation', () => {
         test('warns when domain map has no domains', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 DomainMap EmptyMap {}
             `);
 
+            // Assert
             const warnings = getDiagnosticsBySeverity(document, 2);
             expect(warnings.some(w => w.message.includes('contains no domains'))).toBe(true);
         });

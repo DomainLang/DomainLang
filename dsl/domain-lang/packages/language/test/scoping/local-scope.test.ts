@@ -22,6 +22,7 @@ describe('Scoping: Local Scope', () => {
     // ── Smoke (~20%) ──────────────────────────────────────────────────
 
     test('smoke: resolves domain, team, and classification in same file', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Classification Core
             Team SalesTeam
@@ -36,6 +37,7 @@ describe('Scoping: Local Scope', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const bc = getFirstBoundedContext(document);
@@ -48,12 +50,14 @@ describe('Scoping: Local Scope', () => {
     // ── Edge / Error (~80%) ───────────────────────────────────────────
 
     test('unresolved domain reference produces linking error', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             BoundedContext OrderContext for NonExistentDomain {
                 description: "Order management"
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const bc = getFirstBoundedContext(document);
@@ -66,6 +70,7 @@ describe('Scoping: Local Scope', () => {
     });
 
     test('unresolved team reference does not affect domain resolution', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales {}
             BoundedContext OrderContext for Sales {
@@ -73,6 +78,7 @@ describe('Scoping: Local Scope', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const bc = getFirstBoundedContext(document);
@@ -84,6 +90,7 @@ describe('Scoping: Local Scope', () => {
     });
 
     test('unresolved classification reference does not affect domain resolution', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales {}
             BoundedContext OrderContext for Sales {
@@ -91,6 +98,7 @@ describe('Scoping: Local Scope', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const bc = getFirstBoundedContext(document);
@@ -100,6 +108,7 @@ describe('Scoping: Local Scope', () => {
     });
 
     test('BC with all unresolvable references still parses', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             BoundedContext Orphan for MissingDomain {
                 team: MissingTeam
@@ -107,6 +116,7 @@ describe('Scoping: Local Scope', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const bc = getFirstBoundedContext(document);
@@ -117,6 +127,7 @@ describe('Scoping: Local Scope', () => {
     });
 
     test('multiple BCs can reference the same domain', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales {}
             BoundedContext Orders for Sales
@@ -124,6 +135,7 @@ describe('Scoping: Local Scope', () => {
             BoundedContext Shipping for Sales
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const bcs = getAllBoundedContexts(document);
@@ -170,7 +182,10 @@ describe('Scoping: Local Scope', () => {
             },
         },
     ])('$scenario', async ({ input, check }) => {
+        // Arrange & Act
         const document = await testServices.parse(input);
+
+        // Assert
         const bc = getFirstBoundedContext(document);
         check(bc);
     });

@@ -24,6 +24,7 @@ describe('Scoping: References', () => {
     // ── Smoke (~20%) ──────────────────────────────────────────────────
 
     test('smoke: resolves BC references in relationship and domain hierarchy', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain Commerce {
                 description: "Main commerce domain"
@@ -42,6 +43,7 @@ describe('Scoping: References', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         // Verify domain hierarchy
@@ -92,8 +94,10 @@ describe('Scoping: References', () => {
             validName: 'OrderContext',
         },
     ])('relationship with non-existent $side BC does not resolve', async ({ input, ghostSide, validName }) => {
+        // Arrange & Act
         const document = await testServices.parse(input);
 
+        // Assert
         const contextMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
         expect(contextMap).toBeDefined();
         expect(contextMap.relationships).toHaveLength(1);
@@ -109,12 +113,14 @@ describe('Scoping: References', () => {
     });
 
     test('unresolved parent domain reference', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales in NonExistentParent {
                 description: "Orphan subdomain"
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const domain = document.parseResult.value.children.find(isDomain);
@@ -138,6 +144,7 @@ describe('Scoping: References', () => {
             relType: 'SeparateWays',
         },
     ])('$arrowType relationship arrow resolves both sides', async ({ arrowType, relType }) => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales {}
             BoundedContext OrderContext for Sales
@@ -149,6 +156,7 @@ describe('Scoping: References', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const contextMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
@@ -162,6 +170,7 @@ describe('Scoping: References', () => {
     });
 
     test('multiple relationships in one ContextMap all resolve', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales {}
             BoundedContext A for Sales
@@ -175,6 +184,7 @@ describe('Scoping: References', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const contextMap = document.parseResult.value.children.find(isContextMap) as ContextMap;

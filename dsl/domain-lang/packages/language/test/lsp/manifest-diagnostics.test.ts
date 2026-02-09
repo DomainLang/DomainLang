@@ -31,12 +31,17 @@ describe('ManifestDiagnosticsService', () => {
     // SMOKE: valid manifest returns empty
     // ==========================================
     test('valid manifest returns zero diagnostics', () => {
+        // Arrange
         const content = `
 model:
   name: test-package
   version: 1.0.0
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         expect(diagnostics).toHaveLength(0);
     });
 
@@ -44,12 +49,17 @@ model:
     // SMOKE: YAML parse error produces error
     // ==========================================
     test('broken YAML produces error diagnostic with "YAML parse error" message and source "domainlang"', () => {
+        // Arrange
         const content = `
 model: {
   broken yaml
   missing: [colon
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         expect(diagnostics.length).toBeGreaterThan(0);
         expect(diagnostics[0].message).toContain('YAML parse error');
         expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Error);
@@ -60,11 +70,16 @@ model: {
     // EDGE: invalid SemVer at correct line
     // ==========================================
     test('invalid SemVer version produces warning at correct line with source "domainlang"', () => {
+        // Arrange
         const content = `model:
   name: test-package
   version: invalid-version
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         const versionDiag = diagnostics.find(d =>
             d.message.includes('SemVer') || d.message.includes('version')
         );
@@ -79,11 +94,16 @@ model: {
     // EDGE: missing name in publishable mode
     // ==========================================
     test('missing name in publishable mode produces error diagnostic', () => {
+        // Arrange
         const content = `
 model:
   version: 1.0.0
 `;
+
+        // Act
         const diagnostics = service.validate(content, { requirePublishable: true });
+
+        // Assert
         const nameDiag = diagnostics.find(d => d.message.includes('name'));
         expect(nameDiag).toBeDefined();
         expect(nameDiag!.severity).toBe(DiagnosticSeverity.Error);
@@ -93,6 +113,7 @@ model:
     // EDGE: conflicting source and path (merged hint check)
     // ==========================================
     test('conflicting source and path produces error with hint appended to message', () => {
+        // Arrange
         const content = `
 dependencies:
   bad-dep:
@@ -100,7 +121,11 @@ dependencies:
     path: ./local
     version: v1.0.0
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         const conflictDiag = diagnostics.find(d =>
             d.message.includes('source') && d.message.includes('path')
         );
@@ -114,12 +139,17 @@ dependencies:
     // EDGE: git dependency without version (merged diagnostic code check)
     // ==========================================
     test('git dependency without version produces error with diagnostic code for code action mapping', () => {
+        // Arrange
         const content = `
 dependencies:
   missing-version:
     source: owner/repo
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         const versionDiag = diagnostics.find(d => d.message.includes('version'));
         expect(versionDiag).toBeDefined();
         expect(versionDiag!.severity).toBe(DiagnosticSeverity.Error);
@@ -132,11 +162,16 @@ dependencies:
     // EDGE: path alias without @ prefix
     // ==========================================
     test('path alias without @ prefix produces warning', () => {
+        // Arrange
         const content = `
 paths:
   lib: ./lib
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         const aliasDiag = diagnostics.find(d => d.message.includes('@'));
         expect(aliasDiag).toBeDefined();
         expect(aliasDiag!.severity).toBe(DiagnosticSeverity.Warning);
@@ -146,11 +181,16 @@ paths:
     // EDGE: absolute path in paths
     // ==========================================
     test('absolute path in paths section produces error', () => {
+        // Arrange
         const content = `
 paths:
   '@lib': /absolute/path
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         const pathDiag = diagnostics.find(d => d.message.includes('relative'));
         expect(pathDiag).toBeDefined();
         expect(pathDiag!.severity).toBe(DiagnosticSeverity.Error);
@@ -160,11 +200,16 @@ paths:
     // EDGE: nested paths in dependencies location
     // ==========================================
     test('nested dependency path produces diagnostic with defined range', () => {
+        // Arrange
         const content = `dependencies:
   my-dep:
     source: owner/repo
 `;
+
+        // Act
         const diagnostics = service.validate(content);
+
+        // Assert
         const refDiag = diagnostics.find(d => d.message.includes('ref'));
         expect(refDiag).toBeDefined();
         // Range should have valid start/end with non-negative line numbers
@@ -176,7 +221,10 @@ paths:
     // EDGE: empty content
     // ==========================================
     test('empty content does not crash and returns diagnostics array', () => {
+        // Arrange & Act
         const diagnostics = service.validate('');
+
+        // Assert
         expect(diagnostics).toHaveLength(0);
     });
 
@@ -184,7 +232,10 @@ paths:
     // EDGE: content with only whitespace/comments
     // ==========================================
     test('whitespace-only content does not crash and returns array', () => {
+        // Arrange & Act
         const diagnostics = service.validate('   \n\n   \n');
+
+        // Assert
         expect(diagnostics).toHaveLength(0);
     });
 
@@ -192,6 +243,7 @@ paths:
     // EDGE: multiple errors in same content
     // ==========================================
     test('multiple validation errors in same manifest all appear', () => {
+        // Arrange
         const content = `
 model:
   version: bad
@@ -199,8 +251,11 @@ paths:
   lib: ./lib
   '@abs': /usr/local
 `;
+
+        // Act
         const diagnostics = service.validate(content);
-        // Should have at minimum: bad semver + missing @ prefix + absolute path
+
+        // Assert — Should have at minimum: bad semver + missing @ prefix + absolute path
         expect(diagnostics.length).toBeGreaterThanOrEqual(2);
         const severities = diagnostics.map(d => d.severity);
         // At least one warning (semver or missing @) and one error (absolute path)

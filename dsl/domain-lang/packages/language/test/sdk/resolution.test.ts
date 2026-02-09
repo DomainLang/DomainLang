@@ -26,6 +26,7 @@ describe('SDK Resolution Functions', () => {
     describe('Smoke: direct AST properties (no resolution needed)', () => {
 
         test('BC and Domain direct properties return correct values', async () => {
+            // Arrange & Act
             const { query } = await loadModelFromText(`
                 Classification Commercial
                 Classification Product
@@ -42,6 +43,7 @@ describe('SDK Resolution Functions', () => {
                 }
             `);
 
+            // Assert
             // BC direct properties
             const bc = query.bc('OrderContext') as BoundedContext;
             expect(bc.description).toBe('Manages orders');
@@ -78,6 +80,7 @@ describe('SDK Resolution Functions', () => {
         // covered by resolution-precedence.test.ts
 
         test('handles special characters in metadata values', async () => {
+            // Arrange & Act
             const { query } = await loadModelFromText(`
                 Metadata pattern
                 Domain Sales { vision: "v" }
@@ -88,7 +91,10 @@ describe('SDK Resolution Functions', () => {
                 }
             `);
 
+            // Act
             const metadata = metadataAsMap(query.bc('OrderContext') as BoundedContext);
+
+            // Assert
             expect(metadata.get('pattern')).toBe('[a-zA-Z0-9_]*');
         });
     });

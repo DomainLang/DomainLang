@@ -73,8 +73,13 @@ describe('DomainLangCodeActionProvider', () => {
     // SMOKE: ImportNotInManifest action (merged preferred check)
     // ==========================================
     test('ImportNotInManifest produces preferred "Add to model.yaml" action with correct command and alias', async () => {
+        // Arrange
         const diagnostic = createDiagnostic(IssueCodes.ImportNotInManifest, 'mypackage');
+
+        // Act
         const actions = await getCodeActions(diagnostic);
+
+        // Assert
 
         expect(actions.length).toBeGreaterThan(0);
         const addAction = actions.find(a => a.title.includes('Add'));
@@ -91,12 +96,17 @@ describe('DomainLangCodeActionProvider', () => {
     // EDGE: ImportRequiresManifest action
     // ==========================================
     test('ImportRequiresManifest produces "Create model.yaml" action with correct command', async () => {
+        // Arrange
         const diagnostic = createDiagnostic(
             IssueCodes.ImportRequiresManifest,
             undefined,
             'owner/package'
         );
+
+        // Act
         const actions = await getCodeActions(diagnostic);
+
+        // Assert
 
         expect(actions.length).toBeGreaterThan(0);
         const createAction = actions.find(a => a.title.includes('Create'));
@@ -108,8 +118,13 @@ describe('DomainLangCodeActionProvider', () => {
     // EDGE: ImportNotInstalled action
     // ==========================================
     test('ImportNotInstalled produces "Run dlang install" action with correct command', async () => {
+        // Arrange
         const diagnostic = createDiagnostic(IssueCodes.ImportNotInstalled, 'uninstalled');
+
+        // Act
         const actions = await getCodeActions(diagnostic);
+
+        // Assert
 
         expect(actions.length).toBeGreaterThan(0);
         const installAction = actions.find(a => a.title.includes('install'));
@@ -121,8 +136,13 @@ describe('DomainLangCodeActionProvider', () => {
     // EDGE: ImportMissingRef action (merged non-preferred check)
     // ==========================================
     test('ImportMissingRef produces non-preferred "Add ref" action with correct command', async () => {
+        // Arrange
         const diagnostic = createDiagnostic(IssueCodes.ImportMissingRef, 'noref');
+
+        // Act
         const actions = await getCodeActions(diagnostic);
+
+        // Assert
 
         expect(actions.length).toBeGreaterThan(0);
         const refAction = actions.find(a => a.title.includes('ref'));
@@ -136,8 +156,13 @@ describe('DomainLangCodeActionProvider', () => {
     // EDGE: unknown diagnostic code
     // ==========================================
     test('returns no actions for unknown diagnostic codes', async () => {
+        // Arrange
         const diagnostic = createDiagnostic('unknown-code');
+
+        // Act
         const actions = await getCodeActions(diagnostic);
+
+        // Assert
         expect(actions).toHaveLength(0);
     });
 
@@ -145,13 +170,18 @@ describe('DomainLangCodeActionProvider', () => {
     // EDGE: diagnostic without data
     // ==========================================
     test('returns no actions for diagnostic without data property', async () => {
+        // Arrange
         const diagnostic: Diagnostic = {
             range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
             message: 'Test diagnostic',
             severity: DiagnosticSeverity.Error,
             source: 'domain-lang'
         };
+
+        // Act
         const actions = await getCodeActions(diagnostic);
+
+        // Assert
         expect(actions).toHaveLength(0);
     });
 
@@ -159,8 +189,13 @@ describe('DomainLangCodeActionProvider', () => {
     // EDGE: missing alias
     // ==========================================
     test('returns no actions for ImportNotInManifest when alias is missing', async () => {
+        // Arrange
         const diagnostic = createDiagnostic(IssueCodes.ImportNotInManifest);
+
+        // Act
         const actions = await getCodeActions(diagnostic);
+
+        // Assert
         expect(actions).toHaveLength(0);
     });
 

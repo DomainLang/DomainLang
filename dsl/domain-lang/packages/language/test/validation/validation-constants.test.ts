@@ -60,7 +60,10 @@ describe('ValidationMessages', () => {
 
 describe('IssueCodes', () => {
     test('all codes are unique lowercase-hyphenated strings', () => {
+        // Arrange & Act
         const codes = Object.values(IssueCodes);
+
+        // Assert
         // All match lowercase-hyphen format (implies non-empty string)
         codes.forEach(code => {
             expect(code).toMatch(/^[a-z-]+$/);
@@ -73,21 +76,30 @@ describe('IssueCodes', () => {
 
 describe('buildCodeDescription', () => {
     test('builds valid HTTPS URL for documentation path', () => {
+        // Act
         const description = buildCodeDescription('language.md');
+
+        // Assert
         expect(description.href).toMatch(/^https:\/\//);
         expect(description.href).toContain('language.md');
         expect(description.href).toContain('DomainLang');
     });
 
     test('builds URL with anchor fragment', () => {
+        // Act
         const description = buildCodeDescription('language.md', 'imports');
+
+        // Assert
         expect(description.href).toContain('language.md');
         expect(description.href).toContain('#imports');
     });
 
     test('different paths produce different URLs', () => {
+        // Act
         const desc1 = buildCodeDescription('path1.md');
         const desc2 = buildCodeDescription('path2.md');
+
+        // Assert
         expect(desc1.href).not.toBe(desc2.href);
         expect(desc1.href).toContain('path1.md');
         expect(desc2.href).toContain('path2.md');

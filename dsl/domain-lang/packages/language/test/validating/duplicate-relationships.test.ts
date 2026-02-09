@@ -20,6 +20,7 @@ beforeAll(() => {
 
 describe('Duplicate Relationship Validation', () => {
     test('warns on duplicate relationship in context map', async () => {
+        // Arrange
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -32,8 +33,10 @@ describe('Duplicate Relationship Validation', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
 
+        // Assert
         const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
         const duplicateWarnings = warnings.filter(w => w.message.includes('Duplicate relationship'));
         expect(duplicateWarnings.length).toBeGreaterThanOrEqual(1);
@@ -55,6 +58,7 @@ describe('Duplicate Relationship Validation', () => {
             `,
         },
     ])('accepts distinct relationships ($scenario)', async ({ relationships }) => {
+        // Arrange
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -66,14 +70,17 @@ describe('Duplicate Relationship Validation', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
 
+        // Assert
         const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
         const duplicateWarnings = warnings.filter(w => w.message.includes('Duplicate relationship'));
         expect(duplicateWarnings).toHaveLength(0);
     });
 
     test('duplicate warning message includes context names', async () => {
+        // Arrange
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales
@@ -86,8 +93,10 @@ describe('Duplicate Relationship Validation', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
 
+        // Assert
         const warnings = document.diagnostics?.filter(d => d.severity === 2) ?? [];
         const duplicateWarning = warnings.find(w => w.message.includes('Duplicate relationship'));
         expect(duplicateWarning).not.toBeUndefined();

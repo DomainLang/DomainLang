@@ -137,8 +137,11 @@ describe('DomainLang Formatter', () => {
                 `,
             },
         ])('formatting well-formatted $name is idempotent', async ({ input }) => {
+            // Arrange & Act
             const { result } = await formatAndApply(input);
             const secondPassEdits = await formatDocument(result);
+
+            // Assert
             expect(secondPassEdits).toHaveLength(0);
         });
     });
@@ -149,18 +152,24 @@ describe('DomainLang Formatter', () => {
 
     describe('indentation', () => {
         test('adds indentation when block body has no indent', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 'Domain Sales {\nvision: "Sales"\n}'
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             // After formatting, vision line must be indented deeper than Domain line
             expect(indentOf(result, 'vision')).toBeGreaterThan(indentOf(result, 'Domain'));
         });
 
         test('single-line block is expanded to multiple lines', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 s`Domain Sales { vision: "Sales" }`
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             // The result should span more than one non-empty line
             const nonEmptyLines = result.split('\n').filter(l => l.trim().length > 0);
@@ -168,9 +177,12 @@ describe('DomainLang Formatter', () => {
         });
 
         test('nested blocks produce increasing indentation levels', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 s`Namespace acme { Domain Sales { vision: "Sales" } }`
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             const nsIndent = indentOf(result, 'Namespace');
             const domIndent = indentOf(result, 'Domain');
@@ -181,9 +193,12 @@ describe('DomainLang Formatter', () => {
         });
 
         test('closing brace appears on its own line after formatting', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 s`Domain Sales { vision: "Sales" }`
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             // At least one line should contain only a closing brace (possibly with leading whitespace)
             const closingBraceLine = result.split('\n').find(l => l.trim() === '}');
@@ -199,9 +214,12 @@ describe('DomainLang Formatter', () => {
         // Namespace and Domain block indentation subsumed by "deeply nested blocks produce increasing indentation" edge case
 
         test('formats BoundedContext block', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 s`Domain Sales { } bc OrderCtx for Sales { description: "Orders" }`
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             // description should appear on its own line, indented
             const descLine = result.split('\n').find(l => l.trim().startsWith('description'));
@@ -210,18 +228,24 @@ describe('DomainLang Formatter', () => {
         });
 
         test('formats ContextMap block', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 s`Domain D { } bc A for D { } bc B for D { } ContextMap M { contains A, B }`
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             // contains line should be indented inside ContextMap
             expect(indentOf(result, 'contains')).toBeGreaterThan(indentOf(result, 'ContextMap'));
         });
 
         test('formats DomainMap block', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 s`Domain A { } Domain B { } DomainMap M { contains A, B }`
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             // contains line should be indented inside DomainMap
             expect(indentOf(result, 'contains')).toBeGreaterThan(indentOf(result, 'DomainMap'));
@@ -234,13 +258,18 @@ describe('DomainLang Formatter', () => {
 
     describe('edge cases', () => {
         test('document with no block constructs produces no edits', async () => {
+            // Arrange & Act
             const edits = await formatDocument(s`import "owner/repo@v1.0.0"`);
+
+            // Assert
             expect(edits).toHaveLength(0);
         });
 
         test('empty block does not crash formatter and preserves content', async () => {
+            // Arrange & Act
             const { result } = await formatAndApply(s`Domain Sales { }`);
-            // The formatter should not corrupt the document
+
+            // Assert — The formatter should not corrupt the document
             expect(result).toContain('Domain');
             expect(result).toContain('Sales');
         });
@@ -248,9 +277,12 @@ describe('DomainLang Formatter', () => {
         // 'deeply nested blocks produce increasing indentation' covered by indentation section above
 
         test('multiple top-level blocks are all preserved after formatting', async () => {
+            // Arrange & Act
             const { result } = await formatAndApply(
                 s`Domain A { vision: "A" } Domain B { vision: "B" }`
             );
+
+            // Assert
             expect(result).toContain('Domain A');
             expect(result).toContain('Domain B');
             expect(result).toContain('"A"');
@@ -258,9 +290,12 @@ describe('DomainLang Formatter', () => {
         });
 
         test('BoundedContext with inline attributes formats to multi-line', async () => {
+            // Arrange & Act
             const { edits, result } = await formatAndApply(
                 s`Domain Sales { } Team SalesTeam Classification Core bc Ctx for Sales as Core by SalesTeam { description: "test" }`
             );
+
+            // Assert
             expect(edits.length).toBeGreaterThan(0);
             expect(result).toContain('description');
             // Formatted output should have several lines

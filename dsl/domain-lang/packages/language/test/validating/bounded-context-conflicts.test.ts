@@ -14,6 +14,7 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
     // 'Inline as conflicts' subsumed by 'Conflict message includes inline and block values' + 'Multiple conflicts simultaneously'
 
     test('Inline "by" conflicts with block "team"', async () => {
+        // Arrange & Act
         const doc = await testServices.parse(s`
             Domain Sales {}
             Classification Core
@@ -24,11 +25,14 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
                 team: PlatformTeam
             }
         `);
+
+        // Assert
         const warnings = doc.diagnostics?.filter(d => d.severity === 2) ?? [];
         expect(warnings.some(w => w.message.includes('Team specified both inline'))).toBe(true);
     });
 
     test('Multiple conflicts simultaneously (classification and team)', async () => {
+        // Arrange & Act
         const doc = await testServices.parse(s`
             Domain Sales {}
             Classification Core
@@ -41,12 +45,15 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
                 team: PlatformTeam
             }
         `);
+
+        // Assert
         const warnings = doc.diagnostics?.filter(d => d.severity === 2) ?? [];
         expect(warnings.some(w => w.message.includes('Classification specified both inline'))).toBe(true);
         expect(warnings.some(w => w.message.includes('Team specified both inline'))).toBe(true);
     });
 
     test('No conflict when only inline form used', async () => {
+        // Arrange & Act
         const doc = await testServices.parse(s`
             Domain Sales {}
             Classification Core
@@ -56,6 +63,8 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
                 description: "Handles shipping operations"
             }
         `);
+
+        // Assert
         expectValidDocument(doc);
         const warnings = doc.diagnostics?.filter(d => d.severity === 2) ?? [];
         const conflictWarnings = warnings.filter(w =>
@@ -65,6 +74,7 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
     });
 
     test('No conflict when only block form used', async () => {
+        // Arrange & Act
         const doc = await testServices.parse(s`
             Domain Sales {}
             Classification Core
@@ -76,6 +86,8 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
                 team: SalesTeam
             }
         `);
+
+        // Assert
         expectValidDocument(doc);
         const warnings = doc.diagnostics?.filter(d => d.severity === 2) ?? [];
         const conflictWarnings = warnings.filter(w =>
@@ -85,6 +97,7 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
     });
 
     test('Conflict message includes inline and block values', async () => {
+        // Arrange & Act
         const doc = await testServices.parse(s`
             Domain Sales {}
             Classification Core
@@ -94,6 +107,8 @@ describe('FR-2.3: Inline/Block Conflict Validation', () => {
                 classification: Supporting
             }
         `);
+
+        // Assert
         const warnings = doc.diagnostics?.filter(d => d.severity === 2) ?? [];
         const classificationWarning = warnings.find(w =>
             w.message.includes('Classification specified both inline')

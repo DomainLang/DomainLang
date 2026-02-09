@@ -31,6 +31,7 @@ describe('Import Resilience', () => {
 
     describe('Whitespace and boundary edge cases', () => {
         test('should parse imports with extra whitespace around keywords', async () => {
+            // Arrange & Act
             const document = await testServices.parse(`
                 import     "./types.dlang"
                 import "./utils"    as    Utils
@@ -38,6 +39,7 @@ describe('Import Resilience', () => {
                 Domain Sales { vision: "Test" }
             `);
 
+            // Assert
             expectValidDocument(document);
 
             const model = document.parseResult.value;
@@ -51,11 +53,13 @@ describe('Import Resilience', () => {
 
     describe('Boundary and edge cases', () => {
         test('should parse empty string import URI', async () => {
+            // Arrange & Act
             const document = await testServices.parse(`
                 import ""
                 Domain Sales { vision: "Test" }
             `);
 
+            // Assert
             // Empty URI is syntactically valid (a STRING token), even if semantically meaningless
             expectValidDocument(document);
 
@@ -66,11 +70,13 @@ describe('Import Resilience', () => {
         });
 
         test('should preserve whitespace inside import URI string', async () => {
+            // Arrange & Act
             const document = await testServices.parse(`
                 import "  some/path  "
                 Domain Sales { vision: "Test" }
             `);
 
+            // Assert
             expectValidDocument(document);
 
             const model = document.parseResult.value;
@@ -80,13 +86,17 @@ describe('Import Resilience', () => {
         });
 
         test('should parse very long import URI', async () => {
+            // Arrange
             const longSegment = 'a'.repeat(50);
             const longUri = `org/${longSegment}/${longSegment}/${longSegment}`;
+
+            // Act
             const document = await testServices.parse(`
                 import "${longUri}" as LongImport
                 Domain Sales { vision: "Test" }
             `);
 
+            // Assert
             expectValidDocument(document);
 
             const model = document.parseResult.value;
@@ -97,11 +107,13 @@ describe('Import Resilience', () => {
         });
 
         test('should parse import with special characters in path', async () => {
+            // Arrange & Act
             const document = await testServices.parse(`
                 import "./path-with-dashes/under_scores/dots.v2"
                 Domain Sales { vision: "Test" }
             `);
 
+            // Assert
             expectValidDocument(document);
 
             const model = document.parseResult.value;
@@ -112,6 +124,7 @@ describe('Import Resilience', () => {
 
     describe('Error recovery with imports', () => {
         test('should preserve parsed imports even when followed by invalid syntax', async () => {
+            // Arrange & Act
             const document = await testServices.parse(`
                 import "acme/core" as Core
                 import "./local.dlang"
@@ -119,6 +132,7 @@ describe('Import Resilience', () => {
                 Domainnn InvalidSyntaxHere {{{{
             `);
 
+            // Assert
             // The document should have parse errors from the invalid syntax
             const hasErrors =
                 document.parseResult.parserErrors.length > 0 ||

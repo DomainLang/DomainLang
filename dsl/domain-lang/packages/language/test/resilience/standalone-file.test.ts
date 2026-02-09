@@ -34,11 +34,13 @@ describe('Standalone .dlang files (no model.yaml)', () => {
     // SMOKE: basic domain parses and produces correct AST
     // ==========================================
     test('standalone domain file parses and produces correct AST name', async () => {
+        // Arrange & Act
         const doc = await testServices.parse(s`
             Domain Sales {
                 vision: "Manage sales operations"
             }
         `);
+        // Assert
         expectValidDocument(doc);
         const model = doc.parseResult.value;
         expect(model.children).toHaveLength(1);
@@ -49,21 +51,21 @@ describe('Standalone .dlang files (no model.yaml)', () => {
     // EDGE: imports without model.yaml don't crash
     // ==========================================
     test('local, external, and path-alias imports without model.yaml do not crash parser', async () => {
-        // Local relative import
+        // Arrange, Act & Assert - Local relative import
         const docLocal = await testServices.parse(s`
             import "./other"
             Domain Sales { vision: "Sales" }
         `);
         expectValidDocument(docLocal);
 
-        // External import
+        // Arrange, Act & Assert - External import
         const docExternal = await testServices.parse(s`
             import "owner/package"
             Domain Sales { vision: "Sales" }
         `);
         expectValidDocument(docExternal);
 
-        // Path alias import
+        // Arrange, Act & Assert - Path alias import
         const docAlias = await testServices.parse(s`
             import "@shared/types"
             Domain Sales { vision: "Sales" }
@@ -75,6 +77,7 @@ describe('Standalone .dlang files (no model.yaml)', () => {
     // EDGE: full DSL features work without model.yaml
     // ==========================================
     test('full DSL with domain hierarchy, BC, and ContextMap parses correctly and resolves refs', async () => {
+        // Arrange & Act
         const doc = await testServices.parse(s`
             Domain Sales {
                 vision: "Manage sales operations"
@@ -92,6 +95,7 @@ describe('Standalone .dlang files (no model.yaml)', () => {
                 contains OrderContext
             }
         `);
+        // Assert
         expectValidDocument(doc);
         // Should have zero or only linking warnings (not parse errors)
         // Standalone files may have some warnings but parser should succeed
@@ -108,15 +112,18 @@ describe('Workspace initialization resilience', () => {
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-test-'));
 
         try {
+            // Arrange
             await fs.writeFile(path.join(tmpDir, 'test.dlang'), s`
                 Domain TestDomain {
                     vision: "Test"
                 }
             `);
 
+            // Act
             const workspaceManager = testServices.services.DomainLang.imports.WorkspaceManager;
             await expect(workspaceManager.initialize(tmpDir)).resolves.not.toThrow();
 
+            // Assert
             // Should have workspace root even without model.yaml (falls back to tmpDir)
             expect(() => workspaceManager.getWorkspaceRoot()).not.toThrow();
 
@@ -133,10 +140,12 @@ describe('Workspace initialization resilience', () => {
     // EDGE: import resolution errors produce clear messages
     // ==========================================
     test('import resolution errors produce messages mentioning "resolve" or "manifest"', async () => {
+        // Arrange
         const importResolver = testServices.services.DomainLang.imports.ImportResolver;
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-test-'));
 
         try {
+            // Act & Assert
             // Local relative import for non-existent file should give clear error
             await expect(importResolver.resolveFrom(tmpDir, './other'))
                 .rejects.toThrow(/Cannot resolve import/);
@@ -160,8 +169,10 @@ describe('Error recovery', () => {
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-test-'));
 
         try {
+            // Arrange
             await fs.writeFile(path.join(tmpDir, 'model.yaml'), 'invalid: yaml: content: [[[');
 
+            // Act & Assert
             const workspaceManager = testServices.services.DomainLang.imports.WorkspaceManager;
             await expect(workspaceManager.initialize(tmpDir)).resolves.not.toThrow();
 

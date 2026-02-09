@@ -34,6 +34,7 @@ describe('Scoping: Multi-Target References', () => {
     // mixed existing/missing, unique names) covered by multi-reference-resolution.test.ts
 
     test('relationship references to ambiguous BC names resolve to first match', async () => {
+        // Arrange & Act
         const document = await testServices.parse(s`
             Domain A {}
             Domain B {}
@@ -47,6 +48,7 @@ describe('Scoping: Multi-Target References', () => {
             }
         `);
 
+        // Assert
         expectValidDocument(document);
 
         const contextMap = getFirstContextMap(document);

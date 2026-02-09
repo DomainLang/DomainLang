@@ -23,6 +23,7 @@ describe('Scoping: Performance', () => {
     // ── Smoke (~20%) ──────────────────────────────────────────────────
 
     test('smoke: 100 BCs referencing 50 domains resolve within time budget', async () => {
+        // Arrange
         const domainDefinitions = Array.from({ length: 50 }, (_, i) =>
             `Domain Domain${i} {}`
         ).join('\n');
@@ -36,10 +37,12 @@ describe('Scoping: Performance', () => {
             ${bcDefinitions}
         `;
 
+        // Act
         const start = performance.now();
         const document = await testServices.parse(input);
         const elapsed = performance.now() - start;
 
+        // Assert
         expectValidDocument(document);
 
         // Generous upper bound to avoid flaky CI failures
@@ -58,6 +61,7 @@ describe('Scoping: Performance', () => {
     // ── Edge / Error (~80%) ───────────────────────────────────────────
 
     test('all BCs referencing the same single domain', async () => {
+        // Arrange
         const bcDefinitions = Array.from({ length: 50 }, (_, i) =>
             `BoundedContext BC${i} for OnlyDomain`
         ).join('\n');
@@ -67,7 +71,10 @@ describe('Scoping: Performance', () => {
             ${bcDefinitions}
         `;
 
+        // Act
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
 
         const bcs = getAllBoundedContexts(document);
@@ -80,6 +87,7 @@ describe('Scoping: Performance', () => {
     });
 
     test('large ContextMap with many relationships resolves all refs', async () => {
+        // Arrange
         const bcCount = 20;
         const bcDefinitions = Array.from({ length: bcCount }, (_, i) =>
             `BoundedContext Ctx${i} for D`
@@ -104,7 +112,10 @@ describe('Scoping: Performance', () => {
             }
         `;
 
+        // Act
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
 
         const contextMap = document.parseResult.value.children.find(isContextMap);
@@ -122,6 +133,7 @@ describe('Scoping: Performance', () => {
     });
 
     test('large model with some unresolvable refs does not crash', async () => {
+        // Arrange
         // 25 BCs where every 5th one references a non-existent domain
         const bcDefinitions = Array.from({ length: 25 }, (_, i) => {
             const domainName = i % 5 === 0 ? 'MissingDomain' : `Domain${i}`;
@@ -137,7 +149,10 @@ describe('Scoping: Performance', () => {
             ${bcDefinitions}
         `;
 
+        // Act
         const document = await testServices.parse(input);
+
+        // Assert
         expectValidDocument(document);
 
         const bcs = getAllBoundedContexts(document);

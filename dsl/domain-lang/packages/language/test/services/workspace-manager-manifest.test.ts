@@ -47,6 +47,7 @@ describe('WorkspaceManager manifest handling (PRS-010 Phase 2)', () => {
     // ========================================================================
 
     test('discovers manifest and parses model metadata and dependencies', async () => {
+        // Arrange
         const manifestDir = path.join(tempDir, 'project');
         await fs.mkdir(manifestDir, { recursive: true });
         const manifestContent = `model:
@@ -61,10 +62,12 @@ dependencies:
         await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
         const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
 
+        // Act
         await manager.initialize(manifestDir);
         const manifest = await manager.getManifest();
         const manifestPath = await manager.getManifestPath();
 
+        // Assert
         expect(manifestPath).toBe(path.join(manifestDir, 'model.yaml'));
         expect(manifest?.model?.name).toBe('sample');
         expect(manifest?.model?.version).toBe('1.0.0');
@@ -81,19 +84,23 @@ dependencies:
     describe('Edge: directory tree walking', () => {
 
         test('finds nearest manifest when initializing from nested folder', async () => {
+            // Arrange
             const rootDir = path.join(tempDir, 'project');
             const nestedDir = path.join(rootDir, 'nested', 'deep');
             await fs.mkdir(nestedDir, { recursive: true });
             await fs.writeFile(path.join(rootDir, 'model.yaml'), 'model:\n  name: sample\n');
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
 
+            // Act
             await manager.initialize(nestedDir);
             const resolvedManifestPath = await manager.getManifestPath();
 
+            // Assert
             expect(resolvedManifestPath).toBe(path.join(rootDir, 'model.yaml'));
         });
 
         test('stops at first manifest when multiple exist in hierarchy', async () => {
+            // Arrange
             const root = path.join(tempDir, 'workspace');
             const sub1 = path.join(root, 'sub1');
             const sub2 = path.join(sub1, 'sub2');
@@ -103,19 +110,25 @@ dependencies:
             await fs.writeFile(path.join(sub1, 'model.yaml'), 'model:\n  name: sub1\n');
 
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+
+            // Act
             await manager.initialize(sub2);
             const foundManifest = await manager.getManifestPath();
 
+            // Assert
             expect(foundManifest).toBe(path.join(sub1, 'model.yaml'));
         });
 
         test('handles missing manifest gracefully', async () => {
+            // Arrange
             const emptyDir = path.join(tempDir, 'no-manifest');
             await fs.mkdir(emptyDir, { recursive: true });
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
 
+            // Act
             await manager.initialize(emptyDir);
 
+            // Assert
             expect(await manager.getManifestPath()).toBeUndefined();
             expect(await manager.getManifest()).toBeUndefined();
         });
@@ -128,6 +141,7 @@ dependencies:
     describe('Edge: YAML parsing edge cases', () => {
 
         test('handles empty YAML file', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'empty-yaml');
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), '');
@@ -135,22 +149,28 @@ dependencies:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            // An empty file should return a manifest path but the model should be undefined/null
+            // Act
             const manifestPath = await manager.getManifestPath();
-            expect(manifestPath).toBe(path.join(manifestDir, 'model.yaml'));
             const manifest = await manager.getManifest();
+
+            // Assert
+            expect(manifestPath).toBe(path.join(manifestDir, 'model.yaml'));
             expect(manifest?.model).toBeFalsy();
         });
 
         test('handles YAML with only model name (minimal valid manifest)', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'minimal');
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), 'model:\n  name: minimal\n');
 
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
+
+            // Act
             const manifest = await manager.getManifest();
 
+            // Assert
             expect(manifest?.model?.name).toBe('minimal');
             expect(manifest?.dependencies).toBeUndefined();
         });
@@ -163,6 +183,7 @@ dependencies:
     describe('Edge: dependency parsing', () => {
 
         test('parses manifest dependencies including local paths', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             await fs.mkdir(manifestDir, { recursive: true });
             const manifestContent = `model:
@@ -178,9 +199,11 @@ dependencies:
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
 
+            // Act
             await manager.initialize(manifestDir);
             const manifest = await manager.getManifest();
 
+            // Assert
             const coreDep = normalizeDep('core', manifest?.dependencies?.core);
             const sharedDep = normalizeDep('shared', manifest?.dependencies?.shared);
             expect(coreDep?.source).toBe('domainlang/core');
@@ -189,6 +212,7 @@ dependencies:
         });
 
         test('parses short-form dependencies (owner/package: version)', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             await fs.mkdir(manifestDir, { recursive: true });
             const manifestContent = `model:
@@ -201,9 +225,11 @@ dependencies:
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
 
+            // Act
             await manager.initialize(manifestDir);
             const manifest = await manager.getManifest();
 
+            // Assert
             const coreDep = normalizeDep('domainlang/core', manifest?.dependencies?.['domainlang/core']);
             const patternsDep = normalizeDep('ddd-community/patterns', manifest?.dependencies?.['ddd-community/patterns']);
             expect(coreDep?.source).toBe('domainlang/core');
@@ -213,6 +239,7 @@ dependencies:
         });
 
         test('retrieves dependency with description field', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             await fs.mkdir(manifestDir, { recursive: true });
             const manifestContent = `dependencies:
@@ -224,10 +251,12 @@ dependencies:
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
 
+            // Act
             await manager.initialize(manifestDir);
             const manifest = await manager.getManifest();
             const patternsDep = normalizeDep('patterns', manifest?.dependencies?.patterns);
 
+            // Assert
             expect(patternsDep?.source).toBe('domainlang/patterns');
             expect(patternsDep?.ref).toBe('v2.1.0');
             expect(patternsDep?.description).toBe('DDD pattern library');
@@ -241,6 +270,7 @@ dependencies:
     describe('Edge: source/path mutual exclusivity', () => {
 
         test('rejects manifest that mixes source and path in one dependency', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), `dependencies:
@@ -252,8 +282,10 @@ dependencies:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            // Validation errors are handled gracefully - return undefined instead of crashing
+            // Act
             const manifest = await manager.getManifest();
+
+            // Assert
             expect(manifest).toBeUndefined();
         });
     });
@@ -265,6 +297,7 @@ dependencies:
     describe('Edge: path sandboxing for local dependencies', () => {
 
         test('rejects local path dependency that escapes workspace', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), `dependencies:
@@ -274,12 +307,15 @@ dependencies:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            // Validation errors are handled gracefully - return undefined instead of crashing
+            // Act
             const manifest = await manager.getManifest();
+
+            // Assert
             expect(manifest).toBeUndefined();
         });
 
         test('allows local path dependency within workspace boundary', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             const sharedDir = path.join(manifestDir, 'shared');
             await fs.mkdir(sharedDir, { recursive: true });
@@ -289,13 +325,17 @@ dependencies:
 `);
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
+
+            // Act
             const manifest = await manager.getManifest();
 
+            // Assert
             const sharedDep = normalizeDep('shared', manifest?.dependencies?.shared);
             expect(sharedDep?.path).toBe('./shared');
         });
 
         test('allows nested relative paths within workspace', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             const sharedDir = path.join(manifestDir, 'lib', 'shared');
             await fs.mkdir(sharedDir, { recursive: true });
@@ -305,8 +345,11 @@ dependencies:
 `);
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
+
+            // Act
             const manifest = await manager.getManifest();
 
+            // Assert
             const sharedDepNested = normalizeDep('shared', manifest?.dependencies?.shared);
             expect(sharedDepNested?.path).toBe('./lib/shared');
         });
@@ -319,6 +362,7 @@ dependencies:
     describe('Edge: path alias validation', () => {
 
         test('rejects path alias that does not start with @', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), `model:
@@ -329,12 +373,15 @@ paths:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            // Validation errors are handled gracefully - return undefined instead of crashing
+            // Act
             const manifest = await manager.getManifest();
+
+            // Assert
             expect(manifest).toBeUndefined();
         });
 
         test('rejects path alias that escapes workspace boundary', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), `model:
@@ -345,12 +392,15 @@ paths:
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
-            // Validation errors are handled gracefully - return undefined instead of crashing
+            // Act
             const manifest = await manager.getManifest();
+
+            // Assert
             expect(manifest).toBeUndefined();
         });
 
         test('allows valid path alias within workspace', async () => {
+            // Arrange
             const manifestDir = path.join(tempDir, 'project');
             const sharedDir = path.join(manifestDir, 'packages', 'shared');
             await fs.mkdir(sharedDir, { recursive: true });
@@ -361,8 +411,11 @@ paths:
 `);
             const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
+
+            // Act
             const aliases = await manager.getPathAliases();
 
+            // Assert
             expect(aliases?.['@shared']).toBe('./packages/shared');
         });
     });

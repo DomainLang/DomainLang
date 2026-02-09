@@ -37,6 +37,7 @@ describe('PerformanceOptimizer', () => {
     describe('Smoke: basic getCachedLockFile', () => {
 
         test('loads lock file from disk and caches it', async () => {
+            // Arrange
             const lockFile: LockFile = {
                 version: '1',
                 dependencies: {
@@ -50,8 +51,10 @@ describe('PerformanceOptimizer', () => {
             };
             await fs.writeFile(path.join(tempDir, 'model.lock'), JSON.stringify(lockFile), 'utf-8');
 
+            // Act
             const result = await optimizer.getCachedLockFile(tempDir);
 
+            // Assert
             expect(result?.version).toBe('1');
             expect(result?.dependencies['acme/test'].ref).toBe('1.0.0');
             expect(result?.dependencies['acme/test'].commit).toBe('abc123');
@@ -65,11 +68,15 @@ describe('PerformanceOptimizer', () => {
     describe('Edge: getCachedLockFile', () => {
 
         test('returns undefined when no lock file exists', async () => {
+            // Act
             const result = await optimizer.getCachedLockFile(tempDir);
+
+            // Assert
             expect(result).toBeUndefined();
         });
 
         test('serves from cache on second call within TTL', async () => {
+            // Arrange
             const lockFile: LockFile = { version: '1', dependencies: {} };
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, JSON.stringify(lockFile), 'utf-8');
@@ -77,14 +84,17 @@ describe('PerformanceOptimizer', () => {
             const result1 = await optimizer.getCachedLockFile(tempDir);
             // Modify file on disk
             await fs.writeFile(lockPath, JSON.stringify({ version: '2', dependencies: {} }), 'utf-8');
+
+            // Act
             const result2 = await optimizer.getCachedLockFile(tempDir);
 
-            // Both should be version 1 (cached)
+            // Assert — Both should be version 1 (cached)
             expect(result1?.version).toBe('1');
             expect(result2?.version).toBe('1');
         });
 
         test('refreshes cache after TTL expires', async () => {
+            // Arrange
             const shortTTL = new PerformanceOptimizer({ cacheTTL: 10 }); // 10ms
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
@@ -94,7 +104,10 @@ describe('PerformanceOptimizer', () => {
             await new Promise(resolve => setTimeout(resolve, 20));
             await fs.writeFile(lockPath, JSON.stringify({ version: '2', dependencies: {} }), 'utf-8');
 
+            // Act
             const result = await shortTTL.getCachedLockFile(tempDir);
+
+            // Assert
             expect(result?.version).toBe('2');
         });
 
@@ -123,6 +136,7 @@ describe('PerformanceOptimizer', () => {
         });
 
         test('caches lockfiles from multiple workspaces independently', async () => {
+            // Arrange
             const ws1 = path.join(tempDir, 'ws1');
             const ws2 = path.join(tempDir, 'ws2');
             await fs.mkdir(ws1, { recursive: true });
@@ -131,9 +145,11 @@ describe('PerformanceOptimizer', () => {
             await fs.writeFile(path.join(ws1, 'model.lock'), JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
             await fs.writeFile(path.join(ws2, 'model.lock'), JSON.stringify({ version: '2', dependencies: {} }), 'utf-8');
 
+            // Act
             const result1 = await optimizer.getCachedLockFile(ws1);
             const result2 = await optimizer.getCachedLockFile(ws2);
 
+            // Assert
             expect(result1?.version).toBe('1');
             expect(result2?.version).toBe('2');
         });
@@ -146,21 +162,26 @@ describe('PerformanceOptimizer', () => {
     describe('Edge: invalidateCache', () => {
 
         test('removes cached entry for specific workspace', async () => {
+            // Arrange
             const lockFile: LockFile = { version: '1', dependencies: {} };
             await fs.writeFile(path.join(tempDir, 'model.lock'), JSON.stringify(lockFile), 'utf-8');
             await optimizer.getCachedLockFile(tempDir);
 
+            // Act
             optimizer.invalidateCache(tempDir);
 
+            // Assert
             const stats = optimizer.getCacheStats();
             expect(stats.lockFiles).toBe(0);
         });
 
         test('invalidating non-existent workspace does not throw', () => {
+            // Act & Assert
             expect(() => optimizer.invalidateCache('/nonexistent/path')).not.toThrow();
         });
 
         test('invalidating one workspace does not affect others', async () => {
+            // Arrange
             const ws1 = path.join(tempDir, 'ws1');
             const ws2 = path.join(tempDir, 'ws2');
             await fs.mkdir(ws1, { recursive: true });
@@ -171,8 +192,10 @@ describe('PerformanceOptimizer', () => {
             await optimizer.getCachedLockFile(ws1);
             await optimizer.getCachedLockFile(ws2);
 
+            // Act
             optimizer.invalidateCache(ws1);
 
+            // Assert
             const stats = optimizer.getCacheStats();
             expect(stats.lockFiles).toBe(1);
         });
@@ -185,17 +208,21 @@ describe('PerformanceOptimizer', () => {
     describe('Edge: clearAllCaches', () => {
 
         test('clears all cached lock files and manifests', async () => {
+            // Arrange
             await fs.writeFile(path.join(tempDir, 'model.lock'), JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
             await optimizer.getCachedLockFile(tempDir);
 
+            // Act
             optimizer.clearAllCaches();
 
+            // Assert
             const stats = optimizer.getCacheStats();
             expect(stats.lockFiles).toBe(0);
             expect(stats.manifests).toBe(0);
         });
 
         test('clearAllCaches on empty cache is a no-op', () => {
+            // Act & Assert
             expect(() => optimizer.clearAllCaches()).not.toThrow();
             const stats = optimizer.getCacheStats();
             expect(stats.lockFiles).toBe(0);
@@ -210,25 +237,36 @@ describe('PerformanceOptimizer', () => {
     describe('Edge: getCacheStats', () => {
 
         test('reports zero counts initially', () => {
+            // Act
             const stats = optimizer.getCacheStats();
+
+            // Assert
             expect(stats.lockFiles).toBe(0);
             expect(stats.manifests).toBe(0);
         });
 
         test('increments lockFiles count after caching', async () => {
+            // Arrange
             await fs.writeFile(path.join(tempDir, 'model.lock'), JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
             await optimizer.getCachedLockFile(tempDir);
 
+            // Act
             const stats = optimizer.getCacheStats();
+
+            // Assert
             expect(stats.lockFiles).toBe(1);
         });
 
         test('decrements after invalidation', async () => {
+            // Arrange
             await fs.writeFile(path.join(tempDir, 'model.lock'), JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
             await optimizer.getCachedLockFile(tempDir);
 
+            // Act
             expect(optimizer.getCacheStats().lockFiles).toBe(1);
             optimizer.invalidateCache(tempDir);
+
+            // Assert
             expect(optimizer.getCacheStats().lockFiles).toBe(0);
         });
     });
@@ -240,6 +278,7 @@ describe('PerformanceOptimizer', () => {
     describe('Edge: detectStaleCaches', () => {
 
         test('detects when cached file is modified on disk', async () => {
+            // Arrange
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
             await optimizer.getCachedLockFile(tempDir);
@@ -247,27 +286,36 @@ describe('PerformanceOptimizer', () => {
             await new Promise(resolve => setTimeout(resolve, 10));
             await fs.writeFile(lockPath, JSON.stringify({ version: '2', dependencies: {} }), 'utf-8');
 
+            // Act
             const stale = await optimizer.detectStaleCaches();
+
+            // Assert
             expect(stale).toContain(path.resolve(tempDir));
         });
 
         test('cache is fresh immediately after loading', async () => {
-            // getCachedLockFile loads the data; detectStaleCaches should report
-            // no stale entries when the file hasn't changed since caching
+            // Arrange
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
             await optimizer.getCachedLockFile(tempDir);
 
+            // Act
             const stale = await optimizer.detectStaleCaches();
+
+            // Assert
             expect(stale).toHaveLength(0);
         });
 
         test('returns empty array when no caches exist', async () => {
+            // Act
             const stale = await optimizer.detectStaleCaches();
+
+            // Assert
             expect(stale).toEqual([]);
         });
 
         test('handles deleted lock file after caching', async () => {
+            // Arrange
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
             await optimizer.getCachedLockFile(tempDir);
@@ -275,9 +323,10 @@ describe('PerformanceOptimizer', () => {
             // Delete the file
             await fs.unlink(lockPath);
 
-            // Should handle gracefully: mark as stale since cached file was deleted
+            // Act
             const stale = await optimizer.detectStaleCaches();
-            // File deleted = stale scenario
+
+            // Assert
             expect(stale.length).toBeGreaterThan(0);
         });
     });
@@ -289,15 +338,23 @@ describe('Global Optimizer', () => {
     });
 
     test('getGlobalOptimizer returns same singleton instance', () => {
+        // Act
         const opt1 = getGlobalOptimizer();
         const opt2 = getGlobalOptimizer();
+
+        // Assert
         expect(opt1).toBe(opt2);
     });
 
     test('resetGlobalOptimizer creates a fresh instance', () => {
+        // Arrange
         const opt1 = getGlobalOptimizer();
+
+        // Act
         resetGlobalOptimizer();
         const opt2 = getGlobalOptimizer();
+
+        // Assert
         expect(opt1).not.toBe(opt2);
     });
 });

@@ -67,6 +67,7 @@ describe('Import-Based Scoping', () => {
 
     describe('Without imports - elements should NOT resolve across files', () => {
         test('BC reference to domain in separate file should NOT resolve without import', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'no-import-domain');
             await fs.mkdir(projectDir, { recursive: true });
@@ -79,6 +80,7 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
+            // Act
             // File B: tries to reference Sales without importing
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -95,6 +97,7 @@ describe('Import-Based Scoping', () => {
         });
 
         test('ContextMap reference to BC in separate file should NOT resolve without import', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'no-import-bc');
             await fs.mkdir(projectDir, { recursive: true });
@@ -108,6 +111,7 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
+            // Act
             // File B: tries to reference OrderContext without importing
             const fileB = path.join(projectDir, 'maps.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -132,6 +136,7 @@ describe('Import-Based Scoping', () => {
         });
 
         test('Team reference in BC should NOT resolve from non-imported file', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'no-import-team');
             await fs.mkdir(projectDir, { recursive: true });
@@ -142,6 +147,7 @@ describe('Import-Based Scoping', () => {
                 Team SalesTeam
             `);
 
+            // Act
             // File B: tries to reference SalesTeam without importing
             const fileB = path.join(projectDir, 'context.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -162,6 +168,7 @@ describe('Import-Based Scoping', () => {
 
     describe('With valid imports - elements SHOULD resolve', () => {
         test('smoke: domain, BC, and team refs all resolve via import', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'valid-import-all');
             await fs.mkdir(projectDir, { recursive: true });
@@ -178,6 +185,7 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
+            // Act
             // File B: imports shared.dlang, references Domain + Team + BC
             const fileB = path.join(projectDir, 'main.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -209,6 +217,7 @@ describe('Import-Based Scoping', () => {
         });
 
         test('multiple imports provide combined scope', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'multi-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -227,6 +236,7 @@ describe('Import-Based Scoping', () => {
                 Team SalesTeam
             `);
 
+            // Act
             // File C: imports both and references elements from each
             const fileC = path.join(projectDir, 'contexts.dlang');
             const docC = await createAndLoadDocument(fileC, `
@@ -238,12 +248,14 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
+            // Assert
             const bc = docC.parseResult.value.children.find(isBoundedContext) as BoundedContext;
             expect(bc.domain?.ref?.name).toBe('Sales');
             expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
         });
 
         test('importing an empty file provides no additional scope', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'empty-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -252,6 +264,7 @@ describe('Import-Based Scoping', () => {
             const fileA = path.join(projectDir, 'empty.dlang');
             await createAndLoadDocument(fileA, ``);
 
+            // Act
             // File B: imports empty file, references non-existent domain
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -262,6 +275,7 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
+            // Assert
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
             expect(bc).toBeDefined();
             expect(bc.domain?.ref).toBeUndefined();
@@ -269,6 +283,7 @@ describe('Import-Based Scoping', () => {
         });
 
         test('Classification resolves across import', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'classification-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -280,6 +295,7 @@ describe('Import-Based Scoping', () => {
                 Classification SupportingDomain
             `);
 
+            // Act
             // File B: imports classifications and references them
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -299,6 +315,7 @@ describe('Import-Based Scoping', () => {
         });
 
         test('Classification does NOT resolve without import', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'classification-no-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -309,6 +326,7 @@ describe('Import-Based Scoping', () => {
                 Classification CoreDomain
             `);
 
+            // Act
             // File B: tries to reference Classification without importing
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -326,6 +344,7 @@ describe('Import-Based Scoping', () => {
         });
 
         test('ContextMap relationship arrow refs resolve across imports', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'cmap-arrow-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -338,6 +357,7 @@ describe('Import-Based Scoping', () => {
                 bc PaymentContext for Sales
             `);
 
+            // Act
             // File B: imports and creates ContextMap with relationship arrows
             const fileB = path.join(projectDir, 'maps.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -363,6 +383,7 @@ describe('Import-Based Scoping', () => {
         });
 
         test('Namespace-qualified refs resolve across imports', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'namespace-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -377,6 +398,7 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
+            // Act
             // File B: imports and references via qualified name
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -396,6 +418,7 @@ describe('Import-Based Scoping', () => {
 
     describe('With invalid imports - elements should NOT resolve', () => {
         test('BC reference should NOT resolve when import has typo', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'typo-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -408,6 +431,7 @@ describe('Import-Based Scoping', () => {
                 }
             `);
 
+            // Act
             // File B: has typo in import path
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -426,10 +450,12 @@ describe('Import-Based Scoping', () => {
         });
 
         test('References should NOT resolve when import file does not exist', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'missing-import');
             await fs.mkdir(projectDir, { recursive: true });
 
+            // Act
             // File B: imports non-existent file
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
@@ -449,6 +475,7 @@ describe('Import-Based Scoping', () => {
 
     describe('Path alias imports', () => {
         test('Path alias import SHOULD provide scope when valid', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'path-alias-valid');
             await fs.mkdir(path.join(projectDir, 'shared'), { recursive: true });
@@ -474,6 +501,7 @@ paths:
             // Initialize workspace manager
             await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
 
+            // Act
             // Create index.dlang using path alias
             const indexFile = path.join(projectDir, 'index.dlang');
             const docIndex = await createAndLoadDocument(indexFile, `
@@ -494,6 +522,7 @@ paths:
         });
 
         test('Invalid path alias should NOT provide scope', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'path-alias-invalid');
             await fs.mkdir(path.join(projectDir, 'shared'), { recursive: true });
@@ -519,6 +548,7 @@ paths:
             // Initialize workspace manager
             await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
 
+            // Act
             // Create index.dlang with TYPO in path alias (@shareds instead of @shared)
             const indexFile = path.join(projectDir, 'index.dlang');
             const docIndex = await createAndLoadDocument(indexFile, `
@@ -548,6 +578,7 @@ paths:
 
     describe('Transitive imports', () => {
         test('Transitive imports should NOT provide scope (only direct imports)', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'transitive-import');
             await fs.mkdir(projectDir, { recursive: true });
@@ -568,6 +599,7 @@ paths:
                 }
             `);
 
+            // Act
             // File C: imports B (but NOT A)
             // SalesTeam is transitively available via B, but should NOT be in scope
             const fileC = path.join(projectDir, 'contexts.dlang');
@@ -594,6 +626,7 @@ paths:
 
     describe('Directory-first resolution scoping', () => {
         test('Directory import via index.dlang SHOULD provide scope', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'dir-first-index');
             await fs.mkdir(path.join(projectDir, 'shared'), { recursive: true });
@@ -605,6 +638,7 @@ paths:
                 Team ShippingTeam
             `);
 
+            // Act
             // Import the directory (should resolve to shared/index.dlang)
             const mainFile = path.join(projectDir, 'main.dlang');
             const docMain = await createAndLoadDocument(mainFile, `
@@ -625,6 +659,7 @@ paths:
         });
 
         test('File fallback in directory-first SHOULD provide scope', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'dir-first-fallback');
             await fs.mkdir(projectDir, { recursive: true });
@@ -635,6 +670,7 @@ paths:
                 Team SalesTeam
             `);
 
+            // Act
             // Import without extension (should fall back to shared.dlang)
             const mainFile = path.join(projectDir, 'main.dlang');
             const docMain = await createAndLoadDocument(mainFile, `
@@ -655,6 +691,7 @@ paths:
         });
 
         test('Directory import prefers index.dlang over sibling file', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'dir-first-prefer-index');
             await fs.mkdir(path.join(projectDir, 'types'), { recursive: true });
@@ -671,6 +708,7 @@ paths:
                 Team FileTeam
             `);
 
+            // Act
             // Import "./types" should resolve to types/index.dlang NOT types.dlang
             const mainFile = path.join(projectDir, 'main.dlang');
             const docMain = await createAndLoadDocument(mainFile, `
@@ -691,6 +729,7 @@ paths:
         });
 
         test('FileTeam from sibling file should NOT be in scope when directory import used', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'dir-first-exclude-sibling');
             await fs.mkdir(path.join(projectDir, 'types'), { recursive: true });
@@ -707,6 +746,7 @@ paths:
                 Team FileTeam
             `);
 
+            // Act
             // Import "./types" - resolves to types/index.dlang, NOT types.dlang
             const mainFile = path.join(projectDir, 'main.dlang');
             const docMain = await createAndLoadDocument(mainFile, `
@@ -729,6 +769,7 @@ paths:
 
     describe('IndexManager getResolvedImports integration', () => {
         test('getResolvedImports returns resolved URIs for valid imports', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'get-resolved-imports');
             await fs.mkdir(projectDir, { recursive: true });
@@ -744,16 +785,18 @@ paths:
                 Domain Sales {}
             `);
 
-            // Get index manager and check resolved imports
+            // Act
             const indexManager = services.shared.workspace.IndexManager as DomainLangIndexManager;
             const mainUri = docMain.uri.toString();
             const resolvedImports = indexManager.getResolvedImports(mainUri);
 
+            // Assert
             expect(resolvedImports.size).toBe(1);
             expect([...resolvedImports][0]).toContain('teams.dlang');
         });
 
         test('getResolvedImports returns empty for invalid imports', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'invalid-resolved-imports');
             await fs.mkdir(projectDir, { recursive: true });
@@ -765,16 +808,18 @@ paths:
                 Domain Sales {}
             `);
 
-            // Get index manager and check resolved imports
+            // Act
             const indexManager = services.shared.workspace.IndexManager as DomainLangIndexManager;
             const mainUri = docMain.uri.toString();
             const resolvedImports = indexManager.getResolvedImports(mainUri);
 
+            // Assert
             // Invalid imports should not be in resolved set (empty resolution)
             expect(resolvedImports.size).toBe(0);
         });
 
         test('getResolvedImports returns empty for documents without imports', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'no-imports-resolved');
             await fs.mkdir(projectDir, { recursive: true });
@@ -786,17 +831,19 @@ paths:
                 bc OrderContext for Sales {}
             `);
 
-            // Get index manager and check resolved imports
+            // Act
             const indexManager = services.shared.workspace.IndexManager as DomainLangIndexManager;
             const mainUri = docMain.uri.toString();
             const resolvedImports = indexManager.getResolvedImports(mainUri);
 
+            // Assert
             expect(resolvedImports.size).toBe(0);
         });
     });
 
     describe('Standalone files (no model.yaml)', () => {
         test('Standalone file can import relative path', async () => {
+            // Arrange
             await clearAllDocuments();
             const projectDir = path.join(tempDir, 'standalone-relative');
             await fs.mkdir(projectDir, { recursive: true });
@@ -806,6 +853,7 @@ paths:
             const sharedFile = path.join(projectDir, 'shared.dlang');
             await createAndLoadDocument(sharedFile, `Team SalesTeam`);
 
+            // Act
             // Create main file using relative import
             const mainFile = path.join(projectDir, 'main.dlang');
             const docMain = await createAndLoadDocument(mainFile, `

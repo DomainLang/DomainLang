@@ -29,6 +29,7 @@ describe('SDK loadModel (Node.js)', () => {
 
     describe('Smoke: single file loading', () => {
         test('loads a domain model from disk with correct query results', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'single-file');
             await fs.mkdir(projectDir, { recursive: true });
             await fs.writeFile(path.join(projectDir, 'domains.dlang'), `
@@ -37,11 +38,13 @@ describe('SDK loadModel (Node.js)', () => {
                 }
             `);
 
+            // Act
             const { query, documents } = await loadModel(
                 'domains.dlang',
                 { workspaceDir: projectDir }
             );
 
+            // Assert
             expect(documents.length).toBe(1);
             expect(query.domain('Sales')?.name).toBe('Sales');
             expect(query.domain('Sales')?.vision).toBe('Sales operations');
@@ -55,21 +58,25 @@ describe('SDK loadModel (Node.js)', () => {
 
     describe('Edge: error handling', () => {
         test('throws on non-existent file', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'missing-file');
             await fs.mkdir(projectDir, { recursive: true });
 
+            // Act & Assert
             await expect(
                 loadModel('does-not-exist.dlang', { workspaceDir: projectDir })
             ).rejects.toThrow();
         });
 
         test('throws on invalid syntax with error details', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'invalid-syntax');
             await fs.mkdir(projectDir, { recursive: true });
             await fs.writeFile(path.join(projectDir, 'invalid.dlang'), `
                 This is not valid DomainLang syntax !!!
             `);
 
+            // Act & Assert
             await expect(
                 loadModel('invalid.dlang', { workspaceDir: projectDir })
             ).rejects.toThrow(/errors/i);
@@ -79,15 +86,18 @@ describe('SDK loadModel (Node.js)', () => {
             { label: 'empty', content: '', fileName: 'empty.dlang' },
             { label: 'whitespace-only', content: '   \n  \n  ', fileName: 'whitespace.dlang' },
         ])('loads $label file as a model with no entities', async ({ content, fileName }) => {
+            // Arrange
             const projectDir = path.join(tempDir, `${fileName}-dir`);
             await fs.mkdir(projectDir, { recursive: true });
             await fs.writeFile(path.join(projectDir, fileName), content);
 
+            // Act
             const { query } = await loadModel(
                 fileName,
                 { workspaceDir: projectDir }
             );
 
+            // Assert
             expect(query.domains().count()).toBe(0);
             expect(query.boundedContexts().count()).toBe(0);
         });
@@ -99,6 +109,7 @@ describe('SDK loadModel (Node.js)', () => {
 
     describe('Edge: multi-file import graph traversal', () => {
         test('loads imported files and resolves cross-file references', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'multi-file-local');
             await fs.mkdir(projectDir, { recursive: true });
 
@@ -120,11 +131,13 @@ describe('SDK loadModel (Node.js)', () => {
                 }
             `);
 
+            // Act
             const { query, documents } = await loadModel(
                 'main.dlang',
                 { workspaceDir: projectDir }
             );
 
+            // Assert
             expect(documents.length).toBe(2);
             // Query spans entry model content
             const domains = query.domains().toArray();
@@ -133,6 +146,7 @@ describe('SDK loadModel (Node.js)', () => {
         });
 
         test('handles transitive imports (A->B->C)', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'transitive-imports');
             await fs.mkdir(projectDir, { recursive: true });
 
@@ -151,16 +165,19 @@ describe('SDK loadModel (Node.js)', () => {
                 Team SupportTeam
             `);
 
+            // Act
             const { query, documents } = await loadModel(
                 'main.dlang',
                 { workspaceDir: projectDir }
             );
 
+            // Assert
             expect(documents.length).toBe(3);
             expect(query.bc('App')?.name).toBe('App');
         });
 
         test('handles diamond imports (shared dep loaded once)', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'diamond-imports');
             await fs.mkdir(projectDir, { recursive: true });
 
@@ -184,16 +201,19 @@ describe('SDK loadModel (Node.js)', () => {
                 Metadata Priority
             `);
 
+            // Act
             const { documents } = await loadModel(
                 'main.dlang',
                 { workspaceDir: projectDir }
             );
 
+            // Assert
             // All four files loaded, shared.dlang only once
             expect(documents.length).toBe(4);
         });
 
         test('loads imports from subdirectories', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'nested-imports');
             await fs.mkdir(path.join(projectDir, 'domains'), { recursive: true });
 
@@ -206,16 +226,19 @@ describe('SDK loadModel (Node.js)', () => {
                 Domain Sales { vision: "Sales operations" }
             `);
 
+            // Act
             const { query, documents } = await loadModel(
                 'main.dlang',
                 { workspaceDir: projectDir }
             );
 
+            // Assert
             expect(documents.length).toBe(2);
             expect(query.bc('App')?.name).toBe('App');
         });
 
         test('throws when imported file does not exist', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'broken-import');
             await fs.mkdir(projectDir, { recursive: true });
 
@@ -224,6 +247,7 @@ describe('SDK loadModel (Node.js)', () => {
                 Domain Sales { vision: "v" }
             `);
 
+            // Act & Assert
             // Should still load entry but may have link errors
             // or throw - depends on implementation
             try {
@@ -246,6 +270,7 @@ describe('SDK loadModel (Node.js)', () => {
 
     describe('Edge: model augmentation', () => {
         test('augments entry model with effectiveClassification and effectiveTeam', async () => {
+            // Arrange
             const projectDir = path.join(tempDir, 'augmentation-test');
             await fs.mkdir(projectDir, { recursive: true });
 
@@ -258,11 +283,13 @@ describe('SDK loadModel (Node.js)', () => {
                 }
             `);
 
+            // Act
             const { query } = await loadModel(
                 'main.dlang',
                 { workspaceDir: projectDir }
             );
 
+            // Assert
             const bc = query.bc('OrderContext');
             expect(bc?.name).toBe('OrderContext');
             expect(bc?.effectiveClassification?.name).toBe('Core');

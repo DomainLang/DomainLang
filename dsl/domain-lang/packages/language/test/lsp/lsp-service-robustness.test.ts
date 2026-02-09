@@ -29,11 +29,12 @@ describe('LSP service robustness (audit fixes)', () => {
 
     describe('Scope provider handles errors gracefully', () => {
         test('handles unresolved references without crashing', async () => {
+            // Arrange & Act
             const document = await testServices.parse(s`
                 bc OrderContext for NonExistentDomain
             `);
 
-            // Should have linking errors but not crash
+            // Assert — Should have linking errors but not crash
             const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
             expect(errors.length).toBeGreaterThan(0);
         });
@@ -45,6 +46,7 @@ describe('LSP service robustness (audit fixes)', () => {
 
     describe('Hover provider this-ref safety', () => {
         test('hovering over "this" in context map does not crash', async () => {
+            // Arrange
             const hoverProvider = testServices.services.DomainLang.lsp.HoverProvider;
             const document = await testServices.parse(s`
                 Domain Sales { vision: "Sales domain" }
@@ -61,9 +63,10 @@ describe('LSP service robustness (audit fixes)', () => {
                 position: Position.create(6, 14), // 'this' keyword position
             };
 
-            // Should not throw - the MaybePromise fix ensures safe handling
+            // Act — Should not throw - the MaybePromise fix ensures safe handling
             const hover = await hoverProvider.getHoverContent(document, params);
-            // May return undefined if position doesn't resolve, but should not crash
+
+            // Assert — May return undefined if position doesn't resolve, but should not crash
             if (hover) {
                 expect((hover as { contents: { kind: string } }).contents.kind).toBe('markdown');
             }

@@ -55,7 +55,10 @@ describe('Enhanced Error Messages', () => {
             hrefContains: 'language.md',
         },
     ])('$label shows concise message with clickable link', async ({ input, diagnosticMatch, messageContains, hrefContains }) => {
+        // Arrange & Act
         const document = await testServices.parse(input);
+
+        // Assert
         const diagnostics = document.diagnostics ?? [];
         const warning = diagnostics.find(d => d.message.includes(diagnosticMatch));
         expect(warning).not.toBeUndefined();
@@ -89,7 +92,10 @@ describe('Enhanced Error Messages', () => {
             messageContains: '1-2 patterns',
         },
     ])('$label shows concise message with clickable link', async ({ body, diagnosticMatch, messageContains }) => {
+        // Arrange & Act
         const document = await testServices.parse(contextMapPreamble(body));
+
+        // Assert
         const diagnostics = document.diagnostics ?? [];
         const warning = diagnostics.find(d => d.message.includes(diagnosticMatch));
         expect(warning).not.toBeUndefined();

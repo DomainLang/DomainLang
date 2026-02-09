@@ -68,6 +68,7 @@ describe('DocumentSymbolProvider', () => {
     // SMOKE: consolidated symbol kind verification
     // ==========================================
     test('all major AST types map to correct SymbolKinds', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Namespace acme.sales {
                 Domain Sales { vision: "Sales" }
@@ -85,6 +86,7 @@ describe('DocumentSymbolProvider', () => {
             }
         `);
 
+        // Assert
         expect(expectSymbol(symbols, 'acme.sales').kind).toBe(SymbolKind.Namespace);
         expect(expectSymbol(symbols, 'Sales').kind).toBe(SymbolKind.Namespace);
         expect(expectSymbol(symbols, 'SalesTeam').kind).toBe(SymbolKind.Interface);
@@ -99,6 +101,7 @@ describe('DocumentSymbolProvider', () => {
     // SMOKE: detail text rendering
     // ==========================================
     test('detail text includes vision, description, and counts', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales { vision: "Handle all sales" }
             Domain Billing { description: "Billing domain" }
@@ -112,7 +115,7 @@ describe('DocumentSymbolProvider', () => {
             }
         `);
 
-        // Domain shows vision as detail
+        // Assert — Domain shows vision as detail
         expect(expectSymbol(symbols, 'Sales').detail).toBe('Domain \u2014 Handle all sales');
         // Domain shows description when no vision
         expect(expectSymbol(symbols, 'Billing').detail).toBe('Domain \u2014 Billing domain');
@@ -130,7 +133,10 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: empty document returns no symbols
     // ==========================================
     test('empty document yields no symbols', async () => {
+        // Arrange & Act
         const symbols = await getSymbols('');
+
+        // Assert
         expect(symbols).toHaveLength(0);
     });
 
@@ -138,8 +144,11 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: domain without body still produces a symbol
     // ==========================================
     test('minimal domain without body still produces a symbol with Namespace kind', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`Domain Sales {}`);
         const sym = expectSymbol(symbols, 'Sales');
+
+        // Assert
         expect(sym.kind).toBe(SymbolKind.Namespace);
         // Range should be valid (start <= end)
         expect(sym.range.start.line).toBeLessThanOrEqual(sym.range.end.line);
@@ -149,7 +158,10 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: namespace nesting hierarchy
     // ==========================================
     test('Namespace children are nested under parent, not at root level', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`Namespace acme.sales { Domain Sales { vision: "Sales" } Team SalesTeam }`);
+
+        // Assert
         const ns = expectSymbol(symbols, 'acme.sales');
         const children = ns.children!;
         expect(children.length).toBeGreaterThanOrEqual(2);
@@ -169,6 +181,7 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: BC synthetic folders with correct item counts and kinds
     // ==========================================
     test('BC decisions folder has correct kind, item count, and child count', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales {}
             Classification Core
@@ -182,12 +195,15 @@ describe('DocumentSymbolProvider', () => {
         const bc = expectSymbol(symbols, 'OrderContext');
         const children = bc.children!;
         const decisionsFolder = expectSymbol(children, 'decisions');
+
+        // Assert
         expect(decisionsFolder.kind).toBe(SymbolKind.Object);
         expect(decisionsFolder.detail).toBe('2 items');
         expect(decisionsFolder.children).toHaveLength(2);
     });
 
     test('BC terminology folder has correct kind and item count', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales {}
             bc OrderContext for Sales {
@@ -199,12 +215,15 @@ describe('DocumentSymbolProvider', () => {
         `);
         const bc = expectSymbol(symbols, 'OrderContext');
         const termFolder = expectSymbol(bc.children!, 'terminology');
+
+        // Assert
         expect(termFolder.kind).toBe(SymbolKind.Object);
         expect(termFolder.detail).toBe('2 items');
         expect(termFolder.children).toHaveLength(2);
     });
 
     test('BC relationships folder has correct kind and item count', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales {}
             bc OrderContext for Sales {
@@ -218,12 +237,15 @@ describe('DocumentSymbolProvider', () => {
         `);
         const bc = expectSymbol(symbols, 'OrderContext');
         const relFolder = expectSymbol(bc.children!, 'relationships');
+
+        // Assert
         expect(relFolder.kind).toBe(SymbolKind.Object);
         expect(relFolder.detail).toBe('2 items');
         expect(relFolder.children).toHaveLength(2);
     });
 
     test('BC metadata folder has correct kind and item count', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales {}
             Metadata Language
@@ -237,6 +259,8 @@ describe('DocumentSymbolProvider', () => {
         `);
         const bc = expectSymbol(symbols, 'OrderContext');
         const metaFolder = expectSymbol(bc.children!, 'metadata');
+
+        // Assert
         expect(metaFolder.kind).toBe(SymbolKind.Object);
         expect(metaFolder.detail).toBe('2 items');
         expect(metaFolder.children).toHaveLength(2);
@@ -246,6 +270,7 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: multiple collection types create all folders
     // ==========================================
     test('BC with all collection types creates decisions, terminology, and metadata folders', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales {}
             Metadata Language
@@ -265,7 +290,7 @@ describe('DocumentSymbolProvider', () => {
         const bc = expectSymbol(symbols, 'OrderContext');
         const children = bc.children!;
 
-        // All three folders should exist with kind Object and 1 item each
+        // Assert — All three folders should exist with kind Object and 1 item each
         const decisionsFolder = expectSymbol(children, 'decisions');
         expect(decisionsFolder.kind).toBe(SymbolKind.Object);
         expect(decisionsFolder.detail).toBe('1 items');
@@ -283,12 +308,15 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: BC without collections has no children
     // ==========================================
     test('BC without any collections shows no children', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales {}
             bc OrderContext for Sales { description: "Simple BC" }
         `);
         const bc = expectSymbol(symbols, 'OrderContext');
         const childCount = bc.children?.length ?? 0;
+
+        // Assert
         expect(childCount).toBe(0);
     });
 
@@ -296,6 +324,7 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: deeply nested namespace hierarchy
     // ==========================================
     test('deeply nested namespaces produce correctly nested symbol tree', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Namespace com {
                 Namespace company {
@@ -303,6 +332,8 @@ describe('DocumentSymbolProvider', () => {
                 }
             }
         `);
+
+        // Assert
         const com = expectSymbol(symbols, 'com');
         expect(com.kind).toBe(SymbolKind.Namespace);
         const company = expectSymbol(com.children!, 'company');
@@ -316,6 +347,7 @@ describe('DocumentSymbolProvider', () => {
     // EDGE: Individual node kind mappings (NodeKindProvider coverage)
     // ==========================================
     test('all decision/terminology/metadata/relationship elements have correct SymbolKind', async () => {
+        // Arrange & Act
         const symbols = await getSymbols(s`
             Domain Sales {}
             Metadata Language
@@ -340,7 +372,7 @@ describe('DocumentSymbolProvider', () => {
         const bc = expectSymbol(symbols, 'OrderContext');
         if (!bc.children) throw new Error('Expected BC to have children');
 
-        // Decisions: Policy, Decision, Rule → all Field
+        // Assert — Decisions: Policy, Decision, Rule → all Field
         const decisionsFolder = expectSymbol(bc.children, 'decisions');
         if (!decisionsFolder.children) throw new Error('Expected decisions folder to have children');
         const policy = expectSymbol(decisionsFolder.children, 'RefundPolicy');
@@ -389,8 +421,11 @@ describe('DocumentSymbolProvider', () => {
             }
         `],
     ])('%s with members shows correct detail', async (_type, name, expectedDetail, source) => {
+        // Arrange & Act
         const symbols = await getSymbols(source);
         const sym = expectSymbol(symbols, name);
+
+        // Assert
         expect(sym.detail).toBe(expectedDetail);
         expect(sym.kind).toBe(SymbolKind.Package);
     });
@@ -399,8 +434,11 @@ describe('DocumentSymbolProvider', () => {
         ['ContextMap', s`ContextMap EmptyMap {}`],
         ['DomainMap', s`DomainMap EmptyMap {}`],
     ])('empty %s has undefined detail (pluralize returns undefined for 0)', async (_type, source) => {
+        // Arrange & Act
         const symbols = await getSymbols(source);
         const sym = expectSymbol(symbols, 'EmptyMap');
+
+        // Assert
         expect(sym.detail).toBeUndefined();
     });
 });
