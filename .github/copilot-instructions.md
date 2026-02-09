@@ -2,6 +2,25 @@
 
 > Repository-wide guidance for DomainLang: Langium-based DSL for Domain-Driven Design modeling.
 
+## 🚨 CRITICAL: Pre-Commit Quality Gate 🚨
+
+**ABSOLUTE REQUIREMENT:** Code that does not pass ALL quality checks must NEVER be committed.
+
+```bash
+# These commands MUST ALL succeed with zero errors/warnings:
+npm run lint              # 0 errors, 0 warnings
+npm run build             # Must complete successfully
+npm run test:coverage     # All tests pass, coverage meets thresholds
+```
+
+**Committing broken code is UNACCEPTABLE and blocks the entire team.**
+
+If any check fails:
+1. Fix the issues immediately
+2. Rerun all checks
+3. Only commit when everything passes
+4. Never lower quality standards without explicit user approval
+
 ## Project Essentials
 
 **What:** Compilable DSL for DDD specification with LSP tooling  
@@ -28,11 +47,12 @@
 ```bash
 npm run langium:generate  # After .langium changes
 npm run build             # Full build
-npm run lint              # Check quality (must pass)
+npm run lint              # Check quality (must pass with 0 errors, 0 warnings)
 npm run test              # Run tests
+npm run test:coverage     # Run tests with coverage validation
 ```
 
-**Critical:** All changes MUST pass `npm run lint` (0 errors/warnings) before commit.
+**See "🚨 CRITICAL: Pre-Commit Quality Gate" section above for mandatory pre-commit requirements.**
 
 ## Skill Selection (Mandatory)
 
@@ -70,13 +90,23 @@ See `.github/instructions/` for language-specific rules (TypeScript, Langium, te
 
 ### Git & Commits
 
-- **NEVER** commit without explicit approval
-- Use [conventional commits](https://www.conventionalcommits.org): `type(scope): subject`
-- **ALWAYS** run: `npm run lint && npm run build && npm run test:coverage` before commit
+**🛑 STOP: Before ANY commit, ALL quality checks MUST pass:**
+
+```bash
+# Run this exact sequence before EVERY commit:
+npm run lint && npm run build && npm run test:coverage
+```
+
+**NON-NEGOTIABLE COMMIT RULES:**
+
+- **NEVER** commit without explicit user approval
+- **NEVER** commit if lint has ANY errors or warnings (0 required)
+- **NEVER** commit if build fails for ANY reason
+- **NEVER** commit if ANY tests fail
+- **NEVER** commit if test coverage is below configured thresholds
+- **NEVER** commit code that breaks the workspace build
 - **ALWAYS** commit package.json + package-lock.json together atomically
-- **NEVER** commit code that doesn't compile or has lint errors/warnings
-- **NEVER** commit code with test coverage below configured thresholds
-- **NEVER** lower coverage thresholds without explicit user approval - if coverage is below thresholds, either:
+- **NEVER** lower coverage thresholds without explicit user approval - if coverage is below thresholds:
   1. Add tests to meet the threshold, OR
   2. Ask user for approval to lower the threshold with justification
 

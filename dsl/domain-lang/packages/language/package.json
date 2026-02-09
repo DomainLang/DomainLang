@@ -69,6 +69,9 @@
         "*": {
             ".": [
                 "out/index"
+            ],
+            "sdk": [
+                "out/sdk/index"
             ]
         }
     },

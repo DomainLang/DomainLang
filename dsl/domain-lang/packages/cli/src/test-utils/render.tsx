@@ -68,7 +68,7 @@ export const render = (
     const originalRerender = renderResult.rerender;
 
     let unmounted = false;
-    const wrappedUnmount = () => {
+    const wrappedUnmount = (): void => {
         if (!unmounted) {
             unmounted = true;
             act(() => {
