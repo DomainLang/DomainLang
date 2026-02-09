@@ -125,6 +125,100 @@ test('does NOT provide import completions in vision string', async () => {
 | `getFirstBoundedContext(doc)` | Extract first BC |
 | `s\`...\`` | Readable multi-line strings |
 
+## LSP Testing (Critical: Test Real Behavior)
+
+**NEVER mock LSP provider internals** - Test through the actual LSP API with real documents.
+
+### ✅ Correct: Test Through Public LSP API
+
+```typescript
+test('provides alias-prefixed completions for imported types', async () => {
+    // Arrange - Create REAL multi-file scenario
+    const sharedDoc = await testServices.parse(s`Domain CoreDomain { vision: "v" }`);
+    const mainDoc = await testServices.parse(
+        s`import "${sharedDoc.uri.toString()}" as lib\nbc Context for lib.<cursor>`,
+        { documentUri: 'file:///main.dlang' }
+    );
+    
+    // Act - Call provider's public API exactly as LSP would
+    const provider = testServices.services.DomainLang.lsp.CompletionProvider!;
+    const result = await provider.getCompletion(mainDoc, {
+        textDocument: { uri: mainDoc.uri.toString() },
+        position: { line: 1, character: 20 }
+    });
+    
+    // Assert - Verify USER-VISIBLE behavior
+    const labels = result?.items?.map(i => i.label) ?? [];
+    expect(labels).toContain('lib.CoreDomain');
+});
+```
+
+### ❌ WRONG: Mocking Provider Internals
+
+```typescript
+// ❌ NEVER DO THIS - Tests implementation, not behavior
+test('builds completion items', () => {
+    const provider = new CompletionProvider();
+    const items = (provider as any).buildAliasedItems(mockScope);
+    expect(items).toContain('lib.Domain');
+});
+```
+
+**Why?** The mocked test passes even if:
+- The provider doesn't call `buildAliasedItems` anymore
+- The scope never includes aliased items
+- Integration between scope provider and completion is broken
+
+### Hover Provider Testing
+
+```typescript
+test('hover shows import alias prefix for imported types', async () => {
+    // Arrange - Real document with real references
+    const document = await testServices.parse(s`
+        Domain Sales { vision: "v" }
+        bc OrderContext for Sales {}
+    `);
+    const provider = testServices.services.DomainLang.lsp.HoverProvider!;
+    
+    // Act - Position cursor on the BC name
+    const hover = await provider.getHoverContent(document, {
+        textDocument: { uri: document.uri.toString() },
+        position: { line: 1, character: 3 } // 'O' in OrderContext
+    });
+    
+    // Assert - Verify what USER sees in tooltip
+    expect(hover).toBeDefined();
+    expect(hover!.contents.value).toContain('bounded context');
+    expect(hover!.contents.value).toContain('OrderContext');
+    // Verify go-to-definition links work
+    expect(hover!.contents.value).toMatch(/\[Sales\]\([^)]*#L\d+,\d+\)/);
+});
+```
+
+### Multi-File Testing for Import/Scoping
+
+```typescript
+test('alias-prefixed references resolve across files', async () => {
+    // Arrange - Create imported file first
+    const sharedDoc = await testServices.parse(
+        s`Team CoreTeam`,
+        { documentUri: 'file:///shared.dlang' }
+    );
+    
+    // Create main file that imports with alias
+    const mainDoc = await testServices.parse(
+        s`import "./shared.dlang" as lib\nbc Context by lib.CoreTeam {}`,
+        { documentUri: 'file:///main.dlang' }
+    );
+    
+    // Act - Get the bounded context
+    const bc = getFirstBoundedContext(mainDoc);
+    
+    // Assert - Reference resolved through alias
+    expect(bc.team?.ref?.name).toBe('CoreTeam');
+});
+```
+
 ## Common Test Patterns
 
 ### Parsing Tests
@@ -405,11 +499,47 @@ test('handles large models within timeout', async () => {
 });
 ```
 
+## Test Consolidation with test.each
+
+When multiple tests verify variants of the same behavior, consolidate with `test.each`:
+
+### ❌ Redundant Tests
+
+```typescript
+test('parses Domain keyword', async () => { /* ... */ });
+test('parses bc keyword', async () => { /* ... */ });
+test('parses Team keyword', async () => { /* ... */ });
+test('parses Classification keyword', async () => { /* ... */ });
+```
+
+### ✅ Consolidated with test.each
+
+```typescript
+test.each([
+    ['Domain', 'Domain Sales { vision: "v" }'],
+    ['bc', 'bc Orders {}'],
+    ['Team', 'Team DevTeam'],
+    ['Classification', 'Classification Core'],
+])('parses %s keyword', async (keyword, input) => {
+    // Arrange & Act
+    const document = await testServices.parse(input);
+    
+    // Assert
+    expectValidDocument(document);
+});
+```
+
+### When to Consolidate
+
+- **DO consolidate:** Same assertion pattern, different input values
+- **DON'T consolidate:** Different behaviors that happen to look similar
+- **Rule:** If one variant failing requires different fix than another, keep separate
+
 ## Best Practices
 
 ### DO
 
-- Test through public APIs
+- Test through public APIs (LSP providers, SDK methods)
 - Use `setupTestSuite()` for cleanup
 - Test edge cases (empty, Unicode, very long)
 - Verify error messages contain useful info
@@ -417,6 +547,9 @@ test('handles large models within timeout', async () => {
 - Write tests BEFORE fixing bugs (regression prevention)
 - Use `s` template tag for readable multi-line DSL code
 - Abstract repeated patterns into helper functions
+- Test multi-file scenarios for import/scoping features
+- Verify USER-VISIBLE output (hover content, completion labels)
+- Use test.each to reduce redundant tests
 
 ### DON'T
 
@@ -427,6 +560,8 @@ test('handles large models within timeout', async () => {
 - Don't skip tests without documenting why
 - Don't use `any` casts to access private members
 - Don't write tests that pass when the feature is broken
+- Don't mock LSP provider methods - test through real API
+- Don't test with mock scopes when real scoping can be used
 
 ## Documentation Checklist
 

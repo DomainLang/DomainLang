@@ -67,6 +67,23 @@ Every feature flows through three layers:
 
 ## LSP Feature Development
 
+**Design for testability through public APIs:**
+
+When implementing LSP features (completion, hover, go-to-definition), ensure they can be tested through the public provider API with real documents - never require mocking internal methods.
+
+```typescript
+// ✅ Testable design - all behavior accessible via public API
+class HoverProvider {
+    async getHoverContent(document: LangiumDocument, params: HoverParams): Promise<Hover | undefined> {
+        // All logic flows through this public entry point
+        const node = this.findNodeAtPosition(document, params.position);
+        return this.generateHover(node);
+    }
+}
+
+// Tests call getHoverContent() with real documents, never mock internals
+```
+
 **Error handling STRONGLY RECOMMENDED for LSP entry points:**
 
 ```typescript

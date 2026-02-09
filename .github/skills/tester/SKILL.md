@@ -17,6 +17,8 @@ You're the Test Engineer for DomainLang - write comprehensive tests that catch b
 4. **Use `setupTestSuite()`** - Handles cleanup automatically
 5. **One focus per test** - Test one behavior in isolation
 6. **Mutually exclusive tests** - Tests should not overlap in what they verify
+7. **Never mock LSP providers** - Test through public API with real documents
+8. **Consolidate with test.each** - Reduce redundant tests that verify same pattern
 
 ## Your Role
 
@@ -85,8 +87,65 @@ Feature: [Feature Name]
 | **Validation** | Rules catch invalid states | Duplicate names rejected |
 | **Linking** | References resolve | Parent domain found |
 | **Edge cases** | Unusual inputs handled | Empty, Unicode, limits |
-| **Integration** | Components work together | Full document processing |
+| **Integration** | Components work together | Full document processing || **LSP** | Editor features work | Hover, completion, go-to-def |
 
+## LSP Testing (Critical)
+
+**Test through real LSP API, never mock provider internals.**
+
+### Hover Testing
+
+```typescript
+test('hover shows domain info with go-to-definition link', async () => {
+    // Arrange
+    const document = await testServices.parse(s`
+        Domain Sales { vision: "Revenue" }
+        bc Orders for Sales {}
+    `);
+    const provider = testServices.services.DomainLang.lsp.HoverProvider!;
+    
+    // Act - Position on 'Sales' reference in BC
+    const hover = await provider.getHoverContent(document, {
+        textDocument: { uri: document.uri.toString() },
+        position: { line: 1, character: 23 }
+    });
+    
+    // Assert - Verify USER-VISIBLE content
+    expect(hover?.contents.value).toContain('domain');
+    expect(hover?.contents.value).toMatch(/\[Sales\]\([^)]*#L\d+/);
+});
+```
+
+### Completion Testing
+
+```typescript
+test('completes alias-prefixed types', async () => {
+    // Arrange - Real multi-file scenario
+    const shared = await testServices.parse(s`Team CoreTeam`);
+    const main = await testServices.parse(
+        s`import "${shared.uri}" as lib\nbc Context by lib.<cursor>`,
+        { documentUri: 'file:///main.dlang' }
+    );
+    const provider = testServices.services.DomainLang.lsp.CompletionProvider!;
+    
+    // Act
+    const result = await provider.getCompletion(main, {
+        textDocument: { uri: main.uri.toString() },
+        position: { line: 1, character: 22 }
+    });
+    
+    // Assert - User sees aliased completion
+    expect(result?.items?.map(i => i.label)).toContain('lib.CoreTeam');
+});
+```
+
+### ❌ Never Do This
+
+```typescript
+// ❌ Mocking provider internals - tests pass even if feature broken
+const items = (provider as any).buildItems(mockScope);
+expect(items).toContain('lib.Team');
+```
 ## Common Patterns
 
 ### Parsing
@@ -167,6 +226,45 @@ test('Unicode in domain name', async () => {
     // Is this allowed? Verify consistent behavior
 });
 ```
+
+## Test Consolidation
+
+When tests verify the same pattern with different inputs, use `test.each`:
+
+### ❌ Redundant (Avoid)
+
+```typescript
+test('hover for Domain shows icon', async () => { /* ... */ });
+test('hover for Team shows icon', async () => { /* ... */ });
+test('hover for Classification shows icon', async () => { /* ... */ });
+```
+
+### ✅ Consolidated
+
+```typescript
+test.each([
+    ['Domain', '📁', 'Domain Sales { vision: "v" }'],
+    ['Team', '👥', 'Team DevTeam'],
+    ['Classification', '🏷️', 'Classification Core'],
+])('hover for %s shows %s icon', async (type, icon, input) => {
+    // Arrange
+    const document = await testServices.parse(input);
+    
+    // Act
+    const hover = await getHoverAt(document, 0, 5);
+    
+    // Assert
+    expect(hover?.contents.value).toContain(icon);
+});
+```
+
+**When to consolidate:**
+- Same assertion pattern, different input values
+- Same behavior being tested across types
+
+**When NOT to consolidate:**
+- Different behaviors that look similar
+- If one failing needs different fix than another
 
 ## Critical: CLI Test Patterns
 
