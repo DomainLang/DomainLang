@@ -145,3 +145,7 @@ export async function loadModel(
         query: fromModel(model),
     };
 }
+
+// Re-export validation utilities
+export { validateFile } from './validator.js';
+export type { ValidationResult, ValidationDiagnostic, ValidationOptions } from './validator.js';

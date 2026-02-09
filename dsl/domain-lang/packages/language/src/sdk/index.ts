@@ -16,6 +16,7 @@
  * - Fluent query chains with lazy iteration
  * - O(1) indexed lookups by FQN/name
  * - Resolution rules (which block wins for 0..1 properties)
+ * - File validation (Node.js only, via `validateFile()`)
  * 
  * **Entry points for different deployment targets:**
  * 
@@ -23,27 +24,24 @@
  * |--------|-------------|--------------|-------|
  * | VS Code Extension | `fromDocument()` | ✅ | Zero-copy LSP integration |
  * | Web Editor | `fromDocument()`, `loadModelFromText()` | ✅ | Browser-compatible |
- * | CLI (Node.js) | `loadModel()` from `sdk/loader-node` | ❌ | File system access |
+ * | CLI (Node.js) | `loadModel()`, `validateFile()` | ❌ | File system access |
  * | Hosted LSP | `fromDocument()`, `fromServices()` | ✅ | Server-side only |
  * | Testing | `loadModelFromText()` | ✅ | In-memory parsing |
  * 
  * ## Browser vs Node.js
  * 
- * This module (`sdk/index`) is **browser-safe** and exports only:
- * - `loadModelFromText()` - uses EmptyFileSystem
- * - `fromModel()`, `fromDocument()`, `fromServices()` - zero-copy wrappers
+ * Most of this module is **browser-safe**, but Node.js-specific functions are exported as well:
+ * - `loadModel()` - requires Node.js file system (uses NodeFileSystem)
+ * - `validateFile()` - requires Node.js file system (uses NodeFileSystem)
  * 
- * For file-based loading in Node.js CLI tools:
- * ```typescript
- * import { loadModel } from 'domain-lang-language/sdk/loader-node';
- * ```
+ * These will fail at runtime in browser environments.
  * 
  * @packageDocumentation
  * 
  * @example
  * ```typescript
- * // Node.js CLI: Load from file (requires sdk/loader-node)
- * import { loadModel } from 'domain-lang-language/sdk/loader-node';
+ * // Node.js CLI: Load from file
+ * import { loadModel } from '@domainlang/language/sdk';
  * 
  * const { query } = await loadModel('./domains.dlang', {
  *   workspaceDir: process.cwd()
@@ -56,6 +54,24 @@
  * for (const bc of coreContexts) {
  *   console.log(`${bc.name}: ${bc.description ?? 'n/a'}`);
  * }
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * // Node.js CLI: Validate a model (requires sdk/loader-node)
+ * import { validateFile } from '@domainlang/language/sdk';
+ * 
+ * const result = await validateFile('./domains.dlang');
+ * 
+ * if (!result.valid) {
+ *   for (const error of result.errors) {
+ *     console.error(`${error.file}:${error.line}: ${error.message}`);
+ *   }
+ *   process.exit(1);
+ * }
+ * 
+ * console.log(`✓ Validated ${result.fileCount} files`);
+ * console.log(`  ${result.domainCount} domains, ${result.bcCount} bounded contexts`);
  * ```
  * 
  * @example
@@ -125,3 +141,8 @@ export type {
     BcQueryBuilder,
     RelationshipView,
 } from './types.js';
+
+// Node.js-specific exports (will fail in browser environments)
+export { loadModel } from './loader-node.js';
+export { validateFile, validateWorkspace } from './validator.js';
+export type { ValidationResult, ValidationDiagnostic, ValidationOptions, WorkspaceValidationResult } from './validator.js';

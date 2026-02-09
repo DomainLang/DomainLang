@@ -98,6 +98,42 @@ See `.github/instructions/` for language-specific rules (TypeScript, Langium, te
 - Update LSP features (hover, completion, validation) when grammar changes
 - Update `/site/` documentation for new keywords
 
+### New SDK Features (Mandatory Checklist)
+
+When adding new SDK functionality (functions, classes, or exports):
+
+1. **✅ Write tests FIRST** in `packages/language/test/sdk/`
+   - Use `setupTestSuite()` for test environment
+   - Follow AAA pattern (Arrange/Act/Assert)
+   - Test happy path + error cases + edge cases
+   - Ensure tests pass before proceeding
+
+2. **✅ Update SDK documentation**
+   - Add JSDoc comments to all new functions/classes
+   - Update `packages/language/src/sdk/index.ts` module documentation
+   - Add usage examples in JSDoc
+   - Update entry point table if adding new module
+
+3. **✅ Update site documentation**
+   - Add examples to `/site/guide/sdk.md`
+   - Update API reference if needed
+   - Add to changelog/release notes
+
+4. **✅ Export from correct module**
+   - Browser-safe → export from `sdk/index.ts`
+   - Node.js only → export from `sdk/loader-node.ts`
+   - Update `package.json` exports if adding new subpath
+
+**Example commit sequence:**
+```bash
+# 1. Tests
+git add packages/language/test/sdk/new-feature.test.ts
+# 2. Implementation
+git add packages/language/src/sdk/new-feature.ts
+# 3. Documentation
+git add packages/language/src/sdk/index.ts site/guide/sdk.md
+```
+
 ### Type Organization
 
 - **All** shared types go in `packages/language/src/services/types.ts`

@@ -28,13 +28,35 @@ If you only want language validation and navigation while editing, use the VS Co
 
 The current CLI focuses on:
 
-- Managing external model dependencies via `model.yaml` and `model.lock`
-- Auditing and compliance checks based on `model.yaml` governance policies
-- Basic dependency visualization (tree/impact)
+- **Validating** `.dlang` files and multi-file workspaces with full LSP validation
+- **Managing** external model dependencies via `model.yaml` and `model.lock`
+- **Installing** packages from GitHub with version/branch/commit support
+- **Tracking** available updates for dependencies
 
 For background on the manifest and import syntax, see the [Import System](/guide/imports).
 
 ## Common workflows
+
+### Initialize a new project
+
+Create a new DomainLang project with starter files:
+
+```bash
+dlang init
+# or specify a directory
+dlang init ./my-project
+```
+
+### Validate your model
+
+```bash
+# Validate current workspace directory
+dlang validate
+
+# Validate specific workspace or file
+dlang validate ./my-project
+dlang validate ./domains.dlang
+```
 
 ### Install dependencies
 
@@ -46,23 +68,77 @@ dlang install
 
 This resolves dependencies and writes/updates `model.lock`.
 
-### Check dependency status
+### Check for outdated dependencies
+
+See which dependencies have updates available:
 
 ```bash
-dlang model status
+dlang outdated
 ```
 
 ### Update dependencies
 
 ```bash
-# Update all dependencies
-dlang model update
+# Update all branch dependencies to latest commit
+dlang update
 
-# Update one dependency
-dlang model update acme/ddd-core
+# Upgrade specific package to newer version
+dlang upgrade acme/ddd-core v2.0.0
 ```
 
 ## Command reference
+
+### `init`
+
+Initialize a new DomainLang project:
+
+```bash
+# Initialize in current directory
+dlang init
+
+# Initialize in specific directory
+dlang init ./my-project
+```
+
+Creates:
+
+- `model.yaml` — project manifest
+- `index.dlang` — entry file with example domain
+- `.gitignore` — ignore `.dlang/` cache directory
+
+### `validate`
+
+Validate DomainLang model files with full LSP-based validation:
+
+```bash
+# Validate current workspace directory
+dlang validate
+
+# Validate specific workspace directory
+dlang validate ./my-project
+
+# Validate a single file
+dlang validate ./domains.dlang
+```
+
+The validator:
+
+- Uses the Language Server Protocol infrastructure for accurate validation
+- Validates the entry file and all its imports
+- Reports errors and warnings with line/column numbers
+- Shows element counts (domains, bounded contexts)
+- Works with both single files and multi-file workspaces
+
+For workspaces, the entry file is determined by `model.yaml`:
+
+```yaml
+model:
+  entry: index.dlang  # Optional, defaults to index.dlang
+```
+
+::: tip
+The validate command uses the same validation engine as the [Model Query SDK](/guide/sdk#validateworkspace-nodejs-only).
+:::
 
 ### `install`
 
@@ -72,81 +148,83 @@ Install all model dependencies and generate/update the lock file:
 dlang install
 ```
 
-### `model list`
+Reads `model.yaml` dependencies and:
 
-List model dependencies:
+- Downloads packages from GitHub
+- Resolves version constraints
+- Generates/updates `model.lock`
+- Caches packages in `.dlang/packages/`
 
-```bash
-dlang model list
-```
-
-### `model add`
+### `add`
 
 Add a dependency to `model.yaml`:
 
 ```bash
-dlang model add <name> <owner/repo> [version]
+dlang add <specifier>
+```
+
+The specifier format is `owner/repo@version`. Examples:
+
+```bash
+# Add specific version (tag)
+dlang add acme/ddd-core@v1.2.0
+
+# Add latest from branch
+dlang add acme/ddd-core@main
+
+# Add specific commit
+dlang add acme/ddd-core@abc1234
+```
+
+### `remove`
+
+Remove a dependency from `model.yaml`:
+
+```bash
+dlang remove <name>
 ```
 
 Example:
 
 ```bash
-dlang model add acme/ddd-core acme/ddd-core v1.2.0
+dlang remove acme/ddd-core
 ```
 
-### `model remove`
+### `update`
 
-Remove a dependency from `model.yaml`:
+Update branch dependencies to their latest commits:
 
 ```bash
-dlang model remove <name>
+dlang update
 ```
 
-### `model tree`
+This only affects dependencies pinned to branches (e.g., `@main`). Tag dependencies (e.g., `@v1.0.0`) are not updated. Use `upgrade` for those.
 
-Show the dependency tree:
+### `upgrade`
+
+Upgrade dependencies to newer versions:
 
 ```bash
-dlang model tree
+# Upgrade specific package to specific version
+dlang upgrade acme/ddd-core v2.0.0
+
+# Interactive upgrade (if implemented)
+dlang upgrade
 ```
 
-Include commit SHAs:
+### `outdated`
+
+Check which dependencies have updates available:
 
 ```bash
-dlang model tree --commits
+dlang outdated
 ```
 
-### `model deps`
+Shows:
 
-Show packages that depend on a given package:
-
-```bash
-dlang model deps <owner/repo>
-```
-
-### `model validate`
-
-Validate model structure and dependency setup:
-
-```bash
-dlang model validate
-```
-
-### `model audit`
-
-Generate a governance audit report:
-
-```bash
-dlang model audit
-```
-
-### `model compliance`
-
-Check compliance with governance policies:
-
-```bash
-dlang model compliance
-```
+- Current version/commit
+- Latest available version
+- Update type (major/minor/patch)
 
 ### `cache-clear`
 
@@ -156,15 +234,17 @@ Clear the dependency cache:
 dlang cache-clear
 ```
 
-## Code generation (experimental)
+This removes all cached packages from `.dlang/packages/`. Packages will be re-downloaded on next `install`.
 
-The CLI currently exposes a `generate` command, but it is still experimental:
+### `help`
+
+Display help information:
 
 ```bash
-dlang generate <file>
+dlang help
 ```
 
-Expect this area to change significantly.
+Shows available commands, options, and examples. You can also use `dlang --help` or `dlang -h`.
 
 ## Next steps
 

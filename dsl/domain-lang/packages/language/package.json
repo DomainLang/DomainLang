@@ -63,10 +63,6 @@
         "./syntaxes/domain-lang.monarch": {
             "types": "./out/syntaxes/domain-lang.monarch.d.ts",
             "default": "./out/syntaxes/domain-lang.monarch.js"
-        },
-        "./src/services/git-url-resolver.js": {
-            "browser": "./src/services/git-url-resolver.browser.js",
-            "default": "./src/services/git-url-resolver.js"
         }
     },
     "typesVersions": {

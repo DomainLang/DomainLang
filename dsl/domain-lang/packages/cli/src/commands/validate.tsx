@@ -7,10 +7,11 @@
 import type { CommandModule, Argv } from 'yargs';
 import React, { useEffect } from 'react';
 import { Box, Text, useApp } from 'ink';
-import type { LangiumDocument } from 'langium';
-import { URI } from 'langium';
-import { NodeFileSystem } from 'langium/node';
-import { createDomainLangServices, type Model } from '@domainlang/language';
+import { 
+    validateFile as validateFileSDK,
+    validateWorkspace as validateWorkspaceSDK,
+    type ValidationDiagnostic,
+} from '@domainlang/language/sdk';
 import { 
     Spinner, 
     StatusMessage, 
@@ -23,16 +24,16 @@ import { EMOJI } from '../ui/themes/emoji.js';
 import { useCommand } from '../ui/hooks/useCommand.js';
 import { runDirect } from '../utils/run-direct.js';
 import { runCommand } from './command-runner.js';
-import type { CommandContext, ValidationResult, CommandError, CommandWarning } from './types.js';
-import { resolve, extname, basename } from 'node:path';
-import { defaultFileSystem, type FileSystemService } from '../services/filesystem.js';
+import type { CommandContext, CommandError, CommandWarning, ValidationResult } from './types.js';
+import { basename, dirname, resolve } from 'node:path';
+import { statSync } from 'node:fs';
 
 /**
  * Props for Validate command component.
  */
 export interface ValidateProps {
-    /** File path to validate */
-    file: string;
+    /** File or directory path to validate (optional, defaults to cwd) */
+    path?: string;
     /** Command context */
     context: CommandContext;
     /** Whether to auto-exit when command completes (default: true) */
@@ -40,100 +41,88 @@ export interface ValidateProps {
 }
 
 /**
- * Convert Langium diagnostic to CommandError.
+ * Convert SDK ValidationDiagnostic to CommandError.
  */
-function toCommandError(
-    diagnostic: { message: string; range: { start: { line: number; character: number } } },
-    file: string
-): CommandError {
+function toCommandError(diagnostic: ValidationDiagnostic): CommandError {
     return {
         code: 'VALIDATION_ERROR',
         message: diagnostic.message,
-        file,
-        line: diagnostic.range.start.line + 1,
-        column: diagnostic.range.start.character + 1,
+        file: diagnostic.file,
+        line: diagnostic.line,
+        column: diagnostic.column,
     };
 }
 
 /**
- * Convert Langium diagnostic to CommandWarning.
+ * Convert SDK ValidationDiagnostic to CommandWarning.
  */
-function toCommandWarning(
-    diagnostic: { message: string; range: { start: { line: number; character: number } } },
-    file: string
-): CommandWarning {
+function toCommandWarning(diagnostic: ValidationDiagnostic): CommandWarning {
     return {
         code: 'VALIDATION_WARNING',
         message: diagnostic.message,
-        file,
-        line: diagnostic.range.start.line + 1,
+        file: diagnostic.file,
+        line: diagnostic.line,
     };
 }
 
 /**
- * Validate a model file and return results.
+ * Validate a model file or workspace directory.
+ * Determines the validation strategy based on the path type.
+ * 
+ * @param path - File path (.dlang), directory path, or undefined (uses cwd)
+ * @returns Validation result
  */
-async function validateModel(
-    filePath: string,
-    fs: FileSystemService = defaultFileSystem
-): Promise<ValidationResult> {
-    const services = createDomainLangServices(NodeFileSystem).DomainLang;
-    const extensions = services.LanguageMetaData.fileExtensions;
+async function validate(path?: string): Promise<ValidationResult> {
+    // Default to current working directory if no path provided
+    const targetPath = path ? resolve(path) : process.cwd();
     
-    // Check file extension
-    const ext = extname(filePath);
-    if (!extensions.includes(ext)) {
-        throw new Error(`Invalid file extension. Expected: ${extensions.join(', ')}`);
+    // Check if path exists and determine type
+    let isDirectory: boolean;
+    try {
+        const stats = statSync(targetPath);
+        isDirectory = stats.isDirectory();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Path not found: ${path ?? process.cwd()}\n${message}`);
     }
-
-    // Check file exists
-    const resolvedPath = resolve(filePath);
-    if (!fs.existsSync(resolvedPath)) {
-        throw new Error(`File not found: ${filePath}`);
+    
+    // Validate workspace (directory) or single file
+    if (isDirectory) {
+        const sdkResult = await validateWorkspaceSDK(targetPath);
+        
+        return {
+            valid: sdkResult.valid,
+            fileCount: sdkResult.fileCount,
+            domainCount: sdkResult.domainCount,
+            bcCount: sdkResult.bcCount,
+            errors: sdkResult.errors.map(toCommandError),
+            warnings: sdkResult.warnings.map(toCommandWarning),
+        };
+    } else {
+        // Single file validation
+        const sdkResult = await validateFileSDK(targetPath, {
+            workspaceDir: dirname(targetPath),
+        });
+        
+        return {
+            valid: sdkResult.valid,
+            fileCount: sdkResult.fileCount,
+            domainCount: sdkResult.domainCount,
+            bcCount: sdkResult.bcCount,
+            errors: sdkResult.errors.map(toCommandError),
+            warnings: sdkResult.warnings.map(toCommandWarning),
+        };
     }
-
-    // Parse and validate
-    const document: LangiumDocument = await services.shared.workspace.LangiumDocuments
-        .getOrCreateDocument(URI.file(resolvedPath));
-    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-
-    const diagnostics = document.diagnostics ?? [];
-    const errors = diagnostics.filter(d => d.severity === 1);
-    const warnings = diagnostics.filter(d => d.severity === 2);
-
-    // Count model elements
-    const model = document.parseResult?.value as Model | undefined;
-    let domainCount = 0;
-    let bcCount = 0;
-
-    if (model?.children) {
-        for (const element of model.children) {
-            if (element.$type === 'Domain') {
-                domainCount++;
-            } else if (element.$type === 'BoundedContext') {
-                bcCount++;
-            }
-        }
-    }
-
-    return {
-        valid: errors.length === 0,
-        fileCount: 1,
-        domainCount,
-        bcCount,
-        errors: errors.map(e => toCommandError(e, filePath)),
-        warnings: warnings.map(w => toCommandWarning(w, filePath)),
-    };
 }
 
 /**
  * Validate command component.
  * Only renders in rich (Ink) mode.
  */
-export const Validate: React.FC<ValidateProps> = ({ file, context: _context, autoExit = true }) => {
+export const Validate: React.FC<ValidateProps> = ({ path, context: _context, autoExit = true }) => {
     const { status, result, error, elapsed } = useCommand(
-        () => validateModel(file),
-        [file],
+        () => validate(path),
+        [path],
     );
     const { exit } = useApp();
 
@@ -148,7 +137,7 @@ export const Validate: React.FC<ValidateProps> = ({ file, context: _context, aut
     }, [status, exit, autoExit]);
 
     if (status === 'loading') {
-        return <Spinner label={`Validating ${file}`} emoji="search" />;
+        return <Spinner label={`Validating ${path ?? 'workspace'}`} emoji="search" />;
     }
 
     if (status === 'error') {
@@ -162,7 +151,7 @@ export const Validate: React.FC<ValidateProps> = ({ file, context: _context, aut
     // status === 'success' — result is guaranteed
     if (!result) return null;
     const r = result;
-    const fileName = basename(file);
+    const fileName = path ? basename(path) : 'workspace';
 
     return (
         <Box flexDirection="column">
@@ -231,9 +220,9 @@ export const Validate: React.FC<ValidateProps> = ({ file, context: _context, aut
 /**
  * Run validation without Ink (for --json and --quiet modes).
  */
-export async function runValidate(file: string, context: CommandContext): Promise<void> {
+export async function runValidate(path: string | undefined, context: CommandContext): Promise<void> {
     await runDirect(
-        () => validateModel(file),
+        () => validate(path),
         context,
         {
             exitCode: r => (r.valid ? 0 : 1),
@@ -258,23 +247,23 @@ export async function runValidate(file: string, context: CommandContext): Promis
 
 /** Command arguments */
 export interface ValidateArgs {
-    file: string;
+    path?: string;
 }
 
 /** Validate command module for yargs */
 export const validateCommand: CommandModule<object, ValidateArgs> = {
-    command: 'validate <file>',
-    describe: 'Validate model files',
+    command: 'validate [path]',
+    describe: 'Validate .dlang files or workspaces with full LSP validation',
     builder: (yargs: Argv) =>
-        yargs.positional('file', {
-            describe: 'File or directory to validate',
+        yargs.positional('path', {
+            describe: 'Path to validate: .dlang file, workspace directory, or omit for current directory',
             type: 'string',
-            demandOption: true,
+            demandOption: false,
         }) as Argv<ValidateArgs>,
     handler: async (argv) => {
         await runCommand(argv, {
-            ink: (args, ctx) => <Validate file={args.file} context={ctx} />,
-            direct: (args, ctx) => runValidate(args.file, ctx),
+            ink: (args, ctx) => <Validate path={args.path} context={ctx} />,
+            direct: (args, ctx) => runValidate(args.path, ctx),
         });
     },
 };
