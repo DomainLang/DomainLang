@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "name": "domainlang",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "displayName": "DomainLang",
   "description": "A DSL for Domain-Driven Design",
   "publisher": "DomainLang",
