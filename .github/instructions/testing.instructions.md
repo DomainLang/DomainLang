@@ -10,11 +10,12 @@ applyTo: "**/*.test.ts"
 ## Critical Rules
 
 1. **MANDATORY AAA Pattern** - Every test needs `// Arrange`, `// Act`, `// Assert` comments
-2. **Test BEHAVIOR, not IMPLEMENTATION** - Would your test fail if the feature broke for users?
-3. **Use `setupTestSuite()`** - Handles cleanup automatically
-4. **One focus per test** - Test one behavior in isolation
-5. **Never change code to make testing easier** - Tests adapt to code, not vice versa
-6. **Tests should be mutually exclusive** - Tests should cover distinct scenarios without overlap
+1. **Test BEHAVIOR, not IMPLEMENTATION** - Would your test fail if the feature broke for users?
+1. **Never mock LSP provider methods** - Test through public LSP API with real documents
+1. **Use `setupTestSuite()`** - Handles cleanup automatically
+1. **One focus per test** - Test one behavior in isolation
+1. **Never change code to make testing easier** - Tests adapt to code, not vice versa
+1. **Tests should be mutually exclusive** - Tests should cover distinct scenarios without overlap
 
 ## Required Test Template
 
