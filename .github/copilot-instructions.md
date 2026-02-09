@@ -56,6 +56,7 @@ See `.github/instructions/` for language-specific rules (TypeScript, Langium, te
 
 | Component | Path | Purpose |
 |-----------|------|---------|
+| Agent Skill | `skills/domainlang/` | Public skill for AI agents |
 | Grammar | `packages/language/src/domain-lang.langium` | DSL syntax |
 | Generated AST | `packages/language/src/generated/**` | **🔴 NEVER EDIT** |
 | LSP Features | `packages/language/src/lsp/` | Hover, completion, formatting |
@@ -106,10 +107,12 @@ See `.github/instructions/` for language-specific rules (TypeScript, Langium, te
 - Update `/site/guide/` and `/site/reference/`
 - Add `.dlang` examples in `dsl/domain-lang/examples/`
 - Add JSDoc on grammar rules
+- Update agent skill (`skills/domainlang/`) if syntax or keywords changed
 
 **model.yaml changes:**
 - Update `/site/public/schema/model.schema.json`
 - Update `/site/guide/imports.md` if user-facing
+- Update agent skill references if import/manifest syntax changed
 
 ### Code Quality
 

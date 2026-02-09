@@ -167,6 +167,7 @@ See [Bounded Contexts](/guide/bounded-contexts) for details.
 - [ ] Getting started updated (onboarding affected)
 - [ ] Examples updated (new patterns)
 - [ ] Sidebar navigation wired
+- [ ] Agent skill updated (`skills/domainlang/SKILL.md` and `references/SYNTAX.md`) if syntax, keywords, patterns, or tooling changed
 
 ## Deployment
 
@@ -206,6 +207,7 @@ npm run preview  # Preview build
 - [ ] Links correct (relative internal)
 - [ ] Cross-references to prerequisite/related pages
 - [ ] No internal notes or TODOs
+- [ ] Agent skill in sync with site content (`skills/domainlang/`)
 - [ ] Tested locally
 
 ## Commit Messages

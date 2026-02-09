@@ -134,6 +134,7 @@ export default defineConfig({
           items: [
             { text: 'CLI', link: '/guide/cli' },
             { text: 'Model Query SDK', link: '/guide/sdk' },
+            { text: 'Agent skill', link: '/guide/agent-skill' },
           ]
         }
       ],

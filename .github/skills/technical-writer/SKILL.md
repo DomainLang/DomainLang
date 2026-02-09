@@ -334,6 +334,7 @@ accept('error', 'Duplicate name detected', { node: domain });
 | LSP hover text | **You** + Lead Engineer | Language Designer |
 | SDK API docs | **You** | Lead Engineer |
 | Site content | Site Maintainer + **You** | - |
+| Agent skill | Site Maintainer + **You** | Language Designer |
 | ADRs | Architect | **You** (clarity review) |
 | Error messages | Lead Engineer | **You** (UX review) |
 
@@ -349,6 +350,7 @@ accept('error', 'Duplicate name detected', { node: domain });
 - [ ] Appropriate detail level for audience
 - [ ] Examples show best practices
 - [ ] No internal references (repo paths, issue numbers)
+- [ ] Agent skill (`skills/domainlang/`) updated if syntax or keywords changed
 
 ## Common Mistakes
 
