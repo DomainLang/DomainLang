@@ -7,17 +7,13 @@
  * @see https://domainlang.net/guide/getting-started
  */
 
-// Example domain structure - replace with your own
-// Domain Sales {
-//     vision: "Enable efficient sales operations"
-// }
+// Define classifications locally for now
+import "larsbaunwall/ddd-types" as Core
 
-// BoundedContext OrderManagement for Sales as Core {
-//     description: "Handles order lifecycle"
-// }
+dom Enterprise {
+    vision: "Enterprise business operations"
+}
 
-import "larsbaunwall/ddd-types" as core
-
-dom Enterprise
-
-bc Sales for Enterprise as core.CoreDomain
+bc Sales for Enterprise as Core.Baunwalls.Jannie {
+    description: "Sales management"
+}
