@@ -27,6 +27,20 @@ import "./shared/teams.dlang"
 import "../common/classifications.dlang"
 ```
 
+### Import aliases for local files
+
+You can also use aliases with local imports:
+
+```dlang
+import "./shared/types.dlang" as shared
+
+bc OrderContext by shared.CoreTeam as shared.PlatformRole {
+    description: "Uses types from shared module"
+}
+```
+
+This is useful when you want to clearly indicate where types come from, or when the same type name exists in multiple files.
+
 ### Directory-first resolution
 
 When importing without an extension, DomainLang uses directory-first resolution:
@@ -83,6 +97,25 @@ dependencies:
   acme/ddd-core: "v1.0.0"
   ddd-community/patterns: "v2.3.1"
 ```
+
+### Using imported types
+
+After importing with an alias, access types using the `alias.TypeName` syntax:
+
+```dlang
+import "acme/ddd-core" as ddd
+
+// Reference imported types using the alias prefix
+bc OrderContext for ddd.SalesDomain as ddd.CoreRole by ddd.PlatformTeam {
+    description: "Order management bounded context"
+}
+```
+
+This makes it clear where types come from and prevents naming conflicts between packages.
+
+::: tip Code completion
+The editor provides completion after typing `alias.`, showing all available types from that import.
+:::
 
 ### Dependency keys and aliases
 
