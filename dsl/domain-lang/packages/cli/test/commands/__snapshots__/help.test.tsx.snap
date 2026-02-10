@@ -27,7 +27,8 @@ exports[`Help command > renders rich help output 1`] = `
 🔨  COMMANDS
 
    init [directory]               Initialize a new DomainLang project
-   validate <file>                Validate model files
+   validate [path]           Validate .dlang files or workspaces with full LSP
+                             validation
    install                        Install dependencies from model.yaml
    add <specifier>                Add a dependency to model.yaml
    remove <name>                  Remove a dependency from model.yaml
