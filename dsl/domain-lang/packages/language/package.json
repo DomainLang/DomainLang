@@ -46,22 +46,27 @@
     "exports": {
         ".": {
             "types": "./out/index.d.ts",
+            "import": "./out/index.js",
             "default": "./out/index.js"
         },
         "./sdk": {
             "types": "./out/sdk/index.d.ts",
+            "import": "./out/sdk/index.js",
             "default": "./out/sdk/index.js"
         },
         "./main-browser": {
             "types": "./out/main-browser.d.ts",
+            "import": "./out/main-browser.js",
             "default": "./out/main-browser.js"
         },
         "./syntaxes/domain-lang.monarch.js": {
             "types": "./out/syntaxes/domain-lang.monarch.d.ts",
+            "import": "./out/syntaxes/domain-lang.monarch.js",
             "default": "./out/syntaxes/domain-lang.monarch.js"
         },
         "./syntaxes/domain-lang.monarch": {
             "types": "./out/syntaxes/domain-lang.monarch.d.ts",
+            "import": "./out/syntaxes/domain-lang.monarch.js",
             "default": "./out/syntaxes/domain-lang.monarch.js"
         }
     },
