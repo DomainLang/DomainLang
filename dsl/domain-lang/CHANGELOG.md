@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.9.0](https://github.com/DomainLang/DomainLang/compare/v0.8.0...v0.9.0) (2026-02-10)
+
+
+### Features
+
+* add file validation and workspace validation capabilities to SDK ([91beb95](https://github.com/DomainLang/DomainLang/commit/91beb95babf256e45142024189d5b744fb4e0f61))
+* add import field to exports in package.json for better module resolution in vitest ([4746db5](https://github.com/DomainLang/DomainLang/commit/4746db59e012b958efc7bd390a4c465444b21aae))
+* **cli:** add query command for model exploration ([b20a968](https://github.com/DomainLang/DomainLang/commit/b20a9686d3a075eb96baa7f7284ec9dca11d86c1))
+* **language:** add sdk entry point to package.json ([76cedb4](https://github.com/DomainLang/DomainLang/commit/76cedb46c789e390a791f7b579a1b0550350b2ed))
+
+
+### Bug Fixes
+
+* **help:** update validate command description for clarity ([1559526](https://github.com/DomainLang/DomainLang/commit/1559526d06aab4f5e61b11b43c69dc84e45f7239))
+* **render:** specify return type for wrappedUnmount function ([76cedb4](https://github.com/DomainLang/DomainLang/commit/76cedb46c789e390a791f7b579a1b0550350b2ed))
+
+
+### Documentation
+
+* add assessment document for CLI runtime migration to Bun and OpenTUI ([76cedb4](https://github.com/DomainLang/DomainLang/commit/76cedb46c789e390a791f7b579a1b0550350b2ed))
+
 ## [0.8.0](https://github.com/DomainLang/DomainLang/compare/v0.7.0...v0.8.0) (2026-02-09)
 
 

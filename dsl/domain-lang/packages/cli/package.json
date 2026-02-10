@@ -2,7 +2,7 @@
     "name": "@domainlang/cli",
     "displayName": "DomainLang CLI",
     "description": "Command-line interface for DomainLang - validate, analyze, and manage Domain-Driven Design models",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "type": "module",
     "author": "larsbaunwall",
     "license": "Apache-2.0",
