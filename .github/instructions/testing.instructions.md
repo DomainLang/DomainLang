@@ -21,6 +21,206 @@ applyTo: "**/*.test.ts"
    - Either add tests to meet the threshold OR ask user for approval to lower it
    - Never automatically lower thresholds without explicit user approval
 
+## 🚨 MANDATORY: Test-Driven Development (TDD)
+
+**CRITICAL RULE:** Always write tests BEFORE implementing features or fixing bugs.
+
+### The TDD Cycle (RED-GREEN-REFACTOR)
+
+1. **🔴 RED:** Write a FAILING test that describes the desired behavior
+2. **🟢 GREEN:** Implement the MINIMUM code to make the test pass
+3. **🔵 REFACTOR:** Clean up while keeping tests green
+
+### Why This Matters
+
+**The EISDIR Bug Incident (Feb 2026):**
+- Bug: `dlang query domains ./directory` failed with "EISDIR: illegal operation on a directory"
+- Root cause: Tests mocked `loadModel()`, never exercising real path resolution
+- Fix: Added directory-to-entry-file resolution logic
+- **Should have been:** Written integration test FIRST showing the failure, THEN implemented the fix
+
+**Without TDD:**
+- Bugs ship to users, caught in production
+- Tests give false confidence (green tests, broken feature)
+- Refactoring is dangerous (no safety net)
+
+**With TDD:**
+- Tests prove the bug exists (failing test)
+- Tests prove the fix works (passing test)
+- Tests prevent regression (stays green forever)
+
+### TDD Workflow for New Features
+
+```bash
+# 1. Write failing test FIRST
+# test/commands/my-feature.test.ts
+test('should handle edge case X', () => {
+    expect(() => myFeature('X')).not.toThrow();
+});
+
+# 2. Run test → watch it FAIL
+npm test -- my-feature.test.ts
+# ❌ Error: myFeature is not defined
+
+# 3. Implement MINIMAL code to pass
+export function myFeature(input: string) {
+    // minimal implementation
+}
+
+# 4. Run test → watch it PASS
+npm test -- my-feature.test.ts
+# ✓ should handle edge case X
+
+# 5. Refactor (if needed) while tests stay green
+```
+
+### TDD Workflow for Bug Fixes
+
+```bash
+# 1. Reproduce the bug in a FAILING test FIRST
+test('should not crash on empty input', () => {
+    expect(() => processInput('')).not.toThrow();
+});
+
+# 2. Run test → confirm it FAILS with the bug
+npm test
+# ❌ Error: Cannot read property 'length' of undefined
+
+# 3. Fix the bug with minimal code
+export function processInput(input: string) {
+    if (!input) return;
+    // ... rest of implementation
+}
+
+# 4. Run test → confirm it PASSES
+npm test
+# ✓ should not crash on empty input
+```
+
+### Enforcement
+
+**Before submitting code:**
+- [ ] All new features have tests written FIRST (can demonstrate RED → GREEN)
+- [ ] All bug fixes have regression tests written FIRST
+- [ ] Tests verify user-visible behavior, not implementation details
+- [ ] Would reverting the code change make the test fail?
+
+**Code review checklist:**
+- Can you see the test failing before the fix in commit history?
+- Do tests verify behavior or implementation?
+- Would tests catch regression if fix was reverted?
+
+## CLI Testing Strategy (Integration Required)
+
+**RULE:** CLI commands MUST have integration tests using real subprocess invocation.
+
+### Why Integration Tests for CLI?
+
+Unit tests mock external dependencies (like `loadModel()`), which means:
+- ❌ Path resolution bugs go undetected (file vs directory)
+- ❌ Argument parsing issues aren't caught
+- ❌ Real filesystem edge cases are missed
+- ❌ User workflows aren't validated end-to-end
+
+Integration tests use `execSync('node bin/cli.js ...')` to:
+- ✅ Test complete user workflows from command line to output
+- ✅ Catch path resolution bugs (directory → entry file)
+- ✅ Verify argument parsing, validation, and error messages
+- ✅ Test against real filesystem operations
+- ✅ Ensure error messages are actually helpful to users
+
+### When to Write Each Type
+
+| Test Type | Use For | Example |
+|-----------|---------|---------|
+| **Unit** | Component rendering, filter logic, data formatting | `QueryComponent` renders count correctly |
+| **Integration** | Complete CLI workflows with real FS and process execution | `dlang query domains ./workspace` resolves directory to entry file |
+
+**Both are required** - Unit tests for fast feedback on logic, integration tests for confidence in real-world usage.
+
+### Integration Test Template
+
+```typescript
+/**
+ * Integration test: command-name
+ *
+ * Tests the actual CLI binary (`node bin/cli.js`) with real file system operations.
+ *
+ * These tests verify complete user workflows from command invocation to output.
+ */
+import { execSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+const CLI_BIN = resolve(__dirname, '../../bin/cli.js');
+
+describe('command-name integration', () => {
+    let workspace: string;
+
+    beforeEach(() => {
+        workspace = mkdtempSync(join(tmpdir(), 'dlang-test-'));
+    });
+
+    afterEach(() => {
+        rmSync(workspace, { recursive: true, force: true });
+    });
+
+    it('should handle real file system operations', () => {
+        // Arrange - Create real files in temp workspace
+        writeFileSync(
+            join(workspace, 'index.dlang'),
+            'Domain Test { vision: "Test domain" }',
+        );
+
+        // Act - Run actual CLI binary with --json for parseable output
+        const output = execSync(
+            `node ${CLI_BIN} command-name --json`,
+            {
+                cwd: workspace,
+                encoding: 'utf-8',
+                timeout: 30_000,
+                env: { ...process.env, NO_COLOR: '1' },
+            },
+        );
+
+        // Assert - Verify structured output
+        const result = JSON.parse(output) as { success: boolean };
+        expect(result.success).toBe(true);
+    });
+
+    it('should fail with helpful error message', () => {
+        // Arrange - Empty workspace (no files)
+
+        // Act & Assert - Expect command to fail gracefully
+        try {
+            execSync(`node ${CLI_BIN} command-name --json`, {
+                cwd: workspace,
+                encoding: 'utf-8',
+            });
+            expect.fail('Should have thrown');
+        } catch (error) {
+            const execError = error as { stderr: string };
+            expect(execError.stderr).toContain('helpful error message');
+        }
+    });
+});
+```
+
+### Test Coverage Requirements
+
+**Every CLI command MUST have:**
+1. ✅ Integration tests for main user workflows (happy path)
+2. ✅ Integration tests for error scenarios (missing files, invalid args)
+3. ✅ Unit tests for complex business logic (if applicable)
+4. ✅ Examples: See `test/integration/query-command.test.ts`, `test/integration/package-lifecycle.test.ts`
+
+**Examples:**
+- `validate` command → integration: directory resolution, LSP diagnostics | unit: diagnostic formatting
+- `query` command → integration: path resolution, filters, output formats | unit: entity type normalization
+- `add` command → integration: package installation, manifest updates | unit: version parsing
+
 ## Required Test Template
 
 ```typescript
