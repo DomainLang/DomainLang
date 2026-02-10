@@ -9,31 +9,31 @@ import { render } from '../../src/test-utils/render.js';
 import { Validate } from '../../src/commands/validate.js';
 import type { CommandContext } from '../../src/commands/types.js';
 
-// Mock Langium services
-vi.mock('@domainlang/language', () => ({
-    createDomainLangServices: vi.fn(() => ({
-        DomainLang: {
-            LanguageMetaData: { fileExtensions: ['.dlang'] },
-            shared: {
-                workspace: {
-                    LangiumDocuments: {
-                        getOrCreateDocument: vi.fn(),
-                    },
-                    DocumentBuilder: {
-                        build: vi.fn(),
-                    },
-                },
-            },
-        },
+// Mock the SDK validation functions used by validate.tsx
+vi.mock('@domainlang/language/sdk', () => ({
+    validateFile: vi.fn(() => Promise.resolve({
+        valid: true,
+        fileCount: 1,
+        domainCount: 1,
+        bcCount: 0,
+        errors: [],
+        warnings: [],
+    })),
+    validateWorkspace: vi.fn(() => Promise.resolve({
+        valid: true,
+        fileCount: 1,
+        domainCount: 1,
+        bcCount: 0,
+        errors: [],
+        warnings: [],
     })),
 }));
 
-vi.mock('langium/node', () => ({
-    NodeFileSystem: {},
-}));
-
+// Mock statSync used to determine file vs directory
 vi.mock('node:fs', () => ({
-    existsSync: vi.fn(() => true),
+    statSync: vi.fn(() => ({
+        isDirectory: () => false,
+    })),
 }));
 
 describe('Validate command', () => {
@@ -56,24 +56,24 @@ describe('Validate command', () => {
     describe('loading state', () => {
         it('shows spinner while validating', () => {
             // Arrange
-            const file = 'test-model.dlang';
+            const path = 'test-model.dlang';
 
             // Act
             const { lastFrame } = render(
-                <Validate file={file} context={defaultContext} autoExit={false} />,
+                <Validate path={path} context={defaultContext} autoExit={false} />,
             );
 
             // Assert - should show loading spinner
             const output = lastFrame();
             expect(output).toContain('Validating');
-            expect(output).toContain(file);
+            expect(output).toContain(path);
         });
     });
 
     describe('component structure', () => {
         it('renders with correct props', () => {
             // Arrange
-            const file = 'domain-model.dlang';
+            const path = 'domain-model.dlang';
             const context: CommandContext = {
                 mode: 'rich',
                 noColor: false,
@@ -84,7 +84,7 @@ describe('Validate command', () => {
 
             // Act
             const { lastFrame } = render(
-                <Validate file={file} context={context} autoExit={false} />,
+                <Validate path={path} context={context} autoExit={false} />,
             );
 
             // Assert - component renders without error

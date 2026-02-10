@@ -6,6 +6,13 @@ import { render } from '../../src/test-utils/render.js';
 import { Help, runHelp } from '../../src/commands/help.js';
 import type { CommandContext } from '../../src/commands/types.js';
 
+// Mock SDK to prevent transitive resolution failure
+// (help.tsx → validate.tsx → @domainlang/language/sdk)
+vi.mock('@domainlang/language/sdk', () => ({
+    validateFile: vi.fn(),
+    validateWorkspace: vi.fn(),
+}));
+
 let stdoutOutput: string;
 
 beforeEach(() => {
