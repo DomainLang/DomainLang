@@ -15,6 +15,7 @@
 // Named command modules
 export { initCommand } from './init.js';
 export { validateCommand } from './validate.js';
+export { queryCommand } from './query.js';
 export { installCommand } from './install.js';
 export { addCommand } from './add.js';
 export { removeCommand } from './remove.js';
@@ -39,6 +40,7 @@ export { runCommand, buildContext, getVersion, globalOptions } from './command-r
 // Assemble the commands array from named exports
 import { initCommand } from './init.js';
 import { validateCommand } from './validate.js';
+import { queryCommand } from './query.js';
 import { installCommand } from './install.js';
 import { addCommand } from './add.js';
 import { removeCommand } from './remove.js';
@@ -55,6 +57,7 @@ import { helpCommand } from './help.js';
 export const commands = [
     initCommand,
     validateCommand,
+    queryCommand,
     installCommand,
     addCommand,
     removeCommand,

@@ -29,6 +29,7 @@ If you only want language validation and navigation while editing, use the VS Co
 The current CLI focuses on:
 
 - **Validating** `.dlang` files and multi-file workspaces with full LSP validation
+- **Querying** models for domains, bounded contexts, teams, relationships, and more
 - **Managing** external model dependencies via `model.yaml` and `model.lock`
 - **Installing** packages from GitHub with version/branch/commit support
 - **Tracking** available updates for dependencies
@@ -86,6 +87,24 @@ dlang update
 dlang upgrade acme/ddd-core v2.0.0
 ```
 
+### Query your model
+
+Explore domains, bounded contexts, teams, relationships, and more:
+
+```bash
+# List all domains
+dlang query domains
+
+# Find bounded contexts in a specific domain
+dlang query bcs --domain Sales
+
+# Core bounded contexts as JSON
+dlang query bcs --classification Core --format json
+
+# Count bounded contexts
+dlang query bcs --count
+```
+
 ## Command reference
 
 ### `init`
@@ -138,6 +157,75 @@ model:
 
 ::: tip
 The validate command uses the same validation engine as the [Model Query SDK](/guide/sdk#validateworkspace-nodejs-only).
+:::
+
+### `query`
+
+Query elements from a DomainLang model:
+
+```bash
+dlang query <type> [path]
+```
+
+The `<type>` positional selects the kind of element to query. The optional `[path]` points to a `.dlang` file or workspace directory (defaults to the current directory).
+
+**Entity types:**
+
+| Type               | Aliases                         | Description                |
+| ------------------ | ------------------------------- | -------------------------- |
+| `domains`          |                                 | All domains                |
+| `bcs`              | `bounded-contexts`, `contexts`  | Bounded contexts           |
+| `teams`            |                                 | Team definitions           |
+| `classifications`  |                                 | Classification definitions |
+| `relationships`    | `rels`                          | BC relationships           |
+| `context-maps`     | `cmaps`                         | Context maps               |
+| `domain-maps`      | `dmaps`                         | Domain maps                |
+
+**Filter options (apply to bounded contexts):**
+
+| Flag               | Alias          | Description                       |
+| ------------------ | -------------- | --------------------------------- |
+| `--name`           | `-n`           | Filter by name (supports regex)   |
+| `--fqn`            |                | Filter by fully qualified name    |
+| `--domain`         | `-d`           | Filter by domain                  |
+| `--team`           | `-t`           | Filter by team                    |
+| `--classification` | `-c`, `--role` | Filter by classification          |
+| `--metadata`       | `-m`           | Filter by metadata (`key=value`)  |
+
+**Output options:**
+
+| Flag       | Alias | Description                                       |
+| ---------- | ----- | ------------------------------------------------- |
+| `--format` | `-f`  | Output format: `table` (default), `json`, `yaml`  |
+| `--count`  |       | Print only the number of matching results         |
+
+Examples:
+
+```bash
+# List all domains in the current workspace
+dlang query domains
+
+# List domains in a specific directory
+dlang query domains ./my-project
+
+# Bounded contexts in the Sales domain
+dlang query bcs --domain Sales
+
+# Core bounded contexts as JSON
+dlang query bcs -c Core -f json
+
+# Show all relationships
+dlang query rels
+
+# Count bounded contexts
+dlang query bcs --count
+
+# Filter by metadata
+dlang query bcs --metadata Language=TypeScript
+```
+
+::: tip
+The query command uses the same SDK as `loadModel()`. See the [Model Query SDK](/guide/sdk) for programmatic access.
 :::
 
 ### `install`

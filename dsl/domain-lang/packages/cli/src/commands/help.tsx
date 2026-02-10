@@ -17,6 +17,7 @@ import type { CommandContext } from './types.js';
 // Import command modules directly to avoid circular dependency with index.ts
 import { initCommand } from './init.js';
 import { validateCommand } from './validate.js';
+import { queryCommand } from './query.js';
 import { installCommand } from './install.js';
 import { addCommand } from './add.js';
 import { removeCommand } from './remove.js';
@@ -32,6 +33,7 @@ import { cacheClearCommand } from './cache-clear.js';
 const allCommands = [
     initCommand,
     validateCommand,
+    queryCommand,
     installCommand,
     addCommand,
     removeCommand,
@@ -121,6 +123,7 @@ export const Help: React.FC<HelpProps> = ({ context }) => {
             <Box flexDirection="column" marginLeft={3}>
                 <Text color={theme.ui.comment}>$ dlang init</Text>
                 <Text color={theme.ui.comment}>$ dlang validate ./domains</Text>
+                <Text color={theme.ui.comment}>$ dlang query bcs --domain Sales</Text>
                 <Text color={theme.ui.comment}>$ dlang add owner/repo@v1.0.0</Text>
             </Box>
         </Box>

@@ -29,6 +29,7 @@ exports[`Help command > renders rich help output 1`] = `
    init [directory]               Initialize a new DomainLang project
    validate [path]           Validate .dlang files or workspaces with full LSP
                              validation
+   query <type> [path]            Query DomainLang models
    install                        Install dependencies from model.yaml
    add <specifier>                Add a dependency to model.yaml
    remove <name>                  Remove a dependency from model.yaml
@@ -53,5 +54,6 @@ exports[`Help command > renders rich help output 1`] = `
 
    $ dlang init
    $ dlang validate ./domains
+   $ dlang query bcs --domain Sales
    $ dlang add owner/repo@v1.0.0"
 `;
