@@ -3,7 +3,7 @@ import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { FileChangeType } from 'vscode-languageserver-protocol';
-import { createDomainLangServices, getManifestDiagnosticsService, DomainLangIndexManager } from '@domainlang/language';
+import { createDomainLangServices, getManifestDiagnosticsService, DomainLangIndexManager, registerToolHandlers } from '@domainlang/language';
 import fs from 'node:fs/promises';
 
 // Create a connection to the client
@@ -87,6 +87,9 @@ shared.lsp.DocumentUpdateHandler.onWatchedFilesChange(async params => {
         }
     }
 });
+
+// Register custom LSP request handlers for VS Code Language Model Tools (PRS-015)
+registerToolHandlers(connection, { shared, DomainLang });
 
 // Start the language server with the shared services
 startLanguageServer(shared);

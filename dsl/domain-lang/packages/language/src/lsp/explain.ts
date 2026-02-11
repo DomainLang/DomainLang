@@ -38,12 +38,12 @@ import { effectiveClassification, effectiveTeam } from '../sdk/resolution.js';
  * Delegates to the appropriate builder based on element type.
  * 
  * @param node - AST node to explain
- * @param services - DomainLang services for reference resolution
+ * @param _services - DomainLang services for reference resolution
  * @returns Markdown explanation
  */
 export function generateExplanation(
     node: AstNode,
-    services: { shared: LangiumSharedServices; DomainLang: DomainLangServices }
+    _services: { shared: LangiumSharedServices; DomainLang: DomainLangServices }
 ): string {
     // Create simple reference link function (just returns name)
     const refLink = (ref: { name: string } | undefined, label?: string): string => {

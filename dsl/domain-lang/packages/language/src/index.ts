@@ -28,3 +28,4 @@ export * from './utils/manifest-utils.js';
 // Export LSP services
 export * from './lsp/manifest-diagnostics.js';
 export { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
+export { registerToolHandlers } from './lsp/tool-handlers.js';
