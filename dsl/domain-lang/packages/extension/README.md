@@ -10,6 +10,24 @@ A Domain-Driven Design modeling language with first-class VS Code support. Defin
 - **Hover documentation** showing element details
 - **Real-time validation** with helpful error messages
 - **Code formatting** to keep models consistent
+- **AI agent integration** with GitHub Copilot and Claude via Language Model Tools
+
+### AI agent tools
+
+DomainLang provides four Language Model Tools that AI agents can use to understand and query your domain models:
+
+- **`domainlang_validate`** - Validate the model and get all diagnostics
+- **`domainlang_list`** - List entities (domains, bounded contexts, teams, etc.) with filters
+- **`domainlang_get`** - Get a specific element by FQN or model summary
+- **`domainlang_explain`** - Get rich markdown explanations of any element
+
+**Example prompts:**
+- "Check if my DomainLang model has any errors"
+- "Show me all Core bounded contexts"
+- "Explain the OrderContext bounded context"
+- "Give me a summary of the model"
+
+See the [VS Code Tools guide](https://domainlang.net/guide/vscode-tools) for detailed documentation.
 
 ## Quick start
 

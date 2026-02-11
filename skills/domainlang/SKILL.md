@@ -314,5 +314,11 @@ See [references/SYNTAX.md](references/SYNTAX.md) for the complete keyword and al
 ## Tooling
 
 - **VS Code extension:** `DomainLang.vscode-domainlang` — syntax highlighting, validation, completion, hover, go-to-definition
+- **VS Code AI tools:** When working in VS Code with GitHub Copilot or Claude, use these Language Model Tools:
+  - `domainlang_validate` — Validate the model and get diagnostics
+  - `domainlang_list` — List entities (domains, bcs, teams, classifications, relationships, context-maps, domain-maps) with filters
+  - `domainlang_get` — Get a specific element by FQN or model summary
+  - `domainlang_explain` — Get rich markdown explanations of any element
+  - Example: "Show me all Core bounded contexts" or "Explain the OrderContext"
 - **CLI:** `npm install -g @domainlang/cli` — `dlang install`, `dlang model tree`, `dlang model status`
 - **SDK:** `npm install @domainlang/language` — parse and query models programmatically
