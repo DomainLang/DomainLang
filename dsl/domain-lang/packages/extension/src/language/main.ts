@@ -89,7 +89,7 @@ shared.lsp.DocumentUpdateHandler.onWatchedFilesChange(async params => {
 });
 
 // Register custom LSP request handlers for VS Code Language Model Tools (PRS-015)
-registerToolHandlers(connection, { shared, DomainLang });
+registerToolHandlers(connection, shared);
 
 // Start the language server with the shared services
 startLanguageServer(shared);

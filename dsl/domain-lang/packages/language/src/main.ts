@@ -14,7 +14,7 @@ const connection = createConnection(ProposedFeatures.all);
 const { shared, DomainLang } = createDomainLangServices({ connection, ...NodeFileSystem });
 
 // Register custom LSP request handlers for VS Code Language Model Tools (PRS-015)
-registerToolHandlers(connection, { shared, DomainLang });
+registerToolHandlers(connection, shared);
 
 // Initialize workspace manager when language server initializes
 // Uses Langium's LanguageServer.onInitialize hook (not raw connection handler)

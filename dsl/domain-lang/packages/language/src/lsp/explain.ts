@@ -9,47 +9,54 @@
  */
 
 import type { AstNode } from 'langium';
-import type { LangiumSharedServices } from 'langium/lsp';
 import type {
     BoundedContext,
     Classification,
+    ContextMap,
     Domain,
+    DomainMap,
     Relationship,
     Team,
 } from '../generated/ast.js';
 import {
     isBoundedContext,
     isClassification,
+    isContextMap,
     isDomain,
+    isDomainMap,
     isRelationship,
     isTeam,
 } from '../generated/ast.js';
-import type { DomainLangServices } from '../domain-lang-module.js';
 import {
     formatHoverContent,
     buildDomainFields,
     buildBcSignature,
     codeBlock,
 } from './hover/hover-builders.js';
+import type { RefLinkFn } from './hover/hover-builders.js';
 import { effectiveClassification, effectiveTeam } from '../sdk/resolution.js';
+
+/**
+ * Creates a plain-text reference link function for explain output.
+ * Unlike the hover provider (which creates clickable links), this returns
+ * plain names suitable for Language Model consumption.
+ */
+function createRefLink(): RefLinkFn {
+    return (ref, label) => {
+        if (!ref) return label ?? 'unknown';
+        return label ?? ref.name;
+    };
+}
 
 /**
  * Generates a rich markdown explanation for any model element.
  * Delegates to the appropriate builder based on element type.
  * 
  * @param node - AST node to explain
- * @param _services - DomainLang services for reference resolution
  * @returns Markdown explanation
  */
-export function generateExplanation(
-    node: AstNode,
-    _services: { shared: LangiumSharedServices; DomainLang: DomainLangServices }
-): string {
-    // Create simple reference link function (just returns name)
-    const refLink = (ref: { name: string } | undefined, label?: string): string => {
-        if (!ref) return label ?? 'unknown';
-        return label ? `${label}` : ref.name;
-    };
+export function generateExplanation(node: AstNode): string {
+    const refLink = createRefLink();
 
     if (isDomain(node)) {
         return explainDomain(node, refLink);
@@ -61,6 +68,10 @@ export function generateExplanation(
         return explainClassification(node);
     } else if (isRelationship(node)) {
         return explainRelationship(node);
+    } else if (isContextMap(node)) {
+        return explainContextMap(node);
+    } else if (isDomainMap(node)) {
+        return explainDomainMap(node);
     } else {
         return `**Unknown element type:** ${node.$type}`;
     }
@@ -69,18 +80,15 @@ export function generateExplanation(
 /**
  * Explains a Domain element.
  */
-function explainDomain(domain: Domain, refLink: (ref: { name: string } | undefined, label?: string) => string): string {
-    const fields = buildDomainFields(domain, refLink as unknown as import('./hover/hover-builders.js').RefLinkFn);
+function explainDomain(domain: Domain, refLink: RefLinkFn): string {
+    const fields = buildDomainFields(domain, refLink);
     return formatHoverContent('', '🏛️', 'domain', domain.name, fields);
 }
 
 /**
  * Explains a BoundedContext element.
  */
-function explainBoundedContext(
-    bc: BoundedContext,
-    refLink: (ref: { name: string } | undefined, label?: string) => string
-): string {
+function explainBoundedContext(bc: BoundedContext, refLink: RefLinkFn): string {
     const description = bc.description ?? '';
     const classification = effectiveClassification(bc);
     const team = effectiveTeam(bc);
@@ -90,17 +98,17 @@ function explainBoundedContext(
     
     if (description) fields.push(description);
     
-    // Add basic properties
+    const extraFields: string[] = [];
     if (bc.domain?.ref) {
-        fields.push('---');
-        fields.push(`📁 **Domain:** ${refLink(bc.domain.ref as { name: string })}`);
+        extraFields.push('---', `📁 **Domain:** ${refLink(bc.domain.ref)}`);
     }
     if (classification) {
-        fields.push(`🔖 **Classification:** ${refLink(classification)}`);
+        extraFields.push(`🔖 **Classification:** ${refLink(classification)}`);
     }
     if (team) {
-        fields.push(`👥 **Team:** ${refLink(team)}`);
+        extraFields.push(`👥 **Team:** ${refLink(team)}`);
     }
+    fields.push(...extraFields);
     
     return formatHoverContent('', '📦', 'bounded context', bc.name, fields);
 }
@@ -129,4 +137,36 @@ function explainRelationship(relationship: Relationship): string {
 
     const description = `Relationship from **${leftName}** ${arrow} **${rightName}**`;
     return formatHoverContent('', '🔗', 'relationship', undefined, [description]);
+}
+
+/**
+ * Explains a ContextMap element.
+ */
+function explainContextMap(contextMap: ContextMap): string {
+    const bcNames = contextMap.boundedContexts
+        .flatMap(mr => mr.items.map(item => item.ref?.name ?? 'unknown'));
+    const relCount = contextMap.relationships.length;
+
+    const fields: string[] = [];
+    if (bcNames.length > 0) {
+        fields.push(`**Bounded contexts:** ${bcNames.join(', ')}`);
+    }
+    fields.push(`**Relationships:** ${relCount}`);
+
+    return formatHoverContent('', '🗺️', 'context map', contextMap.name, fields);
+}
+
+/**
+ * Explains a DomainMap element.
+ */
+function explainDomainMap(domainMap: DomainMap): string {
+    const domainNames = domainMap.domains
+        .flatMap(mr => mr.items.map(item => item.ref?.name ?? 'unknown'));
+
+    const fields: string[] = [];
+    if (domainNames.length > 0) {
+        fields.push(`**Domains:** ${domainNames.join(', ')}`);
+    }
+
+    return formatHoverContent('', '🌐', 'domain map', domainMap.name, fields);
 }
