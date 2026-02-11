@@ -17,7 +17,6 @@ import type { Connection } from 'vscode-languageserver';
 import type { LangiumDocument } from 'langium';
 import type { LangiumSharedServices } from 'langium/lsp';
 import { URI } from 'langium';
-import type { DomainLangServices } from '../domain-lang-module.js';
 import { fromDocument } from '../sdk/query.js';
 import type { Query } from '../sdk/types.js';
 import {
@@ -139,26 +138,26 @@ export interface ExplainResponse {
  * Call this from main.ts after creating the connection.
  * 
  * @param connection - LSP connection
- * @param services - Object containing shared and DomainLang services
+ * @param sharedServices - Langium shared services for workspace access
  */
 export function registerToolHandlers(
     connection: Connection,
-    services: { shared: LangiumSharedServices; DomainLang: DomainLangServices }
+    sharedServices: LangiumSharedServices
 ): void {
     connection.onRequest('domainlang/validate', async (params: ValidateParams) => {
-        return handleValidate(params, services.shared);
+        return handleValidate(params, sharedServices);
     });
 
     connection.onRequest('domainlang/list', async (params: ListParams) => {
-        return handleList(params, services.shared);
+        return handleList(params, sharedServices);
     });
 
     connection.onRequest('domainlang/get', async (params: GetParams) => {
-        return handleGet(params, services.shared);
+        return handleGet(params, sharedServices);
     });
 
     connection.onRequest('domainlang/explain', async (params: ExplainParams) => {
-        return handleExplain(params, services);
+        return handleExplain(params, sharedServices);
     });
 }
 
@@ -174,10 +173,11 @@ async function handleValidate(
     params: ValidateParams,
     sharedServices: LangiumSharedServices
 ): Promise<ValidateResponse> {
-    const langiumDocs = sharedServices.workspace.LangiumDocuments;
-    const documents = params.file
-        ? [langiumDocs.getDocument(URI.parse(params.file))]
-        : Array.from(langiumDocs.all);
+    try {
+        const langiumDocs = sharedServices.workspace.LangiumDocuments;
+        const documents = params.file
+            ? [langiumDocs.getDocument(URI.parse(params.file))]
+            : Array.from(langiumDocs.all);
 
     const errors: DiagnosticInfo[] = [];
     const warnings: DiagnosticInfo[] = [];
@@ -211,6 +211,10 @@ async function handleValidate(
         count: errors.length + warnings.length + info.length,
         diagnostics: { errors, warnings, info },
     };
+    } catch (error) {
+        console.error('domainlang/validate handler error:', error);
+        return { count: 0, diagnostics: { errors: [], warnings: [], info: [] } };
+    }
 }
 
 /**
@@ -221,7 +225,8 @@ async function handleList(
     params: ListParams,
     sharedServices: LangiumSharedServices
 ): Promise<ListResponse> {
-    const entityType = normalizeEntityType(params.type);
+    try {
+        const entityType = normalizeEntityType(params.type);
     const filters = params.filters ?? {};
 
     // Get all documents and merge results
@@ -248,6 +253,10 @@ async function handleList(
         count: allResults.length,
         results: allResults,
     };
+    } catch (error) {
+        console.error('domainlang/list handler error:', error);
+        return { entityType: normalizeEntityType(params.type), count: 0, results: [] };
+    }
 }
 
 /**
@@ -258,7 +267,8 @@ async function handleGet(
     params: GetParams,
     sharedServices: LangiumSharedServices
 ): Promise<GetResponse> {
-    if (params.summary) {
+    try {
+        if (params.summary) {
         return { result: await getModelSummary(sharedServices) };
     }
 
@@ -279,6 +289,10 @@ async function handleGet(
     }
 
     return { result: null };
+    } catch (error) {
+        console.error('domainlang/get handler error:', error);
+        return { result: null };
+    }
 }
 
 /**
@@ -287,23 +301,28 @@ async function handleGet(
  */
 async function handleExplain(
     params: ExplainParams,
-    services: { shared: LangiumSharedServices; DomainLang: DomainLangServices }
+    sharedServices: LangiumSharedServices
 ): Promise<ExplainResponse> {
-    const langiumDocs = services.shared.workspace.LangiumDocuments;
-    const documents = Array.from(langiumDocs.all);
+    try {
+        const langiumDocs = sharedServices.workspace.LangiumDocuments;
+        const documents = Array.from(langiumDocs.all);
 
-    for (const doc of documents) {
-        const query = fromDocument(doc as LangiumDocument<Model>);
-        const element = query.byFqn(params.fqn);
-        if (element) {
-            const explanation = generateExplanation(element, services);
-            return { explanation };
+        for (const doc of documents) {
+            const query = fromDocument(doc as LangiumDocument<Model>);
+            const element = query.byFqn(params.fqn);
+            if (element) {
+                const explanation = generateExplanation(element);
+                return { explanation };
+            }
         }
-    }
 
-    return {
-        explanation: `Element not found: ${params.fqn}`,
-    };
+        return {
+            explanation: `Element not found: ${params.fqn}`,
+        };
+    } catch (error) {
+        console.error('domainlang/explain handler error:', error);
+        return { explanation: `Error explaining element: ${params.fqn}` };
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -9,6 +9,14 @@ import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
 
 /**
+ * LanguageClient.State.Running value.
+ * The State enum is not exported from the public vscode-languageclient API,
+ * so we define the constant here for readability.
+ * @see https://github.com/microsoft/vscode-languageserver-node/blob/main/client/src/common/client.ts
+ */
+const CLIENT_STATE_RUNNING = 2;
+
+/**
  * Registers all DomainLang Language Model Tools.
  * Call this after the language client is started.
  * 
@@ -86,6 +94,29 @@ export function registerLanguageModelTools(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Checks if the language client is ready to handle requests.
+ * Returns an error result if not ready, or undefined if ready.
+ */
+function checkClientReady(client: LanguageClient): vscode.LanguageModelToolResult | undefined {
+    if (client.state !== CLIENT_STATE_RUNNING) {
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart('Error: Language server is not running. Please wait for it to start or reload the window.')
+        ]);
+    }
+    return undefined;
+}
+
+/**
+ * Creates an error result from an unknown error.
+ */
+function errorResult(error: unknown): vscode.LanguageModelToolResult {
+    const message = error instanceof Error ? error.message : String(error);
+    return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(`Error: ${message}`)
+    ]);
+}
+
+/**
  * Invokes the domainlang/validate LSP request.
  */
 async function invokeValidate(
@@ -94,12 +125,10 @@ async function invokeValidate(
     token: vscode.CancellationToken
 ): Promise<vscode.LanguageModelToolResult> {
     try {
-        // Check if client is running
-        if (!client || client.state !== 2) { // State.Running
-            return new vscode.LanguageModelToolResult([
-                new vscode.LanguageModelTextPart('Error: Language server is not running. Please wait for it to start or reload the window.')
-            ]);
-        }
+        const notReady = checkClientReady(client);
+        if (notReady) return notReady;
+
+        if (token.isCancellationRequested) throw new vscode.CancellationError();
 
         // Send custom LSP request
         const response = await client.sendRequest('domainlang/validate', { file: input.file }, token);
@@ -110,10 +139,7 @@ async function invokeValidate(
             new vscode.LanguageModelTextPart(markdown)
         ]);
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(`Error: ${message}`)
-        ]);
+        return errorResult(error);
     }
 }
 
@@ -126,11 +152,10 @@ async function invokeList(
     token: vscode.CancellationToken
 ): Promise<vscode.LanguageModelToolResult> {
     try {
-        if (!client || client.state !== 2) {
-            return new vscode.LanguageModelToolResult([
-                new vscode.LanguageModelTextPart('Error: Language server is not running.')
-            ]);
-        }
+        const notReady = checkClientReady(client);
+        if (notReady) return notReady;
+
+        if (token.isCancellationRequested) throw new vscode.CancellationError();
 
         const response = await client.sendRequest('domainlang/list', input, token);
         
@@ -140,10 +165,7 @@ async function invokeList(
             new vscode.LanguageModelTextPart(json)
         ]);
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(`Error: ${message}`)
-        ]);
+        return errorResult(error);
     }
 }
 
@@ -156,11 +178,10 @@ async function invokeGet(
     token: vscode.CancellationToken
 ): Promise<vscode.LanguageModelToolResult> {
     try {
-        if (!client || client.state !== 2) {
-            return new vscode.LanguageModelToolResult([
-                new vscode.LanguageModelTextPart('Error: Language server is not running.')
-            ]);
-        }
+        const notReady = checkClientReady(client);
+        if (notReady) return notReady;
+
+        if (token.isCancellationRequested) throw new vscode.CancellationError();
 
         const response = await client.sendRequest('domainlang/get', input, token);
         
@@ -169,10 +190,7 @@ async function invokeGet(
             new vscode.LanguageModelTextPart(json)
         ]);
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(`Error: ${message}`)
-        ]);
+        return errorResult(error);
     }
 }
 
@@ -185,11 +203,10 @@ async function invokeExplain(
     token: vscode.CancellationToken
 ): Promise<vscode.LanguageModelToolResult> {
     try {
-        if (!client || client.state !== 2) {
-            return new vscode.LanguageModelToolResult([
-                new vscode.LanguageModelTextPart('Error: Language server is not running.')
-            ]);
-        }
+        const notReady = checkClientReady(client);
+        if (notReady) return notReady;
+
+        if (token.isCancellationRequested) throw new vscode.CancellationError();
 
         const response = await client.sendRequest('domainlang/explain', input, token);
         
@@ -199,10 +216,7 @@ async function invokeExplain(
             new vscode.LanguageModelTextPart(explanation)
         ]);
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(`Error: ${message}`)
-        ]);
+        return errorResult(error);
     }
 }
 
@@ -223,31 +237,32 @@ function formatValidateResponse(response: unknown): string {
         };
     };
 
-    const lines: string[] = [];
-    lines.push(`# Validation Results\n`);
-    lines.push(`**Total diagnostics:** ${data.count}\n`);
+    const lines: string[] = [
+        `# Validation Results\n`,
+        `**Total diagnostics:** ${data.count}\n`,
+    ];
 
     if (data.diagnostics.errors.length > 0) {
-        lines.push(`## Errors (${data.diagnostics.errors.length})\n`);
-        for (const error of data.diagnostics.errors) {
-            lines.push(`- \`${error.file}:${error.line}:${error.column}\` - ${error.message}`);
-        }
-        lines.push('');
+        lines.push(
+            `## Errors (${data.diagnostics.errors.length})\n`,
+            ...data.diagnostics.errors.map(e => `- \`${e.file}:${e.line}:${e.column}\` - ${e.message}`),
+            '',
+        );
     }
 
     if (data.diagnostics.warnings.length > 0) {
-        lines.push(`## Warnings (${data.diagnostics.warnings.length})\n`);
-        for (const warning of data.diagnostics.warnings) {
-            lines.push(`- \`${warning.file}:${warning.line}:${warning.column}\` - ${warning.message}`);
-        }
-        lines.push('');
+        lines.push(
+            `## Warnings (${data.diagnostics.warnings.length})\n`,
+            ...data.diagnostics.warnings.map(w => `- \`${w.file}:${w.line}:${w.column}\` - ${w.message}`),
+            '',
+        );
     }
 
     if (data.diagnostics.info.length > 0) {
-        lines.push(`## Info (${data.diagnostics.info.length})\n`);
-        for (const info of data.diagnostics.info) {
-            lines.push(`- \`${info.file}:${info.line}:${info.column}\` - ${info.message}`);
-        }
+        lines.push(
+            `## Info (${data.diagnostics.info.length})\n`,
+            ...data.diagnostics.info.map(i => `- \`${i.file}:${i.line}:${i.column}\` - ${i.message}`),
+        );
     }
 
     if (data.count === 0) {
