@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.10.0](https://github.com/DomainLang/DomainLang/compare/v0.9.0...v0.10.0) (2026-02-11)
+
+
+### Features
+
+* enhance DomainLang extension with language model tools and improved documentation ([5099298](https://github.com/DomainLang/DomainLang/commit/5099298b45436682e38e70b326b0aafd4998c16d))
+* **extension:** implement VS Code LM Tools registration (PRS-015 Phase 3) ([43989f8](https://github.com/DomainLang/DomainLang/commit/43989f82c1ac872c5edc001a018bf3224e0865cf))
+* **lsp:** add custom request handlers for VS Code LM Tools (PRS-015 Phase 2) ([a02a223](https://github.com/DomainLang/DomainLang/commit/a02a223d04672c6f0f41b4790374f91c2fa1c5fd))
+* **sdk:** add AST serializers for LSP/MCP tool responses (PRS-015 Phase 1) ([a3909ed](https://github.com/DomainLang/DomainLang/commit/a3909ede8f32b6e9da455eae83609f677c50d647))
+
+
+### Documentation
+
+* add VS Code LM Tools documentation (PRS-015 Phase 4) ([f280080](https://github.com/DomainLang/DomainLang/commit/f280080904bbbf49bed2560b3d203ac180eb69af))
+
+
+### Code Refactoring
+
+* **lsp:** improve tool handler robustness and type safety ([895a008](https://github.com/DomainLang/DomainLang/commit/895a008c74602985fdcdd5bffcf1729ea28ced8e))
+
 ## [0.9.0](https://github.com/DomainLang/DomainLang/compare/v0.8.0...v0.9.0) (2026-02-10)
 
 

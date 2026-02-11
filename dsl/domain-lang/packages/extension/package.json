@@ -1,6 +1,6 @@
 {
     "name": "vscode-domainlang",
-    "version": "0.9.0",
+    "version": "0.10.0",
     "displayName": "DomainLang",
     "description": "A DSL for Domain-Driven Design",
     "publisher": "DomainLang",
@@ -61,7 +61,11 @@
                 "userDescription": "Check your DomainLang model for errors and warnings",
                 "canBeReferencedInPrompt": true,
                 "icon": "$(check)",
-                "tags": ["domainlang", "validation", "diagnostics"],
+                "tags": [
+                    "domainlang",
+                    "validation",
+                    "diagnostics"
+                ],
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -80,14 +84,33 @@
                 "userDescription": "Query and filter domains, bounded contexts, teams, and other model entities",
                 "canBeReferencedInPrompt": true,
                 "icon": "$(list-tree)",
-                "tags": ["domainlang", "query", "search"],
+                "tags": [
+                    "domainlang",
+                    "query",
+                    "search"
+                ],
                 "inputSchema": {
                     "type": "object",
-                    "required": ["type"],
+                    "required": [
+                        "type"
+                    ],
                     "properties": {
                         "type": {
                             "type": "string",
-                            "enum": ["domains", "bcs", "bounded-contexts", "contexts", "teams", "classifications", "relationships", "rels", "context-maps", "cmaps", "domain-maps", "dmaps"],
+                            "enum": [
+                                "domains",
+                                "bcs",
+                                "bounded-contexts",
+                                "contexts",
+                                "teams",
+                                "classifications",
+                                "relationships",
+                                "rels",
+                                "context-maps",
+                                "cmaps",
+                                "domain-maps",
+                                "dmaps"
+                            ],
                             "description": "Entity type to list"
                         },
                         "filters": {
@@ -130,7 +153,11 @@
                 "userDescription": "Get details about a specific element or view a model summary",
                 "canBeReferencedInPrompt": true,
                 "icon": "$(file)",
-                "tags": ["domainlang", "detail", "summary"],
+                "tags": [
+                    "domainlang",
+                    "detail",
+                    "summary"
+                ],
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -153,10 +180,16 @@
                 "userDescription": "Get a detailed explanation of any model element with full documentation",
                 "canBeReferencedInPrompt": true,
                 "icon": "$(info)",
-                "tags": ["domainlang", "documentation", "explain"],
+                "tags": [
+                    "domainlang",
+                    "documentation",
+                    "explain"
+                ],
                 "inputSchema": {
                     "type": "object",
-                    "required": ["fqn"],
+                    "required": [
+                        "fqn"
+                    ],
                     "properties": {
                         "fqn": {
                             "type": "string",
