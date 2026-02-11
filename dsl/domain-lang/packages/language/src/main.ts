@@ -4,6 +4,7 @@ import { createConnection, ProposedFeatures, FileChangeType } from 'vscode-langu
 import { createDomainLangServices } from './domain-lang-module.js';
 import { ensureImportGraphFromEntryFile } from './utils/import-utils.js';
 import { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
+import { registerToolHandlers } from './lsp/tool-handlers.js';
 import { URI } from 'langium';
 
 // Create a connection to the client
@@ -11,6 +12,9 @@ const connection = createConnection(ProposedFeatures.all);
 
 // Inject the shared services and language-specific services
 const { shared, DomainLang } = createDomainLangServices({ connection, ...NodeFileSystem });
+
+// Register custom LSP request handlers for VS Code Language Model Tools (PRS-015)
+registerToolHandlers(connection, { shared, DomainLang });
 
 // Initialize workspace manager when language server initializes
 // Uses Langium's LanguageServer.onInitialize hook (not raw connection handler)
