@@ -142,6 +142,17 @@ export type {
     RelationshipView,
 } from './types.js';
 
+// Serializers for tool responses (browser-safe)
+export {
+    serializeNode,
+    serializeRelationship,
+    resolveName,
+    resolveMultiReference,
+    normalizeEntityType,
+    ENTITY_ALIASES,
+} from './serializers.js';
+export type { QueryEntityType, QueryEntityInput, QueryFilters } from './serializers.js';
+
 // Node.js-specific exports (will fail in browser environments)
 export { loadModel } from './loader-node.js';
 export { validateFile, validateWorkspace } from './validator.js';
