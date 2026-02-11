@@ -2,6 +2,7 @@ import type { LanguageClientOptions, ServerOptions} from 'vscode-languageclient/
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
+import { registerLanguageModelTools } from './lm-tools.js';
 
 let client: LanguageClient;
 let outputChannel: vscode.OutputChannel;
@@ -15,6 +16,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     try {
         client = await startLanguageClient(context);
         outputChannel.appendLine('DomainLang language server started successfully');
+        
+        // Register Language Model Tools (PRS-015 Phase 3)
+        registerLanguageModelTools(client, context);
+        outputChannel.appendLine('DomainLang Language Model Tools registered');
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         outputChannel.appendLine(`Failed to start language server: ${message}`);
