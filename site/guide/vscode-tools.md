@@ -1,210 +1,112 @@
 # VS Code language model tools
 
-DomainLang provides native integration with VS Code's Language Model API, enabling AI agents like GitHub Copilot and Claude to query and understand your domain models directly within the editor.
+DomainLang works seamlessly with AI agents in VS Code. Ask GitHub Copilot or Claude questions about your domain model, and they'll understand your bounded contexts, domains, relationships, and strategic design decisions.
 
-## Overview
+## What you can do
 
-The DomainLang extension registers four Language Model Tools that AI agents can use to:
+With DomainLang's Language Model Tools, AI agents can help you:
 
-- **Validate** the model and get diagnostics
-- **List** entities with flexible filtering
-- **Get** specific elements or model summaries  
-- **Explain** any element with rich documentation
+- **Validate** your model and identify issues
+- **Discover** what's in your model with flexible queries
+- **Understand** any element with rich, contextual explanations
+- **Analyze** your architecture at a glance
 
-These tools communicate directly with the already-running Language Server Protocol (LSP) process, providing zero-latency access to your live workspace without spawning additional processes.
+Your AI assistant always has up-to-date information about your model, even as you edit files.
 
 ## Available tools
 
 ### domainlang_validate
 
-Validates the DomainLang model in the current workspace and returns all diagnostics.
+Check your model for errors and warnings.
 
-**Parameters:**
-- `file` (optional): URI of a specific file to validate. If omitted, validates the entire workspace.
+**Try asking:**
+- "Check if my DomainLang model has any errors"
+- "Validate the current workspace"
+- "Are there any warnings in my model?"
 
-**Example usage:**
-```
-Validate my DomainLang model
-```
-
-**Response format:**
-```markdown
-# Validation Results
-
-**Total diagnostics:** 2
-
-## Errors (1)
-
-- `file:///workspace/domains.dlang:10:5` - Domain 'Sales' has no domain vision
-
-## Warnings (1)
-
-- `file:///workspace/contexts.dlang:15:10` - BoundedContext 'Orders' has no description
-```
+**What you get:**
+A summary of all diagnostics (errors, warnings, and info messages) with file locations and line numbers.
 
 ### domainlang_list
 
-Lists DomainLang entities with optional filters.
+Find entities in your model with optional filters.
 
-**Parameters:**
-- `type` (required): Entity type to list - `domains`, `bcs`, `teams`, `classifications`, `relationships`, `context-maps`, or `domain-maps`
-- `filters` (optional): Filter criteria
-  - `name`: Filter by name (string or regex)
-  - `fqn`: Filter by fully qualified name
-  - `domain`: Filter bounded contexts by domain
-  - `team`: Filter bounded contexts by team
-  - `classification`: Filter bounded contexts by classification
-  - `metadata`: Filter bounded contexts by metadata (key=value)
+**Try asking:**
+- "Show me all domains in the model"
+- "List all Core bounded contexts"
+- "What bounded contexts are in the Sales domain?"
+- "Which contexts are owned by the PaymentTeam?"
 
-**Example usage:**
-```
-List all bounded contexts in the Sales domain
-List all Core bounded contexts
-List all domains
-```
-
-**Response format:**
-```json
-{
-  "entityType": "bcs",
-  "count": 3,
-  "results": [
-    {
-      "$type": "BoundedContext",
-      "name": "OrderContext",
-      "fqn": "OrderContext",
-      "domain": "Sales",
-      "description": "Order management"
-    }
-  ]
-}
-```
+**What you get:**
+A list of matching entities with their key properties like name, domain, team, and classification.
 
 ### domainlang_get
 
-Retrieves a specific element by fully qualified name or returns a model summary.
+Get detailed information about a specific element or see your entire model at a glance.
 
-**Parameters:**
-- `fqn` (optional): Fully qualified name of the element to retrieve
-- `summary` (optional): If true, returns model summary instead
+**Try asking:**
+- "Get the OrderContext bounded context"
+- "Show me details about the Sales domain"
+- "Give me a summary of the model"
 
-**Example usage:**
-```
-Get the OrderContext bounded context
-Show me a summary of the model
-```
-
-**Response format (element):**
-```json
-{
-  "result": {
-    "$type": "BoundedContext",
-    "name": "OrderContext",
-    "fqn": "OrderContext",
-    "domain": "Sales",
-    "description": "Order management",
-    "relationships": [...]
-  }
-}
-```
-
-**Response format (summary):**
-```json
-{
-  "result": {
-    "$type": "ModelSummary",
-    "documentCount": 5,
-    "domains": 3,
-    "boundedContexts": 12,
-    "teams": 4,
-    "classifications": 4,
-    "relationships": 8,
-    "contextMaps": 2,
-    "domainMaps": 1
-  }
-}
-```
+**What you get:**
+Either complete details about a specific element (all properties, relationships, terminology) or a high-level summary showing counts of all entity types in your model.
 
 ### domainlang_explain
 
-Provides a rich markdown explanation of any model element, including its signature, properties, relationships, and documentation.
+Understand what any element in your model does and how it relates to others.
 
-**Parameters:**
-- `fqn` (required): Fully qualified name of the element to explain
+**Try asking:**
+- "Explain the OrderContext bounded context"
+- "What is the Sales domain?"
+- "Tell me about the PaymentTeam"
+- "What are the relationships of PaymentContext?"
 
-**Example usage:**
-```
-Explain the OrderContext bounded context
-What is the Sales domain?
-Tell me about the PaymentTeam
-```
+**What you get:**
+Rich, formatted documentation showing the element's signature, description, properties, relationships, terminology, and decisions—the same information you see in hover tooltips.
 
-**Response format:**
-```markdown
-📦 **(bounded context) OrderContext**
+## Getting started
 
-\`\`\`domain-lang
-BoundedContext OrderContext for Sales as Core by SalesTeam
-\`\`\`
+Make sure you have:
+- VS Code 1.109.0 or later
+- The DomainLang extension installed
+- GitHub Copilot or Claude extension
 
-Order management and fulfillment
+Then just start chatting! Ask your AI assistant questions about your DomainLang model using natural language. The tools work automatically in the background.
 
----
+## Example conversations
 
-📁 **Domain:** Sales  
-🔖 **Classification:** Core  
-👥 **Team:** SalesTeam
+Here are some ways to work with AI agents on your DomainLang models:
 
-**Relationships:**
-- [OHS] this -> [CF] PaymentContext
-- [ACL] this -> [U/D] InventoryContext
-
-**Terminology:**
-- `Order`: A customer purchase request
-- `OrderLine`: Individual item in an order
-```
-
-## How it works
-
-The tools use a lightweight architecture:
-
-1. **Extension registration:** The extension registers tools via `vscode.lm.registerTool()` during activation
-2. **Request forwarding:** When an agent calls a tool, the extension forwards the request to the LSP server using `client.sendRequest()`
-3. **LSP handlers:** The LSP server processes the request using the Model Query SDK and returns serialized results
-4. **Response formatting:** The extension formats the response and returns it to the agent
-
-This approach provides:
-
-- **Zero extra processes:** No subprocess spawning
-- **Live workspace data:** Reflects current editor state including unsaved changes
-- **Automatic updates:** LSP rebuilds on file changes, next tool call gets fresh data
-- **Minimal overhead:** Reuses existing IPC channel between extension and LSP
-
-## Agent prompts
-
-Here are some effective prompts to try with GitHub Copilot or Claude in VS Code:
-
-**Validation:**
-- "Check if my DomainLang model has any errors"
-- "Validate the current workspace and show me any warnings"
-
-**Discovery:**
-- "Show me all domains in the model"
-- "List all Core bounded contexts"
-- "What teams are defined in the model?"
-
-**Understanding:**
+**Understanding your architecture:**
+- "What domains do I have in this model?"
 - "Explain the OrderContext bounded context"
 - "What is the purpose of the Sales domain?"
-- "Tell me about the relationships of PaymentContext"
 
-**Analysis:**
+**Finding patterns:**
+- "Show me all Core bounded contexts"
+- "Which contexts are owned by the PaymentTeam?"
+- "List all relationships in the model"
+
+**Quality checks:**
+- "Check if my model has any errors"
+- "Are there any bounded contexts without descriptions?"
+- "Validate the workspace"
+
+**Getting insights:**
 - "Give me a summary of the model"
 - "How many bounded contexts are in the Sales domain?"
-- "Which bounded contexts are owned by the PaymentTeam?"
+- "What are the relationships of PaymentContext?"
+
+## Tips
+
+- **Be natural:** Ask questions as you would to a colleague
+- **Be specific:** Include entity names when asking about specific elements
+- **Use domain terms:** Say "bounded context" rather than "context" for clarity
+- **Iterate:** Start broad, then drill down into specific areas
 
 ## See also
 
-- [Model Query SDK](./sdk.md) - Programmatic model querying
-- [CLI](./cli.md) - Command-line interface for DomainLang
-- [Agent Skill](./agent-skill.md) - Using DomainLang with AI agents
+- [Agent Skill](./agent-skill.md) - Guide for AI agents working with DomainLang
+- [CLI](./cli.md) - Command-line tools for querying models
+- [SDK](./sdk.md) - Programmatic model querying
