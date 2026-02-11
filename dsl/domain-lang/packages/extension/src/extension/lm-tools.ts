@@ -21,22 +21,11 @@ export function registerLanguageModelTools(
 ): void {
     // Register domainlang_validate tool
     const validateTool = vscode.lm.registerTool('domainlang_validate', {
-        name: 'domainlang_validate',
-        displayName: 'DomainLang: Validate Model',
-        description: 'Validates the DomainLang model in the current workspace and returns all diagnostics (errors, warnings, info)',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                file: {
-                    type: 'string',
-                    description: 'Optional: URI of a specific file to validate. If omitted, validates the entire workspace.'
-                }
-            }
+        invoke: async (options, _token: vscode.CancellationToken) => {
+            return invokeValidate(client, options.input as { file?: string }, _token);
         },
-        invoke: async (input: { file?: string }, token: vscode.CancellationToken) => {
-            return invokeValidate(client, input, token);
-        },
-        prepareInvocation: async (input: { file?: string }, token: vscode.CancellationToken) => {
+        prepareInvocation: async (options, _token: vscode.CancellationToken) => {
+            const input = options.input as { file?: string };
             const message = input.file 
                 ? `Validating ${input.file}...`
                 : 'Validating DomainLang workspace...';
@@ -48,35 +37,11 @@ export function registerLanguageModelTools(
 
     // Register domainlang_list tool
     const listTool = vscode.lm.registerTool('domainlang_list', {
-        name: 'domainlang_list',
-        displayName: 'DomainLang: List Entities',
-        description: 'Lists DomainLang entities (domains, bounded contexts, teams, classifications, relationships, context maps, domain maps) with optional filters',
-        inputSchema: {
-            type: 'object',
-            required: ['type'],
-            properties: {
-                type: {
-                    type: 'string',
-                    enum: ['domains', 'bcs', 'bounded-contexts', 'contexts', 'teams', 'classifications', 'relationships', 'rels', 'context-maps', 'cmaps', 'domain-maps', 'dmaps'],
-                    description: 'Entity type to list'
-                },
-                filters: {
-                    type: 'object',
-                    properties: {
-                        name: { type: 'string', description: 'Filter by name (string or regex)' },
-                        fqn: { type: 'string', description: 'Filter by fully qualified name' },
-                        domain: { type: 'string', description: 'Filter BCs by domain' },
-                        team: { type: 'string', description: 'Filter BCs by team' },
-                        classification: { type: 'string', description: 'Filter BCs by classification' },
-                        metadata: { type: 'string', description: 'Filter BCs by metadata key=value' }
-                    }
-                }
-            }
+        invoke: async (options, _token: vscode.CancellationToken) => {
+            return invokeList(client, options.input as { type: string; filters?: unknown }, _token);
         },
-        invoke: async (input: { type: string; filters?: unknown }, token: vscode.CancellationToken) => {
-            return invokeList(client, input, token);
-        },
-        prepareInvocation: async (input: { type: string }, token: vscode.CancellationToken) => {
+        prepareInvocation: async (options, _token: vscode.CancellationToken) => {
+            const input = options.input as { type: string };
             return {
                 invocationMessage: `Querying ${input.type}...`
             };
@@ -85,26 +50,11 @@ export function registerLanguageModelTools(
 
     // Register domainlang_get tool
     const getTool = vscode.lm.registerTool('domainlang_get', {
-        name: 'domainlang_get',
-        displayName: 'DomainLang: Get Element',
-        description: 'Retrieves a specific DomainLang element by FQN or returns a model summary with entity counts',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                fqn: {
-                    type: 'string',
-                    description: 'Fully qualified name of the element to retrieve'
-                },
-                summary: {
-                    type: 'boolean',
-                    description: 'If true, returns model summary instead of a single element'
-                }
-            }
+        invoke: async (options, _token: vscode.CancellationToken) => {
+            return invokeGet(client, options.input as { fqn?: string; summary?: boolean }, _token);
         },
-        invoke: async (input: { fqn?: string; summary?: boolean }, token: vscode.CancellationToken) => {
-            return invokeGet(client, input, token);
-        },
-        prepareInvocation: async (input: { fqn?: string; summary?: boolean }, token: vscode.CancellationToken) => {
+        prepareInvocation: async (options, _token: vscode.CancellationToken) => {
+            const input = options.input as { fqn?: string; summary?: boolean };
             const message = input.summary 
                 ? 'Getting model summary...'
                 : `Retrieving ${input.fqn}...`;
@@ -116,23 +66,11 @@ export function registerLanguageModelTools(
 
     // Register domainlang_explain tool
     const explainTool = vscode.lm.registerTool('domainlang_explain', {
-        name: 'domainlang_explain',
-        displayName: 'DomainLang: Explain Element',
-        description: 'Provides a rich markdown explanation of a DomainLang element, including its signature, properties, and relationships',
-        inputSchema: {
-            type: 'object',
-            required: ['fqn'],
-            properties: {
-                fqn: {
-                    type: 'string',
-                    description: 'Fully qualified name of the element to explain'
-                }
-            }
+        invoke: async (options, _token: vscode.CancellationToken) => {
+            return invokeExplain(client, options.input as { fqn: string }, _token);
         },
-        invoke: async (input: { fqn: string }, token: vscode.CancellationToken) => {
-            return invokeExplain(client, input, token);
-        },
-        prepareInvocation: async (input: { fqn: string }, token: vscode.CancellationToken) => {
+        prepareInvocation: async (options, _token: vscode.CancellationToken) => {
+            const input = options.input as { fqn: string };
             return {
                 invocationMessage: `Explaining ${input.fqn}...`
             };

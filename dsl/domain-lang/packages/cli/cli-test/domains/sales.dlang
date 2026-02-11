@@ -1,4 +1,9 @@
-Domain SalesExecution
+Domain SalesExecution {
+    vision: "Execute and fulfill sales orders efficiently"
+}
+
 Team Lars
 
-bc Name for SalesExecution by Lars
+bc Name for SalesExecution by Lars {
+    description: "Manages sales execution workflows and order processing"
+}

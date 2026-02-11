@@ -27,6 +27,7 @@ import {
 } from '../sdk/serializers.js';
 import type { QueryEntityType, QueryFilters } from '../sdk/serializers.js';
 import type { Model } from '../generated/ast.js';
+import { generateExplanation } from './explain.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Request/Response Types
@@ -288,9 +289,6 @@ async function handleExplain(
     params: ExplainParams,
     services: { shared: LangiumSharedServices; DomainLang: DomainLangServices }
 ): Promise<ExplainResponse> {
-    // Import explain function here to avoid circular dependency
-    const { generateExplanation } = await import('./explain.js');
-
     const langiumDocs = services.shared.workspace.LangiumDocuments;
     const documents = Array.from(langiumDocs.all);
 
