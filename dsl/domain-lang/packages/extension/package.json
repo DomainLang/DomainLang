@@ -48,6 +48,28 @@
                 "scopeName": "source.domain-lang",
                 "path": "syntaxes/domain-lang.tmLanguage.json"
             }
+        ],
+        "languageModelTools": [
+            {
+                "name": "domainlang_validate",
+                "displayName": "DomainLang: Validate Model",
+                "description": "Validates the DomainLang model in the current workspace"
+            },
+            {
+                "name": "domainlang_list",
+                "displayName": "DomainLang: List Entities",
+                "description": "Lists DomainLang entities with optional filters"
+            },
+            {
+                "name": "domainlang_get",
+                "displayName": "DomainLang: Get Element",
+                "description": "Retrieves a specific element by FQN or model summary"
+            },
+            {
+                "name": "domainlang_explain",
+                "displayName": "DomainLang: Explain Element",
+                "description": "Provides rich markdown explanation of an element"
+            }
         ]
     },
     "main": "./out/extension/main.cjs",
