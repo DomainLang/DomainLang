@@ -50,6 +50,16 @@
                 "language": "domain-lang",
                 "scopeName": "source.domain-lang",
                 "path": "syntaxes/domain-lang.tmLanguage.json"
+            },
+            {
+                "scopeName": "markdown.domain-lang.codeblock",
+                "path": "syntaxes/domain-lang-markdown-inject.json",
+                "injectTo": [
+                    "text.html.markdown"
+                ],
+                "embeddedLanguages": {
+                    "meta.embedded.block.domain-lang": "domain-lang"
+                }
             }
         ],
         "languageModelTools": [
@@ -202,7 +212,7 @@
     },
     "main": "./out/extension/main.cjs",
     "scripts": {
-        "clean": "shx rm -fr *.tsbuildinfo out syntaxes",
+        "clean": "shx rm -fr *.tsbuildinfo out syntaxes/domain-lang.tmLanguage.json",
         "vscode:prepublish": "npm run build",
         "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/domain-lang.tmLanguage.json ./syntaxes/domain-lang.tmLanguage.json",
         "build": "npm run build:prepare && tsc -b tsconfig.json && node esbuild.mjs",
