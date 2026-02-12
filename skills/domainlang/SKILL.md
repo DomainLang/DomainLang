@@ -53,50 +53,133 @@ Declare these before referencing them in bounded contexts.
 ### Bounded contexts
 
 ```dlang
-bc Orders for Sales as CoreDomain by SalesTeam {
+// Full form with header keywords
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle and orchestration"
 
     terminology {
-        term Order: "A customer's request to purchase"
-            aka PurchaseOrder
-            examples "Order #12345"
-        term OrderLine: "A single item in an order"
+        term Order: "A customer's request to purchase one or more items"
+        term OrderLine: "A single line item representing a product and quantity"
+        term OrderStatus: "Current state of an order (Pending, Confirmed, Shipped)"
+            aka Status
+            examples "Pending", "Confirmed", "Shipped"
     }
 
     decisions {
         decision EventSourcing: "Capture every state change"
         policy Refunds: "Allow refunds within 30 days"
-        rule MinOrder: "Minimum order is $10"
+        rule MinOrder: "Minimum order value is $10"
     }
 
     metadata {
         Language: "TypeScript"
+        Status: "Production"
+    }
+
+    relationships {
+        [OHS] this -> [CF] Billing
+    }
+}
+
+// Minimal (body is optional)
+BoundedContext Orders for Sales
+
+// Body properties (alternative to header keywords)
+BoundedContext Orders for Sales {
+    classification: CoreDomain   // Alternative to 'as'
+    team: SalesTeam              // Alternative to 'by'
+    businessModel: "B2B"
+    evolution: "Custom Built"
+    archetype: "Execution"
+}
+```
+
+The `for` keyword links a bounded context to its parent domain.
+
+### Terminology (ubiquitous language)
+
+```dlang
+BoundedContext Orders for Sales {
+    terminology {
+        term Order: "A customer's request to purchase one or more items"
+        term OrderLine: "A single line item representing a product and quantity"
+        term OrderStatus: "Current state of an order (Pending, Confirmed, Shipped)"
+            aka Status
+            examples "Pending", "Confirmed", "Shipped"
     }
 }
 ```
 
-Header keywords: `for` (parent domain), `as` (classification), `by` (team).
+Terms support:
+- `aka` (or `synonyms`) — alternative names for the term
+- `examples` — example values
 
-Body-only form is also valid — use `classification:` and `team:` inside body.
+### Decisions and governance
 
-Optional body — `bc Orders for Sales` is valid for quick declarations.
+```dlang
+Classification Architectural
 
-Block aliases: `terminology`/`glossary`, `metadata`/`meta`, `decisions`/`rules`, `relationships`/`integrations`.
+BoundedContext Orders for Sales {
+    decisions {
+        decision EventSourcing: "Capture every state change"
+        policy Refunds: "Allow refunds within 30 days"
+        rule MinOrder: "Minimum order value is $10"
+    }
+}
+```
+
+Decisions, policies, and rules can be tagged with a classification:
+
+```dlang
+BoundedContext Orders for Sales {
+    decisions {
+        decision [Architectural] EventSourcing: "Capture every state change"
+        rule [Architectural] Idempotency: "All write operations must be idempotent"
+    }
+}
+```
 
 ### Metadata
 
-Declare keys before use:
+Metadata keys must be declared before use:
 
 ```dlang
+Metadata Status
 Metadata Language
 Metadata Repository
 
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     metadata {
+        Status: "Production"
         Language: "TypeScript"
         Repository: "github.com/acme/orders"
     }
 }
+```
+
+### Inline relationships
+
+Use the `this` keyword inside a bounded context to define relationships inline:
+
+```dlang
+BoundedContext Orders for Sales {
+    relationships {
+        [OHS] this -> [CF] Billing
+        [ACL] this <- Payments
+    }
+}
+```
+
+### Teams and classifications
+
+```dlang
+Classification CoreDomain
+Classification SupportingDomain
+Classification GenericSubdomain
+
+Team SalesTeam
+Team PlatformTeam
+Team DataTeam
 ```
 
 ### Context maps
@@ -108,35 +191,58 @@ ContextMap SalesSystem {
     [OHS] Orders -> [CF] Billing
     [ACL] Shipping <- Orders
     [P] Orders <-> [P] Inventory
-    Orders >< LegacySystem
+    Orders >< Legacy
 }
 ```
 
-**Arrows:** `->` upstream-to-downstream, `<-` downstream-to-upstream, `<->` bidirectional, `><` separate ways.
+#### Relationship arrows
 
-**Integration patterns:**
+| Arrow | Meaning |
+| ----- | ------- |
+| `->` | Upstream to downstream (left provides, right consumes) |
+| `<-` | Downstream to upstream (right provides, left consumes) |
+| `<->` | Bidirectional / Partnership |
+| `><` | Separate Ways (no integration) |
 
-| Pattern | Abbreviation | Meaning |
-|---------|-------------|---------|
-| Open Host Service | `[OHS]` | Well-defined protocol for consumers |
-| Conformist | `[CF]` | Adopts upstream model without translation |
-| Anti-Corruption Layer | `[ACL]` | Translates between models to protect downstream |
-| Published Language | `[PL]` | Shared documented language for integration |
-| Shared Kernel | `[SK]` | Shared subset of the domain model |
-| Partnership | `[P]` | Two contexts coordinate development together |
+#### Integration patterns
 
-### Inline relationships
+| Pattern | Short | Long form | Placement |
+| ------- | ----- | --------- | --------- |
+| Open Host Service | `[OHS]` | `[OpenHostService]` | Upstream side |
+| Conformist | `[CF]` | `[Conformist]` | Downstream side |
+| Anti-Corruption Layer | `[ACL]` | `[AntiCorruptionLayer]` | Downstream side |
+| Published Language | `[PL]` | `[PublishedLanguage]` | Upstream side |
+| Shared Kernel | `[SK]` | `[SharedKernel]` | Both sides (requires `<->`) |
+| Partnership | `[P]` | `[Partnership]` | Both sides (requires `<->`) |
+| Big Ball of Mud | `[BBoM]` | `[BigBallOfMud]` | Either side |
 
-Inside bounded contexts, use `this` as self-reference:
+**Pattern placement rules:**
+- With `->`: left is **upstream**, right is **downstream**
+- `[OHS]` and `[PL]` go on the upstream (provider) side
+- `[CF]` and `[ACL]` go on the downstream (consumer) side
+- `[SK]` and `[P]` require bidirectional arrow `<->`
 
 ```dlang
-bc Orders for Sales {
-    relationships {
-        [OHS] this -> [CF] Billing
-        [ACL] this <- Payments
-    }
-}
+// ✅ Correct: OHS on upstream, CF on downstream
+[OHS] Orders -> [CF] Billing
+
+// ✅ Correct: ACL on downstream (left side of <-)
+[ACL] Shipping <- Orders
+
+// ❌ Wrong: CF on upstream side — validator warns
+[CF] Orders -> [OHS] Billing
 ```
+
+#### Relationship types
+
+Annotate relationships with a semantic type:
+
+```dlang
+[OHS] Orders -> [CF] Payments : UpstreamDownstream
+[P] Orders <-> [P] Inventory : Partnership
+```
+
+Available types: `Partnership`, `SharedKernel`, `CustomerSupplier`, `UpstreamDownstream`, `SeparateWays`.
 
 ### Domain maps
 
@@ -146,14 +252,17 @@ DomainMap Portfolio {
 }
 ```
 
+Domain maps reference domains (not bounded contexts) for high-level portfolio visualization.
+
 ### Namespaces
 
 ```dlang
 Namespace Acme.Sales {
-    bc Orders for Sales {}
+    Domain Sales { vision: "Revenue generation" }
+    BoundedContext Orders for Sales { }
 }
 
-// Reference with FQN
+// Reference with fully qualified name
 ContextMap System {
     contains Acme.Sales.Orders
 }
@@ -162,81 +271,24 @@ ContextMap System {
 ### Imports
 
 ```dlang
+// Relative imports
 import "./shared/teams.dlang"
 import "../common/classifications.dlang"
+
+// Path alias imports (configured in model.yaml)
+import "@shared/teams"
+import "@domains/sales"
+
+// External package imports
 import "acme/ddd-core" as Core
 
-bc Orders for Core.SalesDomain {}
+// Use imported types with alias prefix
+BoundedContext Orders for Core.SalesDomain as Core.CoreDomain { }
 ```
 
-External imports require a `model.yaml` manifest.
+## Project structure
 
-### Comments and assignment
-
-```dlang
-// Line comment
-/* Block comment */
-
-// All equivalent:
-description: "Using colon"
-vision = "Using equals"
-team is SalesTeam
-```
-
-## DDD modeling guidelines
-
-### Strategic design checklist
-
-- Every bounded context needs a parent domain (`for`)
-- Core domains deserve the best teams and custom solutions
-- Supporting domains are necessary but not differentiating
-- Generic domains are commodity — buy or use standard solutions
-- Name contexts after capabilities, not teams
-
-### Bounded context sizing
-
-- A context should have a clear, autonomous boundary
-- If two contexts share too much, consider merging
-- If one context does too much, consider splitting
-- One team should own one or a few closely related contexts
-
-### Context map best practices
-
-- Keep maps focused on one concern (technical, team, data flow)
-- Limit each map to 7-10 contexts maximum
-- Use multiple maps for different views of the same system
-- Always annotate integration patterns — they capture DDD intent
-
-### Terminology captures ubiquitous language
-
-- Define every important term within its bounded context
-- Use `aka` for synonyms the team encounters
-- Use `examples` for concrete illustrations
-- Different contexts may define the same word differently — that's expected
-
-## File organization
-
-### Single file (small models)
-
-Put everything in one `.dlang` file.
-
-### Multi-file projects
-
-```text
-my-project/
-├── model.yaml
-├── index.dlang
-├── shared/
-│   ├── teams.dlang
-│   └── classifications.dlang
-└── domains/
-    ├── sales/
-    │   └── index.dlang
-    └── shipping/
-        └── index.dlang
-```
-
-Use `index.dlang` as entry points. Configure path aliases in `model.yaml`:
+### model.yaml manifest
 
 ```yaml
 model:
@@ -247,78 +299,145 @@ model:
 paths:
   "@": "./"
   "@shared": "./shared"
+  "@domains": "./domains"
 
 dependencies:
   acme/ddd-core: "v1.0.0"
+  acme/compliance:
+    ref: v2.0.0
+    description: "Compliance classifications"
+
+overrides:
+  acme/utils: "v3.0.0"
+
+governance:
+  allowedSources:
+    - github.com/acme
+  requireStableVersions: true
 ```
+
+### Typical file organization
+
+```text
+my-project/
+├── model.yaml
+├── model.lock           # Generated by dlang install
+├── index.dlang          # Entry point
+├── domains/
+│   ├── sales/
+│   │   └── index.dlang
+│   └── shipping/
+│       └── index.dlang
+└── shared/
+    ├── teams.dlang
+    └── classifications.dlang
+```
+
+## CLI commands
+
+| Command | Description |
+| ------- | ----------- |
+| `dlang init` | Interactive project scaffolding |
+| `dlang validate` | Validate models with diagnostics |
+| `dlang query domains` | Query domains in the model |
+| `dlang query bcs` | Query bounded contexts |
+| `dlang install` | Install dependencies, generate lock file |
+| `dlang add <specifier>` | Add a dependency |
+| `dlang remove <name>` | Remove a dependency |
+| `dlang outdated` | Check for available updates |
+| `dlang update` | Update branch dependencies |
+| `dlang upgrade <name> <version>` | Upgrade to a newer version |
+| `dlang cache-clear` | Clear the dependency cache |
+
+## Validation rules
+
+The language server validates models and reports issues:
+
+| Rule | Severity |
+| ---- | -------- |
+| Missing domain `vision` | Warning |
+| Missing bounded context `description` | Warning |
+| Bounded context without parent domain (`for`) | Warning |
+| Duplicate fully-qualified names | Error |
+| Circular domain hierarchy | Error |
+| `[ACL]` or `[CF]` on upstream side | Warning |
+| `[SK]` without bidirectional arrow (`<->`) | Warning |
+| Empty context map (no contexts) | Warning |
+| Duplicate relationship in context map | Warning |
+| Header/body conflict for classification or team | Warning |
 
 ## Complete example
 
 ```dlang
+// shared/classifications.dlang
 Classification CoreDomain
 Classification SupportingDomain
 
-Team OrderTeam
+// shared/teams.dlang
+Team SalesTeam
 Team ShippingTeam
 
-Domain ECommerce {
-    description: "Online retail platform"
-    vision: "Seamless shopping experience"
-}
+// domains/sales.dlang
+import "@shared/classifications"
+import "@shared/teams"
 
 Metadata Language
+Metadata Status
 
-bc Orders for ECommerce as CoreDomain by OrderTeam {
-    description: "Order lifecycle from cart to delivery"
+Domain Sales {
+    description: "Revenue generation and customer acquisition"
+    vision: "Make it easy to buy"
+}
+
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
+    description: "Order lifecycle and orchestration"
 
     terminology {
-        term Order: "A customer's request to purchase items"
-        term Cart: "Temporary collection of items before purchase"
+        term Order: "A customer's request to purchase"
+            aka PurchaseOrder
+            examples "Order #12345"
+        term OrderLine: "A single line item in an order"
+    }
+
+    decisions {
+        decision EventSourcing: "Capture every state change"
+        policy Refunds: "Allow refunds within 30 days"
+        rule MinOrder: "Minimum order value is $10"
     }
 
     metadata {
         Language: "TypeScript"
+        Status: "Production"
+    }
+
+    relationships {
+        [OHS] this -> [CF] Billing
     }
 }
 
-bc Shipping for ECommerce as SupportingDomain by ShippingTeam {
-    description: "Package routing and delivery tracking"
-
-    terminology {
-        term Shipment: "A collection of packages traveling together"
-        term Carrier: "The company performing delivery"
-    }
+BoundedContext Billing for Sales as SupportingDomain by SalesTeam {
+    description: "Invoice generation and payment tracking"
 }
 
-ContextMap ECommerceIntegration {
-    contains Orders, Shipping
+// index.dlang
+import "@domains/sales"
+import "@domains/shipping"
 
-    [OHS] Orders -> [CF] Shipping
+ContextMap SalesLandscape {
+    contains Orders, Billing, Shipping
+
+    [OHS] Orders -> [CF] Billing
+    [OHS] Orders -> [ACL] Shipping
+}
+
+DomainMap Portfolio {
+    contains Sales, Shipping
 }
 ```
 
-## Keyword quick reference
+## Reference
 
-See [references/SYNTAX.md](references/SYNTAX.md) for the complete keyword and alias table.
-
-**Top-level:** `Domain` (`dom`), `BoundedContext` (`bc`), `ContextMap` (`cmap`), `DomainMap` (`dmap`), `Namespace` (`ns`), `Team`, `Classification`, `Metadata`, `Import` (`import`)
-
-**BC header:** `for`, `as`, `by`
-
-**BC blocks:** `terminology`/`glossary`, `decisions`/`rules`, `metadata`/`meta`, `relationships`/`integrations`
-
-**Items:** `term`, `decision`, `policy`, `rule`
-
-**Term modifiers:** `aka`/`synonyms`, `examples`
-
-## Tooling
-
-- **VS Code extension:** `DomainLang.vscode-domainlang` — syntax highlighting, validation, completion, hover, go-to-definition
-- **VS Code AI tools:** When working in VS Code with GitHub Copilot or Claude, use these Language Model Tools:
-  - `domainlang_validate` — Validate the model and get diagnostics
-  - `domainlang_list` — List entities (domains, bcs, teams, classifications, relationships, context-maps, domain-maps) with filters
-  - `domainlang_get` — Get a specific element by FQN or model summary
-  - `domainlang_explain` — Get rich markdown explanations of any element
-  - Example: "Show me all Core bounded contexts" or "Explain the OrderContext"
-- **CLI:** `npm install -g @domainlang/cli` — `dlang install`, `dlang model tree`, `dlang model status`
-- **SDK:** `npm install @domainlang/language` — parse and query models programmatically
+- Full syntax: [SYNTAX.md](references/SYNTAX.md)
+- Documentation: [domainlang.net](https://domainlang.net)
+- Language reference: [domainlang.net/reference/language](https://domainlang.net/reference/language)
+- Getting started: [domainlang.net/guide/getting-started](https://domainlang.net/guide/getting-started)

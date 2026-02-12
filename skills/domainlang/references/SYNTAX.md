@@ -1,220 +1,349 @@
 # DomainLang syntax reference
 
-Complete keyword and alias table for DomainLang `.dlang` files.
+Complete syntax reference for the DomainLang DSL.
+
+## Conventions
+
+- `|` separates alternatives
+- `?` means optional
+- `*` means zero or more
+- `+` means one or more
+- Quoted strings are literal keywords
 
 ## Top-level declarations
 
-| Concept | Keyword | Alias |
-|---------|---------|-------|
-| Domain | `Domain` | `dom` |
-| Bounded context | `BoundedContext` | `bc` |
-| Context map | `ContextMap` | `cmap` |
-| Domain map | `DomainMap` | `dmap` |
-| Namespace | `Namespace` | `ns` |
-| Import | `Import` | `import` |
-| Classification | `Classification` | — |
-| Team | `Team` | — |
-| Metadata key | `Metadata` | — |
+### Domain
 
-## Bounded context header keywords
+```text
+("Domain" | "dom") NAME ("in" PARENT_REF)? ("{" DOMAIN_BODY "}")?
 
-| Keyword | Purpose | Example |
-|---------|---------|---------|
-| `for` | Parent domain | `bc Orders for Sales` |
-| `as` | Strategic classification | `bc Orders for Sales as CoreDomain` |
-| `by` | Owning team | `bc Orders for Sales by SalesTeam` |
+DOMAIN_BODY:
+  ("description" ASSIGN STRING)?
+  ("vision" ASSIGN STRING)?
+  ("type" ASSIGN STRING)?
+```
 
-## Bounded context body properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `description` | string | Purpose and business value |
-| `classification` | Classification | Alternative to `as` in header |
-| `team` | Team | Alternative to `by` in header |
-| `businessModel` | Classification | Revenue, Engagement, Compliance |
-| `evolution` | Classification | Genesis, Custom, Product, Commodity |
-| `archetype` | Classification | Gateway, Execution, Analysis, etc. |
-
-## Block keywords (inside bounded contexts)
-
-| Block | Alias |
-|-------|-------|
-| `terminology` | `glossary` |
-| `metadata` | `meta` |
-| `decisions` | `rules` |
-| `relationships` | `integrations` |
-
-## Item keywords (inside blocks)
-
-| Item | Alias | Used in |
-|------|-------|---------|
-| `term` | `Term` | terminology/glossary |
-| `decision` | `Decision` | decisions/rules |
-| `policy` | `Policy` | decisions/rules |
-| `rule` | `Rule` | decisions/rules |
-
-## Term modifiers
-
-| Modifier | Alias | Purpose | Example |
-|----------|-------|---------|---------|
-| `aka` | `synonyms` | Alternative names (identifiers) | `aka PurchaseOrder, BuyOrder` |
-| `examples` | — | Example values (strings) | `examples "Order #12345"` |
-
-## Decision classifiers
-
-Decisions, policies, and rules can be annotated with a classification:
+Examples:
 
 ```dlang
-Classification Architectural
-Classification Business
+Domain Sales {
+    description: "Revenue generation"
+    vision: "Make it easy to buy"
+}
 
-decisions {
-    decision [Architectural] EventSourcing: "Use event sourcing"
-    policy [Business] Refunds: "30-day return window"
-    rule [Business] MinOrder: "Minimum $10"
+Domain OnlineSales in Sales {
+    description: "Digital sales channel"
 }
 ```
 
-## Relationship arrows
+### Bounded context
 
-| Arrow | Direction | Meaning |
-|-------|-----------|---------|
-| `->` | Left to right | Upstream to downstream |
-| `<-` | Right to left | Downstream to upstream |
-| `<->` | Bidirectional | Partnership / mutual dependency |
-| `><` | None | Separate ways (no integration) |
+```text
+("BoundedContext" | "bc") NAME
+  ("for" DOMAIN_REF)?
+  ("as" CLASSIFICATION_REF)?
+  ("by" TEAM_REF)?
+  ("{" BC_BODY "}")?
 
-## Integration patterns
-
-| Full name | Abbreviation | Description |
-|-----------|-------------|-------------|
-| Open Host Service | `[OHS]` | Provides a well-defined protocol for consumers |
-| Conformist | `[CF]` | Adopts upstream model without translation |
-| Anti-Corruption Layer | `[ACL]` | Translates between models to protect downstream |
-| Published Language | `[PL]` | Uses a shared, documented language |
-| Shared Kernel | `[SK]` | Shares a subset of the domain model |
-| Partnership | `[P]` | Two contexts coordinate development together |
-| Big Ball of Mud | `[BBoM]` | No clear structure (anti-pattern) |
-
-Full names are also valid: `[OpenHostService]`, `[AntiCorruptionLayer]`, etc.
-
-## Relationship types
-
-Used after the arrow and optional pattern annotations:
-
-| Type | Usage |
-|------|-------|
-| `Partnership` | Two contexts evolve together |
-| `SharedKernel` | Shared model subset |
-| `CustomerSupplier` | Consumer-provider relationship |
-| `UpstreamDownstream` | General directional dependency |
-| `SeparateWays` | No integration |
-
-```dlang
-[OHS] this -> [ACL] Payments : UpstreamDownstream
-[P] this <-> [P] Shipping : Partnership
-this >< LegacySystem : SeparateWays
+BC_BODY:
+  ("description" ASSIGN STRING)?
+  ("classification" ASSIGN CLASSIFICATION_REF)?
+  ("team" ASSIGN TEAM_REF)?
+  ("businessModel" ASSIGN STRING)?
+  ("evolution" ASSIGN STRING)?
+  ("archetype" ASSIGN STRING)?
+  TERMINOLOGY_BLOCK?
+  METADATA_BLOCK?
+  DECISIONS_BLOCK?
+  RELATIONSHIPS_BLOCK?
 ```
 
-## Assignment operators
-
-All equivalent:
-
-| Operator | Example |
-|----------|---------|
-| `:` | `description: "text"` |
-| `=` | `description = "text"` |
-| `is` | `description is "text"` |
-
-Prefer `:` (colon) for consistency.
-
-## Strings
-
-Both single and double quotes work:
+Examples:
 
 ```dlang
-description: "Double quotes"
-vision: 'Single quotes'
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
+    description: "Order lifecycle"
+}
+
+// Minimal form
+BoundedContext Orders for Sales
 ```
 
-## Comments
+### Context map
 
-```dlang
-// Single-line comment
-
-/* Multi-line
-   comment */
+```text
+("ContextMap" | "cmap") NAME "{"
+  ("contains" BC_REF ("," BC_REF)*)?
+  RELATIONSHIP*
+"}"
 ```
 
-## Domain properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `description` | string | What the domain covers |
-| `vision` | string | Strategic goal or aspiration |
-| `type` | Classification | Strategic importance |
-
-## Subdomain hierarchy
+Example:
 
 ```dlang
-Domain Retail {}
-Domain Sales in Retail {}
-Domain Marketing in Retail {}
+ContextMap SalesSystem {
+    contains Orders, Billing, Shipping
+
+    [OHS] Orders -> [CF] Billing
+    [ACL] Shipping <- Orders
+}
 ```
 
-## Namespace declaration
+### Domain map
+
+```text
+("DomainMap" | "dmap") NAME "{"
+  ("contains" DOMAIN_REF ("," DOMAIN_REF)*)?
+"}"
+```
+
+Example:
 
 ```dlang
-// Dot notation
+DomainMap Portfolio {
+    contains Sales, Support, Platform
+}
+```
+
+### Classification
+
+```text
+"Classification" NAME
+```
+
+### Team
+
+```text
+"Team" NAME
+```
+
+### Metadata key
+
+```text
+"Metadata" NAME
+```
+
+### Namespace
+
+```text
+("Namespace" | "ns") QUALIFIED_NAME "{"
+  DECLARATION*
+"}"
+```
+
+Example:
+
+```dlang
 Namespace Acme.Sales {
-    bc Orders for Sales {}
+    Domain Sales { }
+    BoundedContext Orders for Sales { }
 }
+```
 
-// Nesting
-Namespace Acme {
-    Namespace Sales {
-        bc Orders for Sales {}
+### Import
+
+```text
+("Import" | "import") STRING ("as" ALIAS)?
+```
+
+Examples:
+
+```dlang
+import "./shared/teams.dlang"
+import "@shared/classifications"
+import "acme/ddd-core" as Core
+```
+
+## Blocks (inside bounded contexts)
+
+### Terminology block
+
+```text
+("terminology" | "glossary") "{"
+  TERM+
+"}"
+
+TERM:
+  ("Term" | "term") NAME (ASSIGN STRING)?
+    (("aka" | "synonyms") ASSIGN? NAME ("," NAME)*)?
+    ("examples" ASSIGN? STRING ("," STRING)*)?
+```
+
+Example:
+
+```dlang
+terminology {
+    term Order: "A customer's request to purchase"
+        aka PurchaseOrder
+        examples "Order #12345", "Purchase #67890"
+    term OrderLine: "A single line item in an order"
+}
+```
+
+### Metadata block
+
+```text
+("metadata" | "meta") "{"
+  (NAME ASSIGN STRING)*
+"}"
+```
+
+Metadata keys must be declared as top-level `Metadata` declarations before use.
+
+Example:
+
+```dlang
+Metadata Language
+Metadata Status
+
+BoundedContext Orders for Sales {
+    metadata {
+        Language: "TypeScript"
+        Status: "Production"
     }
 }
 ```
 
-## Import types
+### Decisions block
 
-| Type | Syntax | Requires model.yaml |
-|------|--------|---------------------|
-| Relative | `import "./path.dlang"` | No |
-| Path alias | `import "@shared/teams"` | Yes (paths config) |
-| External | `import "owner/package"` | Yes (dependencies) |
+```text
+("decisions" | "rules") "{"
+  (DECISION | POLICY | RULE)*
+"}"
 
-Aliased imports:
+DECISION: ("Decision" | "decision") ("[" CLASSIFICATION_REF "]")? NAME ASSIGN STRING
+POLICY:   ("Policy" | "policy")     ("[" CLASSIFICATION_REF "]")? NAME ASSIGN STRING
+RULE:     ("Rule" | "rule")         ("[" CLASSIFICATION_REF "]")? NAME ASSIGN STRING
+```
+
+Example:
 
 ```dlang
-import "./shared.dlang" as shared
-import "acme/core" as Core
+Classification Architectural
 
-bc Orders as Core.CoreDomain by shared.SalesTeam {}
+BoundedContext Orders for Sales {
+    decisions {
+        decision [Architectural] EventSourcing: "Capture every state change"
+        policy Refunds: "Allow refunds within 30 days"
+        rule MinOrder: "Minimum order value is $10"
+    }
+}
 ```
 
-## model.yaml structure
+### Relationships block
 
-```yaml
-model:
-  name: owner/package-name
-  version: 1.0.0
-  entry: index.dlang
-
-paths:
-  "@": "./"
-  "@shared": "./shared"
-
-dependencies:
-  acme/ddd-core: "v1.0.0"
-  acme/compliance:
-    ref: v2.0.0
-    description: "Compliance classifications"
+```text
+("relationships" | "integrations") "{"
+  RELATIONSHIP*
+"}"
 ```
 
-## Resolution order (imports without extension)
+Example:
 
-1. `./path/index.dlang` (directory entry point)
-2. `./path.dlang` (direct file)
+```dlang
+BoundedContext Orders for Sales {
+    relationships {
+        [OHS] this -> [CF] Billing
+        [ACL] this <- Payments
+    }
+}
+```
+
+## Relationships
+
+```text
+("[" PATTERN ("," PATTERN)* "]")? BC_REF ARROW ("[" PATTERN ("," PATTERN)* "]")? BC_REF (ASSIGN TYPE)?
+```
+
+### Arrows
+
+| Arrow | Semantics |
+| ----- | --------- |
+| `->` | Left is upstream (provider), right is downstream (consumer) |
+| `<-` | Right is upstream (provider), left is downstream (consumer) |
+| `<->` | Bidirectional / mutual dependency |
+| `><` | Separate ways (no integration) |
+
+### Integration patterns
+
+| Pattern | Alias | Placement |
+| ------- | ----- | --------- |
+| `OHS` | `OpenHostService` | Upstream side |
+| `CF` | `Conformist` | Downstream side |
+| `ACL` | `AntiCorruptionLayer` | Downstream side |
+| `PL` | `PublishedLanguage` | Upstream side |
+| `SK` | `SharedKernel` | Both (requires `<->`) |
+| `P` | `Partnership` | Both (requires `<->`) |
+| `BBoM` | `BigBallOfMud` | Either side |
+
+### Relationship types
+
+Optional semantic type annotation using `: Type` suffix:
+
+| Type | Description |
+| ---- | ----------- |
+| `Partnership` | Mutual coordination |
+| `SharedKernel` | Shared subset of model |
+| `CustomerSupplier` | Formal customer-supplier |
+| `UpstreamDownstream` | Provider-consumer |
+| `SeparateWays` | No integration |
+
+Example:
+
+```dlang
+[OHS] Orders -> [CF] Payments : UpstreamDownstream
+[P] Orders <-> [P] Inventory : Partnership
+```
+
+### Bounded context reference
+
+Inside a bounded context body, use `this` to refer to the current context:
+
+```dlang
+BoundedContext Orders for Sales {
+    relationships {
+        [OHS] this -> [CF] Billing
+    }
+}
+```
+
+In context maps, use the bounded context name or fully qualified name:
+
+```dlang
+ContextMap System {
+    contains Acme.Sales.Orders, Acme.Billing.Invoices
+    Acme.Sales.Orders -> Acme.Billing.Invoices
+}
+```
+
+## Primitives
+
+### Assignment operator
+
+```text
+ASSIGN: ":" | "=" | "is"
+```
+
+All three are interchangeable. Use `:` by convention.
+
+### Names and references
+
+```text
+NAME: /[A-Za-z_][A-Za-z0-9_]*/
+QUALIFIED_NAME: NAME ("." NAME)*
+```
+
+### Strings
+
+```text
+STRING: '"' ... '"' | "'" ... "'"
+```
+
+Both single and double quotes accepted. Supports `\"` and `\'` escape sequences.
+
+### Comments
+
+```text
+LINE_COMMENT: "//" ... EOL
+BLOCK_COMMENT: "/*" ... "*/"
+```
