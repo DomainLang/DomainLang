@@ -36,9 +36,9 @@ Classification CoreDomain
 Classification SupportingDomain
 Classification GenericSubdomain
 
-bc Orders for Sales as CoreDomain { }
-bc Reporting for Sales as SupportingDomain { }
-bc Authentication for Platform as GenericSubdomain { }
+BoundedContext Orders for Sales as CoreDomain { }
+BoundedContext Reporting for Sales as SupportingDomain { }
+BoundedContext Authentication for Platform as GenericSubdomain { }
 ```
 
 ## Teams
@@ -59,8 +59,8 @@ Reference teams with `by` in the bounded context header:
 Team OrderTeam
 Team PlatformTeam
 
-bc Orders for Sales by OrderTeam { }
-bc UserManagement for Platform by PlatformTeam { }
+BoundedContext Orders for Sales by OrderTeam { }
+BoundedContext UserManagement for Platform by PlatformTeam { }
 ```
 
 ## Combined example
@@ -80,30 +80,30 @@ Domain Sales { description: "Revenue generation" }
 Domain Platform { description: "Shared infrastructure" }
 
 // Bounded contexts with full context
-bc Orders for Sales as CoreDomain by SalesTeam {
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle—our competitive advantage"
 }
 
-bc Analytics for Sales as SupportingDomain by DataTeam {
+BoundedContext Analytics for Sales as SupportingDomain by DataTeam {
     description: "Sales analytics and reporting"
 }
 
-bc Authentication for Platform as GenericSubdomain by PlatformTeam {
+BoundedContext Authentication for Platform as GenericSubdomain by PlatformTeam {
     description: "User authentication—use standard solutions"
 }
 ```
 
 ## Best practices
 
-::: tip Start Simple
+::: tip Start simple
 Begin with just `CoreDomain`, `SupportingDomain`, and `GenericSubdomain`. Add custom classifications only when needed.
 :::
 
-::: warning Align with Reality
+::: warning Align with reality
 Classifications should reflect actual strategic importance, not aspirations. If you treat everything as "Core," you're not making real strategic decisions.
 :::
 
-::: tip Team Boundaries
+::: tip Team boundaries
 Ideally, team boundaries align with bounded context boundaries. If one team owns multiple contexts, ensure they're closely related.
 :::
 
@@ -127,25 +127,25 @@ Domain Sales { description: "Sales and orders" }
 Domain Platform { description: "Shared infrastructure" }
 
 // Core bounded contexts—competitive advantage
-bc ProductCatalog for Catalog as CoreDomain by ProductTeam {
+BoundedContext ProductCatalog for Catalog as CoreDomain by ProductTeam {
     description: "Our curated product experience"
 }
 
-bc OrderManagement for Sales as CoreDomain by OrderTeam {
+BoundedContext OrderManagement for Sales as CoreDomain by OrderTeam {
     description: "Seamless order experience"
 }
 
 // Supporting bounded contexts—necessary but not differentiating
-bc SalesReporting for Sales as SupportingDomain by AnalyticsTeam {
+BoundedContext SalesReporting for Sales as SupportingDomain by AnalyticsTeam {
     description: "Sales metrics and dashboards"
 }
 
 // Generic bounded contexts—commodity
-bc UserAuth for Platform as GenericSubdomain by PlatformTeam {
+BoundedContext UserAuth for Platform as GenericSubdomain by PlatformTeam {
     description: "Authentication and authorization"
 }
 
-bc EmailService for Platform as GenericSubdomain by PlatformTeam {
+BoundedContext EmailService for Platform as GenericSubdomain by PlatformTeam {
     description: "Transactional email delivery"
 }
 ```
@@ -153,9 +153,9 @@ bc EmailService for Platform as GenericSubdomain by PlatformTeam {
 ## Next steps
 
 - [Namespaces](/guide/namespaces) — organize large models
-- [Import System](/guide/imports) — split models across files
+- [Import system](/guide/imports) — split models across files
 
 ## See also
 
-- [Classifications Reference](/reference/language#classifications) — complete syntax details
-- [Teams Reference](/reference/language#teams) — team declaration syntax
+- [Language reference: classifications](/reference/language#classifications) — complete syntax details
+- [Language reference: teams](/reference/language#teams) — team declaration syntax

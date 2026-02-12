@@ -17,7 +17,7 @@ Domain Sales {
 }
 ```
 
-::: tip Optional Body
+::: tip Optional body
 The body `{ ... }` is optional. For simple declarations, you can write:
 
 ```dlang
@@ -77,11 +77,11 @@ See [Teams & Classifications](/guide/teams-classifications) for more on strategi
 
 ## Best practices
 
-::: tip Domain Naming
+::: tip Domain naming
 Use nouns that reflect business capabilities, not technical terms. Good: `Sales`, `Inventory`, `CustomerSupport`. Avoid: `SalesService`, `InventoryDB`.
 :::
 
-::: tip Vision Statements
+::: tip Vision statements
 Keep vision statements aspirational and business-focused. They should guide strategic decisions, not describe implementation.
 :::
 
@@ -122,9 +122,9 @@ Domain Administration {
 
 ## Next steps
 
-- [Bounded Contexts](/guide/bounded-contexts) — the concrete implementations within domains
-- [Teams & Classifications](/guide/teams-classifications) — assign ownership and strategic importance
+- [Bounded contexts](/guide/bounded-contexts) — the concrete implementations within domains
+- [Teams & classifications](/guide/teams-classifications) — assign ownership and strategic importance
 
 ## See also
 
-- [Domains Reference](/reference/language#domains) — complete syntax details
+- [Language reference: domains](/reference/language#domains) — complete syntax details

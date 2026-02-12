@@ -1,4 +1,4 @@
-# VS Code language model tools
+# AI-powered model tools
 
 The DomainLang extension registers **language model tools** that let AI agents in VS Code query your domain model directly. Ask GitHub Copilot or Claude about your bounded contexts, domains, relationships, and strategic design decisions — the agent reads live model data and gives accurate answers.
 
@@ -80,6 +80,7 @@ Be specific with entity names. Say *"Explain the OrderContext bounded context"* 
 
 ## See also
 
+- [VS Code extension](/guide/vscode-extension) — full extension feature overview
 - [Agent skill](/guide/agent-skill) — portable skill for AI agents working with DomainLang
 - [CLI](/guide/cli) — command-line tools for querying models
-- [SDK](/guide/sdk) — programmatic model querying
+- [Model query SDK](/guide/sdk) — programmatic model querying

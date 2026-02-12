@@ -1,6 +1,6 @@
 # Getting started
 
-Build a small DomainLang model that includes a domain, bounded contexts, ownership, terminology, and a context map.
+In this tutorial, you build a complete DomainLang model with a domain, bounded contexts, team ownership, ubiquitous language, and a context map. By the end, you'll have a reviewable, version-controlled DDD model in your repository.
 
 ::: warning 🚧 Prerelease
 DomainLang is in active development and has not reached v1.0 yet. The language syntax may evolve. See the [roadmap](/roadmap) for planned features.
@@ -13,6 +13,10 @@ DomainLang is in active development and has not reached v1.0 yet. The language s
 
 ::: tip
 Use the VS Code extension for syntax highlighting, validation, and navigation while you learn the language.
+:::
+
+::: info Shorthand aliases
+This tutorial uses full keywords like `BoundedContext` and `ContextMap` for clarity. DomainLang also supports short aliases like `bc` and `cmap` — see the [language reference](/reference/language#keywords-and-aliases) for all available aliases.
 :::
 
 ## Installation
@@ -31,7 +35,7 @@ Then manage dependencies and governance for multi-file models:
 
 ```bash
 dlang install
-dlang model tree
+dlang query domains
 ```
 
 See [CLI](/guide/cli) for the full command reference.
@@ -54,7 +58,7 @@ const { query } = await loadModelFromText(`
     Team SalesTeam
 
     Domain Sales { vision: "Sell things" }
-    bc Orders for Sales as CoreDomain by SalesTeam
+    BoundedContext Orders for Sales as CoreDomain by SalesTeam
 `);
 
 const coreContexts = query.boundedContexts()
@@ -112,11 +116,11 @@ Classification CoreDomain
 Team CatalogTeam
 Team OrderTeam
 
-bc Catalog for Bookstore as CoreDomain by CatalogTeam {
+BoundedContext Catalog for Bookstore as CoreDomain by CatalogTeam {
     description: "Product catalog and inventory"
 }
 
-bc Orders for Bookstore as CoreDomain by OrderTeam {
+BoundedContext Orders for Bookstore as CoreDomain by OrderTeam {
     description: "Order lifecycle and orchestration"
 }
 ```
@@ -131,7 +135,7 @@ bc Orders for Bookstore as CoreDomain by OrderTeam {
 Document the ubiquitous language within each bounded context:
 
 ```dlang
-bc Orders for Bookstore {
+BoundedContext Orders for Bookstore {
     terminology {
         term Order: "A customer's request to purchase"
         term OrderLine: "A single line item in an order"
@@ -184,8 +188,8 @@ As your model grows, use [namespaces](/guide/namespaces) to avoid name collision
 
 ```dlang
 Namespace Bookstore.Core {
-    bc Catalog for Bookstore { }
-    bc Orders for Bookstore { }
+    BoundedContext Catalog for Bookstore { }
+    BoundedContext Orders for Bookstore { }
 }
 
 ContextMap System {
@@ -209,7 +213,7 @@ Domain Bookstore {
     vision: "Make books easy to buy"
 }
 
-bc Catalog for Bookstore as CoreDomain by CatalogTeam {
+BoundedContext Catalog for Bookstore as CoreDomain by CatalogTeam {
     description: "Product catalog and inventory"
     
     terminology {
@@ -218,7 +222,7 @@ bc Catalog for Bookstore as CoreDomain by CatalogTeam {
     }
 }
 
-bc Orders for Bookstore as CoreDomain by OrderTeam {
+BoundedContext Orders for Bookstore as CoreDomain by OrderTeam {
     description: "Order lifecycle and orchestration"
     
     terminology {
@@ -235,7 +239,11 @@ ContextMap BookstoreSystem {
 
 ## Next steps
 
-- [Learn about Domains](/guide/domains)
-- [Learn about Bounded Contexts](/guide/bounded-contexts)
-- [Explore the Language Reference](/reference/language)
-- [Browse Examples](/examples/)
+Now that you have a working model, explore these areas:
+
+- [Domains](/guide/domains) — Domain hierarchies, visions, and strategic types
+- [Bounded contexts](/guide/bounded-contexts) — Full syntax for contexts, metadata, and governance
+- [Context maps](/guide/context-maps) — Integration patterns and relationship arrows
+- [VS Code extension](/guide/vscode-extension) — IDE features and AI-powered analysis
+- [Language reference](/reference/language) — Complete syntax and semantics
+- [Examples](/examples/) — Real-world models for banking and healthcare

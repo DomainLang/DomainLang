@@ -65,7 +65,7 @@ Domain Pharmacy in Healthcare {
 // Clinical Bounded Contexts
 // ============================================================================
 
-bc ElectronicHealthRecords for PatientCare
+BoundedContext ElectronicHealthRecords for PatientCare
     as CoreDomain
     by ClinicalTeam {
 
@@ -108,7 +108,7 @@ bc ElectronicHealthRecords for PatientCare
     }
 }
 
-bc AppointmentScheduling for Administration
+BoundedContext AppointmentScheduling for Administration
     as SupportingDomain
     by AdministrativeTeam {
 
@@ -121,11 +121,11 @@ bc AppointmentScheduling for Administration
     }
 
     relationships {
-        [CF] this -> [OHS] ElectronicHealthRecords
+        [CF] this <- [OHS] ElectronicHealthRecords
     }
 }
 
-bc MedicationManagement for Pharmacy
+BoundedContext MedicationManagement for Pharmacy
     as CoreDomain
     by PharmacyTeam {
 

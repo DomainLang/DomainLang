@@ -336,9 +336,9 @@ Shows available commands, options, and examples. You can also use `dlang --help`
 
 ## Next steps
 
-- [Model Query SDK](/guide/sdk) — query models programmatically
+- [Model query SDK](/guide/sdk) — query models programmatically
 
 ## See also
 
-- [Import System](/guide/imports) — `model.yaml`, lock files, and external imports
+- [Import system](/guide/imports) — `model.yaml`, lock files, and external imports
 - [Roadmap](/roadmap) — planned CLI improvements

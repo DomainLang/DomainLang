@@ -14,8 +14,8 @@ Namespaces organize your model into logical groups and create qualified names fo
 Namespace Acme.Sales {
     Domain Sales { }
     
-    bc Orders for Sales { }
-    bc Billing for Sales { }
+    BoundedContext Orders for Sales { }
+    BoundedContext Billing for Sales { }
 }
 ```
 
@@ -36,8 +36,8 @@ Use simple names:
 
 ```dlang
 Namespace Acme.Sales {
-    bc Orders for Sales { }
-    bc Billing for Sales { }
+    BoundedContext Orders for Sales { }
+    BoundedContext Billing for Sales { }
     
     ContextMap SalesMap {
         contains Orders, Billing
@@ -51,11 +51,11 @@ Use fully qualified names:
 
 ```dlang
 Namespace Acme.Sales {
-    bc Orders for Sales { }
+    BoundedContext Orders for Sales { }
 }
 
 Namespace Acme.Shipping {
-    bc Delivery for Logistics { }
+    BoundedContext Delivery for Logistics { }
 }
 
 ContextMap Integration {
@@ -71,11 +71,11 @@ Namespaces can be nested:
 ```dlang
 Namespace Acme {
     Namespace Sales {
-        bc Orders for Sales { }
+        BoundedContext Orders for Sales { }
     }
     
     Namespace Shipping {
-        bc Delivery for Logistics { }
+        BoundedContext Delivery for Logistics { }
     }
 }
 ```
@@ -84,11 +84,11 @@ Or use dot notation:
 
 ```dlang
 Namespace Acme.Sales {
-    bc Orders for Sales { }
+    BoundedContext Orders for Sales { }
 }
 
 Namespace Acme.Shipping {
-    bc Delivery for Logistics { }
+    BoundedContext Delivery for Logistics { }
 }
 ```
 
@@ -108,29 +108,29 @@ Namespace Acme {
 Namespace Acme.Sales {
     Team SalesTeam
     
-    bc Orders for Sales as Acme.CoreDomain by SalesTeam { }
+    BoundedContext Orders for Sales as Acme.CoreDomain by SalesTeam { }
 }
 
 Namespace Acme.Platform {
-    bc Auth for Platform as Acme.SupportingDomain by Acme.PlatformTeam { }
+    BoundedContext Auth for Platform as Acme.SupportingDomain by Acme.PlatformTeam { }
 }
 ```
 
 ## Best practices
 
-::: tip Mirror Your Organization
+::: tip Mirror your organization
 Align namespace structure with your organizational structure or codebase layout. This makes it easier to find and maintain models.
 :::
 
-::: tip Keep It Shallow
+::: tip Keep it shallow
 Avoid deeply nested namespaces. Two or three levels is usually enough: `Company.Division.Team` or `Product.Module`.
 :::
 
-::: warning Don't Over-Namespace
+::: warning Don't over-namespace
 For small models, namespaces add complexity without benefit. Start without them and add as needed.
 :::
 
-## Example: Multi-Team Organization
+## Example: multi-team organization
 
 ```dlang
 // Shared definitions
@@ -147,11 +147,11 @@ Namespace Acme.Sales {
     
     Domain Sales { description: "Revenue generation" }
     
-    bc Orders for Sales as Acme.Shared.CoreDomain by OrderTeam {
+    BoundedContext Orders for Sales as Acme.Shared.CoreDomain by OrderTeam {
         description: "Order management"
     }
     
-    bc Pricing for Sales as Acme.Shared.CoreDomain by PricingTeam {
+    BoundedContext Pricing for Sales as Acme.Shared.CoreDomain by PricingTeam {
         description: "Dynamic pricing"
     }
 }
@@ -162,7 +162,7 @@ Namespace Acme.Platform {
     
     Domain Platform { description: "Shared infrastructure" }
     
-    bc Identity for Platform as Acme.Shared.GenericSubdomain by PlatformTeam {
+    BoundedContext Identity for Platform as Acme.Shared.GenericSubdomain by PlatformTeam {
         description: "Authentication and authorization"
     }
 }
@@ -180,10 +180,10 @@ Namespace Acme {
 
 ## Next steps
 
-- [Import System](/guide/imports) — split models across multiple files
+- [Import system](/guide/imports) — split models across multiple files
 - [CLI](/guide/cli) — manage multi-file projects
-- [Model Query SDK](/guide/sdk) — query namespaced elements programmatically
+- [Model query SDK](/guide/sdk) — query namespaced elements programmatically
 
 ## See also
 
-- [Namespaces Reference](/reference/language#namespaces) — complete syntax details
+- [Language reference: namespaces](/reference/language#namespaces) — complete syntax details

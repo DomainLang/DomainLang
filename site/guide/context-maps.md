@@ -55,14 +55,15 @@ ContextMap SalesSystem {
 
 ### Available patterns
 
-| Pattern | Keyword | Description |
-|---------|---------|-------------|
-| Open Host Service | `[OHS]` | Provides a well-defined protocol for others to consume |
-| Conformist | `[CF]` | Adopts the upstream model without translation |
-| Anti-Corruption Layer | `[ACL]` | Translates between models to protect the downstream context |
-| Published Language | `[PL]` | Uses a shared, documented language for integration |
-| Shared Kernel | `[SK]` | Shares a subset of the domain model |
-| Partnership | `[P]` | Two contexts coordinate development together |
+| Pattern | Keyword | Long form | Description |
+| ------- | ------- | --------- | ----------- |
+| Open Host Service | `[OHS]` | `[OpenHostService]` | Provides a well-defined protocol for others to consume |
+| Conformist | `[CF]` | `[Conformist]` | Adopts the upstream model without translation |
+| Anti-Corruption Layer | `[ACL]` | `[AntiCorruptionLayer]` | Translates between models to protect the downstream context |
+| Published Language | `[PL]` | `[PublishedLanguage]` | Uses a shared, documented language for integration |
+| Shared Kernel | `[SK]` | `[SharedKernel]` | Shares a subset of the domain model |
+| Partnership | `[P]` | `[Partnership]` | Two contexts coordinate development together |
+| Big Ball of Mud | `[BBoM]` | `[BigBallOfMud]` | No clear model structure (legacy, brownfield) |
 
 ## Pattern combinations
 
@@ -95,6 +96,21 @@ ContextMap Partnership {
 }
 ```
 
+## Relationship types
+
+You can annotate a relationship with a semantic type using the `: Type` suffix:
+
+```dlang
+ContextMap TeamDeps {
+    contains Orders, Payments, Inventory
+    
+    [OHS] Orders -> [CF] Payments : UpstreamDownstream
+    [P] Orders <-> [P] Inventory : Partnership
+}
+```
+
+Available relationship types: `Partnership`, `SharedKernel`, `CustomerSupplier`, `UpstreamDownstream`, `SeparateWays`.
+
 ## Multiple context maps
 
 Large systems often have multiple maps for different views:
@@ -118,11 +134,11 @@ ContextMap TeamDependencies {
 
 ## Best practices
 
-::: tip Keep Maps Focused
+::: tip Keep maps focused
 Create separate context maps for different concerns: technical integration, team dependencies, data flow. Don't try to show everything in one map.
 :::
 
-::: warning Avoid God Maps
+::: warning Avoid god maps
 If your context map has too many contexts (more than 7-10), consider breaking it into focused sub-maps or reviewing your context boundaries.
 :::
 
@@ -142,8 +158,8 @@ ContextMap ECommerceSystem {
     // Catalog provides product data
     [OHS,PL] Catalog -> [CF] Orders
     
-    // Shipping protects from external carrier APIs
-    [ACL] Shipping <- ExternalCarriers
+    // External carriers integration
+    [BBoM] Shipping >< Notifications
 }
 ```
 
@@ -159,13 +175,25 @@ ContextMap MicroservicesMap {
 }
 ```
 
+## Domain maps
+
+For a high-level view of your domain portfolio, use `DomainMap` (alias `dmap`):
+
+```dlang
+DomainMap Portfolio {
+    contains Sales, Support, Platform
+}
+```
+
+Domain maps work like context maps but reference domains instead of bounded contexts. Use them to visualize your domain hierarchy at the strategic level.
+
 ## Next steps
 
-- [Teams & Classifications](/guide/teams-classifications) — assign ownership and strategic importance
+- [Teams & classifications](/guide/teams-classifications) — assign ownership and strategic importance
 - [Namespaces](/guide/namespaces) — organize large models
-- [Import System](/guide/imports) — split models across files
+- [Import system](/guide/imports) — split models across files
 
 ## See also
 
-- [Context Maps Reference](/reference/language#context-maps) — complete syntax details
-- [Relationships Reference](/reference/language#relationships) — integration patterns and arrows
+- [Language reference: context maps](/reference/language#context-maps) — complete syntax details
+- [Language reference: relationships](/reference/language#relationships) — integration patterns and arrows

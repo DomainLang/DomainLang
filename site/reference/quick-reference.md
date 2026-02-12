@@ -11,7 +11,7 @@ For detailed explanations, see the [Language Reference](/reference/language).
 ```dlang
 Domain Sales { description: "Sales" }
 
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     description: "Order lifecycle"
 }
 ```
@@ -55,10 +55,10 @@ team is SalesTeam
 
 ```dlang
 // Header form (recommended)
-bc Orders for Sales as CoreDomain by SalesTeam { }
+BoundedContext Orders for Sales as CoreDomain by SalesTeam { }
 
 // Body form (equivalent)
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     classification: CoreDomain
     team: SalesTeam
 }
@@ -70,7 +70,7 @@ bc Orders for Sales {
 Metadata Language
 Metadata Database
 
-bc Orders for Sales as CoreDomain by SalesTeam {
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle"
 
     metadata {
@@ -115,6 +115,17 @@ ContextMap System {
 }
 ```
 
+## Relationship types
+
+```dlang
+// Annotate a relationship with a semantic type
+[OHS] Orders -> [CF] Payments : UpstreamDownstream
+[P] Orders <-> [P] Inventory : Partnership
+
+// Available types: Partnership, SharedKernel,
+//   CustomerSupplier, UpstreamDownstream, SeparateWays
+```
+
 ## Integration patterns
 
 | Pattern | Short | Description |
@@ -131,11 +142,11 @@ ContextMap System {
 
 ```dlang
 Namespace Acme.Sales {
-    bc Orders for Sales { }
+    BoundedContext Orders for Sales { }
 }
 
 // Reference with FQN
-ContextMap {
+ContextMap SalesMap {
     contains Acme.Sales.Orders
 }
 ```
@@ -147,7 +158,7 @@ import "./shared.dlang"
 import "../common/teams.dlang"
 import "acme/core" as Core
 
-bc Orders for Core.SalesDomain { }
+BoundedContext Orders for Core.SalesDomain { }
 ```
 
 ## Subdomains

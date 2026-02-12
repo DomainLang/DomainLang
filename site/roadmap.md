@@ -1,16 +1,19 @@
 # Roadmap
 
-DomainLang is evolving to become the definitive tool for Domain-Driven Design modeling. Here's what's coming.
+DomainLang is evolving to become the definitive tool for Domain-Driven Design modeling. Here's what's shipping and what's coming.
 
 ## Current status
 
 DomainLang today provides:
 
-- ✅ **DSL Language** — Express domains, bounded contexts, context maps, and ubiquitous language
-- ✅ **VS Code Extension** — Syntax highlighting, validation, completion, hover, and go-to-definition
-- ✅ **Model Query SDK** — Programmatic access to DomainLang models for analysis and automation
-- ✅ **Multi-File Support** — Imports, namespaces, and project manifests
-- ✅ **npm Packages** — [`@domainlang/cli`](https://www.npmjs.com/package/@domainlang/cli) and [`@domainlang/language`](https://www.npmjs.com/package/@domainlang/language) published on npm
+- ✅ **DSL language** — Express domains, bounded contexts, context maps, and ubiquitous language
+- ✅ **VS Code extension** — Syntax highlighting, validation, completion, hover, and go-to-definition
+- ✅ **AI-powered model tools** — Ask GitHub Copilot or Claude about your domain model directly in VS Code
+- ✅ **Agent skill** — Teach any AI coding agent to write correct DomainLang models
+- ✅ **Model query SDK** — Programmatic access to DomainLang models for analysis and automation
+- ✅ **CLI** — Validate, query, and manage dependencies from the command line
+- ✅ **Multi-file support** — Imports, namespaces, and project manifests
+- ✅ **npm packages** — [`@domainlang/cli`](https://www.npmjs.com/package/@domainlang/cli) and [`@domainlang/language`](https://www.npmjs.com/package/@domainlang/language) published on npm
 
 ## What's next
 
@@ -85,9 +88,9 @@ A web-based interface for exploring and sharing DomainLang models.
 
 Ideas we're exploring for the future:
 
-- **AI Assistant** — Generate models from natural language descriptions
-- **Model Diff** — Compare and merge model versions
-- **Metrics Dashboard** — Track model health and coverage
+- **Model diff** — Compare and merge model versions
+- **Metrics dashboard** — Track model health and coverage
+- **Natural language generation** — Generate models from plain-English descriptions
 
 ## Get involved
 
@@ -97,6 +100,6 @@ DomainLang is open source. We'd love your input!
 - **Bug reports:** [GitHub Issues](https://github.com/DomainLang/DomainLang/issues)
 - **Contribute:** [GitHub Repository](https://github.com/DomainLang/DomainLang)
 
-::: tip Share Your Use Case
+::: tip Share your use case
 Working on something interesting with DomainLang? We'd love to hear about it! Share your experience in [Discussions](https://github.com/DomainLang/DomainLang/discussions).
 :::

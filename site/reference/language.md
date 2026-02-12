@@ -8,7 +8,13 @@ New to DomainLang? Start with the [Getting Started](/guide/getting-started) guid
 
 ## Keywords and aliases
 
-DomainLang accepts aliases for common constructs:
+DomainLang provides full keywords for readability and short aliases for convenience. Both forms are semantically identical — use whichever style your team prefers, or mix them freely:
+
+```dlang
+// These are equivalent:
+BoundedContext Orders for Sales { }
+bc Orders for Sales { }
+```
 
 ### Top-level keywords
 
@@ -70,7 +76,7 @@ Domain Sales {
     vision = "Using equals"
 }
 
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     description is "Using is"
 }
 ```
@@ -135,7 +141,7 @@ A bounded context defines a model boundary.
 ```dlang
 Metadata Language
 
-bc Orders for Sales as CoreDomain by SalesTeam {
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle"
     
     terminology {
@@ -236,7 +242,7 @@ Add key-value annotations:
 Metadata Language
 Metadata Database
 
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     metadata {
         Language: "TypeScript"
         Database: "PostgreSQL"
@@ -278,7 +284,7 @@ bc Orders for Sales {
 ### Examples
 
 ```dlang
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     relationships {
         [OHS] this -> [ACL] Payments : UpstreamDownstream
         [P] this <-> [P] Shipping : Partnership
@@ -318,7 +324,7 @@ Create hierarchical scopes:
 ```dlang
 Namespace Acme.Sales {
     Domain Sales { }
-    bc Orders for Sales { }
+    BoundedContext Orders for Sales { }
 }
 
 ContextMap System {

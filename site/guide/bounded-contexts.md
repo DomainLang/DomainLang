@@ -8,22 +8,26 @@ A **bounded context** is a concrete boundary within which a particular domain mo
 | ------- | ----- |
 | `BoundedContext` | `bc` |
 
+::: tip Shorthand aliases
+DomainLang provides short aliases for common keywords. You can write `bc` instead of `BoundedContext`, `cmap` instead of `ContextMap`, and so on. This guide uses the full keywords for clarity — see the [language reference](/reference/language#keywords-and-aliases) for the complete list.
+:::
+
 ## Basic syntax
 
 ```dlang
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     description: "Order lifecycle and orchestration"
 }
 ```
 
 The `for` keyword links the bounded context to its parent domain.
 
-::: tip Optional Body
+::: tip Optional body
 The body `{ ... }` is optional. For quick declarations, you can write:
 
 ```dlang
-bc Orders for Sales
-bc Shipping for Sales as Supporting by ShippingTeam
+BoundedContext Orders for Sales
+BoundedContext Shipping for Sales as Supporting by ShippingTeam
 ```
 
 This is useful for sketching out your context landscape before adding details.
@@ -32,7 +36,7 @@ This is useful for sketching out your context landscape before adding details.
 ## Full syntax
 
 ```dlang
-bc Orders for Sales as CoreDomain by SalesTeam {
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle and orchestration"
     
     terminology {
@@ -58,7 +62,7 @@ bc Orders for Sales as CoreDomain by SalesTeam {
 Use the short form in the header for common attributes:
 
 ```dlang
-bc Orders for Sales as CoreDomain by SalesTeam { }
+BoundedContext Orders for Sales as CoreDomain by SalesTeam { }
 ```
 
 | Keyword | Purpose | Example |
@@ -74,7 +78,7 @@ bc Orders for Sales as CoreDomain by SalesTeam { }
 Metadata Status
 Metadata Language
 
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     description: "Order lifecycle"
     
     classification: CoreDomain      // Alternative to 'as'
@@ -107,7 +111,7 @@ Blocks inside bounded contexts have aliases for readability:
 Document the ubiquitous language within each bounded context:
 
 ```dlang
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     terminology {
         term Order: "A customer's request to purchase one or more items"
         term OrderLine: "A single line item representing a product and quantity"
@@ -116,8 +120,23 @@ bc Orders for Sales {
 }
 ```
 
+### Synonyms and examples
+
+Terms can include alternative names (`aka`) and usage examples:
+
+```dlang
+BoundedContext Orders for Sales {
+    terminology {
+        term Order: "A customer's request to purchase"
+            aka PurchaseOrder
+            examples "Order #12345", "Purchase #67890"
+        term OrderLine: "A single line item in an order"
+    }
+}
+```
+
 ::: tip
-The terminology block captures your ubiquitous language—the precise definitions that the team agrees upon. This reduces ambiguity and improves communication.
+The terminology block captures your ubiquitous language—the precise definitions that the team agrees upon. Synonyms help link different department vocabularies to the canonical term.
 :::
 
 ## Metadata
@@ -131,7 +150,7 @@ Metadata Language
 Metadata Repository
 Metadata Oncall
 
-bc Orders for Sales {
+BoundedContext Orders for Sales {
     metadata {
         Status: "Production"
         Language: "TypeScript"
@@ -145,9 +164,54 @@ bc Orders for Sales {
 Metadata keys must be declared before use. Put shared metadata definitions in a common file and import them. See [Imports](/guide/imports) for file organization.
 :::
 
+## Decisions and governance
+
+Capture architecture decisions, policies, and business rules inside a bounded context:
+
+```dlang
+Classification Architectural
+
+BoundedContext Orders for Sales {
+    decisions {
+        decision EventSourcing: "Capture every state change"
+        policy Refunds: "Allow refunds within 30 days"
+        rule MinOrder: "Minimum order value is $10"
+    }
+}
+```
+
+Decisions, policies, and rules can be tagged with a classification:
+
+```dlang
+BoundedContext Orders for Sales {
+    decisions {
+        decision [Architectural] EventSourcing: "Capture every state change"
+        policy Refunds: "Allow refunds within 30 days"
+        rule [Architectural] Idempotency: "All write operations must be idempotent"
+    }
+}
+```
+
+The `decisions` block also has the alias `rules`.
+
+## Inline relationships
+
+Define integration relationships directly inside a bounded context using the `relationships` block (alias `integrations`). Use the `this` keyword to refer to the current context:
+
+```dlang
+BoundedContext Orders for Sales {
+    relationships {
+        [OHS] this -> [CF] Billing
+        [ACL] this <- Payments
+    }
+}
+```
+
+These relationships are equivalent to declaring them inside a context map, but keep the integration knowledge close to the bounded context that owns it.
+
 ## Best practices
 
-::: warning Context Boundaries
+::: warning Context boundaries
 A bounded context should have a clear, autonomous boundary. If two contexts share too much, consider merging them. If one context does too much, consider splitting it.
 :::
 
@@ -164,15 +228,15 @@ Domain Sales {
     description: "Revenue generation"
 }
 
-bc OrderManagement for Sales as CoreDomain by OrderTeam {
+BoundedContext OrderManagement for Sales as CoreDomain by OrderTeam {
     description: "Order lifecycle from creation to completion"
 }
 
-bc Pricing for Sales as CoreDomain by PricingTeam {
+BoundedContext Pricing for Sales as CoreDomain by PricingTeam {
     description: "Dynamic pricing and discounts"
 }
 
-bc CustomerService for Sales as SupportingDomain by SupportTeam {
+BoundedContext CustomerService for Sales as SupportingDomain by SupportTeam {
     description: "Post-sale customer support"
 }
 ```
@@ -180,7 +244,7 @@ bc CustomerService for Sales as SupportingDomain by SupportTeam {
 ### Context with rich terminology
 
 ```dlang
-bc Shipping for Logistics as CoreDomain by ShippingTeam {
+BoundedContext Shipping for Logistics as CoreDomain by ShippingTeam {
     description: "Package routing and delivery"
     
     terminology {
@@ -195,11 +259,11 @@ bc Shipping for Logistics as CoreDomain by ShippingTeam {
 
 ## Next steps
 
-- [Context Maps](/guide/context-maps) — define relationships between bounded contexts
-- [Teams & Classifications](/guide/teams-classifications) — organize ownership and strategy
+- [Context maps](/guide/context-maps) — define relationships between bounded contexts
+- [Teams & classifications](/guide/teams-classifications) — organize ownership and strategy
 
 ## See also
 
-- [Bounded Contexts Reference](/reference/language#bounded-contexts) — complete syntax details
-- [Terminology Reference](/reference/language#terminology) — ubiquitous language syntax
-- [Metadata Reference](/reference/language#metadata) — metadata key-value annotations
+- [Language reference: bounded contexts](/reference/language#bounded-contexts) — complete syntax details
+- [Language reference: terminology](/reference/language#terminology) — ubiquitous language syntax
+- [Language reference: metadata](/reference/language#metadata) — metadata key-value annotations

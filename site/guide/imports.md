@@ -1,4 +1,4 @@
-# Import System
+# Import system
 
 The import system lets you split your DomainLang model across multiple files, making large models manageable and enabling code reuse through external packages.
 
@@ -34,7 +34,7 @@ You can also use aliases with local imports:
 ```dlang
 import "./shared/types.dlang" as shared
 
-bc OrderContext by shared.CoreTeam as shared.PlatformRole {
+BoundedContext OrderContext by shared.CoreTeam as shared.PlatformRole {
     description: "Uses types from shared module"
 }
 ```
@@ -106,7 +106,7 @@ After importing with an alias, access types using the `alias.TypeName` syntax:
 import "acme/ddd-core" as ddd
 
 // Reference imported types using the alias prefix
-bc OrderContext for ddd.SalesDomain as ddd.CoreRole by ddd.PlatformTeam {
+BoundedContext OrderContext for ddd.SalesDomain as ddd.CoreRole by ddd.PlatformTeam {
     description: "Order management bounded context"
 }
 ```
@@ -320,11 +320,11 @@ Manage dependencies from the command line:
 | Command                                    | Description                              |
 | ------------------------------------------ | ---------------------------------------- |
 | `dlang install`                            | Install dependencies, generate lock file |
-| `dlang model list`                         | List all dependencies                    |
-| `dlang model add <name> <source>`          | Add a dependency                         |
-| `dlang model remove <name>`                | Remove a dependency                      |
-| `dlang model status`                       | Check dependency status                  |
-| `dlang model update [name]`                | Update dependencies                      |
+| `dlang add <specifier>`                    | Add a dependency                         |
+| `dlang remove <name>`                      | Remove a dependency                      |
+| `dlang outdated`                           | Check for available updates              |
+| `dlang update`                             | Update branch dependencies               |
+| `dlang upgrade <name> <version>`           | Upgrade to a newer version               |
 | `dlang cache-clear`                        | Clear the dependency cache               |
 
 See [CLI](/guide/cli) for additional model commands.
@@ -374,7 +374,7 @@ Domain Sales {
     description: "Revenue generation"
 }
 
-bc Orders for Sales as CoreDomain by SalesTeam {
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle"
 }
 ```
@@ -439,13 +439,13 @@ Classification SupportingDomain
 import "acme/ddd-core" as core
 
 // ✅ Available: types defined in index.dlang
-bc Orders as core.CoreDomain {}
+BoundedContext Orders as core.CoreDomain {}
 
 // ✅ Available: types re-imported in index.dlang
-bc Billing by core.PlatformTeam {}  // PlatformTeam from shared/teams.dlang
+BoundedContext Billing by core.PlatformTeam {}  // PlatformTeam from shared/teams.dlang
 
 // ❌ Not available: types in internal files not re-imported
-bc Shipping by core.InternalHelper {}  // ERROR: InternalHelper not visible
+BoundedContext Shipping by core.InternalHelper {}  // ERROR: InternalHelper not visible
 ```
 
 This encapsulation allows library authors to:
@@ -501,7 +501,7 @@ namespace mycompany.sales {
         vision: "Revenue generation"
     }
     
-    bc Orders for Sales as patterns.Core {}
+    BoundedContext Orders for Sales as patterns.Core {}
     //                         ^^^^^^^^ - import alias prefix
     //  ^^^^^ - in mycompany.sales namespace
 }
@@ -509,19 +509,19 @@ namespace mycompany.sales {
 
 ## Best practices
 
-::: tip One Concept Per File
+::: tip One concept per file
 Keep files focused. Put related teams in one file, classifications in another, each domain in its own directory.
 :::
 
-::: tip Use Path Aliases
+::: tip Use path aliases
 Configure `@shared` and `@domains` aliases in `model.yaml` for cleaner imports that don't break when files move.
 :::
 
-::: warning Circular Imports
+::: warning Circular imports
 File-level cycles are allowed (Order↔Customer references are natural in domain models), but keep them minimal. Package-level cycles are forbidden.
 :::
 
-::: tip Index Files
+::: tip Index files
 Use `index.dlang` as the module entry point for directories. This enables clean imports like `import "./domains/sales"` instead of `import "./domains/sales/sales.dlang"`.
 :::
 
@@ -537,6 +537,8 @@ Use `index.dlang` as the module entry point for directories. This enables clean 
 
 ```yaml
 # model.yaml
+# yaml-language-server: $schema=https://domainlang.net/schema/model.schema.json
+
 model:
   name: my-company/domain-model
   version: 1.0.0
@@ -629,10 +631,10 @@ paths:
 ## Next steps
 
 - [CLI](/guide/cli) — manage dependencies from the command line
-- [Browse Examples](/examples/) — see multi-file projects in action
+- [Examples](/examples/) — see multi-file projects in action
 
 ## See also
 
-- [Imports Reference](/reference/language#imports) — complete syntax details
+- [Language reference: imports](/reference/language#imports) — complete syntax details
 
 

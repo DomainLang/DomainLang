@@ -27,7 +27,7 @@ const { query } = await loadModelFromText(`
 
   Domain Sales { vision: "Handle sales operations" }
 
-  bc Orders for Sales as CoreDomain by SalesTeam {
+  BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle"
   }
 `);
@@ -37,6 +37,20 @@ const coreContexts = query
   .withClassification('CoreDomain')
   .toArray();
 ```
+
+### `loadModel()` (Node.js only)
+
+Load a model from a `.dlang` file on the filesystem:
+
+```typescript
+import { loadModel } from '@domainlang/language/sdk/loader-node';
+
+const { query } = await loadModel('./domains.dlang', {
+  workspaceDir: process.cwd()
+});
+```
+
+This entry point requires Node.js and is not available in browser environments.
 
 ### `fromModel()` / `fromDocument()` / `fromServices()` (zero-copy)
 
@@ -194,10 +208,10 @@ const node = query.byFqn('Sales.Orders');
 ## Next steps
 
 - [CLI](/guide/cli) — manage multi-file projects
-- [Browse Examples](/examples/) — see complete domain models
+- [Examples](/examples/) — see complete domain models
 
 ## See also
 
-- [Language Reference](/reference/language) — authoritative syntax and keywords
-- [Quick Reference](/reference/quick-reference) — copy-paste snippets
+- [Language reference](/reference/language) — authoritative syntax and keywords
+- [Quick reference](/reference/quick-reference) — copy-paste snippets
 - [npm: @domainlang/language](https://www.npmjs.com/package/@domainlang/language) — SDK package on npm

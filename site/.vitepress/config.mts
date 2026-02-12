@@ -50,7 +50,7 @@ const domainLangGrammar: LanguageRegistration = {
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: 'DomainLang',
-  description: 'A DSL for Domain-Driven Design modeling',
+  description: 'Domain-Driven Design, as code. Define, validate, and evolve your DDD models in version-controlled text files.',
   
   // Base URL - use '/' for custom domain (domainlang.net)
   // Change to '/DomainLang/' if deploying to GitHub Pages project site
@@ -69,7 +69,7 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#027fff' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'DomainLang' }],
-    ['meta', { property: 'og:description', content: 'A DSL for Domain-Driven Design modeling' }],
+    ['meta', { property: 'og:description', content: 'Domain-Driven Design, as code. Define, validate, and evolve your DDD models in version-controlled text files.' }],
     ['meta', { property: 'og:url', content: 'https://domainlang.net/' }],
   ],
   
@@ -107,34 +107,31 @@ export default defineConfig({
     sidebar: {
       '/guide/': [
         {
-          text: 'Introduction',
+          text: 'Overview',
           items: [
             { text: 'What is DomainLang?', link: '/guide/what-is-domainlang' },
             { text: 'Getting started', link: '/guide/getting-started' },
           ]
         },
         {
-          text: 'Core Concepts',
+          text: 'Modeling concepts',
           items: [
             { text: 'Domains', link: '/guide/domains' },
-            { text: 'Bounded Contexts', link: '/guide/bounded-contexts' },
-            { text: 'Context Maps', link: '/guide/context-maps' },
-            { text: 'Teams & Classifications', link: '/guide/teams-classifications' },
-          ]
-        },
-        {
-          text: 'Advanced',
-          items: [
+            { text: 'Bounded contexts', link: '/guide/bounded-contexts' },
+            { text: 'Context maps', link: '/guide/context-maps' },
+            { text: 'Teams & classifications', link: '/guide/teams-classifications' },
             { text: 'Namespaces', link: '/guide/namespaces' },
             { text: 'Import system', link: '/guide/imports' },
           ]
         },
         {
-          text: 'Tooling',
+          text: 'Tools & AI',
           items: [
-            { text: 'CLI', link: '/guide/cli' },
-            { text: 'Model Query SDK', link: '/guide/sdk' },
+            { text: 'VS Code extension', link: '/guide/vscode-extension' },
+            { text: 'AI-powered model tools', link: '/guide/vscode-tools' },
             { text: 'Agent skill', link: '/guide/agent-skill' },
+            { text: 'CLI', link: '/guide/cli' },
+            { text: 'Model query SDK', link: '/guide/sdk' },
           ]
         }
       ],

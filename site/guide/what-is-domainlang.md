@@ -1,95 +1,111 @@
 # What is DomainLang?
 
-DomainLang is a **domain-specific language (DSL)** for expressing Domain-Driven Design architecture models. It provides a clean, readable syntax for defining [domains](/guide/domains), [bounded contexts](/guide/bounded-contexts), [context maps](/guide/context-maps), [teams](/guide/teams-classifications), and ubiquitous language—all in plain text files that live in your repository.
+DomainLang is a **domain-specific language** for expressing Domain-Driven Design models as code. Define [domains](/guide/domains), [bounded contexts](/guide/bounded-contexts), [context maps](/guide/context-maps), [teams](/guide/teams-classifications), and ubiquitous language in plain text files that live in your repository — validated by your IDE, queryable by AI agents, and reviewable in pull requests.
 
 ::: warning 🚧 Prerelease
 DomainLang is in active development and has not reached v1.0 yet. The language syntax may evolve. See the [roadmap](/roadmap) for planned features.
 :::
 
-## Why DomainLang?
+## The problem
 
-### The problem
+DDD architecture models are typically:
 
-DDD models are often:
 - **Locked in proprietary tools** — hard to version control or review
-- **Scattered across documents** — wikis, Confluence pages, diagrams
+- **Scattered across wikis and documents** — Confluence pages, Miro boards, outdated diagrams
 - **Quickly outdated** — disconnected from the codebase they describe
-- **Hard to validate** — no tooling to catch inconsistencies
+- **Impossible to validate** — no tooling catches modeling inconsistencies
+- **Invisible to AI** — your architecture knowledge isn't available to coding assistants
 
-### The solution
+## How DomainLang helps
 
-DomainLang keeps your DDD models:
-- **In the repo** — version controlled alongside code
-- **Reviewable** — changes visible in pull requests
-- **Validated** — IDE catches issues as you type
-- **Programmable** — query and analyze with the [Model Query SDK](/guide/sdk)
+DomainLang brings your architecture models into the development workflow:
 
-## Key features
+| Challenge | How DomainLang solves it |
+| --------- | ------------------------ |
+| Models in proprietary tools | Plain text `.dlang` files in your repo |
+| Scattered knowledge | Single source of truth, version controlled |
+| Outdated documentation | Changes reviewed in pull requests |
+| No validation | IDE catches issues as you type |
+| Invisible to AI | AI agents query your model directly |
+| Manual analysis | Programmable [SDK](/guide/sdk) for automation |
 
-### DDD-aligned syntax
+## What you can express
 
-Express DDD concepts naturally:
+### Strategic design
+
+Capture the big picture — domains, subdomains, classifications, and team ownership:
 
 ```dlang
+Classification CoreDomain
+Team SalesTeam
+
 Domain Sales {
-    description: "Revenue generation"
+    description: "Revenue generation and customer acquisition"
     vision: "Make it easy to buy"
 }
 
-bc Orders for Sales as CoreDomain by SalesTeam {
-    description: "Order lifecycle"
-    
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
+    description: "Order lifecycle and orchestration"
+}
+```
+
+### Ubiquitous language
+
+Document the shared vocabulary within each bounded context:
+
+```dlang
+BoundedContext Orders for Sales {
     terminology {
         term Order: "A customer's request to purchase"
+        term OrderLine: "A single line item in an order"
     }
 }
 ```
 
-### IDE support
+### Integration patterns
 
-The VS Code extension provides:
-- Syntax highlighting for `.dlang` files
-- Real-time validation and error messages
-- Code completion for keywords and references
-- Hover information and documentation
-- Go-to-definition navigation
-
-### Context maps
-
-Model relationships between bounded contexts:
+Map how bounded contexts relate to each other with DDD relationship patterns:
 
 ```dlang
 ContextMap SalesSystem {
     contains Orders, Billing, Shipping
-    
+
     [OHS] Orders -> [CF] Billing
     [ACL] Shipping <- Orders
 }
 ```
 
-### Multi-file models
+### Governance and decisions
 
-Scale to large systems with [imports and namespaces](/guide/imports):
+Record architecture decisions, policies, and rules alongside the model they apply to:
 
 ```dlang
-import "./shared/teams.dlang"
-import "./shared/classifications.dlang"
-
-Namespace Acme.Sales {
-    bc Orders for Sales { }
+BoundedContext Orders for Sales {
+    decisions {
+        decision EventSourcing: "Capture every state change"
+        policy Refunds: "Allow refunds within 30 days"
+    }
 }
 ```
 
-## Getting started
+## Tooling ecosystem
 
-Ready to try DomainLang?
+DomainLang is more than a language — it's a set of tools designed for how teams actually work:
 
-1. [Install the VS Code extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang)
-2. Follow the [Getting Started guide](/guide/getting-started)
-3. Explore the [Examples](/examples/)
+- **[VS Code extension](/guide/vscode-extension)** — Syntax highlighting, validation, completion, hover docs, and go-to-definition
+- **[AI-powered analysis](/guide/vscode-tools)** — Ask GitHub Copilot or Claude about your domain model directly in your editor
+- **[Agent skill](/guide/agent-skill)** — Teach any AI coding agent to write correct DomainLang models
+- **[CLI](/guide/cli)** — Validate, query, and manage dependencies from the command line
+- **[Model query SDK](/guide/sdk)** — Programmatic access to your models for automation and analysis
+
+## Next steps
+
+- [Getting started](/guide/getting-started) — Build your first model in five minutes
+- [Examples](/examples/) — See real-world models for banking, healthcare, and more
+- [Language reference](/reference/language) — Complete syntax and semantics
 
 ## Community
 
-- **Questions & Ideas**: [GitHub Discussions](https://github.com/DomainLang/DomainLang/discussions)
-- **Bug Reports**: [GitHub Issues](https://github.com/DomainLang/DomainLang/issues)
-- **Source Code**: [GitHub Repository](https://github.com/DomainLang/DomainLang)
+- **Questions & ideas:** [GitHub Discussions](https://github.com/DomainLang/DomainLang/discussions)
+- **Bug reports:** [GitHub Issues](https://github.com/DomainLang/DomainLang/issues)
+- **Source code:** [GitHub Repository](https://github.com/DomainLang/DomainLang)

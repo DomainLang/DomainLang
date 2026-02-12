@@ -71,7 +71,7 @@ Domain Compliance in Banking {
 // Core Banking Contexts
 // ============================================================================
 
-bc AccountManagement for CustomerAccounts
+BoundedContext AccountManagement for CustomerAccounts
     as CoreDomain
     by CoreBankingTeam {
 
@@ -111,7 +111,7 @@ bc AccountManagement for CustomerAccounts
     }
 }
 
-bc PaymentProcessing for Payments
+BoundedContext PaymentProcessing for Payments
     as CoreDomain
     by PaymentsTeam {
 
@@ -130,7 +130,7 @@ bc PaymentProcessing for Payments
     }
 }
 
-bc FraudDetection for Compliance
+BoundedContext FraudDetection for Compliance
     as SupportingDomain
     by FraudDetectionTeam {
 

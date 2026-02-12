@@ -3,45 +3,45 @@ layout: home
 
 hero:
   name: DomainLang
-  text: A DSL for Domain-Driven Design
-  tagline: Model domains, bounded contexts, context maps, and ubiquitous language in version-controlled text files
+  text: Domain-Driven Design, as code
+  tagline: Define, validate, and evolve your DDD models in version-controlled text files — with IDE intelligence and AI-powered analysis.
   image:
     src: /logo.svg
     alt: DomainLang
   actions:
     - theme: brand
-      text: Get Started
+      text: Get started
       link: /guide/getting-started
     - theme: alt
-      text: View on GitHub
-      link: https://github.com/DomainLang/DomainLang
+      text: What is DomainLang?
+      link: /guide/what-is-domainlang
 
 features:
-  - icon: 🎯
-    title: DDD-aligned syntax
-    details: Express domains, bounded contexts, context maps, and ubiquitous language in a clean, readable syntax.
-  - icon: 🛠️
-    title: First-class IDE support
-    details: VS Code extension with syntax highlighting, validation, completion, hover, and go-to-definition.
-  - icon: 📦
-    title: Version control friendly
-    details: Plain text files that live in your repo—easy to review in pull requests and track changes over time.
+  - icon: 🏗️
+    title: Model your architecture
+    details: Express domains, bounded contexts, context maps, teams, and ubiquitous language in a clean, readable syntax designed for DDD practitioners.
   - icon: 🔍
-    title: Built-in validation
-    details: Catch common modeling issues early with real-time validation and helpful error messages.
+    title: Catch modeling issues early
+    details: Real-time validation in your editor catches inconsistencies, missing definitions, and common DDD anti-patterns as you type.
+  - icon: 🤖
+    title: AI-powered analysis
+    details: Ask GitHub Copilot or Claude about your domain model directly in VS Code. AI agents read live model data and give accurate, context-aware answers.
+  - icon: 📦
+    title: Version control your models
+    details: Plain text .dlang files live in your repo — easy to review in pull requests, track changes over time, and keep in sync with the code.
+  - icon: 🛠️
+    title: Full IDE experience
+    details: VS Code extension with syntax highlighting, code completion, hover docs, go-to-definition, and formatting — the same experience you expect for code.
   - icon: 🧩
-    title: Model query SDK
-    details: Programmatic access to your DDD models for analysis, documentation generation, and automation.
-  - icon: 📚
-    title: Multi-file support
-    details: Split models across files with imports, namespaces, and external dependencies for large codebases.
+    title: Programmable and extensible
+    details: Query and analyze models with the Model Query SDK. Automate documentation, enforce governance, or build custom integrations.
 ---
 
-::: warning 🚧 Prerelease Software
-DomainLang is in active development and has not reached v1.0 yet. The language syntax and tooling may change. We welcome feedback and contributions—see the [roadmap](/roadmap) for planned features.
+::: warning 🚧 Prerelease software
+DomainLang is in active development and has not reached v1.0 yet. The language syntax and tooling may change. We welcome feedback and contributions — see the [roadmap](/roadmap) for planned features.
 :::
 
-## Quick example
+## See it in action
 
 ```dlang
 Classification CoreDomain
@@ -52,7 +52,7 @@ Domain Sales {
     vision: "Make it easy to buy"
 }
 
-bc Orders for Sales as CoreDomain by SalesTeam {
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle and orchestration"
 
     terminology {
@@ -65,17 +65,24 @@ ContextMap SalesLandscape {
 }
 ```
 
-## Who is DomainLang for?
+## Built for your workflow
 
 <div class="vp-features">
 
-**Architects and Tech Leads**  
-Who want lightweight, reviewable DDD models that live in the codebase.
+**Architects & tech leads**
+Lightweight, reviewable DDD models that live in the codebase — not in wikis that go stale. Track architecture decisions alongside the code they govern.
 
-**Teams Doing DDD**  
-Who need a shared ubiquitous language documented alongside the code.
+**Domain modelers & business experts**
+A readable language for capturing strategic design, ubiquitous language, and team ownership. No programming experience required to read or contribute.
 
-**Developers**  
-Who want IDE feedback while evolving architecture and domain models.
+**Developers & platform teams**
+IDE feedback while evolving models. A programmable SDK for automation. AI agents that understand your domain model.
 
 </div>
+
+## Explore further
+
+- [What is DomainLang?](/guide/what-is-domainlang) — Learn how it works and why it exists
+- [Getting started](/guide/getting-started) — Build your first model in five minutes
+- [Examples](/examples/) — Real-world models for banking, healthcare, and more
+- [AI-powered tools](/guide/vscode-tools) — Ask AI agents about your domain model

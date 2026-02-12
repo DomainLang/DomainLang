@@ -1,6 +1,6 @@
 # Examples
 
-Real-world DomainLang examples to learn from and adapt.
+Real-world DomainLang models to learn from and adapt to your own domain.
 
 ## Featured examples
 
@@ -8,9 +8,10 @@ Real-world DomainLang examples to learn from and adapt.
 
 A comprehensive banking domain with regulatory compliance, fraud detection, and complex integration patterns.
 
-[View Banking System Example →](/examples/banking-system)
+[View banking system example →](/examples/banking-system)
 
 **Highlights:**
+
 - Multi-level domain hierarchy
 - Regulatory classifications (HighlyRegulated, MissionCritical)
 - Rich terminology for financial concepts
@@ -20,9 +21,10 @@ A comprehensive banking domain with regulatory compliance, fraud detection, and 
 
 A hospital management system with clinical care, patient records, HIPAA compliance, and pharmacy management.
 
-[View Healthcare System Example →](/examples/healthcare-system)
+[View healthcare system example →](/examples/healthcare-system)
 
 **Highlights:**
+
 - HIPAA compliance classifications
 - Clinical terminology (diagnoses, encounters, treatments)
 - Integration between clinical and administrative contexts
@@ -34,7 +36,7 @@ A hospital management system with clinical care, patient records, HIPAA complian
 
 ```dlang
 Domain Sales { description: "Sales" }
-bc Orders for Sales { description: "Order lifecycle" }
+BoundedContext Orders for Sales { description: "Order lifecycle" }
 ```
 
 ### With teams and classifications
@@ -45,7 +47,7 @@ Team SalesTeam
 
 Domain Sales { description: "Sales" }
 
-bc Orders for Sales as CoreDomain by SalesTeam {
+BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     description: "Order lifecycle"
 }
 ```
@@ -76,6 +78,7 @@ project/
 ```
 
 ## More examples
+
 - [Customer-Facing](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/examples/customer-facing.dlang)
 - [Metadata Examples](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/examples/metadata-local-definition.dlang)
 - [Multi-File Project](https://github.com/DomainLang/DomainLang/tree/main/dsl/domain-lang/examples/multi-file-project)
