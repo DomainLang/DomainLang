@@ -75,11 +75,9 @@ describe('PackageCache', () => {
             const result = await cache.get('domainlang', 'core', 'abc123');
 
             // Assert
-            expect(result).toBeDefined();
             expect(result).toBe(packagePath);
-            if (result) {
-                expect(existsSync(result)).toBe(true);
-            }
+            expect(result?.startsWith(testDir)).toBe(true);
+            expect(existsSync(packagePath)).toBe(true);
         });
     });
 

@@ -12,11 +12,23 @@ import {
     countPackages,
     clearCache,
 } from '../../src/commands/cache-clear.js';
+import { PackageCache } from '../../src/services/package-cache.js';
 import type { FileSystemService, DirEntry, FileStats } from '../../src/services/filesystem.js';
 
 // Mock PackageCache at the TOP LEVEL (not inside describe)
 // This is required because vi.mock is hoisted and must be set up before module load
 vi.mock('../../src/services/package-cache.js');
+
+let mockCacheClear: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    mockCacheClear = vi.fn(async () => undefined);
+
+    vi.mocked(PackageCache).mockImplementation(class {
+        clear = mockCacheClear;
+    } as any);
+});
 
 /**
  * Create a mock FileSystemService for testing.
@@ -256,6 +268,7 @@ describe('countPackages', () => {
 
 describe('clearCache', () => {
     test('calculates size and count before clearing', async () => {
+        // Arrange
         // Use EXACT path matching to prevent infinite recursion
         // Broad includes() checks caused OOM by matching recursive subdirectory calls
         const packagesPath = '/workspace/.dlang/packages';
@@ -279,24 +292,34 @@ describe('clearCache', () => {
             stat: vi.fn(async () => createFileStats(0)),
         });
 
+        // Act
         const result = await clearCache('/workspace', mockFs);
 
+        // Assert
         expect(result.packagesRemoved).toBe(1);
         expect(result.bytesFreed).toBe(0);
+        expect(PackageCache).toHaveBeenCalledWith('/workspace');
+        expect(mockCacheClear).toHaveBeenCalledTimes(1);
     });
 
     test('returns zero when cache directory does not exist', async () => {
+        // Arrange
         const mockFs = createMockFs({
             existsSync: vi.fn(() => false),
         });
 
+        // Act
         const result = await clearCache('/workspace', mockFs);
 
+        // Assert
         expect(result.packagesRemoved).toBe(0);
         expect(result.bytesFreed).toBe(0);
+        expect(PackageCache).toHaveBeenCalledWith('/workspace');
+        expect(mockCacheClear).toHaveBeenCalledTimes(1);
     });
 
     test('calculates bytes freed from files', async () => {
+        // Arrange
         // Use EXACT path matching to prevent infinite recursion
         const packagesPath = '/workspace/.dlang/packages';
         const ownerPath = `${packagesPath}/owner`;
@@ -326,8 +349,12 @@ describe('clearCache', () => {
             stat: vi.fn(async () => createFileStats(2048)),
         });
 
+        // Act
         const result = await clearCache('/workspace', mockFs);
 
+        // Assert
         expect(result.bytesFreed).toBe(2048);
+        expect(PackageCache).toHaveBeenCalledWith('/workspace');
+        expect(mockCacheClear).toHaveBeenCalledTimes(1);
     });
 });

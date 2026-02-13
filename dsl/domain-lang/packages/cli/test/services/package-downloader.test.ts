@@ -462,7 +462,7 @@ describe('PackageDownloader', () => {
             // Act & Assert
             await expect(async () => {
                 await downloader.download('owner', 'repo', 'v1.0.0');
-            }).rejects.toThrow();  // Will throw MaxRetriesExceededError from fetchWithRetry
+            }).rejects.toThrow(/Maximum retry attempts/);
         });
 
         test('should handle null response body', async () => {

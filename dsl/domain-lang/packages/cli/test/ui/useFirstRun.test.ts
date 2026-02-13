@@ -3,52 +3,73 @@
  *
  * @module ui/useFirstRun.test
  */
-import { describe, test, expect, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { describe, test, expect, vi } from 'vitest';
+import type { FileSystemService } from '../../src/services/filesystem.js';
+import { isFirstRun, markFirstRunComplete } from '../../src/ui/hooks/useFirstRun.js';
 
-/**
- * We test the pure filesystem functions (isFirstRun, markFirstRunComplete)
- * by re-implementing their logic with custom paths, since the originals
- * use a hardcoded path (~/.dlang/.welcomed).
- *
- * The React hooks (useFirstRun, useElapsedTime) require a React test environment
- * and are covered separately through component render tests.
- */
+function createMockFileSystem(): FileSystemService {
+    const existingPaths = new Set<string>();
+
+    return {
+        existsSync: (path: string) => existingPaths.has(path),
+        readFileSync: vi.fn(),
+        writeFileSync: (path: string) => {
+            existingPaths.add(path);
+        },
+        mkdirSync: (path: string) => {
+            existingPaths.add(path);
+        },
+        createWriteStream: vi.fn(),
+        readFile: vi.fn(),
+        writeFile: vi.fn(),
+        readdir: vi.fn(),
+        stat: vi.fn(),
+        mkdir: vi.fn(),
+        rm: vi.fn(),
+        rmdir: vi.fn(),
+        rename: vi.fn(),
+        unlink: vi.fn(),
+        copyFile: vi.fn(),
+    } as unknown as FileSystemService;
+}
 
 describe('First-run detection (filesystem logic)', () => {
-    let tempDir: string;
-
-    afterEach(() => {
-        if (tempDir && existsSync(tempDir)) {
-            rmSync(tempDir, { recursive: true, force: true });
-        }
-    });
-
-    test('isFirstRun returns true when marker file does not exist', async () => {
+    test('isFirstRun returns true when marker file is missing', () => {
         // Arrange
-        tempDir = mkdtempSync(join(tmpdir(), 'dlang-firstrun-'));
-
-        // Import the actual module and use its functions
-        const { isFirstRun } = await import('../../src/ui/hooks/useFirstRun.js');
-
-        // Act — the marker at ~/.dlang/.welcomed may or may not exist on the test machine
-        // We just verify the function runs without errors
-        const result = isFirstRun();
-
-        // Assert
-        expect(typeof result).toBe('boolean');
-    });
-
-    test('markFirstRunComplete creates marker file', async () => {
-        // Arrange
-        const { markFirstRunComplete, isFirstRun } = await import('../../src/ui/hooks/useFirstRun.js');
+        const fs = createMockFileSystem();
 
         // Act
-        markFirstRunComplete();
+        const result = isFirstRun(fs);
 
-        // Assert — after marking, isFirstRun should return false
-        expect(isFirstRun()).toBe(false);
+        // Assert
+        expect(result).toBe(true);
+    });
+
+    test('markFirstRunComplete makes subsequent isFirstRun false', () => {
+        // Arrange
+        const fs = createMockFileSystem();
+
+        // Act
+        markFirstRunComplete(fs);
+
+        // Assert
+        expect(isFirstRun(fs)).toBe(false);
+    });
+
+    test('markFirstRunComplete swallows filesystem errors', () => {
+        // Arrange
+        const failingFs = {
+            existsSync: () => false,
+            mkdirSync: () => {
+                throw new Error('permission denied');
+            },
+            writeFileSync: vi.fn(),
+        } as unknown as FileSystemService;
+
+        // Act
+        const call = (): void => markFirstRunComplete(failingFs);
+
+        // Assert
+        expect(call).not.toThrow();
     });
 });

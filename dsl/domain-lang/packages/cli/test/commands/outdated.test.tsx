@@ -22,6 +22,29 @@ const defaultContext: CommandContext = {
     cwd: '',
 };
 
+function normalizeOutput(output: string): string {
+    let plain = '';
+    let inEscapeSequence = false;
+
+    for (const current of output) {
+        if (inEscapeSequence) {
+            if (current === 'm') {
+                inEscapeSequence = false;
+            }
+            continue;
+        }
+
+        if ((current.codePointAt(0) ?? -1) === 27) {
+            inEscapeSequence = true;
+            continue;
+        }
+
+        plain += current;
+    }
+
+    return plain.replaceAll(/\s+/g, ' ').trim();
+}
+
 function createTestWorkspace(): string {
     const workspaceDir = path.join(tmpdir(), `dlang-test-outdated-${Date.now()}`);
     mkdirSync(workspaceDir, { recursive: true });
@@ -69,10 +92,11 @@ describe('Outdated component', () => {
         // Act
         const { lastFrame } = render(<Outdated context={context} />);
         await flushAsync();
+        const output = normalizeOutput(lastFrame() ?? '');
 
         // Assert
-        expect(lastFrame()).toContain('Check failed');
-        expect(lastFrame()).toContain('No model.lock found');
+        expect(output).toContain('Check failed');
+        expect(output).toContain('No model.lock found');
     });
 
     test('shows empty state when no dependencies', async () => {
@@ -82,29 +106,16 @@ describe('Outdated component', () => {
         // Act
         const { lastFrame } = render(<Outdated context={context} />);
         await flushAsync();
+        const output = normalizeOutput(lastFrame() ?? '');
 
         // Assert
-        expect(lastFrame()).toContain('Outdated Dependencies');
-        expect(lastFrame()).toContain('No dependencies found');
+        expect(output).toContain('Outdated Dependencies');
+        expect(output).toContain('No dependencies found');
     });
 
-    test('displays summary counts', async () => {
-        // Arrange - lock file with mixed dependencies
+    test('displays summary counts for pinned commit dependencies', async () => {
+        // Arrange
         await createLockFile(workspaceDir, {
-            'test/tag-repo': {
-                ref: 'v1.0.0',
-                refType: 'tag',
-                resolved: 'https://api.github.com/repos/test/tag-repo/tarball/abc123',
-                commit: 'abc123def456',
-                integrity: 'sha512-...',
-            },
-            'test/branch-repo': {
-                ref: 'main',
-                refType: 'branch',
-                resolved: 'https://api.github.com/repos/test/branch-repo/tarball/def456',
-                commit: 'def456ghi789',
-                integrity: 'sha512-...',
-            },
             'test/commit-repo': {
                 ref: 'abc123def',
                 refType: 'commit',
@@ -117,47 +128,27 @@ describe('Outdated component', () => {
         // Act
         const { lastFrame } = render(<Outdated context={context} />);
         await flushAsync();
+        const output = normalizeOutput(lastFrame() ?? '');
 
         // Assert
-        expect(lastFrame()).toContain('Outdated Dependencies');
+        expect(output).toContain('Outdated Dependencies');
+        expect(output).toContain('1 pinned');
     });
 
-    test('JSON output mode returns structured data', async () => {
+    test('component remains rich-mode rendering even when context mode is json', async () => {
         // Arrange
-        const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-        
-        await createLockFile(workspaceDir, {
-            'test/repo': {
-                ref: 'v1.0.0',
-                refType: 'tag',
-                resolved: 'https://api.github.com/repos/test/repo/tarball/abc123',
-                commit: 'abc123def456',
-                integrity: 'sha512-...',
-            },
-        });
+        await createLockFile(workspaceDir, {});
 
         const jsonContext = { ...context, mode: 'json' as const };
 
         // Act
-        render(<Outdated context={jsonContext} />);
+        const { lastFrame } = render(<Outdated context={jsonContext} />);
         await flushAsync();
+        const output = normalizeOutput(lastFrame() ?? '');
 
-        // Assert - will eventually output JSON
-        if (stdoutSpy.mock.calls.length > 0) {
-            const output = stdoutSpy.mock.calls.at(-1)?.[0] as string;
-            if (output.startsWith('{')) {
-                const json = JSON.parse(output);
-                expect(json).toHaveProperty('success');
-                if (json.success) {
-                    expect(json).toHaveProperty('dependencies');
-                    expect(json).toHaveProperty('summary');
-                }
-            }
-        }
-
-        exitSpy.mockRestore();
-        stdoutSpy.mockRestore();
+        // Assert
+        expect(output).toContain('Outdated Dependencies');
+        expect(output).toContain('No dependencies found');
     });
 });
 
@@ -229,9 +220,7 @@ describe('runOutdated function', () => {
 
         // Assert
         expect(exitSpy).toHaveBeenCalledWith(0);
-        expect(stdoutSpy).toHaveBeenCalled();
-        
-        const output = stdoutSpy.mock.calls[0][0] as string;
+        const output = String(stdoutSpy.mock.calls[0]?.[0] ?? '');
         expect(output).toMatch(/\d+ upgrades, \d+ branches behind, \d+ pinned/);
 
         exitSpy.mockRestore();

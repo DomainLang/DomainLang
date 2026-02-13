@@ -115,9 +115,9 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
 
         expect(lock.version).toBe('1');
         // Keys are by source owner/repo
-        expect(lock.dependencies['org/A']).toBeDefined();
-        expect(lock.dependencies['org/B']).toBeDefined();
-        expect(lock.dependencies['domainlang/core']).toBeDefined();
+        expect(lock.dependencies['org/A']?.ref).toBe('v1.0.0');
+        expect(lock.dependencies['org/B']?.ref).toBe('v1.0.0');
+        expect(lock.dependencies['domainlang/core']?.ref).toBe('v1.0.0');
     });
 
     test('detects ref conflicts across dependencies', async () => {
@@ -160,7 +160,7 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error
-            expect(lock.dependencies['domainlang/core']).toBeDefined();
+            expect(lock.dependencies['domainlang/core']).not.toBeUndefined();
             expect(lock.dependencies['domainlang/core'].ref).toBe('v1.3.0');
         });
 
@@ -203,7 +203,7 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error
-            expect(lock.dependencies['domainlang/core']).toBeDefined();
+            expect(lock.dependencies['domainlang/core']).not.toBeUndefined();
             expect(lock.dependencies['domainlang/core'].ref).toBe('main');
         });
 
@@ -256,7 +256,7 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error due to override
-            expect(lock.dependencies['domainlang/core']).toBeDefined();
+            expect(lock.dependencies['domainlang/core']).not.toBeUndefined();
             expect(lock.dependencies['domainlang/core'].ref).toBe('v2.0.0');
         });
 
@@ -276,7 +276,7 @@ describe('DependencyResolver (PRS-010 Phase 5)', () => {
             const lock = await resolver.resolveDependencies();
 
             // Should resolve without error due to override
-            expect(lock.dependencies['domainlang/core']).toBeDefined();
+            expect(lock.dependencies['domainlang/core']).not.toBeUndefined();
             expect(lock.dependencies['domainlang/core'].ref).toBe('v1.0.0');
         });
 

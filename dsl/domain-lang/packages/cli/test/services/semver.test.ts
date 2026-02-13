@@ -88,7 +88,7 @@ describe('SemVer utilities', () => {
             const result = parseRef('v1.2.3');
             expect(result.original).toBe('v1.2.3');
             expect(result.type).toBe('tag');
-            expect(result.semver).toBeDefined();
+            expect(result.semver).not.toBeUndefined();
             expect(result.semver?.major).toBe(1);
         });
 
@@ -173,7 +173,9 @@ describe('SemVer utilities', () => {
         test('handles non-semver refs at the end', () => {
             const versions = ['main', 'v1.0.0', 'develop'];
             const sorted = sortVersionsDescending(versions);
+            expect(sorted).toHaveLength(3);
             expect(sorted[0]).toBe('v1.0.0');
+            expect(new Set(sorted.slice(1))).toEqual(new Set(['main', 'develop']));
         });
     });
 

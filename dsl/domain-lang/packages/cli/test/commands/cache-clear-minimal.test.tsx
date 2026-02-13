@@ -37,20 +37,30 @@ describe('minimal test', () => {
         vi.mocked(PackageCache.prototype.clear).mockResolvedValue(undefined);
     });
 
-    test('can render component', () => {
+    test('shows loading state while clear operation is pending', () => {
+        // Arrange
+        vi.mocked(PackageCache.prototype.clear).mockReturnValue(new Promise(() => {}));
+
+        // Act
         const { lastFrame } = render(<CacheClear context={mockContext} />);
+
+        // Assert
         expect(lastFrame()).toContain('Clearing');
     });
 
-    test('second test', async () => {
-        const { lastFrame } = render(<CacheClear context={mockContext} />);
-        await flushAsync();
-        expect(lastFrame()).toBeDefined();
-    });
+    test('renders success summary and clears package cache', async () => {
+        // Arrange
+        const clearSpy = vi.mocked(PackageCache.prototype.clear).mockResolvedValue(undefined);
 
-    test('third test', async () => {
+        // Act
         const { lastFrame } = render(<CacheClear context={mockContext} />);
         await flushAsync();
-        expect(lastFrame()).toBeDefined();
+
+        // Assert
+        const output = lastFrame() ?? '';
+        expect(output).toContain('Removed');
+        expect(output).toContain('.dlang/packages/');
+        expect(output).toContain('0 packages');
+        expect(clearSpy).toHaveBeenCalledTimes(1);
     });
 });

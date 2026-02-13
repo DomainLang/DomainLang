@@ -74,7 +74,7 @@ describe('ThemeManager', () => {
             const colors = themeManager.getSemanticColors();
 
             // Assert
-            expect(colors).toBeDefined();
+            expect(typeof colors).toBe('object');
             expect(colors).toHaveProperty('status.success');
             expect(colors).toHaveProperty('status.error');
             expect(colors).toHaveProperty('status.warning');

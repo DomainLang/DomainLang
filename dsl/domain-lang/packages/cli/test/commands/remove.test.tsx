@@ -186,7 +186,11 @@ describe('Remove command', () => {
             const lockContent = await fs.readFile(lockPath, 'utf-8');
             const lock = JSON.parse(lockContent);
             expect(lock.dependencies['owner/repo']).toBeUndefined();
-            expect(lock.dependencies['other/package']).toBeDefined();
+            expect(lock.dependencies['other/package']).toMatchObject({
+                ref: 'v2.0.0',
+                refType: 'tag',
+                commit: 'def456',
+            });
 
             expect(output).toContain('Removed owner/repo');
         } finally {

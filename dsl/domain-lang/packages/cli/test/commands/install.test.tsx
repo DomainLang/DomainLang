@@ -11,6 +11,38 @@ import { Install, runInstall } from '../../src/commands/install.js';
 import type { CommandContext } from '../../src/commands/types.js';
 import { InstallService, FrozenMismatchError, IntegrityError } from '../../src/services/install-service.js';
 
+function getFirstJsonPayload(writeCalls: Array<[unknown]>): Record<string, unknown> {
+    const jsonLine = writeCalls
+        .map(call => String(call[0]).trim())
+        .find(line => line.startsWith('{'));
+
+    expect(jsonLine).toBeTruthy();
+    return JSON.parse(jsonLine as string) as Record<string, unknown>;
+}
+
+function normalizeOutput(output: string): string {
+    let plain = '';
+    let inEscapeSequence = false;
+
+    for (const current of output) {
+        if (inEscapeSequence) {
+            if (current === 'm') {
+                inEscapeSequence = false;
+            }
+            continue;
+        }
+
+        if ((current.codePointAt(0) ?? -1) === 27) {
+            inEscapeSequence = true;
+            continue;
+        }
+
+        plain += current;
+    }
+
+    return plain.replaceAll(/\s+/g, ' ').trim();
+}
+
 // Mock InstallService - Vitest v4 requires wrapping class in vi.fn()
 vi.mock('../../src/services/install-service.js', () => ({
     InstallService: vi.fn(class {
@@ -97,7 +129,7 @@ describe('Install command', () => {
             await flushAsync(); // Ignore exit call
 
             // Assert
-            const output = lastFrame();
+            const output = normalizeOutput(lastFrame() ?? '');
             expect(output).toContain('3 packages installed successfully');
         });
 
@@ -162,7 +194,7 @@ describe('Install command', () => {
             await flushAsync();
 
             // Assert
-            const output = lastFrame();
+            const output = normalizeOutput(lastFrame() ?? '');
             expect(output).toContain('3 packages installed successfully');
             expect(output).toContain('3 installed, 3 cached');
             expect(output).toContain('model.lock unchanged');
@@ -301,7 +333,7 @@ describe('Install command', () => {
             await flushAsync();
 
             // Assert
-            const output = lastFrame();
+            const output = normalizeOutput(lastFrame() ?? '');
             expect(output).toContain('Integrity verification failed');
             expect(output).toContain('acme/lib');
             expect(output).toContain('sha512-abc123');
@@ -387,12 +419,11 @@ describe('Install command', () => {
             } catch { /* expected: process.exit throws */ }
 
             // Assert
-            expect(writeStdout).toHaveBeenCalledWith(
-                expect.stringContaining('"success":true')
-            );
-            expect(writeStdout).toHaveBeenCalledWith(
-                expect.stringContaining('"installed":2')
-            );
+            const payload = getFirstJsonPayload(writeStdout.mock.calls as Array<[unknown]>);
+            expect(payload.success).toBe(true);
+            expect(payload.installed).toBe(2);
+            expect(payload.cached).toBe(1);
+            expect(payload.lockFileModified).toBe(true);
             expect(exit).toHaveBeenCalledWith(0);
 
             writeStdout.mockRestore();
@@ -414,12 +445,9 @@ describe('Install command', () => {
             } catch { /* expected: process.exit throws */ }
 
             // Assert
-            expect(writeStdout).toHaveBeenCalledWith(
-                expect.stringContaining('"success":false')
-            );
-            expect(writeStdout).toHaveBeenCalledWith(
-                expect.stringContaining('Lock file out of sync')
-            );
+            const payload = getFirstJsonPayload(writeStdout.mock.calls as Array<[unknown]>);
+            expect(payload.success).toBe(false);
+            expect(String(payload.error ?? '')).toContain('Lock file out of sync');
             expect(exit).toHaveBeenCalledWith(1);
 
             writeStdout.mockRestore();
@@ -441,12 +469,9 @@ describe('Install command', () => {
             } catch { /* expected: process.exit throws */ }
 
             // Assert
-            expect(writeStdout).toHaveBeenCalledWith(
-                expect.stringContaining('"success":false')
-            );
-            expect(writeStdout).toHaveBeenCalledWith(
-                expect.stringContaining('Integrity verification failed')
-            );
+            const payload = getFirstJsonPayload(writeStdout.mock.calls as Array<[unknown]>);
+            expect(payload.success).toBe(false);
+            expect(String(payload.error ?? '')).toContain('Integrity verification failed');
             expect(exit).toHaveBeenCalledWith(1);
 
             writeStdout.mockRestore();
@@ -519,8 +544,9 @@ describe('Install command', () => {
                 <Install options={options} context={defaultContext} />,
             );
 
-            // Assert - component renders without error
-            expect(lastFrame()).toBeDefined();
+            // Assert
+            const output = lastFrame();
+            expect(output).toContain('Resolving dependencies');
         });
     });
 });
@@ -599,9 +625,9 @@ describe('runInstall function', () => {
         } catch { /* expected: process.exit throws */ }
 
         // Assert
-        expect(writeStdout).toHaveBeenCalledWith(
-            expect.stringContaining('"success":true')
-        );
+        const payload = getFirstJsonPayload(writeStdout.mock.calls as Array<[unknown]>);
+        expect(payload.success).toBe(true);
+        expect(payload.installed).toBe(1);
         expect(exit).toHaveBeenCalledWith(0);
 
         writeStdout.mockRestore();
@@ -622,12 +648,9 @@ describe('runInstall function', () => {
         } catch { /* expected: process.exit throws */ }
 
         // Assert
-        expect(writeStdout).toHaveBeenCalledWith(
-            expect.stringContaining('"success":false')
-        );
-        expect(writeStdout).toHaveBeenCalledWith(
-            expect.stringContaining('Test error')
-        );
+        const payload = getFirstJsonPayload(writeStdout.mock.calls as Array<[unknown]>);
+        expect(payload.success).toBe(false);
+        expect(String(payload.error ?? '')).toContain('Test error');
         expect(exit).toHaveBeenCalledWith(1);
 
         writeStdout.mockRestore();

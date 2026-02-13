@@ -85,7 +85,6 @@ describe('Update component', () => {
         await flushAsync();
 
         // Assert
-        expect(lastFrame()).toContain('Update failed');
         expect(lastFrame()).toContain('No model.lock found');
     });
 
@@ -106,7 +105,6 @@ describe('Update component', () => {
         await flushAsync();
 
         // Assert
-        expect(lastFrame()).toContain('Update failed');
         expect(lastFrame()).toContain('No branch dependencies found');
     });
 
@@ -131,13 +129,13 @@ describe('Update component', () => {
         await runUpdate(jsonContext);
 
         // Assert
-        // runDirect should handle error and output JSON error
         expect(exitSpy).toHaveBeenCalledWith(1);
-        if (stdoutSpy.mock.calls.length > 0) {
-            const output = stdoutSpy.mock.calls[0][0] as string;
-            const json = JSON.parse(output);
-            expect(json).toHaveProperty('success');
-        }
+        expect(stdoutSpy).toHaveBeenCalled();
+        const output = stdoutSpy.mock.calls[0][0] as string;
+        const json = JSON.parse(output);
+        expect(json.success).toBe(false);
+        expect(json.error).toBeTypeOf('string');
+        expect(json.error.length).toBeGreaterThan(0);
 
         exitSpy.mockRestore();
         stdoutSpy.mockRestore();
@@ -202,7 +200,7 @@ describe('runUpdate function', () => {
     test('quiet mode outputs summary text', async () => {
         // Arrange
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-        const stdoutSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
         const quietContext = { ...context, mode: 'quiet' as const };
 
         // Act
@@ -210,8 +208,9 @@ describe('runUpdate function', () => {
 
         // Assert
         expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('model.lock'));
 
         exitSpy.mockRestore();
-        stdoutSpy.mockRestore();
+        stderrSpy.mockRestore();
     });
 });

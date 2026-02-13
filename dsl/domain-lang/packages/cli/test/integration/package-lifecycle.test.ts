@@ -217,7 +217,7 @@ describe.skipIf(shouldSkipIntegration)('Package lifecycle integration via CLI (l
         // Assert — model.lock created with pinned commit
         expect(existsSync(join(projectDir, 'model.lock'))).toBe(true);
         const lock = readLock(projectDir);
-        expect(lock.dependencies[PACKAGE]).toBeDefined();
+        expect(lock.dependencies[PACKAGE]?.ref).toBe(REF);
 
         const locked = lock.dependencies[PACKAGE];
         expect(locked.ref).toBe(REF);

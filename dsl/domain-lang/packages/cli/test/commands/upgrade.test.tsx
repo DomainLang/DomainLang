@@ -23,6 +23,29 @@ const defaultContext: CommandContext = {
     cwd: '',
 };
 
+    function normalizeOutput(output: string): string {
+        let plain = '';
+        let inEscapeSequence = false;
+
+        for (const current of output) {
+            if (inEscapeSequence) {
+                if (current === 'm') {
+                    inEscapeSequence = false;
+                }
+                continue;
+            }
+
+            if ((current.codePointAt(0) ?? -1) === 27) {
+                inEscapeSequence = true;
+                continue;
+            }
+
+            plain += current;
+        }
+
+        return plain.replaceAll(/\s+/g, ' ').trim();
+    }
+
 function createTestWorkspace(): string {
     const workspaceDir = path.join(tmpdir(), `dlang-test-upgrade-${Date.now()}`);
     mkdirSync(workspaceDir, { recursive: true });
@@ -74,10 +97,11 @@ describe('Upgrade component', () => {
         // Act
         const { lastFrame } = render(<Upgrade context={context} />);
         await flushAsync();
+        const output = normalizeOutput(lastFrame() ?? '');
 
         // Assert
-        expect(lastFrame()).toContain('Upgrade failed');
-        expect(lastFrame()).toContain('No model.yaml found');
+        expect(output).toContain('Upgrade failed');
+        expect(output).toContain('No model.yaml found');
     });
 
     test('list mode shows empty state when no tag dependencies', async () => {
@@ -89,16 +113,15 @@ describe('Upgrade component', () => {
         // Act
         const { lastFrame } = render(<Upgrade context={context} />);
         await flushAsync();
+        const output = normalizeOutput(lastFrame() ?? '');
 
         // Assert
-        expect(lastFrame()).toContain('Available Upgrades');
+        expect(output).toContain('Available Upgrades');
+        expect(output).toContain('No tag dependencies found');
     });
 
-    test('JSON output mode returns structured data', async () => {
+    test('component stays in rich rendering path even when mode is json', async () => {
         // Arrange
-        const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-        
         await createManifest(workspaceDir, {
             'domainlang/core': 'v1.0.0',
         });
@@ -106,16 +129,13 @@ describe('Upgrade component', () => {
         const jsonContext = { ...context, mode: 'json' as const };
 
         // Act
-        render(<Upgrade context={jsonContext} />);
+        const { lastFrame } = render(<Upgrade context={jsonContext} />);
         await flushAsync();
+        const output = normalizeOutput(lastFrame() ?? '');
 
-        // Assert - will eventually output JSON (success or error)
-        if (exitSpy.mock.calls.length > 0) {
-            expect([0, 1]).toContain(exitSpy.mock.calls[0][0]);
-        }
-
-        exitSpy.mockRestore();
-        stdoutSpy.mockRestore();
+        // Assert
+        expect(output).toContain('Upgrade Dependencies');
+        expect(output).toContain('Checking for upgrades');
     });
 });
 
@@ -177,7 +197,7 @@ describe('runUpgrade function', () => {
     test('quiet mode outputs summary for list mode', async () => {
         // Arrange
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-        const stdoutSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
         const quietContext = { ...context, mode: 'quiet' as const };
         
         await createManifest(workspaceDir, {});
@@ -185,7 +205,10 @@ describe('runUpgrade function', () => {
         // Act
         await runUpgrade(undefined, undefined, quietContext);
 
-        // Assert - will exit eventually
+        // Assert
+        expect(exitSpy).toHaveBeenCalledWith(0);
+        const output = String(stdoutSpy.mock.calls[0]?.[0] ?? '');
+        expect(output).toContain('0 upgrade(s) available');
         
         exitSpy.mockRestore();
         stdoutSpy.mockRestore();

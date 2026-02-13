@@ -67,11 +67,15 @@ describe('Init command component', () => {
     });
 
     describe('component structure', () => {
-        it('renders with correct props', () => {
+        it('renders loading message for provided target directory', () => {
+            // Arrange & Act
             const { lastFrame } = render(
                 <Init targetDir="test-project" context={defaultContext} autoExit={false} />,
             );
-            expect(lastFrame()).toBeDefined();
+
+            // Assert
+            const output = lastFrame() ?? '';
+            expect(output).toContain('Creating project');
         });
     });
 });
@@ -217,6 +221,7 @@ describe('Init file generation', () => {
 
     describe('error handling', () => {
         it('errors when directory already exists', async () => {
+            // Arrange
             const targetDir = 'existing-dir';
             mkdirSync(resolve(tempDir, targetDir), { recursive: true });
             const context: CommandContext = {
@@ -233,17 +238,22 @@ describe('Init file generation', () => {
             });
 
             try {
+                // Act
                 await runInit(targetDir, true, context);
             } catch {
                 // process.exit throws
             }
 
+            // Assert
             expect(mockStderr).toHaveBeenCalled();
+            expect(mockStderr).toHaveBeenCalledWith(expect.stringContaining('Directory already exists'));
+            expect(mockExit).toHaveBeenCalledWith(1);
             mockStderr.mockRestore();
             mockExit.mockRestore();
         });
 
         it('errors when model.yaml already exists in current directory', async () => {
+            // Arrange
             writeFileSync(resolve(tempDir, 'model.yaml'), 'existing content', 'utf-8');
             const context: CommandContext = {
                 mode: 'quiet',
@@ -259,12 +269,16 @@ describe('Init file generation', () => {
             });
 
             try {
+                // Act
                 await runInit(undefined, true, context);
             } catch {
                 // process.exit throws
             }
 
+            // Assert
             expect(mockStderr).toHaveBeenCalled();
+            expect(mockStderr).toHaveBeenCalledWith(expect.stringContaining('Project already initialized'));
+            expect(mockExit).toHaveBeenCalledWith(1);
             mockStderr.mockRestore();
             mockExit.mockRestore();
         });
@@ -296,6 +310,7 @@ describe('Init JSON mode', () => {
     });
 
     it('outputs JSON format with --json flag', async () => {
+        // Arrange
         const context: CommandContext = {
             mode: 'json',
             noColor: false,
@@ -305,12 +320,20 @@ describe('Init JSON mode', () => {
         };
 
         try {
+            // Act
             await runInit('json-project', true, context);
         } catch {
             // process.exit throws in test environment
         }
 
-        expect(mockStdout).toHaveBeenCalled();
+        // Assert
+        const output = mockStdout.mock.calls.map(call => String(call[0])).join('');
+        const jsonLine = output.split('\n').find(line => line.trim().startsWith('{'));
+        expect(jsonLine).toBeDefined();
+        const payload = JSON.parse(jsonLine ?? '{}') as { success: boolean; projectPath: string; files: string[] };
+        expect(payload.success).toBe(true);
+        expect(payload.projectPath).toContain('json-project');
+        expect(payload.files).toEqual(expect.arrayContaining(['model.yaml', 'index.dlang', '.gitignore']));
     });
 });
 
@@ -337,6 +360,8 @@ describe('Init quiet mode', () => {
     });
 
     it('outputs minimal text with --quiet flag', async () => {
+        // Arrange
+        const mockStdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
         const context: CommandContext = {
             mode: 'quiet',
             noColor: false,
@@ -346,11 +371,15 @@ describe('Init quiet mode', () => {
         };
 
         try {
+            // Act
             await runInit('quiet-project', true, context);
         } catch {
             // process.exit throws in test environment
         }
 
+        // Assert
+        expect(mockStdout).toHaveBeenCalledWith('Project created successfully\n');
         expect(mockExit).toHaveBeenCalled();
+        mockStdout.mockRestore();
     });
 });
