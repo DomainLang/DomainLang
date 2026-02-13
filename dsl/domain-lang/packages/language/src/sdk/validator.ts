@@ -152,17 +152,21 @@ export async function validateFile(
     const allDocuments = Array.from(shared.workspace.LangiumDocuments.all);
     await shared.workspace.DocumentBuilder.build(allDocuments, { validation: true });
 
-    // Collect diagnostics from the entry document
-    const diagnostics = document.diagnostics ?? [];
+    // Collect diagnostics from all loaded documents (entry + imports)
     const errors: ValidationDiagnostic[] = [];
     const warnings: ValidationDiagnostic[] = [];
 
-    for (const diagnostic of diagnostics) {
-        const validationDiag = toValidationDiagnostic(diagnostic, absolutePath);
-        if (diagnostic.severity === 1) {
-            errors.push(validationDiag);
-        } else if (diagnostic.severity === 2) {
-            warnings.push(validationDiag);
+    for (const doc of allDocuments) {
+        const diagnostics = doc.diagnostics ?? [];
+        const diagnosticFile = doc.uri.fsPath;
+
+        for (const diagnostic of diagnostics) {
+            const validationDiag = toValidationDiagnostic(diagnostic, diagnosticFile);
+            if (diagnostic.severity === 1) {
+                errors.push(validationDiag);
+            } else if (diagnostic.severity === 2) {
+                warnings.push(validationDiag);
+            }
         }
     }
 

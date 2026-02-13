@@ -123,6 +123,37 @@ describe('validateFile', () => {
         await rm(tempDir, { recursive: true, force: true });
     });
 
+    test('includes diagnostics from imported files', async () => {
+        // Arrange - imported file has a warning, entry file is otherwise valid
+        const tempDir = resolve(tmpdir(), `dlang-test-${Date.now()}`);
+        await mkdir(tempDir, { recursive: true });
+
+        const sharedPath = resolve(tempDir, 'shared.dlang');
+        await writeFile(sharedPath, s`
+            Domain Shared {}
+        `);
+
+        const mainPath = resolve(tempDir, 'main.dlang');
+        await writeFile(mainPath, s`
+            import "./shared.dlang"
+            Domain Sales { vision: "Sales operations" }
+            bc OrderContext for Sales { description: "Orders" }
+        `);
+
+        // Act
+        const result = await validateFile(mainPath);
+
+        // Assert
+        expect(result.valid).toBe(true);
+        expect(result.errors).toHaveLength(0);
+        const importedWarnings = result.warnings.filter(warning => warning.file === sharedPath);
+        expect(importedWarnings.length).toBeGreaterThan(0);
+        expect(importedWarnings.some(warning => warning.message.includes('vision'))).toBe(true);
+
+        // Cleanup
+        await rm(tempDir, { recursive: true, force: true });
+    });
+
     test('throws error for non-existent file', async () => {
         // Arrange
         const nonExistentPath = '/non/existent/file.dlang';
@@ -325,8 +356,8 @@ describe('validateWorkspace', () => {
         // Assert
         // Warnings don't make workspace invalid, only errors do
         expect(result.valid).toBe(true);
-        expect(result.warnings.length).toBeGreaterThan(0);
-        expect(result.totalDiagnostics).toBeGreaterThan(0);
+        expect(result.warnings.some(warning => warning.file === sharedFile)).toBe(true);
+        expect(result.totalDiagnostics).toBe(result.errors.length + result.warnings.length);
 
         // Cleanup
         await rm(tempDir, { recursive: true, force: true });
@@ -463,9 +494,9 @@ describe('validateWorkspace', () => {
 
         // Assert
         expect(result.valid).toBe(false);
-        expect(result.errors.length).toBeGreaterThan(0);
-        expect(result.warnings.length).toBeGreaterThan(0);
-        expect(result.totalDiagnostics).toBeGreaterThan(1);
+        expect(result.errors.some(error => error.message.includes('UndefinedDomain'))).toBe(true);
+        expect(result.warnings.some(warning => warning.message.includes('description'))).toBe(true);
+        expect(result.totalDiagnostics).toBe(result.errors.length + result.warnings.length);
 
         // Cleanup
         await rm(tempDir, { recursive: true, force: true });
