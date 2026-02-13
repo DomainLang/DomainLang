@@ -24,7 +24,7 @@ beforeAll(() => {
  */
 function getFirstContextMap(document: { parseResult: { value: { children: unknown[] } } }): ContextMap {
     const cm = document.parseResult.value.children.find(isContextMap);
-    expect(cm).toBeDefined();
+    expect(cm).not.toBeUndefined();
     return cm as ContextMap;
 }
 

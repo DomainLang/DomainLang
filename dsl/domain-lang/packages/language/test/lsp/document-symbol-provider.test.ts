@@ -58,7 +58,7 @@ function findSymbol(symbols: DocumentSymbol[], name: string): DocumentSymbol | u
  */
 function expectSymbol(symbols: DocumentSymbol[], name: string): DocumentSymbol {
     const sym = findSymbol(symbols, name);
-    expect(sym, `Expected symbol "${name}" to be present`).toBeDefined();
+    expect(sym, `Expected symbol "${name}" to be present`).not.toBeUndefined();
     return sym as DocumentSymbol;
 }
 
@@ -390,13 +390,13 @@ describe('DocumentSymbolProvider', () => {
 
         // Metadata: MetadataEntry → Field
         const metaFolder = expectSymbol(bc.children, 'metadata');
-        expect(metaFolder.children).toBeDefined();
+        expect(Array.isArray(metaFolder.children)).toBe(true);
         const entry = metaFolder.children![0];
         expect(entry.kind).toBe(SymbolKind.Field);
 
         // Relationship → Interface
         const relFolder = expectSymbol(bc.children, 'relationships');
-        expect(relFolder.children).toBeDefined();
+        expect(Array.isArray(relFolder.children)).toBe(true);
         expect(relFolder.children!.length).toBeGreaterThan(0);
         const rel = relFolder.children![0];
         expect(rel.kind).toBe(SymbolKind.Interface);

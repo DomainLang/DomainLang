@@ -318,13 +318,9 @@ describe('DomainLangCompletionProvider', () => {
             });
 
             // Assert
-            expect(result).toBeDefined();
-            expect(result?.items).toBeDefined();
-            if (result?.items) {
-                const labels = result.items.map(item => item.label);
-                expect(labels).toContain('./');
-                expect(labels).toContain('../');
-            }
+            const labels = result?.items?.map(item => item.label) ?? [];
+            expect(labels).toContain('./');
+            expect(labels).toContain('../');
         });
 
         test('provides filtered dependency completions when typing partial name', async () => {
@@ -339,8 +335,9 @@ describe('DomainLangCompletionProvider', () => {
             });
 
             // Assert
-            expect(result).toBeDefined();
-            expect(result?.items).toBeDefined();
+            const labels = result?.items?.map(item => item.label) ?? [];
+            expect(labels).not.toContain('./');
+            expect(labels).not.toContain('../');
         });
 
         test('import completions work with Import keyword (capital I)', async () => {
@@ -355,13 +352,9 @@ describe('DomainLangCompletionProvider', () => {
             });
 
             // Assert
-            expect(result).toBeDefined();
-            expect(result?.items).toBeDefined();
-            if (result?.items) {
-                const labels = result.items.map(item => item.label);
-                expect(labels).toContain('./');
-                expect(labels).toContain('../');
-            }
+            const labels = result?.items?.map(item => item.label) ?? [];
+            expect(labels).toContain('./');
+            expect(labels).toContain('../');
         });
     });
 });

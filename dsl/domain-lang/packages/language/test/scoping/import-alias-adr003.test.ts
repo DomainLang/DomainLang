@@ -88,8 +88,7 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
 
             // Assert
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
-            expect(bc.domain?.ref).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref?.name).toBe('Sales');
         });
 
@@ -120,9 +119,9 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
 
             // Assert
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref).toBeUndefined();
-            expect(bc.domain?.error).toBeDefined();
+            expect(bc.domain?.error?.message).toContain('Sales');
         });
 
         test('Without alias: types visible by their direct qualified names', async () => {
@@ -152,8 +151,7 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
 
             // Assert
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
-            expect(bc.domain?.ref).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref?.name).toBe('Sales');
         });
 
@@ -241,9 +239,8 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
 
             // Assert: Should resolve via package re-export
             const bc = docConsumer.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.classification?.length).toBeGreaterThan(0);
-            expect(bc.classification?.[0]?.ref).toBeDefined();
             expect(bc.classification?.[0]?.ref?.name).toBe('CoreDomain');
         });
 
@@ -282,13 +279,13 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
 
             // Assert: Sales SHOULD resolve (direct import)
             const bc = docC.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
-            expect(bc.domain?.ref).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
+            expect(bc.domain?.ref?.name).toBe('Sales');
 
             // Assert: SalesTeam should NOT resolve (transitive via B, but local files)
             const teamRef = bc.team?.[0];
             expect(teamRef?.ref).toBeUndefined();
-            expect(teamRef?.error).toBeDefined();
+            expect(teamRef?.error?.message).toContain('SalesTeam');
         });
     });
 
@@ -319,8 +316,7 @@ bc OrderContext for pkg.myns.Sales {}`
 
             // Assert
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
-            expect(bc.domain?.ref).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref?.name).toBe('Sales');
         });
     });

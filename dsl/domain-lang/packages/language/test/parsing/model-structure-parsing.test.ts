@@ -59,6 +59,8 @@ describe('Grammar Completeness Tests', () => {
             expect(model.imports).toHaveLength(1);
             expect(model.imports[0].uri).toBe('./types.dlang');
             expect(model.children).toHaveLength(2);
+            expect(model.children[0].$type).toBe('Domain');
+            expect(model.children[1].$type).toBe('Team');
         });
 
         test('StructureElement - all variants parse with correct types and nesting', async () => {
@@ -294,6 +296,9 @@ describe('Grammar Completeness Tests', () => {
             const nestedNs = ns.children.find(isNamespaceDeclaration)!;
             expect(nestedNs.name).toBe('orders');
             expect(nestedNs.children).toHaveLength(1);
+            const nestedBc = nestedNs.children.find(isBoundedContext)!;
+            expect(nestedBc.name).toBe('OrderContext');
+            expect(nestedBc.domain?.ref?.name).toBe('Sales');
         });
 
         test('QualifiedName - complex dotted names resolve correctly', async () => {
@@ -311,8 +316,11 @@ describe('Grammar Completeness Tests', () => {
             // Assert
             expectValidDocument(document);
             const bc = document.parseResult.value.children.find(isBoundedContext)!;
+            const rootNamespace = document.parseResult.value.children.find(isNamespaceDeclaration)!;
+            const targetDomain = rootNamespace.children.find(isDomain)!;
             expect(bc.name).toBe('TestBC');
             expect(bc.domain?.ref?.name).toBe('Test');
+            expect(bc.domain?.ref).toBe(targetDomain);
         });
     });
 

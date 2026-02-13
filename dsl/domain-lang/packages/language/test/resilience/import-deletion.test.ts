@@ -141,8 +141,8 @@ describe('Import Resilience', () => {
 
             // But the imports that were successfully parsed should still be accessible
             const model = document.parseResult.value;
-            expect(model).toBeDefined();
-            expect(model.imports).toBeDefined();
+            expect(Array.isArray(model.children)).toBe(true);
+            expect(Array.isArray(model.imports)).toBe(true);
             expect(model.imports!.length).toBeGreaterThanOrEqual(1);
 
             // Verify at least the first import was captured by the parser

@@ -155,7 +155,7 @@ dependencies:
 
             // Assert
             expect(manifestPath).toBe(path.join(manifestDir, 'model.yaml'));
-            expect(manifest?.model).toBeFalsy();
+            expect(manifest).toEqual({});
         });
 
         test('handles YAML with only model name (minimal valid manifest)', async () => {

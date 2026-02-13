@@ -378,7 +378,7 @@ describe('SDK Query API', () => {
                 }
             `);
             const domain = query.byFqn<Domain>('com.example.Sales');
-            expect(domain).toBeDefined();
+            expect(domain).not.toBeUndefined();
             expect(domain?.name).toBe('Sales');
         });
 

@@ -202,7 +202,7 @@ describe('DomainLang Formatter', () => {
             expect(edits.length).toBeGreaterThan(0);
             // At least one line should contain only a closing brace (possibly with leading whitespace)
             const closingBraceLine = result.split('\n').find(l => l.trim() === '}');
-            expect(closingBraceLine).toBeDefined();
+            expect(closingBraceLine?.trim()).toBe('}');
         });
     });
 
@@ -223,7 +223,7 @@ describe('DomainLang Formatter', () => {
             expect(edits.length).toBeGreaterThan(0);
             // description should appear on its own line, indented
             const descLine = result.split('\n').find(l => l.trim().startsWith('description'));
-            expect(descLine).toBeDefined();
+            expect(descLine?.trim().startsWith('description')).toBe(true);
             expect(descLine!.search(/\S/)).toBeGreaterThan(0);
         });
 

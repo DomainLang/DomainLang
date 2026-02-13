@@ -119,7 +119,7 @@ describe('SDK AST Augmentation', () => {
 
             // Assert
             // description should be empty/undefined when not set
-            expect(bc!.description).toBeFalsy();
+            expect(bc!.description ?? '').toBe('');
         });
 
         // Edge: hasClassification with various invalid inputs
@@ -315,8 +315,8 @@ describe('SDK AST Augmentation', () => {
             const domain = findFirst<Domain>(model, isDomain);
 
             // Assert
-            expect(domain!.vision).toBeFalsy();
-            expect(domain!.description).toBeFalsy();
+            expect(domain!.vision ?? '').toBe('');
+            expect(domain!.description ?? '').toBe('');
         });
     });
 

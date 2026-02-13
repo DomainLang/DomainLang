@@ -91,9 +91,9 @@ describe('Import-Based Scoping', () => {
 
             // Assert: The domain reference should NOT resolve
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref).toBeUndefined();
-            expect(bc.domain?.error).toBeDefined();
+            expect(bc.domain?.error?.message).toContain('Sales');
         });
 
         test('ContextMap reference to BC in separate file should NOT resolve without import', async () => {
@@ -122,7 +122,7 @@ describe('Import-Based Scoping', () => {
 
             // Assert: The BC reference should NOT resolve
             const ctxMap = docB.parseResult.value.children.find(isContextMap) as ContextMap;
-            expect(ctxMap).toBeDefined();
+            expect(ctxMap.name).toBe('SystemMap');
             expect(ctxMap.boundedContexts).toHaveLength(1);
             
             const bcRef = ctxMap.boundedContexts[0];
@@ -131,8 +131,8 @@ describe('Import-Based Scoping', () => {
 
             // Assert: There should be an error diagnostic for the unresolved reference
             const errors = docB.diagnostics?.filter(d => d.severity === 1) ?? [];
-            expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.message.includes('OrderContext'))).toBe(true);
+            const unresolvedOrderContextErrors = errors.filter(e => e.message.includes('OrderContext'));
+            expect(unresolvedOrderContextErrors.length).toBeGreaterThan(0);
         });
 
         test('Team reference in BC should NOT resolve from non-imported file', async () => {
@@ -159,10 +159,10 @@ describe('Import-Based Scoping', () => {
 
             // Assert: The team reference should NOT resolve
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
             expect(teamRef?.ref).toBeUndefined();
-            expect(teamRef?.error).toBeDefined();
+            expect(teamRef?.error?.message).toContain('SalesTeam');
         });
     });
 
@@ -277,9 +277,9 @@ describe('Import-Based Scoping', () => {
 
             // Assert
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref).toBeUndefined();
-            expect(bc.domain?.error).toBeDefined();
+            expect(bc.domain?.error?.message).toContain('Sales');
         });
 
         test('Classification resolves across import', async () => {
@@ -309,7 +309,7 @@ describe('Import-Based Scoping', () => {
 
             // Assert: Classification reference resolves via import
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.classification).toHaveLength(1);
             expect(bc.classification[0].ref?.name).toBe('CoreDomain');
         });
@@ -338,7 +338,7 @@ describe('Import-Based Scoping', () => {
 
             // Assert: Classification reference should NOT resolve
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.classification).toHaveLength(1);
             expect(bc.classification[0].ref).toBeUndefined();
         });
@@ -371,7 +371,6 @@ describe('Import-Based Scoping', () => {
 
             // Assert: ContextMap resolves and relationships parse
             const ctxMap = docB.parseResult.value.children.find(isContextMap) as ContextMap;
-            expect(ctxMap).toBeDefined();
             expect(ctxMap.name).toBe('SalesMap');
             expect(ctxMap.boundedContexts).toHaveLength(2);
             expect(ctxMap.boundedContexts[0].items[0].ref?.name).toBe('OrderContext');
@@ -411,7 +410,7 @@ describe('Import-Based Scoping', () => {
 
             // Assert: Namespace-qualified domain ref resolves
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref?.name).toBe('Sales');
         });
     });
@@ -444,9 +443,9 @@ describe('Import-Based Scoping', () => {
 
             // Assert: The domain reference should NOT resolve
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref).toBeUndefined();
-            expect(bc.domain?.error).toBeDefined();
+            expect(bc.domain?.error?.message).toContain('Sales');
         });
 
         test('References should NOT resolve when import file does not exist', async () => {
@@ -468,7 +467,7 @@ describe('Import-Based Scoping', () => {
 
             // Assert: The domain reference should NOT resolve
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref).toBeUndefined();
         });
     });
@@ -515,9 +514,8 @@ paths:
 
             // Assert: The team reference SHOULD resolve via path alias
             const bc = docIndex.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
-            expect(teamRef?.ref).toBeDefined();
             expect(teamRef?.ref?.name).toBe('SalesTeam');
         });
 
@@ -562,7 +560,7 @@ paths:
 
             // Assert: The team reference should NOT resolve - import has typo
             const bc = docIndex.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
             expect(teamRef?.ref).toBeUndefined();
 
@@ -571,7 +569,6 @@ paths:
             expect(errors.length).toBeGreaterThan(0);
             // Expect an error about the unresolved import with the typo
             const importError = errors.find(e => e.message.includes('@shareds'));
-            expect(importError).toBeDefined();
             expect(importError?.message).toContain('Cannot resolve import');
         });
     });
@@ -613,14 +610,13 @@ paths:
 
             // Assert: Sales SHOULD resolve (imported via B)
             const bc = docC.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
-            expect(bc.domain?.ref).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             expect(bc.domain?.ref?.name).toBe('Sales');
 
             // Assert: SalesTeam should NOT resolve (transitive, not directly imported)
             const teamRef = bc.team?.[0];
             expect(teamRef?.ref).toBeUndefined();
-            expect(teamRef?.error).toBeDefined();
+            expect(teamRef?.error?.message).toContain('SalesTeam');
         });
     });
 
@@ -652,9 +648,8 @@ paths:
 
             // Assert: Team should resolve via directory import
             const bc = docMain.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
-            expect(teamRef?.ref).toBeDefined();
             expect(teamRef?.ref?.name).toBe('SalesTeam');
         });
 
@@ -684,9 +679,8 @@ paths:
 
             // Assert: Team should resolve via file fallback
             const bc = docMain.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
-            expect(teamRef?.ref).toBeDefined();
             expect(teamRef?.ref?.name).toBe('SalesTeam');
         });
 
@@ -722,9 +716,8 @@ paths:
 
             // Assert: IndexTeam SHOULD resolve (from directory index)
             const bc = docMain.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
-            expect(teamRef?.ref).toBeDefined();
             expect(teamRef?.ref?.name).toBe('IndexTeam');
         });
 
@@ -760,10 +753,10 @@ paths:
 
             // Assert: FileTeam should NOT resolve (sibling file not imported)
             const bc = docMain.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
             expect(teamRef?.ref).toBeUndefined();
-            expect(teamRef?.error).toBeDefined();
+            expect(teamRef?.error?.message).toContain('FileTeam');
         });
     });
 
@@ -867,9 +860,8 @@ paths:
 
             // Assert: Team should resolve
             const bc = docMain.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc).toBeDefined();
+            expect(bc.name).toBe('OrderContext');
             const teamRef = bc.team?.[0];
-            expect(teamRef?.ref).toBeDefined();
             expect(teamRef?.ref?.name).toBe('SalesTeam');
         });
     });

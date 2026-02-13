@@ -62,7 +62,7 @@ describe('Scoping: Local Scope', () => {
 
         const bc = getFirstBoundedContext(document);
         expect(bc.domain?.ref).toBeUndefined();
-        expect(bc.domain?.error).toBeDefined();
+        expect(bc.domain?.error).not.toBeUndefined();
 
         const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
         expect(errors.length).toBeGreaterThan(0);
@@ -86,7 +86,7 @@ describe('Scoping: Local Scope', () => {
         expect(bc.domain?.ref?.name).toBe('Sales');
         // Team does not resolve
         expect(bc.team?.[0]?.ref).toBeUndefined();
-        expect(bc.team?.[0]?.error).toBeDefined();
+        expect(bc.team?.[0]?.error).not.toBeUndefined();
     });
 
     test('unresolved classification reference does not affect domain resolution', async () => {
@@ -104,7 +104,7 @@ describe('Scoping: Local Scope', () => {
         const bc = getFirstBoundedContext(document);
         expect(bc.domain?.ref?.name).toBe('Sales');
         expect(bc.classification?.[0]?.ref).toBeUndefined();
-        expect(bc.classification?.[0]?.error).toBeDefined();
+        expect(bc.classification?.[0]?.error).not.toBeUndefined();
     });
 
     test('BC with all unresolvable references still parses', async () => {

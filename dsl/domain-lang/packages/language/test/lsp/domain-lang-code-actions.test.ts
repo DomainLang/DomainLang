@@ -35,7 +35,7 @@ describe('DomainLangCodeActionProvider', () => {
         diagnostic: Diagnostic
     ): Promise<Array<CodeAction>> => {
         const codeActionProvider = testServices.services.DomainLang.lsp.CodeActionProvider;
-        expect(codeActionProvider).toBeDefined();
+        expect(codeActionProvider).not.toBeUndefined();
 
         // Create a minimal document for testing
         const document = await testServices.parse(`Domain Test {}`);
@@ -83,7 +83,7 @@ describe('DomainLangCodeActionProvider', () => {
 
         expect(actions.length).toBeGreaterThan(0);
         const addAction = actions.find(a => a.title.includes('Add'));
-        expect(addAction).toBeDefined();
+        expect(addAction?.title).toContain('Add');
         expect(addAction?.title).toContain('mypackage');
         expect(addAction?.title).toContain('model.yaml');
         expect(addAction?.command?.command).toBe('domainlang.addDependency');
@@ -110,7 +110,7 @@ describe('DomainLangCodeActionProvider', () => {
 
         expect(actions.length).toBeGreaterThan(0);
         const createAction = actions.find(a => a.title.includes('Create'));
-        expect(createAction).toBeDefined();
+        expect(createAction?.title).toContain('Create');
         expect(createAction?.command?.command).toBe('domainlang.createManifest');
     });
 
@@ -128,7 +128,7 @@ describe('DomainLangCodeActionProvider', () => {
 
         expect(actions.length).toBeGreaterThan(0);
         const installAction = actions.find(a => a.title.includes('install'));
-        expect(installAction).toBeDefined();
+        expect(installAction?.title?.toLowerCase()).toContain('install');
         expect(installAction?.command?.command).toBe('domainlang.install');
     });
 
@@ -146,7 +146,7 @@ describe('DomainLangCodeActionProvider', () => {
 
         expect(actions.length).toBeGreaterThan(0);
         const refAction = actions.find(a => a.title.includes('ref'));
-        expect(refAction).toBeDefined();
+        expect(refAction?.title?.toLowerCase()).toContain('ref');
         expect(refAction?.command?.command).toBe('domainlang.addRef');
         // Add ref should NOT be preferred (user might want to set ref manually)
         expect(refAction?.isPreferred).toBe(false);

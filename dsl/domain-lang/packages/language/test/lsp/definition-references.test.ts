@@ -248,7 +248,7 @@ bc BillingContext for Sales {
 
             const model = domainDoc.parseResult.value;
             const salesDomain = model.children.find(c => c.$type === 'Domain');
-            expect(salesDomain).toBeDefined();
+            expect(salesDomain?.$type).toBe('Domain');
 
             // Act
             const references = services.DomainLang.references.References;
@@ -278,7 +278,7 @@ bc OrderContext for Sales
 
             const model = doc.parseResult.value;
             const salesDomain = model.children.find(c => c.$type === 'Domain');
-            expect(salesDomain).toBeDefined();
+            expect(salesDomain?.$type).toBe('Domain');
 
             // Act
             const references = services.DomainLang.references.References;

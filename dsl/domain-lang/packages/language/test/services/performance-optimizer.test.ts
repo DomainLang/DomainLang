@@ -198,6 +198,8 @@ describe('PerformanceOptimizer', () => {
             // Assert
             const stats = optimizer.getCacheStats();
             expect(stats.lockFiles).toBe(1);
+            const ws2Cached = await optimizer.getCachedLockFile(ws2);
+            expect(ws2Cached?.version).toBe('2');
         });
     });
 
@@ -327,7 +329,7 @@ describe('PerformanceOptimizer', () => {
             const stale = await optimizer.detectStaleCaches();
 
             // Assert
-            expect(stale.length).toBeGreaterThan(0);
+            expect(stale).toContain(path.resolve(tempDir));
         });
     });
 });

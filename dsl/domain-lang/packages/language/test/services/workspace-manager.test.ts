@@ -93,6 +93,8 @@ describe("WorkspaceManager", () => {
 
         // Assert
         expect(lock).toBeUndefined();
+        expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
+        expect(await manager.getManifestPath()).toBe(path.join(TEST_ROOT, 'model.yaml'));
     });
 
     // ========================================================================
@@ -122,9 +124,13 @@ describe("WorkspaceManager", () => {
                 await manager.initialize(ALIAS_ROOT);
 
                 // Act
+                const resolved = await manager.resolveDependencyPath("ddd-patterns");
+                const resolvedSubpath = await manager.resolveDependencyPath("ddd-patterns/sub/path");
                 const missing = await manager.resolveDependencyPath("unknown");
 
                 // Assert
+                expect(resolved).toBe(path.join(ALIAS_ROOT, '.dlang', 'packages', 'ddd-patterns', 'core', 'abc123def', 'index.dlang'));
+                expect(resolvedSubpath).toBe(path.join(ALIAS_ROOT, '.dlang', 'packages', 'ddd-patterns', 'core', 'abc123def', 'sub/path'));
                 expect(missing).toBeUndefined();
             } finally {
                 await fs.unlink(lockFile).catch(() => {});
@@ -155,8 +161,10 @@ describe("WorkspaceManager", () => {
             await createLockFile();
             const manager = new WorkspaceManager();
             await manager.initialize(TEST_ROOT);
-            await manager.getManifest();
-            await manager.getLockFile();
+            const manifestBefore = await manager.getManifest();
+            const lockBefore = await manager.getLockFile();
+            expect(manifestBefore?.model?.name).toBe('sample-workspace');
+            expect(lockBefore?.version).toBe('1');
 
             // Act
             manager.invalidateCache();

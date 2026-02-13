@@ -33,7 +33,7 @@ describe('generateExplanation - Domain', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const domain = query.domain('Sales');
-        expect(domain).toBeDefined();
+        expect(domain?.name).toBe('Sales');
 
         // Act
         const explanation = generateExplanation(domain!);
@@ -53,7 +53,7 @@ describe('generateExplanation - Domain', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const domain = query.domain('Sales');
-        expect(domain).toBeDefined();
+        expect(domain?.name).toBe('Sales');
 
         // Act
         const explanation = generateExplanation(domain!);
@@ -80,7 +80,7 @@ describe('generateExplanation - BoundedContext', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const bc = query.boundedContext('OrderContext');
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('OrderContext');
 
         // Act
         const explanation = generateExplanation(bc!);
@@ -103,7 +103,7 @@ describe('generateExplanation - BoundedContext', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const bc = query.boundedContext('OrderContext');
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('OrderContext');
 
         // Act
         const explanation = generateExplanation(bc!);
@@ -122,7 +122,7 @@ describe('generateExplanation - BoundedContext', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const bc = query.boundedContext('OrderContext');
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('OrderContext');
 
         // Act
         const explanation = generateExplanation(bc!);
@@ -147,7 +147,7 @@ describe('generateExplanation - Team', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const team = query.teams().first();
-        expect(team).toBeDefined();
+        expect(team?.name).toBe('SalesTeam');
 
         // Act
         const explanation = generateExplanation(team!);
@@ -171,7 +171,7 @@ describe('generateExplanation - Classification', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const cls = query.classifications().first();
-        expect(cls).toBeDefined();
+        expect(cls?.name).toBe('Core');
 
         // Act
         const explanation = generateExplanation(cls!);
@@ -201,9 +201,9 @@ describe('generateExplanation - Relationship', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const bc = query.boundedContext('OrderContext');
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('OrderContext');
         const relationship = bc!.relationships[0];
-        expect(relationship).toBeDefined();
+        expect(relationship.$type).toBe('Relationship');
 
         // Act
         const explanation = generateExplanation(relationship);
@@ -233,7 +233,7 @@ describe('generateExplanation - ContextMap', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const cmap = query.contextMaps().first();
-        expect(cmap).toBeDefined();
+        expect(cmap?.name).toBe('SalesMap');
 
         // Act
         const explanation = generateExplanation(cmap!);
@@ -253,7 +253,7 @@ describe('generateExplanation - ContextMap', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const cmap = query.contextMaps().first();
-        expect(cmap).toBeDefined();
+        expect(cmap?.name).toBe('EmptyMap');
 
         // Act
         const explanation = generateExplanation(cmap!);
@@ -282,7 +282,7 @@ describe('generateExplanation - DomainMap', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const dmap = query.domainMaps().first();
-        expect(dmap).toBeDefined();
+        expect(dmap?.name).toBe('CompanyMap');
 
         // Act
         const explanation = generateExplanation(dmap!);
@@ -302,7 +302,7 @@ describe('generateExplanation - DomainMap', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const dmap = query.domainMaps().first();
-        expect(dmap).toBeDefined();
+        expect(dmap?.name).toBe('EmptyMap');
 
         // Act
         const explanation = generateExplanation(dmap!);

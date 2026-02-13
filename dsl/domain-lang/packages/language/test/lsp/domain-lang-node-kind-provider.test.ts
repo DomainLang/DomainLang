@@ -104,6 +104,6 @@ describe('NodeKindProvider AstNodeDescription handling', () => {
         const kind = provider.getSymbolKind(description);
 
         // Assert
-        expect(kind).toBeDefined();
+        expect(kind).toBe(SymbolKind.Field);
     });
 });

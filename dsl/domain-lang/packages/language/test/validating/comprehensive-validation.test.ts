@@ -232,7 +232,10 @@ describe('Validation Tests', () => {
 
             // Assert
             const warnings = getDiagnosticsBySeverity(document, 2);
-            expect(warnings.some(w => w.message.includes('contains no bounded contexts'))).toBe(true);
+            const contextMapWarnings = warnings.filter(w =>
+                w.message.includes('contains no bounded contexts')
+            );
+            expect(contextMapWarnings).toHaveLength(1);
         });
 
         test('accepts valid context map with relationships (smoke test)', async () => {
@@ -266,7 +269,10 @@ describe('Validation Tests', () => {
 
             // Assert
             const warnings = getDiagnosticsBySeverity(document, 2);
-            expect(warnings.some(w => w.message.includes('contains no domains'))).toBe(true);
+            const domainMapWarnings = warnings.filter(w =>
+                w.message.includes('contains no domains')
+            );
+            expect(domainMapWarnings).toHaveLength(1);
         });
     });
 });

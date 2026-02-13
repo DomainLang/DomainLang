@@ -119,7 +119,7 @@ describe('Scoping: Performance', () => {
         expectValidDocument(document);
 
         const contextMap = document.parseResult.value.children.find(isContextMap);
-        expect(contextMap).toBeDefined();
+        expect(contextMap?.name).toBe('BigMap');
         if (isContextMap(contextMap)) {
             expect(contextMap.relationships).toHaveLength(bcCount - 1);
 

@@ -63,7 +63,6 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
             expect(hover!.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('(domain)');
             expect(hover!.contents.value).toContain('Sales');
@@ -78,7 +77,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('```domain-lang');
             expect(hover!.contents.value).toContain('Domain Sales');
         });
@@ -95,7 +94,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(domain)');
             expect(value).toContain('Accounting');
@@ -111,7 +110,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('Streamlined sales process');
         });
     });
@@ -129,7 +128,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('(bounded context)');
             expect(hover!.contents.value).toContain('OrderContext');
         });
@@ -148,7 +147,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(bounded context)');
             expect(value).toContain('```domain-lang');
@@ -170,7 +169,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('Manages order lifecycle');
         });
     });
@@ -185,7 +184,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('(team)');
             expect(hover!.contents.value).toContain('SalesTeam');
         });
@@ -201,7 +200,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('(classification)');
             expect(hover!.contents.value).toContain('Core');
         });
@@ -217,7 +216,7 @@ describe('DomainLangHoverProvider', () => {
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('(classification)');
             expect(hover!.contents.value).toContain('Core.Baunwalls.Jannie');
         });
@@ -240,7 +239,7 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
             // Assert: Only hovering on the last segment shows the classification
             expect(hoverOnCore).toBeUndefined();
             expect(hoverOnBaunwalls).toBeUndefined();
-            expect(hoverOnJannie).toBeDefined();
+            expect(hoverOnJannie?.contents.kind).toBe('markdown');
             expect(hoverOnJannie!.contents.value).toContain('(classification)');
             expect(hoverOnJannie!.contents.value).toContain('Core.Baunwalls.Jannie');
         });
@@ -256,7 +255,7 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(namespace)');
             expect(value).toContain('acme.sales');
@@ -279,7 +278,7 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(contextmap)');
             expect(value).toContain('SalesMap');
@@ -303,7 +302,7 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             expect(hover!.contents.value).toContain('Relationships');
         });
     });
@@ -321,7 +320,7 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(domainmap)');
             expect(value).toContain('Overview');
@@ -379,7 +378,7 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain(`(${type})`);
             expect(value).toContain(name);
@@ -397,7 +396,7 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(metadata)');
             expect(value).toContain('Language');
@@ -476,7 +475,7 @@ Classification Core`,
             const hover = await getHoverAt(input, line, col);
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain(typeLabel);
             expect(value).toContain(name);
@@ -500,7 +499,7 @@ Classification Core`,
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('**Domain**');
             expect(value).toContain('sphere of knowledge');
@@ -519,7 +518,7 @@ Classification Core`,
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('**BoundedContext**');
             expect(value).toContain('managing complexity');
@@ -543,7 +542,7 @@ Classification Core`,
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(domain)');
             expect(value).toContain('Sales');
@@ -560,7 +559,7 @@ Classification Core`,
             );
 
             // Assert
-            expect(hover).toBeDefined();
+            expect(hover?.contents.kind).toBe('markdown');
             const value = hover!.contents.value;
             expect(value).toContain('(domain)');
             expect(value).toContain('Parent');

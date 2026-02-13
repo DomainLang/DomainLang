@@ -32,7 +32,7 @@ describe('Resolution Precedence', () => {
             const classification = effectiveClassification(bc);
 
             // Assert
-            expect(classification).toBeDefined();
+            expect(classification).not.toBeUndefined();
             expect(classification?.name).toBe('Core');
         });
 
@@ -51,7 +51,7 @@ describe('Resolution Precedence', () => {
             const classification = effectiveClassification(bc);
 
             // Assert
-            expect(classification).toBeDefined();
+            expect(classification).not.toBeUndefined();
             expect(classification?.name).toBe('Core');
         });
 
@@ -71,7 +71,7 @@ describe('Resolution Precedence', () => {
             const classification = effectiveClassification(bc);
 
             // Assert - header (inline) wins
-            expect(classification).toBeDefined();
+            expect(classification).not.toBeUndefined();
             expect(classification?.name).toBe('Core');
         });
 
@@ -106,7 +106,7 @@ describe('Resolution Precedence', () => {
             const team = effectiveTeam(bc);
 
             // Assert
-            expect(team).toBeDefined();
+            expect(team).not.toBeUndefined();
             expect(team?.name).toBe('TeamA');
         });
 
@@ -125,7 +125,7 @@ describe('Resolution Precedence', () => {
             const team = effectiveTeam(bc);
 
             // Assert
-            expect(team).toBeDefined();
+            expect(team).not.toBeUndefined();
             expect(team?.name).toBe('TeamA');
         });
 
@@ -145,7 +145,7 @@ describe('Resolution Precedence', () => {
             const team = effectiveTeam(bc);
 
             // Assert - header (inline) wins
-            expect(team).toBeDefined();
+            expect(team).not.toBeUndefined();
             expect(team?.name).toBe('TeamA');
         });
 

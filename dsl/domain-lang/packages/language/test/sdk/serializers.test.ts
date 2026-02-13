@@ -15,6 +15,14 @@ import type { TestServices } from '../test-helpers.js';
 
 let testServices: TestServices;
 
+function requireValue<T>(value: T | undefined, message: string): T {
+    expect(value).not.toBeUndefined();
+    if (value === undefined) {
+        throw new Error(message);
+    }
+    return value;
+}
+
 beforeAll(() => {
     testServices = setupTestSuite();
 });
@@ -34,10 +42,10 @@ describe('serializeNode', () => {
         const domain = query.domain('Sales');
 
         // Act
-        const serialized = serializeNode(domain!, query);
+        const serialized = serializeNode(requireValue(domain, 'Expected Sales domain'), query);
 
         // Assert
-        expect(serialized).toBeDefined();
+        expect(serialized.$type).toBe('Domain');
         expect(serialized.$container).toBeUndefined();
         expect(serialized.$cstNode).toBeUndefined();
         expect(serialized.$document).toBeUndefined();
@@ -53,7 +61,7 @@ describe('serializeNode', () => {
         const domain = query.domain('Sales');
 
         // Act
-        const serialized = serializeNode(domain!, query);
+        const serialized = serializeNode(requireValue(domain, 'Expected Sales domain'), query);
 
         // Assert
         expect(serialized.$type).toBe('Domain');
@@ -71,7 +79,7 @@ describe('serializeNode', () => {
         const domain = query.domain('acme.sales.Sales');
 
         // Act
-        const serialized = serializeNode(domain!, query);
+        const serialized = serializeNode(requireValue(domain, 'Expected acme.sales.Sales domain'), query);
 
         // Assert
         expect(serialized.fqn).toBe('acme.sales.Sales');
@@ -88,7 +96,7 @@ describe('serializeNode', () => {
         const bc = query.boundedContext('OrderContext');
 
         // Act
-        const serialized = serializeNode(bc!, query);
+        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
 
         // Assert
         expect(serialized.domain).toBe('Sales');
@@ -103,7 +111,7 @@ describe('serializeNode', () => {
         const bc = query.boundedContext('OrderContext');
 
         // Act
-        const serialized = serializeNode(bc!, query);
+        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
 
         // Assert
         expect(serialized.domain).toBe('NonExistent'); // $refText
@@ -123,7 +131,7 @@ describe('serializeNode', () => {
         const domain = query.domain('Sales');
 
         // Act
-        const serialized = serializeNode(domain!, query);
+        const serialized = serializeNode(requireValue(domain, 'Expected Sales domain'), query);
 
         // Assert
         expect(serialized.name).toBe('Sales');
@@ -148,7 +156,7 @@ describe('serializeNode', () => {
         const bc = query.boundedContext('OrderContext');
 
         // Act
-        const serialized = serializeNode(bc!, query);
+        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
 
         // Assert
         expect(serialized.name).toBe('OrderContext');
@@ -173,10 +181,10 @@ describe('serializeNode', () => {
         const cmap = query.contextMaps().first();
 
         // Act
-        const serialized = serializeNode(cmap!, query);
+        const serialized = serializeNode(requireValue(cmap, 'Expected context map'), query);
 
         // Assert
-        expect(serialized.boundedContexts).toBeDefined();
+        expect(Array.isArray(serialized.boundedContexts)).toBe(true);
         expect(Array.isArray(serialized.boundedContexts)).toBe(true);
         // MultiReference items are objects with ref property
         expect((serialized.boundedContexts as unknown[])[0]).toHaveProperty('items');
@@ -197,10 +205,10 @@ describe('serializeNode', () => {
         const bc = query.boundedContext('OrderContext');
 
         // Act
-        const serialized = serializeNode(bc!, query);
+        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
 
         // Assert
-        expect(serialized.relationships).toBeDefined();
+        expect(Array.isArray(serialized.relationships)).toBe(true);
         const relationships = serialized.relationships as unknown[];
         expect(relationships.length).toBeGreaterThan(0);
     });
@@ -238,7 +246,10 @@ describe('serializeRelationship', () => {
         expect(serialized.arrow).toBe('->');
         expect(serialized.leftPatterns).toEqual(['OHS']);
         expect(serialized.rightPatterns).toEqual(['CF']);
-        expect(serialized.inferredType).toBeDefined();
+        expect(typeof serialized.inferredType).toBe('string');
+        if (typeof serialized.inferredType === 'string') {
+            expect(serialized.inferredType.length).toBeGreaterThan(0);
+        }
     });
 
     test('should format relationship name consistently', async () => {
@@ -255,10 +266,10 @@ describe('serializeRelationship', () => {
         expectValidDocument(document);
         const query = fromDocument(document);
         const rel = query.relationships().first();
-        expect(rel).toBeDefined();
+        expect(query.relationships().toArray()).toHaveLength(1);
 
         // Act
-        const serialized = serializeRelationship(rel!);
+        const serialized = serializeRelationship(requireValue(rel, 'Expected relationship'));
 
         // Assert
         expect(serialized.name).toBe('OrderContext -> PaymentContext');

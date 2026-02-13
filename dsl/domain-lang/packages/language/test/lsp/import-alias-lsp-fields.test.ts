@@ -157,8 +157,8 @@ bc Sales for Enterprise as Core. {
             const larsItem = findItem(completions, 'Lars');
 
             // Assert: filterText must include the dotted prefix for VS Code matching
-            expect(baunwallsItem, 'BaunWalls item should exist').toBeDefined();
-            expect(larsItem, 'Lars item should exist').toBeDefined();
+            expect(baunwallsItem?.label, 'BaunWalls item should exist').toBe('BaunWalls');
+            expect(larsItem?.label, 'Lars item should exist').toBe('Lars');
             expect(baunwallsItem?.filterText).toBe('Core.BaunWalls');
             expect(larsItem?.filterText).toBe('Core.Lars');
         });
@@ -225,7 +225,7 @@ bc Sales for Enterprise as Core.BaunWalls.J {
             const jannieItem = findItem(completions, 'Jannie');
 
             // Assert: filterText must be the full dotted path
-            expect(jannieItem, 'Jannie item should exist').toBeDefined();
+            expect(jannieItem?.label, 'Jannie item should exist').toBe('Jannie');
             expect(jannieItem?.filterText).toBe('Core.BaunWalls.Jannie');
         });
     });
@@ -258,9 +258,9 @@ bc Sales for Enterprise as Core.B {
             const baunwallsItem = findItem(completions, 'BaunWalls');
 
             // Assert: textEdit must replace the entire "Core.B" range with "Core.BaunWalls"
-            expect(baunwallsItem, 'BaunWalls item should exist').toBeDefined();
+            expect(baunwallsItem?.label, 'BaunWalls item should exist').toBe('BaunWalls');
             const textEdit = baunwallsItem?.textEdit as TextEdit;
-            expect(textEdit).toBeDefined();
+            expect(textEdit.newText).toBe('Core.BaunWalls');
             expect(textEdit.newText).toBe('Core.BaunWalls');
 
             // Range start should be at "Core" (start of dotted path)

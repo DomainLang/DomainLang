@@ -76,15 +76,17 @@ describe('ContextMap Relationship Linking', () => {
         const ctxMap = document.parseResult.value.children.find(isContextMap);
 
         // Assert
-        expect(ctxMap).toBeDefined();
-        if (!ctxMap) return;
+        expect(ctxMap?.name).toBe('FaultyMap');
+        if (!ctxMap) {
+            throw new Error('Expected context map to be present');
+        }
 
         expect(ctxMap.relationships).toHaveLength(1);
         const rel = ctxMap.relationships[0];
         expect(rel.left.link?.ref).toBeUndefined();
-        expect(rel.left.link?.error).toBeDefined();
+        expect(rel.left.link?.error).not.toBeUndefined();
         expect(rel.right.link?.ref).toBeUndefined();
-        expect(rel.right.link?.error).toBeDefined();
+        expect(rel.right.link?.error).not.toBeUndefined();
     });
 
     // SMOKE: resolved references in ContextMap
@@ -109,8 +111,10 @@ describe('ContextMap Relationship Linking', () => {
         const ctxMap = extractContextMaps(document.parseResult.value.children)[0];
 
         // Assert
-        expect(ctxMap).toBeDefined();
-        if (!ctxMap) return;
+        expect(ctxMap?.name).toBe('CorrectMap');
+        if (!ctxMap) {
+            throw new Error('Expected context map to be present');
+        }
 
         expect(ctxMap.relationships).toHaveLength(1);
         const rel = ctxMap.relationships[0];
@@ -256,7 +260,7 @@ describe('Domain Reference Linking', () => {
 
         // Assert
         expect(bc.domain?.ref).toBeUndefined();
-        expect(bc.domain?.error).toBeDefined();
+        expect(bc.domain?.error).not.toBeUndefined();
     });
 });
 
@@ -534,13 +538,13 @@ describe('This Reference Linking', () => {
         const bcWithRelationships = bcs.find(bc => bc.relationships.length > 0);
 
         // Assert
-        expect(bcWithRelationships).toBeDefined();
-        if (bcWithRelationships) {
-            const rel = bcWithRelationships.relationships[0];
-            // 'this' is represented by ThisRef type, not a link
-            expect(rel.left.$type).toBe('ThisRef');
-            expect(rel.right.link?.ref?.name).toBe('PaymentContext');
+        expect(bcWithRelationships?.name).toBe('OrderContext');
+        if (!bcWithRelationships) {
+            throw new Error('Expected BC with relationships to be present');
         }
+        const rel = bcWithRelationships.relationships[0];
+        expect(rel.left.$type).toBe('ThisRef');
+        expect(rel.right.link?.ref?.name).toBe('PaymentContext');
     });
 });
 

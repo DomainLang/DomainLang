@@ -99,7 +99,7 @@ describe('Scoping: References', () => {
 
         // Assert
         const contextMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
-        expect(contextMap).toBeDefined();
+        expect(contextMap.name).toBe('BadMap');
         expect(contextMap.relationships).toHaveLength(1);
 
         const rel = contextMap.relationships[0];
@@ -124,11 +124,11 @@ describe('Scoping: References', () => {
         expectValidDocument(document);
 
         const domain = document.parseResult.value.children.find(isDomain);
-        expect(domain).toBeDefined();
+        expect(domain?.name).toBe('Sales');
         if (isDomain(domain)) {
             expect(domain.name).toBe('Sales');
             expect(domain.parent?.ref).toBeUndefined();
-            expect(domain.parent?.error).toBeDefined();
+            expect(domain.parent?.error).not.toBeUndefined();
         }
     });
 

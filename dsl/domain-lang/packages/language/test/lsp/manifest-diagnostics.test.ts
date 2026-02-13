@@ -83,7 +83,7 @@ model: {
         const versionDiag = diagnostics.find(d =>
             d.message.includes('SemVer') || d.message.includes('version')
         );
-        expect(versionDiag).toBeDefined();
+        expect(versionDiag).not.toBeUndefined();
         expect(versionDiag!.severity).toBe(DiagnosticSeverity.Warning);
         expect(versionDiag!.source).toBe('domainlang');
         // Should point to line with 'version' (line index 2)
@@ -105,7 +105,7 @@ model:
 
         // Assert
         const nameDiag = diagnostics.find(d => d.message.includes('name'));
-        expect(nameDiag).toBeDefined();
+        expect(nameDiag).not.toBeUndefined();
         expect(nameDiag!.severity).toBe(DiagnosticSeverity.Error);
     });
 
@@ -129,7 +129,7 @@ dependencies:
         const conflictDiag = diagnostics.find(d =>
             d.message.includes('source') && d.message.includes('path')
         );
-        expect(conflictDiag).toBeDefined();
+        expect(conflictDiag).not.toBeUndefined();
         expect(conflictDiag!.severity).toBe(DiagnosticSeverity.Error);
         // Hints are appended to the message
         expect(conflictDiag!.message).toContain('Hint');
@@ -151,7 +151,7 @@ dependencies:
 
         // Assert
         const versionDiag = diagnostics.find(d => d.message.includes('version'));
-        expect(versionDiag).toBeDefined();
+        expect(versionDiag).not.toBeUndefined();
         expect(versionDiag!.severity).toBe(DiagnosticSeverity.Error);
         // Should include a code string for the code action provider to match on
         expect(typeof versionDiag!.code).toBe('string');
@@ -173,7 +173,7 @@ paths:
 
         // Assert
         const aliasDiag = diagnostics.find(d => d.message.includes('@'));
-        expect(aliasDiag).toBeDefined();
+        expect(aliasDiag).not.toBeUndefined();
         expect(aliasDiag!.severity).toBe(DiagnosticSeverity.Warning);
     });
 
@@ -192,7 +192,7 @@ paths:
 
         // Assert
         const pathDiag = diagnostics.find(d => d.message.includes('relative'));
-        expect(pathDiag).toBeDefined();
+        expect(pathDiag).not.toBeUndefined();
         expect(pathDiag!.severity).toBe(DiagnosticSeverity.Error);
     });
 
@@ -211,7 +211,7 @@ paths:
 
         // Assert
         const refDiag = diagnostics.find(d => d.message.includes('ref'));
-        expect(refDiag).toBeDefined();
+        expect(refDiag).not.toBeUndefined();
         // Range should have valid start/end with non-negative line numbers
         expect(refDiag!.range.start.line).toBeGreaterThanOrEqual(0);
         expect(refDiag!.range.end.line).toBeGreaterThanOrEqual(refDiag!.range.start.line);

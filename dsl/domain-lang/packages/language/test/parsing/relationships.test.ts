@@ -337,7 +337,7 @@ describe('bc Internal Relationships', () => {
         expectValidDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('PaymentContext');
         expect(bc!.relationships).toHaveLength(1);
         expect(bc!.relationships[0].arrow).toBe('->');
     });
@@ -361,7 +361,7 @@ describe('bc Internal Relationships', () => {
         expectValidDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('PaymentContext');
         expect(bc!.relationships).toHaveLength(1);
         expect(bc!.relationships[0].arrow).toBe('->');
         expect(bc!.relationships[0].leftPatterns).toContain('OHS');
@@ -390,7 +390,7 @@ describe('bc Internal Relationships', () => {
         expectValidDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('PaymentContext');
         expect(bc!.relationships).toHaveLength(2);
         expect(bc!.relationships[0].arrow).toBe('->');
         expect(bc!.relationships[1].arrow).toBe('<->');
@@ -415,7 +415,7 @@ describe('bc Internal Relationships', () => {
         expectValidDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('PaymentContext');
         expect(bc!.relationships).toHaveLength(1);
         expect(bc!.relationships[0].arrow).toBe('<-');
     });
@@ -439,7 +439,7 @@ describe('bc Internal Relationships', () => {
         expectValidDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('LegacySystem');
         expect(bc!.relationships).toHaveLength(1);
         expect(bc!.relationships[0].arrow).toBe('><');
         expect(bc!.relationships[0].type).toBe('SeparateWays');
@@ -464,7 +464,7 @@ describe('bc Internal Relationships', () => {
         expectValidDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
-        expect(bc).toBeDefined();
+        expect(bc?.name).toBe('LegacyContext');
         expect(bc!.relationships[0].leftPatterns).toContain('BBoM');
     });
 
@@ -532,8 +532,10 @@ describe('Negative: Invalid Relationships', () => {
         const document = await testServices.parse(input);
         // Parser succeeds but linker should flag the unresolved reference
         const diagnostics = document.diagnostics ?? [];
-        expect(diagnostics.length).toBeGreaterThan(0);
-        expect(diagnostics.some(d => d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve'))).toBe(true);
+        const unresolvedDiagnostics = diagnostics.filter(d =>
+            d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve')
+        );
+        expect(unresolvedDiagnostics.length).toBeGreaterThan(0);
     });
 
     test('should produce diagnostics for relationship referencing non-existent BC', async () => {
@@ -552,7 +554,9 @@ describe('Negative: Invalid Relationships', () => {
         // Parser succeeds but validation should produce diagnostics
         // (linking errors for non-existent references)
         const diagnostics = document.diagnostics ?? [];
-        expect(diagnostics.length).toBeGreaterThan(0);
-        expect(diagnostics.some(d => d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve'))).toBe(true);
+        const unresolvedDiagnostics = diagnostics.filter(d =>
+            d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve')
+        );
+        expect(unresolvedDiagnostics.length).toBeGreaterThan(0);
     });
 });
