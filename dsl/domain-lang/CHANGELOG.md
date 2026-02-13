@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/DomainLang/DomainLang/compare/v0.10.0...v0.11.0) (2026-02-13)
+
+
+### Features
+
+* **language:** add markdown support for domain-lang syntax highlighting ([8221751](https://github.com/DomainLang/DomainLang/commit/82217510b75028d59a3072694ec7041cf9b051fd))
+
+
+### Bug Fixes
+
+* **sdk:** include imported document diagnostics in validation ([39d60cb](https://github.com/DomainLang/DomainLang/commit/39d60cb2d00226ed199e27be0070a53c45b3d2f2))
+* **tests:** update test coverage script to support workspaces ([abfe678](https://github.com/DomainLang/DomainLang/commit/abfe678c6bcae0750826edd58417ff33b2e4130e))
+
 ## [0.10.0](https://github.com/DomainLang/DomainLang/compare/v0.9.0...v0.10.0) (2026-02-11)
 
 
