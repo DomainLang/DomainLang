@@ -35,7 +35,7 @@
     "langium:generate": "npm run --workspace packages/language langium:generate",
     "langium:watch": "npm run --workspace packages/language langium:watch",
     "test": "npm run --workspace packages/language test",
-    "test:coverage": "npm run --workspace packages/language test:coverage",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
     "lint": "eslint packages --ext .ts,.tsx",
     "lint:fix": "eslint packages --ext .ts,.tsx --fix",
     "prepare": "husky"
