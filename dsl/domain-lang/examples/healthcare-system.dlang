@@ -11,6 +11,11 @@
 Classification CoreDomain
 Classification SupportingDomain
 Classification GenericDomain
+Classification architectural
+Classification technical
+Classification security
+Classification compliance
+Classification clinical
 
 Classification HIPAACompliant
 Classification MissionCritical
@@ -33,22 +38,25 @@ Team PharmacyTeam
 Domain Healthcare {
     description: "Hospital and healthcare management"
     vision: "Deliver exceptional patient care through integrated systems"
-    classification: CoreDomain
+    type: CoreDomain
 }
 
 Domain PatientCare in Healthcare {
     description: "Direct patient care and treatment"
-    classification: CoreDomain
+    vision: "Coordinate safe and effective clinical care across every encounter"
+    type: CoreDomain
 }
 
 Domain Administration in Healthcare {
     description: "Hospital administration and operations"
-    classification: SupportingDomain
+    vision: "Enable efficient operations that support clinicians and patients"
+    type: SupportingDomain
 }
 
 Domain Pharmacy in Healthcare {
     description: "Medication management and dispensing"
-    classification: CoreDomain
+    vision: "Deliver accurate medication therapy with strong safety controls"
+    type: CoreDomain
 }
 
 // ============================================================================

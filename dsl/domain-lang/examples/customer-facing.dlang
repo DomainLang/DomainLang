@@ -6,11 +6,14 @@ Domain Enterprise {
 Namespace CustomerFacing {
     Classification CoreDomain
     Classification SupportingDomain
+    Classification technical
+    Classification compliance
     Team PlatformGuild
     Team ProductTeam
 
     Domain Inventory in Enterprise {
         description: "Catalog definitions, availability, and channel policies"
+        vision: "Expose accurate and channel-ready product and availability data"
         type: SupportingDomain
     }
 

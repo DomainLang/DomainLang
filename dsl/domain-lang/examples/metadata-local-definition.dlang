@@ -141,7 +141,7 @@ ContextMap SalesOperations {
     
     [OHS] OrderManagement -> [CF] Fulfillment
     [OHS] Pricing -> [CF] OrderManagement
-    [ACL] Shipping -> [PL] Fulfillment
+    [PL] Fulfillment -> [ACL] Shipping
 }
 
 ContextMap SalesFinance {

@@ -15,10 +15,12 @@
 
 Domain Sales {
     description: "Sales operations and customer acquisition"
+    vision: "Convert qualified demand into sustainable revenue growth"
 }
 
 Domain Support {
     description: "Customer support and service"
+    vision: "Resolve customer issues quickly while improving satisfaction"
 }
 
 // Sales team's perspective of customer management
@@ -33,7 +35,7 @@ bc CustomerManagement for Sales {
 }
 
 // Support team's perspective of customer management
-bc CustomerManagement for Support {
+bc CustomerSupportManagement for Support {
     description: "Support team's view: tickets, SLAs, escalations"
     
     terminology {
@@ -45,7 +47,8 @@ bc CustomerManagement for Support {
 
 // ContextMap can reference BOTH CustomerManagement contexts
 ContextMap CustomerServices {
-    contains CustomerManagement
+    contains CustomerManagement, CustomerSupportManagement
+    CustomerManagement -> CustomerSupportManagement
 }
 
 // ============================================================================
@@ -58,10 +61,12 @@ Namespace Ecommerce {
     
     Domain Catalog {
         description: "Product catalog and inventory"
+        vision: "Provide trustworthy product data for all shopping journeys"
     }
     
     Domain Orders {
         description: "Order processing and fulfillment"
+        vision: "Process customer orders predictably from checkout to delivery"
     }
     
     bc ProductSearch for Catalog as CoreDomain {
@@ -93,6 +98,7 @@ Namespace Payments {
     
     Domain Billing {
         description: "Payment processing"
+        vision: "Execute payments securely and reliably across providers"
     }
     
     bc PaymentGateway for Billing as GenericDomain {
@@ -122,6 +128,7 @@ Classification Generic
 
 Domain Ordering {
     description: "Order management domain"
+    vision: "Coordinate end-to-end order lifecycle with clear state transitions"
 }
 
 Team OrderTeam
@@ -169,17 +176,20 @@ ContextMap OrderingPlatform {
 
 Domain SalesDomain {
     description: "Sales domain"
-    classification: Core
+    vision: "Drive revenue through repeatable and measurable sales execution"
+    type: Core
 }
 
 Domain Marketing {
     description: "Marketing domain"
-    classification: Supporting
+    vision: "Generate qualified demand through targeted campaigns and insights"
+    type: Supporting
 }
 
 Domain CustomerSupport {
     description: "Support domain"
-    classification: Supporting
+    vision: "Deliver timely and empathetic support across all customer channels"
+    type: Supporting
 }
 
 DomainMap CustomerFacingDomains {

@@ -10,21 +10,23 @@ Classification SupportingDomain
 Domain Enterprise {
     description: "Enterprise product organization"
     vision: "Align every bounded context to a unified customer narrative"
-    classification: CoreDomain
+    type: CoreDomain
 }
 
 Domain Marketplace in Enterprise {
     description: "Digital marketplace for buyers and sellers"
     vision: "Enable third-party catalogs with curated governance"
-    classification: CoreDomain
+    type: CoreDomain
 }
 
 Domain Inventory in Marketplace {
     description: "Availability, allocation, and stock reconciliation"
-    classification: SupportingDomain
+    vision: "Maintain reliable stock truth across channels and warehouses"
+    type: SupportingDomain
 }
 
 Domain Users in Marketplace {
     description: "Accounts, profiles, and access policies"
-    classification: SupportingDomain
+    vision: "Provide secure identity and profile capabilities for all channels"
+    type: SupportingDomain
 }
