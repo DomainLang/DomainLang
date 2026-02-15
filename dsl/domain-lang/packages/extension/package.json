@@ -208,7 +208,22 @@
                     }
                 }
             }
-        ]
+        ],
+        "configuration": {
+            "title": "DomainLang",
+            "properties": {
+                "domainlang.lsp.traceImports": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable detailed import resolution trace logs in the DomainLang language server output."
+                },
+                "domainlang.lsp.infoLogs": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable info and timing logs in the DomainLang language server output."
+                }
+            }
+        }
     },
     "main": "./out/extension/main.cjs",
     "scripts": {

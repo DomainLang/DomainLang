@@ -7,6 +7,11 @@ import { registerLanguageModelTools } from './lm-tools.js';
 let client: LanguageClient;
 let outputChannel: vscode.OutputChannel;
 
+interface DomainLangLspSettings {
+    traceImports: boolean;
+    infoLogs: boolean;
+}
+
 // This function is called when the extension is activated.
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     // Create output channel for diagnostics
@@ -71,9 +76,15 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: '*', language: 'domain-lang' }],
+        initializationOptions: {
+            domainlang: {
+                lsp: readLspSettings(),
+            },
+        },
         synchronize: {
             // Register file watchers for config files
-            fileEvents: fileWatchers
+            fileEvents: fileWatchers,
+            configurationSection: 'domainlang',
         }
     };
 
@@ -111,5 +122,27 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
         }
     });
 
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration('domainlang.lsp')) {
+            return;
+        }
+
+        const settings = {
+            domainlang: {
+                lsp: readLspSettings(),
+            },
+        };
+
+        client.sendNotification('workspace/didChangeConfiguration', { settings });
+    }));
+
     return client;
+}
+
+function readLspSettings(): DomainLangLspSettings {
+    const config = vscode.workspace.getConfiguration('domainlang.lsp');
+    return {
+        traceImports: config.get<boolean>('traceImports', false),
+        infoLogs: config.get<boolean>('infoLogs', false),
+    };
 }
