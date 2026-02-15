@@ -53,6 +53,15 @@ Hover over any element to see a rich tooltip with its full definition — descri
 
 The extension understands `model.yaml` manifests and resolves imports across files. Open a folder containing `.dlang` files and the language server indexes the entire workspace.
 
+## LSP logging settings
+
+You can control DomainLang language server logging in VS Code settings:
+
+- `domainlang.lsp.traceImports` enables detailed import resolution tracing
+- `domainlang.lsp.infoLogs` enables info and timing logs
+
+Both settings are disabled by default.
+
 ## AI-powered analysis
 
 The extension includes [language model tools](/guide/vscode-tools) that let AI agents in VS Code query your domain model directly. Ask GitHub Copilot or Claude questions like:
