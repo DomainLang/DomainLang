@@ -147,8 +147,8 @@ export class DomainLangDocumentSymbolProvider extends DefaultDocumentSymbolProvi
         const cstNode = rel.$cstNode;
         if (!cstNode) return undefined;
 
-        const left = isThisRef(rel.left) ? 'this' : rel.left?.link?.ref?.name ?? '?';
-        const right = isThisRef(rel.right) ? 'this' : rel.right?.link?.ref?.name ?? '?';
+        const left = isThisRef(rel.left) ? 'this' : rel.left?.link?.$refText ?? '?';
+        const right = isThisRef(rel.right) ? 'this' : rel.right?.link?.$refText ?? '?';
         const name = `${left} → ${right}`;
 
         const range = CstUtils.toDocumentSegment(cstNode).range;
@@ -168,7 +168,7 @@ export class DomainLangDocumentSymbolProvider extends DefaultDocumentSymbolProvi
         const cstNode = meta.$cstNode;
         if (!cstNode) return undefined;
 
-        const name = meta.key?.ref?.name ?? 'unknown';
+        const name = meta.key?.$refText ?? 'unknown';
         const range = CstUtils.toDocumentSegment(cstNode).range;
 
         return DocumentSymbol.create(
@@ -197,8 +197,8 @@ export class DomainLangDocumentSymbolProvider extends DefaultDocumentSymbolProvi
     /** Builds BC detail: "BC for DomainName — description". */
     private getBcDetail(node: BoundedContext): string | undefined {
         const parts: string[] = [];
-        if (node.domain?.ref?.name) {
-            parts.push(`BC for ${node.domain.ref.name}`);
+        if (node.domain?.$refText) {
+            parts.push(`BC for ${node.domain.$refText}`);
         }
         if (node.description) {
             parts.push(node.description);
