@@ -1,5 +1,5 @@
 /**
- * WorkspaceManager Manifest Tests
+ * ManifestManager Manifest Tests
  *
  * Per PRS-010 Phase 2, these tests validate:
  * - Manifest file discovery by walking up directory tree
@@ -17,7 +17,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { WorkspaceManager } from '../../src/services/workspace-manager.js';
+import { ManifestManager } from '../../src/services/workspace-manager.js';
 import type { DependencySpec, ExtendedDependencySpec } from '../../src/services/types.js';
 
 /**
@@ -34,14 +34,14 @@ function normalizeDep(key: string, dep: DependencySpec | undefined): ExtendedDep
 let tempDir: string;
 
 beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-manager-'));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-manifest-manager-'));
 });
 
 afterEach(async () => {
     await fs.rm(tempDir, { recursive: true, force: true });
 });
 
-describe('WorkspaceManager manifest handling (PRS-010 Phase 2)', () => {
+describe('ManifestManager manifest handling (PRS-010 Phase 2)', () => {
     // ========================================================================
     // Smoke: manifest discovery and parsing (~20%)
     // ========================================================================
@@ -60,7 +60,7 @@ dependencies:
     ref: v1.0.0
 `;
         await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
-        const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+        const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
 
         // Act
         await manager.initialize(manifestDir);
@@ -89,7 +89,7 @@ dependencies:
             const nestedDir = path.join(rootDir, 'nested', 'deep');
             await fs.mkdir(nestedDir, { recursive: true });
             await fs.writeFile(path.join(rootDir, 'model.yaml'), 'model:\n  name: sample\n');
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
 
             // Act
             await manager.initialize(nestedDir);
@@ -109,7 +109,7 @@ dependencies:
             await fs.writeFile(path.join(root, 'model.yaml'), 'model:\n  name: root\n');
             await fs.writeFile(path.join(sub1, 'model.yaml'), 'model:\n  name: sub1\n');
 
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
 
             // Act
             await manager.initialize(sub2);
@@ -123,7 +123,7 @@ dependencies:
             // Arrange
             const emptyDir = path.join(tempDir, 'no-manifest');
             await fs.mkdir(emptyDir, { recursive: true });
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
 
             // Act
             await manager.initialize(emptyDir);
@@ -146,7 +146,7 @@ dependencies:
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), '');
 
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -164,7 +164,7 @@ dependencies:
             await fs.mkdir(manifestDir, { recursive: true });
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), 'model:\n  name: minimal\n');
 
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -197,7 +197,7 @@ dependencies:
     path: ./shared
 `;
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
 
             // Act
             await manager.initialize(manifestDir);
@@ -223,7 +223,7 @@ dependencies:
   ddd-community/patterns: v2.3.1
 `;
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
 
             // Act
             await manager.initialize(manifestDir);
@@ -249,7 +249,7 @@ dependencies:
     description: "DDD pattern library"
 `;
             await fs.writeFile(path.join(manifestDir, 'model.yaml'), manifestContent);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
 
             // Act
             await manager.initialize(manifestDir);
@@ -279,7 +279,7 @@ dependencies:
     path: ../shared
     ref: v1.0.0
 `);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -304,7 +304,7 @@ dependencies:
   secrets:
     path: ../../secrets
 `);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -323,7 +323,7 @@ dependencies:
   shared:
     path: ./shared
 `);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -343,7 +343,7 @@ dependencies:
   shared:
     path: ./lib/shared
 `);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -370,7 +370,7 @@ dependencies:
 paths:
   shared: ./shared
 `);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -389,7 +389,7 @@ paths:
 paths:
   "@secrets": ../../../etc/secrets
 `);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act
@@ -409,7 +409,7 @@ paths:
 paths:
   "@shared": ./packages/shared
 `);
-            const manager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
+            const manager = new ManifestManager({ autoResolve: false, allowNetwork: false });
             await manager.initialize(manifestDir);
 
             // Act

@@ -11,9 +11,10 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, test, beforeEach, afterEach, expect } from 'vitest';
+import { describe, test, beforeEach, afterEach, expect, vi } from 'vitest';
 import { createDomainLangServices } from '../../src/domain-lang-module.js';
-import { EmptyFileSystem } from 'langium';
+import { EmptyFileSystem, URI, type LangiumDocument } from 'langium';
+import { setLspRuntimeSettings } from '../../src/services/lsp-runtime-settings.js';
 
 let resolver: ReturnType<typeof createDomainLangServices>["DomainLang"]["imports"]["ImportResolver"];
 let tempDir: string;
@@ -28,6 +29,7 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-resolver-'));
         const servicesLocal = createDomainLangServices(EmptyFileSystem).DomainLang;
         resolver = servicesLocal.imports.ImportResolver;
+        setLspRuntimeSettings({ traceImports: false, infoLogs: false });
     });
 
     afterEach(async () => {
@@ -260,6 +262,54 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
 
             // Assert
             expect(uri.fsPath).toBe(nestedFile);
+        });
+    });
+
+    // ========================================================================
+    // Edge: trace flag parsing
+    // ========================================================================
+
+    describe('Edge: trace flag parsing', () => {
+        test('traceImports=false does not emit trace logs', async () => {
+            // Arrange
+            setLspRuntimeSettings({ traceImports: false });
+            const base = path.join(tempDir, 'trace-off');
+            const target = path.join(base, 'types.dlang');
+            await writeFile(target, 'Domain X {}');
+            const doc = { uri: URI.file(path.join(base, 'main.dlang')) } as LangiumDocument;
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+            // Act
+            await resolver.resolveForDocument(doc, './types.dlang');
+
+            // Assert
+            const traceCalls = warnSpy.mock.calls
+                .flat()
+                .filter(arg => typeof arg === 'string' && arg.includes('[ImportResolver]'));
+            expect(traceCalls).toHaveLength(0);
+
+            warnSpy.mockRestore();
+        });
+
+        test('traceImports=true emits trace logs', async () => {
+            // Arrange
+            setLspRuntimeSettings({ traceImports: true });
+            const base = path.join(tempDir, 'trace-on');
+            const target = path.join(base, 'types.dlang');
+            await writeFile(target, 'Domain X {}');
+            const doc = { uri: URI.file(path.join(base, 'main.dlang')) } as LangiumDocument;
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+            // Act
+            await resolver.resolveForDocument(doc, './types.dlang');
+
+            // Assert
+            const traceCalls = warnSpy.mock.calls
+                .flat()
+                .filter(arg => typeof arg === 'string' && arg.includes('[ImportResolver]'));
+            expect(traceCalls.length).toBeGreaterThan(0);
+
+            warnSpy.mockRestore();
         });
     });
 });

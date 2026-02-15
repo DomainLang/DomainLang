@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /**
- * WorkspaceManager Tests
+ * ManifestManager Tests
  *
  * Tests workspace root detection, lock file loading, cache invalidation,
- * and dependency resolution via the WorkspaceManager class.
+ * and dependency resolution via the ManifestManager class.
  *
  * ~20% smoke (init + lock file load), ~80% edge (missing lock, cache
  * invalidation strategies, re-initialization, uninitialized access).
@@ -13,7 +13,7 @@ import { beforeAll, afterAll, beforeEach, describe, expect, test } from "vitest"
 import path from "node:path";
 import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { WorkspaceManager } from "../../src/services/workspace-manager.js";
+import { ManifestManager } from "../../src/services/workspace-manager.js";
 import { resetGlobalOptimizer } from "../../src/services/performance-optimizer.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,7 +46,7 @@ async function cleanup() {
     }
 }
 
-describe("WorkspaceManager", () => {
+describe("ManifestManager", () => {
     beforeAll(async () => {
         await cleanup();
     });
@@ -65,7 +65,7 @@ describe("WorkspaceManager", () => {
     test("finds workspace root, loads lock file, and returns correct values", async () => {
         // Arrange
         await createLockFile();
-        const manager = new WorkspaceManager();
+        const manager = new ManifestManager();
 
         // Act
         await manager.initialize(TEST_ROOT);
@@ -85,7 +85,7 @@ describe("WorkspaceManager", () => {
 
     test("returns undefined if lock file missing", async () => {
         // Arrange
-        const manager = new WorkspaceManager();
+        const manager = new ManifestManager();
 
         // Act
         await manager.initialize(TEST_ROOT);
@@ -120,7 +120,7 @@ describe("WorkspaceManager", () => {
             await fs.writeFile(lockFile, JSON.stringify(lock, undefined, 2), "utf-8");
 
             try {
-                const manager = new WorkspaceManager();
+                const manager = new ManifestManager();
                 await manager.initialize(ALIAS_ROOT);
 
                 // Act
@@ -139,7 +139,7 @@ describe("WorkspaceManager", () => {
 
         test("returns undefined for unresolvable dependency", async () => {
             // Arrange
-            const manager = new WorkspaceManager();
+            const manager = new ManifestManager();
             await manager.initialize(TEST_ROOT);
 
             // Act
@@ -159,7 +159,7 @@ describe("WorkspaceManager", () => {
         test("invalidateCache clears both manifest and lock caches", async () => {
             // Arrange
             await createLockFile();
-            const manager = new WorkspaceManager();
+            const manager = new ManifestManager();
             await manager.initialize(TEST_ROOT);
             const manifestBefore = await manager.getManifest();
             const lockBefore = await manager.getLockFile();
@@ -178,7 +178,7 @@ describe("WorkspaceManager", () => {
         test("invalidateManifestCache clears only manifest cache, preserves lock cache", async () => {
             // Arrange
             await createLockFile();
-            const manager = new WorkspaceManager();
+            const manager = new ManifestManager();
             await manager.initialize(TEST_ROOT);
             await manager.getManifest();
             const lockBefore = await manager.getLockFile();
@@ -195,7 +195,7 @@ describe("WorkspaceManager", () => {
         test("invalidateLockCache clears only lock file cache", async () => {
             // Arrange
             await createLockFile();
-            const manager = new WorkspaceManager();
+            const manager = new ManifestManager();
             await manager.initialize(TEST_ROOT);
             const lockBefore = await manager.getLockFile();
             expect(lockBefore?.version).toBe("1");
@@ -208,6 +208,26 @@ describe("WorkspaceManager", () => {
             const lock = await manager.getLockFile();
             expect(lock).toBeUndefined();
         });
+
+        test("invalidateCache clears both manifest and lock file caches", async () => {
+            // Arrange
+            await createLockFile();
+            const manager = new ManifestManager();
+            await manager.initialize(TEST_ROOT);
+
+            const manifestBefore = await manager.getManifest();
+            const lockBefore = await manager.getLockFile();
+            expect(manifestBefore?.model?.name).toBe('sample-workspace');
+            expect(lockBefore?.version).toBe('1');
+
+            // Act
+            manager.invalidateCache();
+
+            // Assert
+            await cleanup();
+            const lockAfter = await manager.getLockFile();
+            expect(lockAfter).toBeUndefined();
+        });
     });
 
     // ========================================================================
@@ -218,7 +238,7 @@ describe("WorkspaceManager", () => {
 
         test("re-initialization switches to the new workspace root", async () => {
             // Arrange
-            const manager = new WorkspaceManager();
+            const manager = new ManifestManager();
             await manager.initialize(TEST_ROOT);
             expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
 
@@ -231,7 +251,7 @@ describe("WorkspaceManager", () => {
         
         test("initializing from different paths to same root reuses context", async () => {
             // Arrange
-            const manager = new WorkspaceManager();
+            const manager = new ManifestManager();
             const subDir = path.join(TEST_ROOT, 'src');
 
             // Act

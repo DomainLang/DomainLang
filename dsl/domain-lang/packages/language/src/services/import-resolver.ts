@@ -1,15 +1,67 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { DocumentState, SimpleCache, WorkspaceCache, URI, type LangiumDocument, type LangiumSharedCoreServices } from 'langium';
-import { WorkspaceManager } from './workspace-manager.js';
+import { DocumentCache, SimpleCache, URI, type LangiumDocument, type LangiumSharedCoreServices } from 'langium';
+import { ManifestManager } from './workspace-manager.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { LockFile } from './types.js';
+import { getLspRuntimeSettings } from './lsp-runtime-settings.js';
+
+// --- PRS-017 R8: Structured import resolution errors ---
+
+/**
+ * Resolution failure reason codes for programmatic handling.
+ */
+export type ImportResolutionReason =
+    | 'file-not-found'
+    | 'unknown-alias'
+    | 'missing-manifest'
+    | 'not-installed'
+    | 'dependency-not-found'
+    | 'missing-entry'
+    | 'unresolvable';
+
+/**
+ * Structured error for import resolution failures.
+ *
+ * Carries the specifier, attempted paths, a reason code, and
+ * a human-readable hint so callers can build precise diagnostics
+ * without parsing error message strings.
+ */
+export class ImportResolutionError extends Error {
+    /** The import specifier that failed to resolve. */
+    readonly specifier: string;
+    /** Paths that were tried during resolution (in order). */
+    readonly attemptedPaths: readonly string[];
+    /** Machine-readable failure reason. */
+    readonly reason: ImportResolutionReason;
+    /** Human-readable suggestion for fixing the problem. */
+    readonly hint: string;
+
+    constructor(opts: {
+        specifier: string;
+        attemptedPaths?: string[];
+        reason: ImportResolutionReason;
+        hint: string;
+        message?: string;
+    }) {
+        const msg = opts.message ?? `Cannot resolve import '${opts.specifier}': ${opts.hint}`;
+        super(msg);
+        this.name = 'ImportResolutionError';
+        this.specifier = opts.specifier;
+        this.attemptedPaths = Object.freeze(opts.attemptedPaths ?? []);
+        this.reason = opts.reason;
+        this.hint = opts.hint;
+    }
+}
 
 /**
  * Cache interface for import resolution.
- * Uses WorkspaceCache in LSP mode (clears on ANY document change) or SimpleCache in standalone mode.
+ * In LSP mode: DocumentCache segments cache per-document URI, auto-invalidating only
+ * the changed document's sub-map. Cross-document invalidation (when an imported file
+ * moves/deletes) is handled by DomainLangIndexManager calling invalidateForDocuments().
+ * In standalone mode: SimpleCache with manual invalidation via clearCache().
  */
-type ResolverCache = WorkspaceCache<string, URI> | SimpleCache<string, URI>;
+type ResolverCache = DocumentCache<string, URI> | SimpleCache<string, URI>;
 
 /**
  * ImportResolver resolves import statements using manifest-centric rules (PRS-010).
@@ -23,65 +75,73 @@ type ResolverCache = WorkspaceCache<string, URI> | SimpleCache<string, URI>;
  * - ./types → ./types/index.dlang → ./types.dlang
  * - Module entry defaults to index.dlang (no model.yaml required)
  * 
- * Caching Strategy (uses Langium standard infrastructure):
- * - LSP mode: Uses `WorkspaceCache` - clears on ANY document change in workspace
- *   This is necessary because file moves/deletes affect resolution of OTHER documents
+ * Caching Strategy (PRS-017 R1 — uses Langium standard infrastructure):
+ * - LSP mode: Uses `DocumentCache` keyed by importing document URI
+ *   Each document's import resolutions are cached independently.
+ *   When a document changes, only ITS cache entries are auto-cleared.
+ *   Cross-document invalidation (when an imported file moves/deletes) is
+ *   handled by DomainLangIndexManager calling `invalidateForDocuments()`
+ *   with the reverse dependency graph.
  * - Standalone mode: Uses `SimpleCache` - manual invalidation via clearCache()
  * 
- * Why WorkspaceCache (not DocumentCache)?
- * - DocumentCache only invalidates when the KEYED document changes
- * - But import resolution can break when IMPORTED files are moved/deleted
- * - Example: index.dlang imports @domains → domains/index.dlang
- *   If domains/index.dlang is moved, index.dlang's cache entry must be cleared
- *   DocumentCache wouldn't clear it (index.dlang didn't change)
- *   WorkspaceCache clears on ANY change, ensuring correct re-resolution
+ * Why DocumentCache with manual cross-invalidation (not WorkspaceCache)?
+ * - WorkspaceCache clears the ENTIRE cache on ANY document change
+ * - In a 50-file workspace, editing one file caused ~50 redundant re-resolutions
+ * - DocumentCache + targeted invalidation via reverse dep graph only clears
+ *   the changed file and its direct/transitive importers
+ * - This matches gopls' per-package invalidation strategy
  * 
  * @see https://langium.org/docs/recipes/caching/ for Langium caching patterns
  */
 export class ImportResolver {
-    private readonly workspaceManager: WorkspaceManager;
+    private readonly workspaceManager: ManifestManager;
     /**
-     * Workspace-level cache for resolved import URIs.
-     * In LSP mode: WorkspaceCache - clears when ANY document changes (correct for imports)
-     * In standalone mode: SimpleCache - manual invalidation via clearCache()
+     * Per-document cache for resolved import URIs.
+     * In LSP mode: DocumentCache - clears only the changed document's entries.
+     *   Cross-document invalidation handled by DomainLangIndexManager.
+     * In standalone mode: SimpleCache - manual invalidation via clearCache().
      */
     private readonly resolverCache: ResolverCache;
+    
+    /**
+     * Whether the cache is a DocumentCache (LSP mode) for targeted invalidation.
+     */
+    private readonly isDocumentCache: boolean;
 
     /**
      * Creates an ImportResolver.
      * 
-     * @param services - DomainLang services. If `services.shared` is present, uses WorkspaceCache
-     *                   for automatic invalidation. Otherwise uses SimpleCache for standalone mode.
+     * @param services - DomainLang services. If `services.shared` is present, uses DocumentCache
+     *                   for per-document invalidation. Otherwise uses SimpleCache for standalone mode.
      */
     constructor(services: DomainLangServices) {
-        this.workspaceManager = services.imports.WorkspaceManager;
+        this.workspaceManager = services.imports.ManifestManager;
         
-        // Use Langium's WorkspaceCache when shared services are available (LSP mode)
+        // Use Langium's DocumentCache when shared services are available (LSP mode)
         // Fall back to SimpleCache for standalone utilities (SDK, CLI)
         const shared = (services as DomainLangServices & { shared?: LangiumSharedCoreServices }).shared;
         if (shared) {
-            // LSP mode: WorkspaceCache with DocumentState.Linked
-            // 
-            // This follows the standard pattern used by TypeScript, rust-analyzer, gopls:
-            // - Cache is valid for a "workspace snapshot"
-            // - Invalidates after a batch of changes completes linking (debounced ~300ms)
-            // - Invalidates immediately on file deletion
-            // - Does NOT invalidate during typing (would be too expensive)
+            // LSP mode: DocumentCache — per-document sub-maps (PRS-017 R1)
             //
-            // DocumentState.Linked is the right phase because:
-            // - Import resolution is needed during linking
-            // - By the time linking completes, we know which files exist
-            // - File renames appear as delete+create, triggering immediate invalidation
-            this.resolverCache = new WorkspaceCache(shared, DocumentState.Linked);
+            // Each document's import resolutions are cached in a separate sub-map.
+            // When a document changes, only ITS sub-map is auto-cleared.
+            // Cross-document invalidation (imported file moved/deleted) is handled
+            // by DomainLangIndexManager calling invalidateForDocuments() with the
+            // reverse dependency graph.
+            //
+            // This replaces the previous WorkspaceCache which cleared EVERYTHING
+            // on any change, causing redundant re-resolutions across the workspace.
+            this.resolverCache = new DocumentCache<string, URI>(shared);
+            this.isDocumentCache = true;
         } else {
             // Standalone mode: simple key-value cache, manual invalidation
             this.resolverCache = new SimpleCache<string, URI>();
+            this.isDocumentCache = false;
         }
     }
 
     /**
      * Clears the entire import resolution cache.
-     * In LSP mode, this is also triggered automatically by WorkspaceCache on any document change.
      * Call explicitly when model.yaml or model.lock changes.
      */
     clearCache(): void {
@@ -89,21 +149,55 @@ export class ImportResolver {
     }
 
     /**
+     * Invalidates cached import resolutions for specific documents (PRS-017 R1).
+     * 
+     * Called by DomainLangIndexManager when files change, using the reverse
+     * dependency graph to determine which documents' caches need clearing.
+     * This provides targeted invalidation instead of clearing the entire cache.
+     * 
+     * @param uris - Document URIs whose import resolution caches should be cleared
+     */
+    invalidateForDocuments(uris: Iterable<string>): void {
+        if (this.isDocumentCache) {
+            const docCache = this.resolverCache as DocumentCache<string, URI>;
+            for (const uri of uris) {
+                docCache.clear(URI.parse(uri));
+            }
+        }
+    }
+
+    /**
      * Resolve an import specifier relative to a Langium document.
-     * Results are cached using WorkspaceCache (clears on any workspace change).
+     * Results are cached per-document using DocumentCache (PRS-017 R1).
      */
     async resolveForDocument(document: LangiumDocument, specifier: string): Promise<URI> {
-        // Cache key combines document URI + specifier for uniqueness
+        if (this.isDocumentCache) {
+            // LSP mode: DocumentCache with (documentUri, specifier) as two-part key
+            const docCache = this.resolverCache as DocumentCache<string, URI>;
+            const cached = docCache.get(document.uri, specifier);
+            if (cached) {
+                this.trace(`[cache hit] ${specifier} from ${document.uri.fsPath}`);
+                return cached;
+            }
+            const baseDir = path.dirname(document.uri.fsPath);
+            const result = await this.resolveFrom(baseDir, specifier);
+            this.trace(`[resolved] ${specifier} from ${document.uri.fsPath} → ${result.fsPath}`);
+            docCache.set(document.uri, specifier, result);
+            return result;
+        }
+        
+        // Standalone mode: SimpleCache with composite key
+        const simpleCache = this.resolverCache as SimpleCache<string, URI>;
         const cacheKey = `${document.uri.toString()}|${specifier}`;
-        const cached = this.resolverCache.get(cacheKey);
+        const cached = simpleCache.get(cacheKey);
         if (cached) {
+            this.trace(`[cache hit] ${specifier}`);
             return cached;
         }
-
-        // Resolve and cache
         const baseDir = path.dirname(document.uri.fsPath);
         const result = await this.resolveFrom(baseDir, specifier);
-        this.resolverCache.set(cacheKey, result);
+        this.trace(`[resolved] ${specifier} → ${result.fsPath}`);
+        simpleCache.set(cacheKey, result);
         return result;
     }
 
@@ -156,12 +250,12 @@ export class ImportResolver {
             return this.resolveLocalPath(resolved, specifier);
         }
 
-        throw new Error(
-            `Unknown path alias '${specifier.split('/')[0]}' in import '${specifier}'.\n` +
-            `Hint: Define it in model.yaml paths section:\n` +
-            `  paths:\n` +
-            `    "${specifier.split('/')[0]}": "./some/path"`
-        );
+        throw new ImportResolutionError({
+            specifier,
+            reason: 'unknown-alias',
+            hint: `Define it in model.yaml paths section:\n  paths:\n    "${specifier.split('/')[0]}": "./some/path"`,
+            message: `Unknown path alias '${specifier.split('/')[0]}' in import '${specifier}'.\nHint: Define it in model.yaml paths section.`
+        });
     }
 
     /**
@@ -204,34 +298,33 @@ export class ImportResolver {
     private async resolveExternalDependency(specifier: string): Promise<URI> {
         const manifest = await this.workspaceManager.getManifest();
         if (!manifest) {
-            throw new Error(
-                `External dependency '${specifier}' requires model.yaml.\n` +
-                `Hint: Create model.yaml and add the dependency:\n` +
-                `  dependencies:\n` +
-                `    ${specifier}:\n` +
-                `      ref: v1.0.0`
-            );
+            throw new ImportResolutionError({
+                specifier,
+                reason: 'missing-manifest',
+                hint: `Create model.yaml and add the dependency:\n  dependencies:\n    ${specifier}:\n      ref: v1.0.0`,
+                message: `External dependency '${specifier}' requires model.yaml.`
+            });
         }
 
         const lock = await this.workspaceManager.getLockFile();
         if (!lock) {
-            throw new Error(
-                `Dependency '${specifier}' not installed.\n` +
-                `Hint: Run 'dlang install' to fetch dependencies and generate model.lock.`
-            );
+            throw new ImportResolutionError({
+                specifier,
+                reason: 'not-installed',
+                hint: "Run 'dlang install' to fetch dependencies and generate model.lock.",
+                message: `Dependency '${specifier}' not installed.`
+            });
         }
 
         // Use WorkspaceManager to resolve from cache (read-only, no network)
         const resolved = await this.workspaceManager.resolveDependencyPath(specifier);
         if (!resolved) {
-            throw new Error(
-                `Dependency '${specifier}' not found in model.yaml or not installed.\n` +
-                `Hint: Add it to your dependencies:\n` +
-                `  dependencies:\n` +
-                `    ${specifier}:\n` +
-                `      ref: v1.0.0\n` +
-                `Then run 'dlang install' to fetch it.`
-            );
+            throw new ImportResolutionError({
+                specifier,
+                reason: 'dependency-not-found',
+                hint: `Add it to your dependencies:\n  dependencies:\n    ${specifier}:\n      ref: v1.0.0\nThen run 'dlang install' to fetch it.`,
+                message: `Dependency '${specifier}' not found in model.yaml or not installed.`
+            });
         }
 
         return URI.file(resolved);
@@ -256,10 +349,13 @@ export class ImportResolver {
         }
 
         if (ext && ext !== '.dlang') {
-            throw new Error(
-                `Invalid file extension '${ext}' in import '${original}'.\n` +
-                `Hint: DomainLang files must use the .dlang extension.`
-            );
+            throw new ImportResolutionError({
+                specifier: original,
+                attemptedPaths: [resolved],
+                reason: 'unresolvable',
+                hint: `DomainLang files must use the .dlang extension.`,
+                message: `Invalid file extension '${ext}' in import '${original}'.`
+            });
         }
 
         // No extension → directory-first resolution
@@ -286,13 +382,12 @@ export class ImportResolver {
             }
 
             // Directory exists but no entry file
-            throw new Error(
-                `Module '${original}' is missing its entry file.\n` +
-                `Expected: ${resolved}/${entryPoint}\n` +
-                `Hint: Create '${entryPoint}' in the module directory, or specify a custom entry in model.yaml:\n` +
-                `  model:\n` +
-                `    entry: main.dlang`
-            );
+            throw new ImportResolutionError({
+                specifier: original,
+                attemptedPaths: [path.join(resolved, entryPoint)],
+                reason: 'missing-entry',
+                hint: `Create '${entryPoint}' in the module directory, or specify a custom entry in model.yaml:\n  model:\n    entry: main.dlang`
+            });
         }
 
         // Step 2: Try .dlang file fallback
@@ -302,13 +397,12 @@ export class ImportResolver {
         }
 
         // Neither directory nor file found
-        throw new Error(
-            `Cannot resolve import '${original}'.\n` +
-            `Tried:\n` +
-            `  • ${resolved}/index.dlang (directory module)\n` +
-            `  • ${resolved}.dlang (file)\n` +
-            `Hint: Check that the path is correct and the file exists.`
-        );
+        throw new ImportResolutionError({
+            specifier: original,
+            attemptedPaths: [`${resolved}/index.dlang`, `${resolved}.dlang`],
+            reason: 'file-not-found',
+            hint: 'Check that the path is correct and the file exists.'
+        });
     }
 
     /**
@@ -356,16 +450,29 @@ export class ImportResolver {
     async getLockFile(): Promise<LockFile | undefined> {
         return this.workspaceManager.getLockFile();
     }
+
+    // --- PRS-017 R10: Import resolution tracing ---
+
+    /**
+        * Logs an import resolution trace message when `domainlang.lsp.traceImports` is enabled.
+     * Output goes to stderr so it's visible in the LSP output channel.
+     */
+    private trace(message: string): void {
+        if (getLspRuntimeSettings().traceImports) {
+            console.warn(`[ImportResolver] ${message}`);
+        }
+    }
 }
 
 async function assertFileExists(filePath: string, original: string): Promise<void> {
     try {
         await fs.access(filePath);
     } catch {
-        throw new Error(
-            `Import file not found: '${original}'.\n` +
-            `Resolved path: ${filePath}\n` +
-            `Hint: Check that the file exists and the path is correct.`
-        );
+        throw new ImportResolutionError({
+            specifier: original,
+            attemptedPaths: [filePath],
+            reason: 'file-not-found',
+            hint: 'Check that the file exists and the path is correct.'
+        });
     }
 }

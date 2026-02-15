@@ -63,11 +63,11 @@ describe('Import Validation (Phase 3)', () => {
             // Per PRS-010: import "./shared/types" (no .dlang) uses directory-first resolution
             // It tries ./shared/types/index.dlang first, then ./shared/types.dlang
             const { ImportResolver } = await import('../../src/services/import-resolver.js');
-            const { WorkspaceManager } = await import('../../src/services/workspace-manager.js');
+            const { ManifestManager } = await import('../../src/services/workspace-manager.js');
 
             const mockServices = {
                 imports: {
-                    WorkspaceManager: new WorkspaceManager()
+                    ManifestManager: new ManifestManager()
                 }
             };
 

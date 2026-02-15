@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DefaultWorkspaceManager, URI, UriUtils, type FileSystemNode, type LangiumDocument, type LangiumSharedCoreServices, type WorkspaceFolder } from 'langium';
 import type { CancellationToken } from 'vscode-languageserver-protocol';
+import type { Connection } from 'vscode-languageserver';
 import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
 import { findManifestsInDirectories } from '../utils/manifest-utils.js';
 import type { ImportResolver } from '../services/import-resolver.js';
@@ -57,6 +58,12 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
     private readonly sharedServices: LangiumSharedCoreServices;
 
     /**
+     * LSP connection for progress reporting (PRS-017 R7).
+     * Optional because the workspace manager can run in non-LSP contexts.
+     */
+    private readonly connection: Connection | undefined;
+
+    /**
      * DI-injected import resolver. Set via late-binding because
      * WorkspaceManager (shared module) is created before ImportResolver (language module).
      * Falls back to standalone ensureImportGraphFromDocument when not set.
@@ -66,6 +73,9 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
     constructor(services: LangiumSharedCoreServices) {
         super(services);
         this.sharedServices = services;
+        // Attempt to access connection from LSP services (cast to full shared services)
+        const lspServices = services as { lsp?: { Connection?: Connection } };
+        this.connection = lspServices.lsp?.Connection;
     }
 
     /**
@@ -90,6 +100,8 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     protected override async loadAdditionalDocuments(folders: WorkspaceFolder[], collector: (document: LangiumDocument) => void): Promise<void> {
+        const progress = await this.createProgress('DomainLang: Indexing workspace');
+
         // Find ALL model.yaml files in workspace (supports mixed mode)
         const manifestInfos = await this.findAllManifestsInFolders(folders);
         
@@ -98,9 +110,14 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
             manifestInfos.map(m => path.dirname(m.manifestPath))
         );
 
+        progress?.report(`Found ${manifestInfos.length} module(s)`);
+
         // Mode A or Mode C: Load each module's entry + import graph
+        let moduleIdx = 0;
         for (const manifestInfo of manifestInfos) {
+            moduleIdx++;
             try {
+                progress?.report(`Loading module ${moduleIdx}/${manifestInfos.length}`);
                 const entryUri = URI.file(manifestInfo.entryPath);
                 const entryDoc = await this.langiumDocuments.getOrCreateDocument(entryUri);
                 collector(entryDoc);
@@ -134,7 +151,9 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
 
         // Load standalone .dlang files in workspace root folders
         // These are files NOT covered by any module's import graph
+        progress?.report('Loading standalone files');
         await this.loadStandaloneFiles(folders, moduleDirectories, collector);
+        progress?.done();
     }
 
     /**
@@ -306,5 +325,31 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
 
         await visit(document);
         return visited;
+    }
+
+    // --- PRS-017 R7: Progress reporting ---
+
+    /**
+     * Creates an LSP work-done progress reporter.
+     * Returns undefined in non-LSP contexts (no connection).
+     */
+    private async createProgress(title: string): Promise<{ report(message: string): void; done(): void } | undefined> {
+        if (!this.connection) return undefined;
+
+        try {
+            const reporter = await this.connection.window.createWorkDoneProgress();
+            reporter.begin(title);
+            return {
+                report: (message: string) => {
+                    reporter.report(message);
+                },
+                done: () => {
+                    reporter.done();
+                }
+            };
+        } catch {
+            // Client may not support progress — degrade gracefully
+            return undefined;
+        }
     }
 }

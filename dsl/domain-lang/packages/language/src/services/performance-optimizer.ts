@@ -5,7 +5,7 @@
  * - In-memory caching of frequently accessed lock files
  * - Parallel dependency downloads
  * - Cache warming strategies
- * - Stale cache detection
+ * - Event-based invalidation (PRS-017 R15)
  */
 
 import type { LockFile } from './types.js';
@@ -13,25 +13,18 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 
 /**
- * Cache entry with timestamp for TTL management.
- */
-interface CacheEntry<T> {
-    value: T;
-    timestamp: number;
-}
-
-/**
  * Performance optimizer with in-memory caching.
+ *
+ * PRS-017 R15: Cache entries are valid until explicitly invalidated
+ * by `invalidateCache()` or `clearAllCaches()`. The previous TTL-based
+ * approach could serve stale data (within window) or unnecessarily
+ * re-read unchanged files (after expiry). Event-based invalidation
+ * via `processManifestChanges()` and `processLockFileChanges()` is
+ * always correct and immediate.
  */
 export class PerformanceOptimizer {
-    private lockFileCache = new Map<string, CacheEntry<LockFile>>();
-    private manifestCache = new Map<string, CacheEntry<unknown>>();
-    private readonly cacheTTL: number;
-
-    constructor(options: { cacheTTL?: number } = {}) {
-        // Default TTL: 5 minutes
-        this.cacheTTL = options.cacheTTL ?? 5 * 60 * 1000;
-    }
+    private lockFileCache = new Map<string, LockFile>();
+    private manifestCache = new Map<string, unknown>();
 
     /**
      * Gets a lock file from cache or loads it from disk.
@@ -40,9 +33,8 @@ export class PerformanceOptimizer {
         const cacheKey = this.normalizePath(workspaceRoot);
         const cached = this.lockFileCache.get(cacheKey);
 
-        // Check if cache is still valid
-        if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
-            return cached.value;
+        if (cached) {
+            return cached;
         }
 
         // Load from disk
@@ -52,10 +44,7 @@ export class PerformanceOptimizer {
             const lockFile = JSON.parse(content) as LockFile;
 
             // Cache it
-            this.lockFileCache.set(cacheKey, {
-                value: lockFile,
-                timestamp: Date.now(),
-            });
+            this.lockFileCache.set(cacheKey, lockFile);
 
             return lockFile;
         } catch {
@@ -70,8 +59,8 @@ export class PerformanceOptimizer {
         const cacheKey = this.normalizePath(manifestPath);
         const cached = this.manifestCache.get(cacheKey);
 
-        if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
-            return cached.value;
+        if (cached) {
+            return cached;
         }
 
         try {
@@ -79,10 +68,7 @@ export class PerformanceOptimizer {
             const { parse } = await import('yaml');
             const manifest: unknown = parse(content);
 
-            this.manifestCache.set(cacheKey, {
-                value: manifest,
-                timestamp: Date.now(),
-            });
+            this.manifestCache.set(cacheKey, manifest);
 
             return manifest;
         } catch {
@@ -92,10 +78,12 @@ export class PerformanceOptimizer {
 
     /**
      * Invalidates cache for a specific workspace.
+     * Called when model.lock or model.yaml changes (event-based, PRS-017 R15).
      */
     invalidateCache(workspaceRoot: string): void {
         const cacheKey = this.normalizePath(workspaceRoot);
         this.lockFileCache.delete(cacheKey);
+        this.manifestCache.delete(cacheKey);
     }
 
     /**
@@ -114,33 +102,6 @@ export class PerformanceOptimizer {
             lockFiles: this.lockFileCache.size,
             manifests: this.manifestCache.size,
         };
-    }
-
-    /**
-     * Detects if cached files are stale compared to disk.
-     */
-    async detectStaleCaches(): Promise<string[]> {
-        const stale: string[] = [];
-
-        for (const [workspaceRoot] of this.lockFileCache) {
-            const lockPath = path.join(workspaceRoot, 'model.lock');
-            try {
-                const stat = await fs.stat(lockPath);
-                const cached = this.lockFileCache.get(workspaceRoot);
-                
-                // Floor mtimeMs to integer precision to match Date.now() —
-                // some filesystems (e.g. APFS) report sub-millisecond mtime,
-                // which can exceed the integer timestamp from Date.now().
-                if (cached && Math.floor(stat.mtimeMs) > cached.timestamp) {
-                    stale.push(workspaceRoot);
-                }
-            } catch {
-                // File doesn't exist anymore
-                stale.push(workspaceRoot);
-            }
-        }
-
-        return stale;
     }
 
     /**

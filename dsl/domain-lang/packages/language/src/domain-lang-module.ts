@@ -19,7 +19,7 @@ import { DomainLangCodeActionProvider } from './lsp/domain-lang-code-actions.js'
 import { DomainLangNodeKindProvider } from './lsp/domain-lang-node-kind-provider.js';
 import { DomainLangDocumentSymbolProvider } from './lsp/domain-lang-document-symbol-provider.js';
 import { ImportResolver } from './services/import-resolver.js';
-import { WorkspaceManager } from './services/workspace-manager.js';
+import { ManifestManager } from './services/workspace-manager.js';
 import { PackageBoundaryDetector } from './services/package-boundary-detector.js';
 import { DomainLangWorkspaceManager } from './lsp/domain-lang-workspace-manager.js';
 import { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
@@ -30,7 +30,7 @@ import { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
 export type DomainLangAddedServices = {
     imports: {
         ImportResolver: ImportResolver,
-        WorkspaceManager: WorkspaceManager,
+        ManifestManager: ManifestManager,
         PackageBoundaryDetector: PackageBoundaryDetector
     },
     references: {
@@ -68,7 +68,7 @@ const DomainLangSharedModule: Module<LangiumSharedServices, PartialLangiumShared
 export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices & DomainLangAddedServices> = {
     imports: {
         ImportResolver: (services) => new ImportResolver(services),
-        WorkspaceManager: () => new WorkspaceManager({ autoResolve: false, allowNetwork: false }),
+        ManifestManager: () => new ManifestManager({ autoResolve: false, allowNetwork: false }),
         PackageBoundaryDetector: () => new PackageBoundaryDetector()
     },
     references: {

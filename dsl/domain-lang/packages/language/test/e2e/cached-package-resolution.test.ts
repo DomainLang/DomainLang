@@ -16,7 +16,7 @@
  */
 import { beforeAll, afterAll, describe, expect, test } from 'vitest';
 import { ImportResolver } from '../../src/services/import-resolver.js';
-import { WorkspaceManager } from '../../src/services/workspace-manager.js';
+import { ManifestManager } from '../../src/services/workspace-manager.js';
 import type { DomainLangServices } from '../../src/domain-lang-module.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -40,11 +40,11 @@ describe('Cached Package Resolution E2E', () => {
         await fs.rm(tempDir, { recursive: true, force: true });
     });
 
-    function createResolver(): { resolver: ImportResolver; workspaceManager: WorkspaceManager } {
-        const workspaceManager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
-        const services = { imports: { WorkspaceManager: workspaceManager } } as DomainLangServices;
+    function createResolver(): { resolver: ImportResolver; manifestManager: ManifestManager } {
+        const manifestManager = new ManifestManager({ autoResolve: false, allowNetwork: false });
+        const services = { imports: { ManifestManager: manifestManager } } as DomainLangServices;
         const resolver = new ImportResolver(services);
-        return { resolver, workspaceManager };
+        return { resolver, manifestManager };
     }
 
     // ==========================================
@@ -195,13 +195,13 @@ model:
 `);
 
             // Act
-            const { workspaceManager } = createResolver();
+            const { manifestManager } = createResolver();
             
             // Initialize from inside cached package
-            await workspaceManager.initialize(pkgDir);
+            await manifestManager.initialize(pkgDir);
             
             // getCacheDir() should return top-level project cache
-            const cacheDir = workspaceManager.getCacheDir();
+            const cacheDir = manifestManager.getCacheDir();
             
             // Assert
             expect(cacheDir).toBe(cacheRoot);
@@ -221,13 +221,13 @@ model:
 `);
 
             // Act
-            const { workspaceManager } = createResolver();
+            const { manifestManager } = createResolver();
             
             // Initialize from deeply nested directory
-            await workspaceManager.initialize(subDir);
+            await manifestManager.initialize(subDir);
             
             // Should still return top-level project cache
-            const cacheDir = workspaceManager.getCacheDir();
+            const cacheDir = manifestManager.getCacheDir();
 
             // Assert
             expect(cacheDir).toBe(cacheRoot);
@@ -250,9 +250,9 @@ model:
 `);
 
             // Act
-            const { workspaceManager } = createResolver();
-            await workspaceManager.initialize(regularProject);
-            const cacheDir = workspaceManager.getCacheDir();
+            const { manifestManager } = createResolver();
+            await manifestManager.initialize(regularProject);
+            const cacheDir = manifestManager.getCacheDir();
 
             // Assert
             expect(cacheDir).toBe(path.join(regularProject, '.dlang', 'packages'));

@@ -77,7 +77,7 @@ export async function loadModel(
     
     // Initialize workspace if directory provided
     if (options?.workspaceDir) {
-        const workspaceManager = services.imports.WorkspaceManager;
+        const workspaceManager = services.imports.ManifestManager;
         await workspaceManager.initialize(options.workspaceDir);
     }
     

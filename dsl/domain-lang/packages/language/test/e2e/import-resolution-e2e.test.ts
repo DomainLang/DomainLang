@@ -16,7 +16,7 @@
  */
 import { beforeAll, describe, expect, test } from 'vitest';
 import { ImportResolver } from '../../src/services/import-resolver.js';
-import { WorkspaceManager } from '../../src/services/workspace-manager.js';
+import { ManifestManager } from '../../src/services/workspace-manager.js';
 import type { DomainLangServices } from '../../src/domain-lang-module.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -29,11 +29,11 @@ describe('Import Resolution E2E', () => {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-e2e-'));
     });
 
-    function createResolver(): { resolver: ImportResolver; workspaceManager: WorkspaceManager } {
-        const workspaceManager = new WorkspaceManager({ autoResolve: false, allowNetwork: false });
-        const services = { imports: { WorkspaceManager: workspaceManager } } as DomainLangServices;
+    function createResolver(): { resolver: ImportResolver; manifestManager: ManifestManager } {
+        const manifestManager = new ManifestManager({ autoResolve: false, allowNetwork: false });
+        const services = { imports: { ManifestManager: manifestManager } } as DomainLangServices;
         const resolver = new ImportResolver(services);
-        return { resolver, workspaceManager };
+        return { resolver, manifestManager };
     }
 
     // ==========================================

@@ -110,7 +110,7 @@ Domain Sales {
 }
         `);
 
-        await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
+        await services.DomainLang.imports.ManifestManager.initialize(projectDir);
 
         const contextsPath = path.join(projectDir, 'contexts.dlang');
         const doc = await createAndLoadDocument(contextsPath, `
@@ -182,7 +182,7 @@ paths:
   "@shared": "./shared"
         `);
 
-        await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
+        await services.DomainLang.imports.ManifestManager.initialize(projectDir);
 
         const indexPath = path.join(projectDir, 'index.dlang');
         const doc = await createAndLoadDocument(indexPath, `
@@ -231,7 +231,7 @@ Domain Sales {
 }
             `);
 
-            await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
+            await services.DomainLang.imports.ManifestManager.initialize(projectDir);
 
             const contextsPath = path.join(projectDir, 'contexts.dlang');
             await createAndLoadDocument(contextsPath, `

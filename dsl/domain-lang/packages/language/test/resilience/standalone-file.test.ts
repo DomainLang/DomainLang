@@ -120,15 +120,15 @@ describe('Workspace initialization resilience', () => {
             `);
 
             // Act
-            const workspaceManager = testServices.services.DomainLang.imports.WorkspaceManager;
-            await expect(workspaceManager.initialize(tmpDir)).resolves.not.toThrow();
+            const manifestManager = testServices.services.DomainLang.imports.ManifestManager;
+            await expect(manifestManager.initialize(tmpDir)).resolves.not.toThrow();
 
             // Assert
             // Should have workspace root even without model.yaml (falls back to tmpDir)
-            expect(() => workspaceManager.getWorkspaceRoot()).not.toThrow();
+            expect(() => manifestManager.getWorkspaceRoot()).not.toThrow();
 
             // Manifest should be undefined when no model.yaml exists
-            const manifest = await workspaceManager.getManifest();
+            const manifest = await manifestManager.getManifest();
             expect(manifest).toBeUndefined();
 
         } finally {
@@ -173,11 +173,11 @@ describe('Error recovery', () => {
             await fs.writeFile(path.join(tmpDir, 'model.yaml'), 'invalid: yaml: content: [[[');
 
             // Act & Assert
-            const workspaceManager = testServices.services.DomainLang.imports.WorkspaceManager;
-            await expect(workspaceManager.initialize(tmpDir)).resolves.not.toThrow();
+            const manifestManager = testServices.services.DomainLang.imports.ManifestManager;
+            await expect(manifestManager.initialize(tmpDir)).resolves.not.toThrow();
 
             // getManifest should not crash — either returns a result or throws
-            await expect(workspaceManager.getManifest()).resolves.not.toThrow();
+            await expect(manifestManager.getManifest()).resolves.not.toThrow();
 
         } finally {
             await fs.rm(tmpDir, { recursive: true, force: true });

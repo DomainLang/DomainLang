@@ -16,7 +16,7 @@ import { CompletionItemKind, CompletionList, InsertTextFormat, TextEdit } from '
 import type { CancellationToken, CompletionItem, CompletionParams } from 'vscode-languageserver-protocol';
 import * as ast from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
-import type { WorkspaceManager } from '../services/workspace-manager.js';
+import type { ManifestManager } from '../services/workspace-manager.js';
 import type { ModelManifest, DependencySpec } from '../services/types.js';
 
 /**
@@ -124,7 +124,7 @@ const TOP_LEVEL_SNIPPETS = [
 ] as const;
 
 export class DomainLangCompletionProvider extends DefaultCompletionProvider {
-    private readonly workspaceManager: WorkspaceManager;
+    private readonly workspaceManager: ManifestManager;
 
     override readonly completionOptions = {
         triggerCharacters: ['.']
@@ -132,7 +132,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
 
     constructor(services: DomainLangServices) {
         super(services);
-        this.workspaceManager = services.imports.WorkspaceManager;
+        this.workspaceManager = services.imports.ManifestManager;
     }
 
     /**

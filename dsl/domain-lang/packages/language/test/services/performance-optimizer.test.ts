@@ -1,8 +1,8 @@
 /**
  * PerformanceOptimizer Tests
  *
- * Tests caching, TTL expiration, global singleton, invalidation, and stats.
- * ~20% smoke (basic load & cache), ~80% edge (corrupt JSON, zero TTL,
+ * Tests caching, event-based invalidation, global singleton, and stats.
+ * ~20% smoke (basic load & cache), ~80% edge (corrupt JSON,
  * file-deleted-while-cached, multi-workspace, getCachedManifest).
  */
 
@@ -18,7 +18,7 @@ describe('PerformanceOptimizer', () => {
     let tempDir: string;
 
     beforeEach(async () => {
-        optimizer = new PerformanceOptimizer({ cacheTTL: 1000 }); // 1 second TTL
+        optimizer = new PerformanceOptimizer();
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-perf-test-'));
     });
 
@@ -75,37 +75,36 @@ describe('PerformanceOptimizer', () => {
             expect(result).toBeUndefined();
         });
 
-        test('serves from cache on second call within TTL', async () => {
+        test('serves from cache on second call until invalidated', async () => {
             // Arrange
             const lockFile: LockFile = { version: '1', dependencies: {} };
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, JSON.stringify(lockFile), 'utf-8');
 
             const result1 = await optimizer.getCachedLockFile(tempDir);
-            // Modify file on disk
+            // Modify file on disk — cache should NOT notice
             await fs.writeFile(lockPath, JSON.stringify({ version: '2', dependencies: {} }), 'utf-8');
 
             // Act
             const result2 = await optimizer.getCachedLockFile(tempDir);
 
-            // Assert — Both should be version 1 (cached)
+            // Assert — Both should be version 1 (cached until invalidated)
             expect(result1?.version).toBe('1');
             expect(result2?.version).toBe('1');
         });
 
-        test('refreshes cache after TTL expires', async () => {
+        test('serves fresh data after invalidation', async () => {
             // Arrange
-            const shortTTL = new PerformanceOptimizer({ cacheTTL: 10 }); // 10ms
             const lockPath = path.join(tempDir, 'model.lock');
             await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
-            await shortTTL.getCachedLockFile(tempDir);
+            await optimizer.getCachedLockFile(tempDir);
 
-            // Wait for TTL to expire
-            await new Promise(resolve => setTimeout(resolve, 20));
+            // Update file and invalidate cache
             await fs.writeFile(lockPath, JSON.stringify({ version: '2', dependencies: {} }), 'utf-8');
+            optimizer.invalidateCache(tempDir);
 
             // Act
-            const result = await shortTTL.getCachedLockFile(tempDir);
+            const result = await optimizer.getCachedLockFile(tempDir);
 
             // Assert
             expect(result?.version).toBe('2');
@@ -273,65 +272,7 @@ describe('PerformanceOptimizer', () => {
         });
     });
 
-    // ========================================================================
-    // Edge: detectStaleCaches
-    // ========================================================================
 
-    describe('Edge: detectStaleCaches', () => {
-
-        test('detects when cached file is modified on disk', async () => {
-            // Arrange
-            const lockPath = path.join(tempDir, 'model.lock');
-            await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
-            await optimizer.getCachedLockFile(tempDir);
-
-            await new Promise(resolve => setTimeout(resolve, 10));
-            await fs.writeFile(lockPath, JSON.stringify({ version: '2', dependencies: {} }), 'utf-8');
-
-            // Act
-            const stale = await optimizer.detectStaleCaches();
-
-            // Assert
-            expect(stale).toContain(path.resolve(tempDir));
-        });
-
-        test('cache is fresh immediately after loading', async () => {
-            // Arrange
-            const lockPath = path.join(tempDir, 'model.lock');
-            await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
-            await optimizer.getCachedLockFile(tempDir);
-
-            // Act
-            const stale = await optimizer.detectStaleCaches();
-
-            // Assert
-            expect(stale).toHaveLength(0);
-        });
-
-        test('returns empty array when no caches exist', async () => {
-            // Act
-            const stale = await optimizer.detectStaleCaches();
-
-            // Assert
-            expect(stale).toEqual([]);
-        });
-
-        test('handles deleted lock file after caching', async () => {
-            // Arrange
-            const lockPath = path.join(tempDir, 'model.lock');
-            await fs.writeFile(lockPath, JSON.stringify({ version: '1', dependencies: {} }), 'utf-8');
-            await optimizer.getCachedLockFile(tempDir);
-
-            // Delete the file
-            await fs.unlink(lockPath);
-
-            // Act
-            const stale = await optimizer.detectStaleCaches();
-
-            // Assert
-            expect(stale).toContain(path.resolve(tempDir));
-        });
-    });
 });
 
 describe('Global Optimizer', () => {

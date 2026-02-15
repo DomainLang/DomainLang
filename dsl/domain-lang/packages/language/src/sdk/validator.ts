@@ -130,8 +130,8 @@ export async function validateFile(
 
     // Initialize workspace with the specified directory or file's directory
     const workspaceDir = options.workspaceDir ?? dirname(absolutePath);
-    const workspaceManager = services.imports.WorkspaceManager;
-    await workspaceManager.initialize(workspaceDir);
+    const manifestManager = services.imports.ManifestManager;
+    await manifestManager.initialize(workspaceDir);
 
     // Load and parse the document
     const uri = URI.file(absolutePath);
@@ -266,18 +266,18 @@ export async function validateWorkspace(
     const servicesObj = createDomainLangServices(NodeFileSystem);
     const shared = servicesObj.shared;
     const services = servicesObj.DomainLang;
-    const workspaceManager = services.imports.WorkspaceManager;
+    const manifestManager = services.imports.ManifestManager;
 
     try {
         // Initialize workspace - this will find and load model.yaml
-        await workspaceManager.initialize(absolutePath);
+        await manifestManager.initialize(absolutePath);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(`Failed to initialize workspace at ${workspaceDir}: ${message}`);
     }
 
     // Get the manifest to find the entry file
-    const manifest = await workspaceManager.getManifest();
+    const manifest = await manifestManager.getManifest();
     let entryFile = 'index.dlang';
     
     if (manifest?.model?.entry) {

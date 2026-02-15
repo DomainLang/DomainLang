@@ -35,6 +35,7 @@ export const IssueCodes = {
     ImportAbsolutePath: 'import-absolute-path',
     ImportEscapesWorkspace: 'import-escapes-workspace',
     ImportUnresolved: 'import-unresolved',
+    ImportCycleDetected: 'import-cycle-detected',
     
     // Domain Issues
     DomainNoVision: 'domain-no-vision',
@@ -282,6 +283,14 @@ export const ValidationMessages = {
     IMPORT_UNRESOLVED: (uri: string) =>
         `Cannot resolve import '${uri}'.\n` +
         `Hint: Check that the file exists and the path is correct.`,
+
+    /**
+     * Error when an import creates a cycle in the dependency graph.
+     * @param cycleDisplay - Human-readable cycle path (e.g., "a.dlang → b.dlang → a.dlang")
+     */
+    IMPORT_CYCLE_DETECTED: (cycleDisplay: string) =>
+        `Import cycle detected: ${cycleDisplay}.\n` +
+        `Hint: Break the cycle by extracting shared definitions into a separate file.`,
 
     // ========================================================================
     // Context Map & Domain Map Validation

@@ -498,7 +498,7 @@ paths:
             `);
 
             // Initialize workspace manager
-            await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
+            await services.DomainLang.imports.ManifestManager.initialize(projectDir);
 
             // Act
             // Create index.dlang using path alias
@@ -544,7 +544,7 @@ paths:
             `);
 
             // Initialize workspace manager
-            await services.DomainLang.imports.WorkspaceManager.initialize(projectDir);
+            await services.DomainLang.imports.ManifestManager.initialize(projectDir);
 
             // Act
             // Create index.dlang with TYPO in path alias (@shareds instead of @shared)

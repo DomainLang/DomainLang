@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { URI, type LangiumDocument, type LangiumDocuments } from 'langium';
 import type { Model } from '../generated/ast.js';
-import { WorkspaceManager } from '../services/workspace-manager.js';
+import { ManifestManager } from '../services/workspace-manager.js';
 import { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 
@@ -13,13 +13,13 @@ import type { DomainLangServices } from '../domain-lang-module.js';
  * These singletons exist only for backwards compatibility with callers
  * that haven't been updated to pass through DI services.
  */
-let standaloneWorkspaceManager: WorkspaceManager | undefined;
+let standaloneManifestManager: ManifestManager | undefined;
 let standaloneImportResolver: ImportResolver | undefined;
 let lastInitializedDir: string | undefined;
 
 /**
  * Gets or creates a standalone import resolver for non-LSP contexts.
- * Creates its own WorkspaceManager if not previously initialized for this directory.
+ * Creates its own ManifestManager if not previously initialized for this directory.
  *
  * @deprecated Prefer using services.imports.ImportResolver directly.
  * @param startDir - Directory to start workspace search from
@@ -28,14 +28,14 @@ let lastInitializedDir: string | undefined;
 async function getStandaloneImportResolver(startDir: string): Promise<ImportResolver> {
   // Re-initialize if directory changed (workspace boundary)
   if (lastInitializedDir !== startDir || !standaloneImportResolver) {
-    standaloneWorkspaceManager = new WorkspaceManager();
+    standaloneManifestManager = new ManifestManager();
     try {
-      await standaloneWorkspaceManager.initialize(startDir);
+      await standaloneManifestManager.initialize(startDir);
     } catch (error) {
       console.warn(`Failed to initialize workspace: ${error instanceof Error ? error.message : String(error)}`);
     }
     const services = {
-      imports: { WorkspaceManager: standaloneWorkspaceManager }
+      imports: { ManifestManager: standaloneManifestManager }
     } as DomainLangServices;
     standaloneImportResolver = new ImportResolver(services);
     lastInitializedDir = startDir;

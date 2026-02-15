@@ -4,8 +4,10 @@ import type { ValidationAcceptor, ValidationChecks, LangiumDocument } from 'lang
 import { Cancellation } from 'langium';
 import type { DomainLangAstType, ImportStatement } from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
-import type { WorkspaceManager } from '../services/workspace-manager.js';
+import type { ManifestManager } from '../services/workspace-manager.js';
 import type { ImportResolver } from '../services/import-resolver.js';
+import { ImportResolutionError } from '../services/import-resolver.js';
+import type { DomainLangIndexManager } from '../lsp/domain-lang-index-manager.js';
 import type { ExtendedDependencySpec, ModelManifest, LockFile } from '../services/types.js';
 import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
 
@@ -13,28 +15,35 @@ import { ValidationMessages, buildCodeDescription, IssueCodes } from './constant
  * Validates import statements in DomainLang.
  *
  * Uses async validators (Langium 4.x supports MaybePromise<void>) to leverage
- * the shared WorkspaceManager service with its cached manifest/lock file reading.
+ * the shared ManifestManager service with its cached manifest/lock file reading.
  *
  * Checks:
  * - All import URIs resolve to existing files
  * - External imports require manifest + alias
  * - Local path dependencies stay inside workspace  
  * - Lock file exists for external dependencies
+ * - Import cycles are detected and reported (PRS-017 R3)
  */
 export class ImportValidator {
-    private readonly workspaceManager: WorkspaceManager;
+    private readonly workspaceManager: ManifestManager;
     private readonly importResolver: ImportResolver;
+    private readonly indexManager: DomainLangIndexManager | undefined;
 
     constructor(services: DomainLangServices) {
-        this.workspaceManager = services.imports.WorkspaceManager;
+        this.workspaceManager = services.imports.ManifestManager;
         this.importResolver = services.imports.ImportResolver;
+        // IndexManager is in shared services — cast to DomainLangIndexManager for cycle detection
+        const indexMgr = services.shared.workspace.IndexManager;
+        this.indexManager = 'getCycleForDocument' in indexMgr
+            ? indexMgr as DomainLangIndexManager
+            : undefined;
     }
 
     /**
      * Validates an import statement asynchronously.
      *
      * Langium validators can return MaybePromise<void>, enabling async operations
-     * like reading manifests via the shared, cached WorkspaceManager.
+     * like reading manifests via the shared, cached ManifestManager.
      */
     async checkImportPath(
         imp: ImportStatement,
@@ -51,6 +60,9 @@ export class ImportValidator {
             });
             return;
         }
+
+        // PRS-017 R3: Check for import cycles detected during indexing
+        this.checkImportCycle(document, imp, accept);
 
         // First, verify the import resolves to a valid file
         // This catches renamed/moved/deleted files immediately
@@ -162,13 +174,21 @@ export class ImportValidator {
             }
             
             return false;
-        } catch {
-            // Resolution failed - report as unresolved import
-            accept('error', ValidationMessages.IMPORT_UNRESOLVED(imp.uri), {
+        } catch (error: unknown) {
+            // R8: Use structured error properties for precise diagnostics
+            const message = error instanceof ImportResolutionError && error.hint
+                ? `${ValidationMessages.IMPORT_UNRESOLVED(imp.uri)}: ${error.hint}`
+                : ValidationMessages.IMPORT_UNRESOLVED(imp.uri);
+
+            accept('error', message, {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportUnresolved, uri: imp.uri }
+                data: {
+                    code: IssueCodes.ImportUnresolved,
+                    uri: imp.uri,
+                    ...(error instanceof ImportResolutionError && { reason: error.reason }),
+                }
             });
             return true;
         }
@@ -316,7 +336,7 @@ export class ImportValidator {
                 });
             }
         } catch (error) {
-            // WorkspaceManager not initialized - skip workspace boundary check
+            // ManifestManager not initialized - skip workspace boundary check
             // This can happen for standalone files without model.yaml
             console.warn(`Could not validate workspace boundary for path dependency: ${error}`);
         }
@@ -360,7 +380,7 @@ export class ImportValidator {
                 });
             }
         } catch (error) {
-            // WorkspaceManager not initialized - log warning but continue
+            // ManifestManager not initialized - log warning but continue
             console.warn(`Could not validate cached package for ${alias}: ${error}`);
         }
     }
@@ -385,12 +405,47 @@ export class ImportValidator {
             return false;
         }
     }
+
+    // --- PRS-017 R3: Import cycle detection ---
+
+    /**
+     * Reports a warning if the current document is part of an import cycle.
+     *
+     * Cycle data is populated during indexing by DomainLangIndexManager.
+     * This method reads the pre-computed cycles and emits a diagnostic
+     * on the import statement contributing to the cycle.
+     */
+    private checkImportCycle(
+        document: LangiumDocument,
+        imp: ImportStatement,
+        accept: ValidationAcceptor
+    ): void {
+        if (!this.indexManager) return;
+
+        const cycle = this.indexManager.getCycleForDocument(document.uri.toString());
+        if (!cycle || cycle.length === 0) return;
+
+        // Build human-readable cycle display using basenames
+        const cycleDisplay = cycle
+            .map(uri => {
+                const parts = uri.split('/');
+                return parts.at(-1) ?? uri;
+            })
+            .join(' → ');
+
+        accept('warning', ValidationMessages.IMPORT_CYCLE_DETECTED(cycleDisplay), {
+            node: imp,
+            property: 'uri',
+            codeDescription: buildCodeDescription('language.md', 'imports'),
+            data: { code: IssueCodes.ImportCycleDetected }
+        });
+    }
 }
 
 /**
  * Creates validation checks for import statements.
  *
- * Returns async validators that leverage the shared WorkspaceManager
+ * Returns async validators that leverage the shared ManifestManager
  * for cached manifest/lock file reading.
  */
 export function createImportChecks(services: DomainLangServices): ValidationChecks<DomainLangAstType> {

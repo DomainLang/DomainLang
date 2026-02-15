@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import YAML from 'yaml';
 import { getGlobalOptimizer } from './performance-optimizer.js';
 import { fileExists as checkFileExists, findWorkspaceRoot as findWorkspaceRootUtil } from '../utils/manifest-utils.js';
@@ -24,7 +25,8 @@ const DEFAULT_LOCK_FILES = [
 interface ManifestCache {
     readonly manifest: ModelManifest;
     readonly path: string;
-    readonly mtimeMs: number;
+    /** SHA-256 content hash for reliable change detection (PRS-017 R5) */
+    readonly contentHash: string;
 }
 
 interface LoadedLockFile {
@@ -65,7 +67,7 @@ interface WorkspaceContext {
  * - Read manifest configuration (path aliases, dependencies)
  * - Read lock file (to resolve cached package locations)
  */
-export class WorkspaceManager {
+export class ManifestManager {
     private readonly manifestFiles: readonly string[];
     private readonly lockFiles: readonly string[];
     
@@ -80,6 +82,14 @@ export class WorkspaceManager {
      * Avoids repeated directory tree walking for the same paths.
      */
     private readonly pathToRootCache = new Map<string, string>();
+
+    /**
+     * PRS-017 R11: Cached set of directories known to contain a manifest file.
+     * Populated during `findWorkspaceRoot()` walks and updated incrementally
+     * when manifest creation/deletion events arrive via `onManifestEvent()`.
+     * Prevents redundant filesystem walks for paths already explored.
+     */
+    private readonly knownManifestDirs = new Set<string>();
     
     /**
      * The currently active workspace root (set by last initialize() call).
@@ -158,7 +168,7 @@ export class WorkspaceManager {
      */
     getWorkspaceRoot(): string {
         if (!this.activeRoot) {
-            throw new Error('WorkspaceManager not initialized. Call initialize() first.');
+            throw new Error('ManifestManager not initialized. Call initialize() first.');
         }
         return this.activeRoot;
     }
@@ -172,7 +182,7 @@ export class WorkspaceManager {
      */
     getCacheDir(): string {
         if (!this.activeRoot) {
-            throw new Error('WorkspaceManager not initialized. Call initialize() first.');
+            throw new Error('ManifestManager not initialized. Call initialize() first.');
         }
         
         // If workspace root is inside .dlang/packages, find the project root
@@ -321,6 +331,28 @@ export class WorkspaceManager {
     }
 
     /**
+     * PRS-017 R11: Incrementally updates the workspace layout cache
+     * when a manifest file is created or deleted.
+     *
+     * @param manifestDir - Directory where the manifest was created/deleted
+     * @param created - true if manifest was created, false if deleted
+     */
+    onManifestEvent(manifestDir: string, created: boolean): void {
+        const normalized = path.resolve(manifestDir);
+        if (created) {
+            this.knownManifestDirs.add(normalized);
+        } else {
+            this.knownManifestDirs.delete(normalized);
+            // Invalidate path-to-root cache entries that pointed to this dir
+            for (const [startPath, root] of this.pathToRootCache) {
+                if (root === normalized) {
+                    this.pathToRootCache.delete(startPath);
+                }
+            }
+        }
+    }
+
+    /**
      * Returns the path aliases from the manifest, if present.
      */
     async getPathAliases(): Promise<PathAliases | undefined> {
@@ -437,7 +469,7 @@ export class WorkspaceManager {
             }
         }
         
-        throw new Error('WorkspaceManager not initialized. Call initialize() first.');
+        throw new Error('ManifestManager not initialized. Call initialize() first.');
     }
 
     private async loadLockFileFromDisk(root?: string): Promise<LoadedLockFile | undefined> {
@@ -498,13 +530,16 @@ export class WorkspaceManager {
         manifestPath: string, 
         context: WorkspaceContext | undefined
     ): Promise<ModelManifest> {
-        const stat = await fs.stat(manifestPath);
+        // PRS-017 R5: Use content hash instead of mtime for reliable change detection.
+        // Content hashing is immune to mtime skew after git operations or on NFS.
+        const content = await fs.readFile(manifestPath, 'utf-8');
+        const contentHash = this.computeHash(content);
+
         if (context?.manifestCache?.path === manifestPath &&
-            context.manifestCache.mtimeMs === stat.mtimeMs) {
+            context.manifestCache.contentHash === contentHash) {
             return context.manifestCache.manifest;
         }
 
-        const content = await fs.readFile(manifestPath, 'utf-8');
         const manifest = (YAML.parse(content) ?? {}) as ModelManifest;
         
         // Validate manifest structure
@@ -514,7 +549,7 @@ export class WorkspaceManager {
             context.manifestCache = {
                 manifest,
                 path: manifestPath,
-                mtimeMs: stat.mtimeMs,
+                contentHash,
             };
         }
         return manifest;
@@ -690,11 +725,14 @@ export class WorkspaceManager {
     /**
      * Finds workspace root by walking up from startPath looking for model.yaml.
      * Uses configurable manifest files if specified in constructor options.
+     * PRS-017 R11: Consults `knownManifestDirs` before hitting the filesystem.
      */
     private async findWorkspaceRoot(startPath: string): Promise<string | undefined> {
         // Use shared utility for default case (single manifest file)
         if (this.manifestFiles.length === 1 && this.manifestFiles[0] === 'model.yaml') {
-            return findWorkspaceRootUtil(startPath);
+            const result = await findWorkspaceRootUtil(startPath);
+            if (result) this.knownManifestDirs.add(result);
+            return result;
         }
 
         // Custom logic for multiple or non-default manifest files
@@ -702,7 +740,13 @@ export class WorkspaceManager {
         const { root } = path.parse(current);
 
         while (true) {
+            // R11: Check cached knowledge first
+            if (this.knownManifestDirs.has(current)) {
+                return current;
+            }
+
             if (await this.containsManifest(current)) {
+                this.knownManifestDirs.add(current);
                 return current;
             }
 
@@ -726,5 +770,13 @@ export class WorkspaceManager {
             }
         }
         return false;
+    }
+
+    /**
+     * Computes a SHA-256 hex digest of the given content.
+     * Used for content-hash based cache validation (PRS-017 R5).
+     */
+    private computeHash(content: string): string {
+        return createHash('sha256').update(content).digest('hex');
     }
 }

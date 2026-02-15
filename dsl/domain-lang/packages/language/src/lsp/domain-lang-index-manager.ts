@@ -6,11 +6,17 @@ import type { Model } from '../generated/ast.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { ImportInfo } from '../services/types.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('IndexManager');
 
 /**
  * Custom IndexManager that extends Langium's default to:
  * 1. Automatically load imported documents during indexing
  * 2. Track import dependencies for cross-file revalidation
+ * 3. Export-signature diffing to prevent unnecessary cascading (PRS-017 R2)
+ * 4. Import cycle detection with diagnostics (PRS-017 R3)
+ * 5. Targeted ImportResolver cache invalidation (PRS-017 R1)
  * 
  * **Why this exists:**
  * Langium's `DefaultIndexManager.isAffected()` only checks cross-references
@@ -52,6 +58,35 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      * Cleared on workspace config changes.
      */
     private readonly importsLoaded = new Set<string>();
+
+    /**
+     * Per-cycle cache for the transitive affected set computation.
+     * Uses `changedUris` Set identity as cache key — Langium creates a fresh Set
+     * for each `DocumentBuilder.update()` cycle, so reference equality naturally
+     * invalidates the cache between cycles.
+     */
+    private transitiveAffectedCache: { key: Set<string>; result: Set<string> } | undefined;
+
+    /**
+     * Export snapshot cache (PRS-017 R2): maps document URI to its exported symbol
+     * signatures. Used to detect whether a document's public interface actually
+     * changed, preventing cascading revalidation for implementation-only changes.
+     * Signature = "nodeType:qualifiedName" for each exported symbol.
+     */
+    private readonly exportSnapshots = new Map<string, Set<string>>();
+
+    /**
+     * Tracks which URIs had their exports actually change during the current
+     * update cycle. Reset before each updateContent() call. Used by isAffected()
+     * to skip transitive invalidation when exports are unchanged.
+     */
+    private readonly changedExports = new Set<string>();
+
+    /**
+     * Detected import cycles (PRS-017 R3): maps document URI to the cycle path.
+     * Populated during trackImportDependencies(). Consumed by ImportValidator.
+     */
+    private readonly detectedCycles = new Map<string, string[]>();
     
     /**
      * Reference to shared services for accessing LangiumDocuments.
@@ -95,19 +130,48 @@ export class DomainLangIndexManager extends DefaultIndexManager {
 
     /**
      * Extends the default content update to:
-     * 1. Ensure all imported documents are loaded
-     * 2. Track import dependencies for change propagation
+     * 1. Capture export snapshot before update (PRS-017 R2)
+     * 2. Ensure all imported documents are loaded
+     * 3. Track import dependencies for change propagation
+     * 4. Compare export snapshot to detect interface changes (PRS-017 R2)
+     * 5. Detect import cycles (PRS-017 R3)
+     * 6. Trigger targeted ImportResolver cache invalidation (PRS-017 R1)
      * 
      * Called by Langium during the IndexedContent build phase.
      * This is BEFORE linking/validation, so imports are available for resolution.
      */
     override async updateContent(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
-        // First, do the standard content indexing
+        const uri = document.uri.toString();
+        
+        // R2: Capture export snapshot BEFORE re-indexing
+        const oldExports = this.exportSnapshots.get(uri);
+        
+        // Standard content indexing
         await super.updateContent(document, cancelToken);
 
-        // Then, ensure imports are loaded and track dependencies
+        // R2: Capture new export snapshot and compare
+        const newExports = this.captureExportSnapshot(uri);
+        this.exportSnapshots.set(uri, newExports);
+        const exportsChanged = !oldExports || !this.setsEqual(oldExports, newExports);
+        if (exportsChanged) {
+            this.changedExports.add(uri);
+            log.info('exports changed', { uri });
+        } else {
+            // R2: Remove from changedExports when exports stabilize.
+            // Without this, the set accumulates indefinitely and the
+            // anyExportsChanged() gate stays permanently open.
+            this.changedExports.delete(uri);
+        }
+
+        // Ensure imports are loaded and track dependencies
         await this.ensureImportsLoaded(document);
         await this.trackImportDependencies(document);
+
+        // R3: Detect import cycles after tracking dependencies
+        this.detectAndStoreCycles(uri);
+
+        // R1: Targeted ImportResolver cache invalidation
+        this.invalidateImportResolverCache(uri);
     }
 
     /**
@@ -131,11 +195,19 @@ export class DomainLangIndexManager extends DefaultIndexManager {
     }
 
     /**
-     * Extends `isAffected` to also check import dependencies.
+     * Extends `isAffected` to check import dependencies — direct, transitive,
+     * and specifier-sensitive.
      * 
      * A document is affected if:
      * 1. It has cross-references to any changed document (default Langium behavior)
-     * 2. It imports any of the changed documents (our extension)
+     * 2. It directly or transitively imports any changed document whose exports
+     *    actually changed (PRS-017 R2 — export-signature diffing)
+     * 3. Its import specifiers match changed file paths (handles renames/moves)
+     * 
+     * The transitive affected set is computed once per `update()` cycle and cached
+     * using `changedUris` Set identity (Langium creates a fresh Set per cycle).
+     * This avoids redundant BFS walks when `isAffected()` is called for every
+     * loaded document in the workspace.
      */
     override isAffected(document: LangiumDocument, changedUris: Set<string>): boolean {
         // First check Langium's default: cross-references
@@ -143,16 +215,84 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return true;
         }
 
-        // Then check our import dependencies
-        const docUri = document.uri.toString();
-        for (const changedUri of changedUris) {
-            const dependents = this.importDependencies.get(changedUri);
-            if (dependents?.has(docUri)) {
-                return true;
+        // R2: If no changed URIs had their exports change, skip transitive check.
+        // This prevents cascading revalidation for implementation-only changes
+        // (e.g., editing a domain's vision string).
+        const hasExportChanges = this.anyExportsChanged(changedUris);
+        if (!hasExportChanges) {
+            // Still check specifier matches for file renames/moves
+            const changedPaths = this.extractPathSegments(changedUris);
+            for (const changedPath of changedPaths) {
+                const infos = this.documentImportInfo.get(document.uri.toString());
+                if (infos && this.hasMatchingSpecifierOrResolvedUri(infos, new Set([changedPath]))) {
+                    return true;
+                }
             }
+            return false;
         }
 
-        return false;
+        // Then check our import dependency graph (direct + transitive + specifier)
+        const affectedSet = this.computeAffectedSet(changedUris);
+        return affectedSet.has(document.uri.toString());
+    }
+
+    /**
+     * Computes the full set of document URIs affected by changes.
+     * Cached per `changedUris` identity to avoid recomputation across multiple
+     * `isAffected()` calls within the same `DocumentBuilder.update()` cycle.
+     * 
+     * Combines two dependency strategies:
+     * 1. **Reverse graph walk** — direct and transitive importers via `importDependencies`
+     * 2. **Specifier matching** — documents whose import specifiers match changed file
+     *    paths (handles file renames/moves that change how imports resolve)
+     */
+    private computeAffectedSet(changedUris: Set<string>): Set<string> {
+        // Cache hit: same changedUris Set reference means same update() cycle
+        if (this.transitiveAffectedCache?.key === changedUris) {
+            return this.transitiveAffectedCache.result;
+        }
+
+        const affected = new Set<string>();
+        this.addTransitiveDependents(changedUris, affected);
+        this.addSpecifierMatches(changedUris, affected);
+
+        this.transitiveAffectedCache = { key: changedUris, result: affected };
+        return affected;
+    }
+
+    /**
+     * BFS through the reverse dependency graph to find all transitive importers.
+     * If C changes and B imports C and A imports B, both A and B are added.
+     */
+    private addTransitiveDependents(changedUris: Set<string>, affected: Set<string>): void {
+        const toProcess = [...changedUris];
+        let uri: string | undefined;
+        while ((uri = toProcess.pop()) !== undefined) {
+            const dependents = this.importDependencies.get(uri);
+            if (!dependents) {
+                continue;
+            }
+            for (const dep of dependents) {
+                if (!affected.has(dep) && !changedUris.has(dep)) {
+                    affected.add(dep);
+                    toProcess.push(dep);
+                }
+            }
+        }
+    }
+
+    /**
+     * Finds documents whose import specifiers fuzzy-match changed file paths.
+     * Handles file renames/moves where the resolved URI hasn't been updated yet.
+     */
+    private addSpecifierMatches(changedUris: Set<string>, affected: Set<string>): void {
+        const changedPaths = this.extractPathSegments(changedUris);
+        for (const [docUri, importInfoList] of this.documentImportInfo) {
+            if (!affected.has(docUri) && !changedUris.has(docUri)
+                && this.hasMatchingSpecifierOrResolvedUri(importInfoList, changedPaths)) {
+                affected.add(docUri);
+            }
+        }
     }
 
     /**
@@ -183,38 +323,52 @@ export class DomainLangIndexManager extends DefaultIndexManager {
         
         for (const imp of model.imports) {
             if (!imp.uri) continue;
-
-            try {
-                const resolvedUri = await this.resolveImport(document, imp.uri);
-                const importedUri = resolvedUri.toString();
-
-                // Track the full import info (specifier, alias, resolved URI)
-                importInfoList.push({
-                    specifier: imp.uri,
-                    alias: imp.alias,
-                    resolvedUri: importedUri
-                });
-
-                // Add to reverse dependency graph: importedUri → importingUri
-                let dependents = this.importDependencies.get(importedUri);
-                if (!dependents) {
-                    dependents = new Set();
-                    this.importDependencies.set(importedUri, dependents);
-                }
-                dependents.add(importingUri);
-            } catch {
-                // Import resolution failed - still track the specifier with empty resolution
-                importInfoList.push({
-                    specifier: imp.uri,
-                    alias: imp.alias,
-                    resolvedUri: ''
-                });
-            }
+            const info = await this.resolveAndTrackImport(document, imp, importingUri);
+            importInfoList.push(info);
         }
         
         if (importInfoList.length > 0) {
             this.documentImportInfo.set(importingUri, importInfoList);
         }
+    }
+
+    /**
+     * Resolves a single import and registers it in the reverse dependency graph.
+     * Falls back to searching loaded documents when the filesystem resolver fails.
+     */
+    private async resolveAndTrackImport(
+        document: LangiumDocument,
+        imp: { uri?: string; alias?: string },
+        importingUri: string
+    ): Promise<ImportInfo> {
+        const specifier = imp.uri ?? '';
+
+        try {
+            const resolvedUri = await this.resolveImport(document, specifier);
+            const importedUri = resolvedUri.toString();
+            this.addToDependencyGraph(importedUri, importingUri);
+            return { specifier, alias: imp.alias, resolvedUri: importedUri };
+        } catch {
+            // Filesystem resolution failed (e.g., unsaved file, EmptyFileSystem).
+            // Try to find a loaded document whose URI path matches the specifier.
+            const matchedUri = this.findLoadedDocumentByPath(specifier, importingUri);
+            if (matchedUri) {
+                this.addToDependencyGraph(matchedUri, importingUri);
+            }
+            return { specifier, alias: imp.alias, resolvedUri: matchedUri };
+        }
+    }
+
+    /**
+     * Adds an edge to the reverse dependency graph: importedUri → importingUri.
+     */
+    private addToDependencyGraph(importedUri: string, importingUri: string): void {
+        let dependents = this.importDependencies.get(importedUri);
+        if (!dependents) {
+            dependents = new Set();
+            this.importDependencies.set(importedUri, dependents);
+        }
+        dependents.add(importingUri);
     }
 
     /**
@@ -285,11 +439,22 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      * Called when a document is deleted.
      */
     private removeImportDependencies(uri: string): void {
-        // Remove as an imported document
+        // Remove as an imported document (reverse graph entry)
         this.importDependencies.delete(uri);
         
-        // Remove from all dependency sets (as an importer)
+        // Remove import info for this document (forward graph entry)
+        this.documentImportInfo.delete(uri);
+        
+        // Remove from all dependency sets (as an importer of other files)
         this.removeDocumentFromDependencies(uri);
+        
+        // Clean up PRS-017 caches
+        this.exportSnapshots.delete(uri);
+        this.changedExports.delete(uri);
+        this.detectedCycles.delete(uri);
+        
+        // Invalidate the per-cycle cache since the graph changed
+        this.transitiveAffectedCache = undefined;
     }
 
     /**
@@ -310,6 +475,29 @@ export class DomainLangIndexManager extends DefaultIndexManager {
         this.importDependencies.clear();
         this.documentImportInfo.clear();
         this.importsLoaded.clear();
+        this.transitiveAffectedCache = undefined;
+        this.exportSnapshots.clear();
+        this.changedExports.clear();
+        this.detectedCycles.clear();
+    }
+
+    /**
+     * Fallback for import resolution: searches loaded documents for one whose
+     * URI path matches the import specifier. Used when the filesystem-based
+     * resolver fails (e.g., unsaved files, EmptyFileSystem in tests).
+     */
+    private findLoadedDocumentByPath(specifier: string, excludeUri: string): string {
+        const langiumDocuments = this.sharedServices.workspace.LangiumDocuments;
+        for (const doc of langiumDocuments.all) {
+            const docUri = doc.uri.toString();
+            if (docUri === excludeUri) {
+                continue;
+            }
+            if (doc.uri.path === specifier || doc.uri.path.endsWith(`/${specifier}`)) {
+                return docUri;
+            }
+        }
+        return '';
     }
 
     /**
@@ -468,7 +656,11 @@ export class DomainLangIndexManager extends DefaultIndexManager {
     }
 
     /**
-     * Checks if any specifier OR its resolved URI matches the changed paths.
+     * Checks if any specifier OR its resolved URI matches the changed paths (PRS-017 R4).
+     * 
+     * Uses exact filename matching instead of substring matching to prevent
+     * false positives (e.g., changing `sales.dlang` should NOT trigger
+     * revalidation of a file importing `pre-sales.dlang`).
      * 
      * This handles both regular imports and path aliases:
      * - Regular: `./domains/sales.dlang` matches path `sales.dlang`
@@ -479,21 +671,211 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      */
     private hasMatchingSpecifierOrResolvedUri(importInfoList: ImportInfo[], changedPaths: Set<string>): boolean {
         for (const info of importInfoList) {
-            const normalizedSpecifier = info.specifier.replace(/^[.@/]+/, '');
-            
-            for (const changedPath of changedPaths) {
-                // Check the raw specifier (handles relative imports)
-                if (info.specifier.includes(changedPath) || changedPath.endsWith(normalizedSpecifier)) {
-                    return true;
-                }
-                
-                // Check the resolved URI (handles path aliases like @domains/...)
-                // The resolved URI contains the full file path which matches moved files
-                if (info.resolvedUri?.includes(changedPath)) {
-                    return true;
-                }
+            if (this.matchesAnyChangedPath(info, changedPaths)) {
+                return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if a single import info matches any of the changed paths.
+     * Extracted to reduce cognitive complexity of hasMatchingSpecifierOrResolvedUri.
+     */
+    private matchesAnyChangedPath(info: ImportInfo, changedPaths: Set<string>): boolean {
+        for (const changedPath of changedPaths) {
+            if (this.matchesChangedPath(info, changedPath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if a single import info matches a single changed path.
+     */
+    private matchesChangedPath(info: ImportInfo, changedPath: string): boolean {
+        const changedFileName = this.extractFileName(changedPath);
+        if (!changedFileName) return false;
+
+        // Check the resolved URI first (most reliable — already normalized)
+        if (info.resolvedUri && this.matchesResolvedUri(info.resolvedUri, changedFileName, changedPath)) {
+            return true;
+        }
+
+        // Check the specifier (handles relative imports)
+        return this.matchesSpecifier(info.specifier, changedFileName, changedPath);
+    }
+
+    /**
+     * Checks if a resolved URI matches a changed path by exact filename comparison.
+     */
+    private matchesResolvedUri(resolvedUri: string, changedFileName: string, changedPath: string): boolean {
+        const resolvedFileName = this.extractFileName(resolvedUri);
+        if (resolvedFileName && changedFileName === resolvedFileName) {
+            return this.pathEndsWith(resolvedUri, changedPath);
+        }
+        return false;
+    }
+
+    /**
+     * Checks if an import specifier matches a changed path by exact filename comparison.
+     */
+    private matchesSpecifier(specifier: string, changedFileName: string, changedPath: string): boolean {
+        const specifierFileName = this.extractFileName(specifier);
+        if (specifierFileName && changedFileName === specifierFileName) {
+            const normalizedSpecifier = specifier.replace(/^[.@/]+/, '');
+            return this.pathEndsWith(changedPath, normalizedSpecifier) ||
+                this.pathEndsWith(normalizedSpecifier, changedPath);
+        }
+        return false;
+    }
+
+    /**
+     * Extracts the filename (without extension) from a path or URI string.
+     */
+    private extractFileName(pathOrUri: string): string | undefined {
+        // Handle URI paths and regular paths
+        const lastSlash = Math.max(pathOrUri.lastIndexOf('/'), pathOrUri.lastIndexOf('\\'));
+        const fileName = lastSlash >= 0 ? pathOrUri.slice(lastSlash + 1) : pathOrUri;
+        return fileName.replace(/\.dlang$/, '') || undefined;
+    }
+
+    /**
+     * Checks if longPath ends with shortPath, comparing path segments.
+     * Prevents substring false positives (e.g., "pre-sales" matching "sales").
+     */
+    private pathEndsWith(longPath: string, shortPath: string): boolean {
+        const normalizedLong = longPath.replaceAll('\\', '/').replace(/\.dlang$/, '');
+        const normalizedShort = shortPath.replaceAll('\\', '/').replace(/\.dlang$/, '');
+        return normalizedLong === normalizedShort ||
+            normalizedLong.endsWith(`/${normalizedShort}`);
+    }
+
+    // --- PRS-017 R2: Export-signature diffing ---
+
+    /**
+     * Captures a snapshot of exported symbol signatures for a document.
+     * Signature = "nodeType:qualifiedName" for each exported symbol.
+     * Used to detect whether a document's public interface actually changed.
+     */
+    private captureExportSnapshot(uri: string): Set<string> {
+        const descriptions = this.symbolIndex.get(uri) ?? [];
+        const signatures = new Set<string>();
+        for (const desc of descriptions) {
+            signatures.add(`${desc.type}:${desc.name}`);
+        }
+        return signatures;
+    }
+
+    /**
+     * Checks if two sets of strings are equal (same size and same elements).
+     */
+    private setsEqual(a: Set<string>, b: Set<string>): boolean {
+        if (a.size !== b.size) return false;
+        for (const item of a) {
+            if (!b.has(item)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Returns true if any of the changed URIs had their exports actually change.
+     * Used by isAffected() to skip transitive invalidation when only
+     * implementation details changed (e.g., editing a vision string).
+     */
+    private anyExportsChanged(changedUris: Set<string>): boolean {
+        for (const uri of changedUris) {
+            if (this.changedExports.has(uri)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // --- PRS-017 R3: Import cycle detection ---
+
+    /**
+     * Detects import cycles starting from a given document URI.
+     * Uses DFS with a recursion stack to find back-edges in the import graph.
+     * Stores detected cycles for reporting by ImportValidator.
+     */
+    private detectAndStoreCycles(startUri: string): void {
+        // Clear any previous cycle for this document
+        this.detectedCycles.delete(startUri);
+
+        const cycle = this.findCycle(startUri);
+        if (cycle) {
+            // Store the cycle for each participant (skip last element which is the
+            // duplicate that closes the cycle, e.g. [A, B, C, A] → store for A, B, C)
+            for (let i = 0; i < cycle.length - 1; i++) {
+                this.detectedCycles.set(cycle[i], cycle);
+            }
+        }
+    }
+
+    /**
+     * DFS to find a cycle in the forward import graph starting from startUri.
+     * Returns the cycle path (e.g., [A, B, C, A]) if found, undefined otherwise.
+     */
+    private findCycle(startUri: string): string[] | undefined {
+        const visited = new Set<string>();
+        const stack = new Set<string>();
+        const path: string[] = [];
+
+        const dfs = (uri: string): string[] | undefined => {
+            if (stack.has(uri)) {
+                // Found cycle — extract the cycle path from the stack
+                const cycleStart = path.indexOf(uri);
+                return [...path.slice(cycleStart), uri];
+            }
+            if (visited.has(uri)) return undefined;
+
+            visited.add(uri);
+            stack.add(uri);
+            path.push(uri);
+
+            const imports = this.documentImportInfo.get(uri);
+            if (imports) {
+                for (const imp of imports) {
+                    if (imp.resolvedUri) {
+                        const cycle = dfs(imp.resolvedUri);
+                        if (cycle) return cycle;
+                    }
+                }
+            }
+
+            stack.delete(uri);
+            path.pop();
+            return undefined;
+        };
+
+        return dfs(startUri);
+    }
+
+    /**
+     * Gets the detected import cycle for a document, if any.
+     * Returns the cycle path as an array of URIs, or undefined if no cycle.
+     * Used by ImportValidator to report cycle diagnostics (PRS-017 R3).
+     */
+    getCycleForDocument(uri: string): string[] | undefined {
+        return this.detectedCycles.get(uri);
+    }
+
+    // --- PRS-017 R1: Targeted ImportResolver cache invalidation ---
+
+    /**
+     * Invalidates the ImportResolver cache for the changed document and its dependents.
+     * This provides surgical cache invalidation instead of clearing the entire cache.
+     */
+    private invalidateImportResolverCache(changedUri: string): void {
+        if (!this.importResolver) return;
+
+        const affectedUris = [changedUri];
+        const dependents = this.importDependencies.get(changedUri);
+        if (dependents) {
+            affectedUris.push(...dependents);
+        }
+        this.importResolver.invalidateForDocuments(affectedUris);
     }
 }

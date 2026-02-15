@@ -14,6 +14,8 @@ export * from './services/workspace-manager.js';
 export * from './services/import-resolver.js';
 export * from './services/relationship-inference.js';
 export * from './services/performance-optimizer.js';
+export * from './services/lsp-logger.js';
+export * from './services/lsp-runtime-settings.js';
 
 // Export shared utilities
 export * from './utils/manifest-utils.js';
@@ -28,4 +30,5 @@ export * from './utils/manifest-utils.js';
 // Export LSP services
 export * from './lsp/manifest-diagnostics.js';
 export { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
+export { registerDomainLangRefresh, processWatchedFileChanges } from './lsp/domain-lang-refresh.js';
 export { registerToolHandlers } from './lsp/tool-handlers.js';
