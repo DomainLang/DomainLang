@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.11.0](https://github.com/DomainLang/DomainLang/compare/v0.10.0...v0.11.0) (2026-02-15)
+
+
+### Features
+
+* **extension:** add configurable LSP logging settings ([4ff68d4](https://github.com/DomainLang/DomainLang/commit/4ff68d46c4ccd8580db80b9e07386fac93bc08bd))
+* **language:** add markdown support for domain-lang syntax highlighting ([8221751](https://github.com/DomainLang/DomainLang/commit/82217510b75028d59a3072694ec7041cf9b051fd))
+* **lsp:** implement PRS-017 incremental intelligence ([4b75f62](https://github.com/DomainLang/DomainLang/commit/4b75f62df935f7928d3b9487d25d75251cfe94e7))
+
+
+### Bug Fixes
+
+* **examples:** fix domainlang samples for syntax errors ([870e6aa](https://github.com/DomainLang/DomainLang/commit/870e6aa4d7f191a6ad0c5d57d2f9441089d290f3))
+* **sdk:** include imported document diagnostics in validation ([39d60cb](https://github.com/DomainLang/DomainLang/commit/39d60cb2d00226ed199e27be0070a53c45b3d2f2))
+* **tests:** update package references and improve test descriptions for clarity ([2d2b6d1](https://github.com/DomainLang/DomainLang/commit/2d2b6d13c95f15f3e36d88f903e981f1fb2152d3))
+* **tests:** update test coverage script to support workspaces ([abfe678](https://github.com/DomainLang/DomainLang/commit/abfe678c6bcae0750826edd58417ff33b2e4130e))
+
+
+### Documentation
+
+* **readme:** update CLI and extension documentation for clarity and consistency ([8dc6fa8](https://github.com/DomainLang/DomainLang/commit/8dc6fa8141434e889503d5f789fb86d78b146d36))
+
 ## [0.10.0](https://github.com/DomainLang/DomainLang/compare/v0.9.0...v0.10.0) (2026-02-11)
 
 
