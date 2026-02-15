@@ -1,27 +1,17 @@
 # @domainlang/language
 
-[![npm version](https://img.shields.io/npm/v/@domainlang/language.svg)](https://www.npmjs.com/package/@domainlang/language)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
+[![npm version](https://img.shields.io/npm/v/@domainlang/language.svg)](https://www.npmjs.com/package/@domainlang/language)
 [![License](https://img.shields.io/npm/l/@domainlang/language.svg)](https://github.com/DomainLang/DomainLang/blob/main/LICENSE)
 
-Core language library for [DomainLang](https://github.com/DomainLang/DomainLang) - a Domain-Driven Design modeling language built with [Langium](https://langium.org/).
+Parse, validate, and query Domain-Driven Design models written in the `.dlang` language. This package is the foundation that the [CLI](https://www.npmjs.com/package/@domainlang/cli) and [VS Code extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang) are built on — and you can build on it too.
 
-## Features
-
-- 🔤 **Parser** - Full DomainLang grammar with error recovery
-- ✅ **Validation** - Semantic validation for DDD best practices
-- 🔗 **Linking** - Cross-reference resolution across files and packages
-- 🔍 **Model Query SDK** - Programmatic access to DDD models with fluent queries
-- 🌐 **Browser Support** - Works in Node.js and browser environments
-
-## Installation
+## Install
 
 ```bash
 npm install @domainlang/language
 ```
 
 ## Quick start
-
-### Parse and query models
 
 ```typescript
 import { loadModelFromText } from '@domainlang/language/sdk';
@@ -30,133 +20,85 @@ const { query } = await loadModelFromText(`
   Domain Sales {
     vision: "Enable seamless commerce"
   }
-  
+
+  Team SalesTeam
+  Classification Core
+
   bc OrderContext for Sales as Core by SalesTeam {
-    description: "Handles order lifecycle"
+    description: "Handles the order lifecycle"
   }
 `);
 
-// Query bounded contexts
 const coreContexts = query.boundedContexts()
   .withClassification('Core')
   .toArray();
 
-console.log(coreContexts[0].name); // 'OrderContext'
+console.log(coreContexts.map(ctx => ctx.name)); // ['OrderContext']
 ```
 
-### Load from file (Node.js)
+That's it — five lines to parse a model and start querying. The SDK works in the browser, in Node.js, and inside Langium LSP integrations.
+
+## What you can do with it
+
+**Validate models programmatically.** Run the same validation the VS Code extension uses, from Node.js scripts or CI pipelines.
+
+**Query anything in the model.** The fluent query builder lets you filter bounded contexts by team, classification, or domain — with lazy evaluation and full type safety.
+
+**Build custom automation.** Generate architecture reports, enforce naming conventions, sync models to wikis, or feed model data into dashboards.
+
+## API at a glance
+
+| Function | Runtime | Purpose |
+| --- | --- | --- |
+| `loadModelFromText(text)` | Browser + Node.js | Parse DomainLang text in memory |
+| `loadModel(path, options?)` | Node.js | Load and parse `.dlang` files |
+| `validateFile(path, options?)` | Node.js | Validate a single file |
+| `validateWorkspace(dir)` | Node.js | Validate an entire workspace |
+| `fromModel(model)` | Browser + Node.js | Wrap an existing AST with query methods |
+| `fromDocument(document)` | Browser + Node.js | Zero-copy wrapping for Langium documents |
+
+## Query examples
 
 ```typescript
-import { loadModel } from '@domainlang/language/sdk/loader-node';
-
-const { model, query } = await loadModel('./my-model.dlang');
-
-// Access domains
-for (const domain of query.domains()) {
-  console.log(`${domain.name}: ${domain.vision}`);
-}
-```
-
-## API overview
-
-### Entry points
-
-| Function | Environment | Use Case |
-| -------- | ----------- | -------- |
-| `loadModelFromText(text)` | Browser & Node | Parse inline DSL text |
-| `loadModel(file)` | Node.js only | Load from file system |
-| `fromDocument(doc)` | LSP integration | Zero-copy from Langium document |
-| `fromModel(model)` | Advanced | Direct AST wrapping |
-
-### Query builder
-
-The SDK provides fluent query builders with lazy evaluation:
-
-```typescript
-// Find all bounded contexts owned by a team
-const teamContexts = query.boundedContexts()
+// Find all Core bounded contexts owned by a specific team
+const contexts = query.boundedContexts()
   .withTeam('PaymentsTeam')
+  .withClassification('Core')
   .toArray();
 
-// Get context maps containing specific contexts
+// Find context maps that include a specific bounded context
 const maps = query.contextMaps()
   .containing('OrderContext')
   .toArray();
 ```
 
-### Direct property access
+## Node.js file loading and validation
 
 ```typescript
-// Direct AST properties
-const desc = boundedContext.description;
-const vision = domain.vision;
+import { loadModel, validateFile } from '@domainlang/language/sdk';
 
-// SDK-augmented properties (with precedence resolution)
-const classification = boundedContext.effectiveClassification;  // Header 'as' wins over body 'classification:'
-const team = boundedContext.effectiveTeam;  // Header 'by' wins over body 'team:'
-```
+const { query } = await loadModel('./model.dlang', { workspaceDir: process.cwd() });
+const result = await validateFile('./model.dlang', { workspaceDir: process.cwd() });
 
-## DomainLang syntax
-
-DomainLang models Domain-Driven Design concepts:
-
-```dlang
-// Define domains with vision
-Domain Sales {
-  vision: "Drive revenue through great customer experience"
-}
-
-// Bounded contexts with ownership
-bc OrderContext for Sales as Core by SalesTeam {
-  description: "Order lifecycle management"
-}
-
-bc PaymentContext for Sales as Supporting by PaymentsTeam
-
-// Context maps showing integrations
-ContextMap SalesIntegration {
-  contains OrderContext, PaymentContext
-  
-  [OHS,PL] OrderContext -> [CF] PaymentContext
+if (!result.valid) {
+  for (const err of result.errors) {
+    console.error(`${err.file}:${err.line}: ${err.message}`);
+  }
+  process.exit(1);
 }
 ```
-
-## Package structure
-
-| Path | Purpose |
-| ---- | ------- |
-| `src/domain-lang.langium` | Grammar definition |
-| `src/generated/` | Auto-generated AST (do not edit) |
-| `src/validation/` | Semantic validation rules |
-| `src/lsp/` | LSP features (hover, completion, formatting) |
-| `src/sdk/` | Model Query SDK |
-
-## Related packages
-
-- [@domainlang/cli](https://www.npmjs.com/package/@domainlang/cli) - Command-line interface
-- [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang) - IDE support
 
 ## Documentation
 
-- [Getting Started](https://domainlang.net/guide/getting-started)
-- [Language Reference](https://domainlang.net/reference/language)
-- [Quick Reference](https://domainlang.net/reference/quick-reference)
-- [SDK Documentation](https://github.com/DomainLang/DomainLang/blob/main/dsl/domain-lang/packages/language/src/sdk/README.md)
+- [Getting started](https://domainlang.net/guide/getting-started)
+- [SDK guide](https://domainlang.net/guide/sdk)
+- [Language reference](https://domainlang.net/reference/language)
+- [Quick reference card](https://domainlang.net/reference/quick-reference)
 
-## Development
+## Related packages
 
-From the workspace root (`dsl/domain-lang/`):
-
-```bash
-# After editing the grammar
-npm run langium:generate
-
-# Build this package
-npm run build --workspace packages/language
-
-# Run tests
-npm test --workspace packages/language
-```
+- [@domainlang/cli](https://www.npmjs.com/package/@domainlang/cli) — terminal validation, queries, and dependency management.
+- [DomainLang for VS Code](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang) — syntax highlighting, IntelliSense, and real-time validation.
 
 ## License
 

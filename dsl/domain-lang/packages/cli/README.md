@@ -1,102 +1,81 @@
 # @domainlang/cli
 
-[![npm version](https://img.shields.io/npm/v/@domainlang/cli.svg)](https://www.npmjs.com/package/@domainlang/cli)[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=DomainLang_DomainLang&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=DomainLang_DomainLang)
+[![npm version](https://img.shields.io/npm/v/@domainlang/cli.svg)](https://www.npmjs.com/package/@domainlang/cli)
 [![License](https://img.shields.io/npm/l/@domainlang/cli.svg)](https://github.com/DomainLang/DomainLang/blob/main/LICENSE)
 
-Command-line interface for [DomainLang](https://github.com/DomainLang/DomainLang) - a Domain-Driven Design modeling language.
- 
-## Features
+Validate, query, and manage DomainLang models from the terminal. Built for local development and CI pipelines that treat architecture decisions as code.
 
-- 📦 **Dependency Management** - Git-native model dependencies with version locking
-- 🔍 **Validation** - Validate your DomainLang models for correctness
-- 🌳 **Impact Analysis** - Visualize dependency trees and analyze changes
-- 🔒 **Compliance** - Audit and check model compliance
-
-## Installation
+## Install
 
 ```bash
 npm install -g @domainlang/cli
 ```
 
-Or use with npx:
+Or run directly with npx:
 
 ```bash
-npx @domainlang/cli --help
+npx @domainlang/cli validate
 ```
 
-## Quick start
+## Get started
 
 ```bash
-# Validate a DomainLang model
-dlang model validate
+# Scaffold a new DomainLang workspace
+dlang init
 
-# Install model dependencies
-dlang install
+# Validate the current directory
+dlang validate
 
-# View dependency tree
-dlang model tree
+# Query all bounded contexts
+dlang query bcs
 ```
 
 ## Commands
 
-### Dependency management
+| Command | What it does |
+| --- | --- |
+| `dlang init [directory]` | Scaffold starter files for a new workspace |
+| `dlang validate [path]` | Validate a single file or an entire workspace |
+| `dlang query <type> [path]` | Query domains, bounded contexts, teams, relationships, and more |
+| `dlang install` | Install dependencies declared in your manifest |
+| `dlang add <specifier>` | Add a model dependency |
+| `dlang remove <name>` | Remove a model dependency |
+| `dlang update` | Refresh dependency state from the lock file |
+| `dlang upgrade [package] [version]` | Upgrade one or all dependencies to the latest version |
+| `dlang outdated` | List dependencies with newer versions available |
+| `dlang cache-clear` | Clear the local dependency cache |
+| `dlang help` | Show available commands |
 
-DomainLang supports a git-native model dependency workflow via `model.yaml` and a lock file.
+## Use it in CI
 
-```bash
-# List dependencies (from lock file)
-dlang model list
+Every command supports `--json`, `--quiet`, and `--no-color` for scripted environments.
 
-# Add/remove dependencies in model.yaml
-dlang model add <name> <owner/repo> [version]
-dlang model remove <name>
-
-# Install and lock dependencies
-dlang install
-```
-
-### Analysis and validation
-
-```bash
-# Validate model structure and references
-dlang model validate
-
-# See dependency tree and impact analysis
-dlang model tree [--commits]
-dlang model deps <owner/repo>
-
-# Audit and compliance checks
-dlang model audit
-dlang model compliance
-```
-
-### Utilities
+A minimal CI step:
 
 ```bash
-# Clear dependency cache
-dlang cache-clear
-
-# Get help
-dlang --help
+dlang validate --json
 ```
 
-### Code generation (experimental)
+This exits non-zero on validation errors and writes structured JSON to stdout, so you can parse results downstream or simply treat it as a gate.
+
+## Typical workflow
 
 ```bash
-# Generate code from a model (currently produces stub output)
-dlang generate <file>
+dlang install           # Resolve and lock dependencies
+dlang validate          # Check for errors
+dlang query bcs --classification Core   # Inspect your Core contexts
 ```
-
-## Related packages
-
-- [@domainlang/language](https://www.npmjs.com/package/@domainlang/language) - Core language library and SDK
-- [DomainLang VS Code Extension](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang) - IDE support with syntax highlighting and validation
 
 ## Documentation
 
-- [Getting Started](https://domainlang.net/guide/getting-started)
-- [Language Reference](https://domainlang.net/reference/language)
-- [Quick Reference](https://domainlang.net/reference/quick-reference)
+- [CLI guide](https://domainlang.net/guide/cli)
+- [Getting started](https://domainlang.net/guide/getting-started)
+- [Language reference](https://domainlang.net/reference/language)
+
+## Related packages
+
+- [@domainlang/language](https://www.npmjs.com/package/@domainlang/language) — parser, validator, and query SDK for building custom tooling.
+- [DomainLang for VS Code](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang) — full editor experience with IntelliSense and live validation.
 
 ## License
 
