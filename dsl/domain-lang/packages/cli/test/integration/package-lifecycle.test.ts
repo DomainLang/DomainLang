@@ -6,7 +6,7 @@
  *
  * Flow: init → add → install → frozen-install → update (force) → remove → no-op install
  *
- * Uses `larsbaunwall/ddd-types` (public repo, branch-only, default branch: main).
+ * Uses `DomainLang/Patterns` (public repo, branch-only, default branch: main).
  *
  * These tests make real HTTP calls and require network access.
  *
@@ -27,7 +27,7 @@ import YAML from 'yaml';
 // Constants & helpers
 // ---------------------------------------------------------------------------
 
-const PACKAGE = 'larsbaunwall/ddd-types';
+const PACKAGE = 'DomainLang/Patterns';
 const REF = 'main';
 
 /** Absolute path to the CLI entry point. */
@@ -152,7 +152,7 @@ function readDirRecursive(dir: string): string[] {
 const shouldSkipIntegration = 
     process.env.CI === 'true' && process.env.INTEGRATION_TESTS !== 'true';
 
-describe.skipIf(shouldSkipIntegration)('Package lifecycle integration via CLI (larsbaunwall/ddd-types)', () => {
+describe.skipIf(shouldSkipIntegration)('Package lifecycle integration via CLI (DomainLang/Patterns)', () => {
     let workspace: string;
 
     beforeAll(() => {

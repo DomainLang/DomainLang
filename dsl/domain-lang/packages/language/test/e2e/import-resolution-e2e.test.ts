@@ -106,28 +106,28 @@ model:
   entry: index.dlang
 
 dependencies:
-  larsbaunwall/ddd-types: main
+    domainlang/patterns: main
 `);
 
             const lockFile = {
                 version: '1',
                 dependencies: {
-                    'larsbaunwall/ddd-types': {
+                    'domainlang/patterns': {
                         ref: 'main',
                         refType: 'branch',
-                        resolved: 'https://api.github.com/repos/larsbaunwall/ddd-types/tarball/abc123',
+                        resolved: 'https://api.github.com/repos/DomainLang/Patterns/tarball/abc123',
                         commit: 'abc123def456'
                     }
                 }
             };
             await fs.writeFile(path.join(projectDir, 'model.lock'), JSON.stringify(lockFile, null, 2));
 
-            const cacheDir = path.join(projectDir, '.dlang', 'packages', 'larsbaunwall', 'ddd-types', 'abc123def456');
+            const cacheDir = path.join(projectDir, '.dlang', 'packages', 'domainlang', 'patterns', 'abc123def456');
             await fs.mkdir(cacheDir, { recursive: true });
 
             await fs.writeFile(path.join(cacheDir, 'model.yaml'), `
 model:
-  name: larsbaunwall/ddd-types
+  name: domainlang/patterns
   entry: index.dlang
 `);
             await fs.writeFile(path.join(cacheDir, 'index.dlang'), `
@@ -137,7 +137,7 @@ Classification SupportingDomain
 
             // Act
             const { resolver } = createResolver();
-            const uri = await resolver.resolveFrom(projectDir, 'larsbaunwall/ddd-types');
+            const uri = await resolver.resolveFrom(projectDir, 'domainlang/patterns');
 
             // Assert
             expect(uri.fsPath).toBe(path.join(cacheDir, 'index.dlang'));

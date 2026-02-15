@@ -1,13 +1,12 @@
 /**
  * Tests for DomainLangIndexManager.
  *
- * Verifies import dependency tracking and basic document indexing.
- * Parsing coverage is handled by dedicated parsing tests; these smoke tests
- * confirm the IndexManager can accept various document shapes without error.
+ * Verifies import dependency tracking and document indexing with actual imports.
+ * Tests real-world scenarios with parsed documents and import relationships.
  */
 
 import { describe, test, expect, beforeAll } from 'vitest';
-import { setupTestSuite, type TestServices } from '../test-helpers.js';
+import { setupTestSuite, type TestServices, s } from '../test-helpers.js';
 import type { DomainLangIndexManager } from '../../src/lsp/domain-lang-index-manager.js';
 
 describe('DomainLangIndexManager', () => {
@@ -20,82 +19,121 @@ describe('DomainLangIndexManager', () => {
     });
 
     // ========================================================================
-    // IMPORT DEPENDENCY TRACKING - tests the actual IndexManager API surface
+    // IMPORT DEPENDENCY TRACKING - tests with actual documents
     // ========================================================================
 
     describe('Import dependency tracking', () => {
-        test('getDependentDocuments returns empty set for unknown URI', () => {
+        test('tracks import info for documents with imports', async () => {
+            // Arrange: Parse a document with an import
+            const document = await testServices.parse(s`
+                import "./shared/common"
+                Domain Sales { vision: "Sales domain" }
+            `);
+
             // Act
-            const result = indexManager.getDependentDocuments('file:///unknown/path.dlang');
+            const importInfo = indexManager.getImportInfo(document.uri.toString());
 
-            // Assert
-            expect(result.size).toBe(0);
+            // Assert: Should have recorded the import
+            expect(importInfo.length).toBe(1);
+            expect(importInfo[0].specifier).toBe('./shared/common');
         });
 
-        test('getAllAffectedDocuments returns empty set for empty input', () => {
+        test('tracks import info with aliases', async () => {
+            // Arrange: Parse a document with aliased import
+            const document = await testServices.parse(s`
+                import "ddd-core" as ddd
+                Domain Sales { classification: ddd.CoreDomain }
+            `);
+
             // Act
-            const result = indexManager.getAllAffectedDocuments([]);
+            const importInfo = indexManager.getImportInfo(document.uri.toString());
 
-            // Assert
-            expect(result.size).toBe(0);
+            // Assert: Should have recorded the import with alias
+            expect(importInfo.length).toBe(1);
+            expect(importInfo[0].specifier).toBe('ddd-core');
+            expect(importInfo[0].alias).toBe('ddd');
         });
 
-        test('getAllAffectedDocuments handles single URI without dependents', () => {
+        test('tracks multiple imports in same document', async () => {
+            // Arrange: Parse a document with multiple imports
+            const document = await testServices.parse(s`
+                import "./domains/sales"
+                import "./domains/billing" as billing
+                import "external-package"
+                Domain Main {}
+            `);
+
             // Act
-            const result = indexManager.getAllAffectedDocuments(['file:///unknown/path.dlang']);
+            const importInfo = indexManager.getImportInfo(document.uri.toString());
 
-            // Assert
-            expect(result.size).toBe(0);
+            // Assert: Should have recorded all three imports
+            expect(importInfo.length).toBe(3);
+            expect(importInfo.map(i => i.specifier)).toContain('./domains/sales');
+            expect(importInfo.map(i => i.specifier)).toContain('./domains/billing');
+            expect(importInfo.map(i => i.specifier)).toContain('external-package');
         });
 
-        test('getAllAffectedDocuments accumulates multiple URIs without dependents', () => {
-            // Arrange
-            const result = indexManager.getAllAffectedDocuments([
-                'file:///a.dlang',
-                'file:///b.dlang'
-            ]);
+        test('returns empty import info for documents without imports', async () => {
+            // Arrange: Parse a document without imports
+            const document = await testServices.parse(s`
+                Domain Sales { vision: "Standalone domain" }
+            `);
 
-            // Assert
-            expect(result.size).toBe(0);
-        });
-
-        test('getDocumentsWithPotentiallyAffectedImports returns empty for no matches', () => {
             // Act
-            const result = indexManager.getDocumentsWithPotentiallyAffectedImports([
-                'file:///project/domains/index.dlang'
-            ]);
+            const importInfo = indexManager.getImportInfo(document.uri.toString());
 
-            // Assert
-            expect(result.size).toBe(0);
+            // Assert: Should return empty array, not undefined
+            expect(importInfo).toEqual([]);
         });
 
-        test('getDocumentsWithPotentiallyAffectedImports handles empty input', () => {
+        test('clears import dependencies when requested', async () => {
+            // Arrange: Parse a document with imports
+            const document = await testServices.parse(s`
+                import "./shared/common"
+                Domain Sales {}
+            `);
+            
+            const uriString = document.uri.toString();
+            const initialInfo = indexManager.getImportInfo(uriString);
+            expect(initialInfo.length).toBeGreaterThan(0);
+
             // Act
-            const result = indexManager.getDocumentsWithPotentiallyAffectedImports([]);
+            indexManager.clearImportDependencies();
 
-            // Assert
-            expect(result.size).toBe(0);
+            // Assert: Import info should be cleared
+            const clearedInfo = indexManager.getImportInfo(uriString);
+            expect(clearedInfo).toEqual([]);
         });
 
-        test('getDocumentsWithPotentiallyAffectedImports handles invalid URIs gracefully', () => {
-            // Arrange & Act
-            const result = indexManager.getDocumentsWithPotentiallyAffectedImports([
-                'not-a-valid-uri',
-                ':::invalid:::'
-            ]);
+        test('handles documents with parser errors gracefully', async () => {
+            // Arrange: Parse a document with syntax errors
+            const document = await testServices.parse(s`
+                import "./broken
+                Domain Sales {
+            `);
 
-            // Assert
-            expect(result.size).toBe(0);
+            // Act & Assert: Should not throw when accessing import info
+            const importInfo = indexManager.getImportInfo(document.uri.toString());
+            expect(Array.isArray(importInfo)).toBe(true);
         });
 
-        test('getResolvedImports returns empty set for unknown document', () => {
-            // Act
-            const result = indexManager.getResolvedImports('file:///unknown/doc.dlang');
+        test('markForReprocessing accepts valid document URI', async () => {
+            // Arrange: Parse a document
+            const document = await testServices.parse(s`
+                Domain Sales {}
+            `);
 
-            // Assert
-            expect(result.size).toBe(0);
+            // Act & Assert: Should not throw
+            expect(() => {
+                indexManager.markForReprocessing(document.uri.toString());
+            }).not.toThrow();
         });
 
-
+        test('markForReprocessing handles unknown document URI gracefully', () => {
+            // Act & Assert: Should not throw for unknown URIs
+            expect(() => {
+                indexManager.markForReprocessing('file:///unknown/path.dlang');
+            }).not.toThrow();
+        });
     });
 });
