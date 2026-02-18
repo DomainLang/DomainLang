@@ -309,8 +309,8 @@ jobs:
   # ============================================================================
   # SITE-ONLY PUBLISH - Fast path for documentation changes
   # ============================================================================
-  publish-site-fast:
-    name: 🌐 Build and publish site (fast path)
+  publish-site-fast-build:
+    name: 🌐 Build site (fast path)
     needs: detect-changes
     if: |
       needs.detect-changes.outputs.site-only == 'true' &&
@@ -320,8 +320,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pages: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       
@@ -345,19 +343,73 @@ jobs:
       - name: Build site (includes copy-diagrams)
         working-directory: site
         run: npm run build
+
+      - name: Upload site artifact for Cloudflare
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dist-fast
+          path: ./site/.vitepress/dist
+          retention-days: 7
       
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site/.vitepress/dist
-      
+
+  publish-site-fast-pages:
+    name: 🌐 Deploy site to GitHub Pages (fast path)
+    needs: publish-site-fast-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-      
+
       - name: Report site deployment
         if: success()
-        run: echo "🌐 Deployed to [domainlang.net](https://domainlang.net)" >> $GITHUB_STEP_SUMMARY
+        run: echo "🌐 Deployed to [domainlang.net](https://domainlang.net) via GitHub Pages" >> $GITHUB_STEP_SUMMARY
+
+  publish-site-fast-cloudflare:
+    name: ☁️ Deploy site to Cloudflare Workers (fast path)
+    needs: publish-site-fast-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site-dist-fast
+          path: site/.vitepress/dist
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: site
+
+      - name: Report Cloudflare deployment
+        if: success()
+        run: echo "☁️ Deployed to Cloudflare Workers" >> $GITHUB_STEP_SUMMARY
+
+  publish-site-fast-summary:
+    name: 📣 Site deployment summary (fast path)
+    needs: [publish-site-fast-pages, publish-site-fast-cloudflare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report combined deployment URLs
+        run: |
+          echo "## 🌐 Site deployment targets (fast path)" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Pages: https://domainlang.net" >> $GITHUB_STEP_SUMMARY
+          echo "- Cloudflare Workers: https://domainlang-site.workers.dev" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
   # RELEASE - Release Please handles versioning & releases
@@ -467,15 +519,13 @@ jobs:
       
 
 
-  publish-site:
-    name: 🌐 Build and publish site
+  publish-site-build:
+    name: 🌐 Build site
     needs: release-please
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pages: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       
@@ -509,14 +559,64 @@ jobs:
       - name: Build site (includes copy-diagrams)
         working-directory: site
         run: npm run build
+
+      - name: Upload site artifact for Cloudflare
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dist-release
+          path: ./site/.vitepress/dist
+          retention-days: 7
       
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site/.vitepress/dist
-      
+
+  publish-site-pages:
+    name: 🌐 Deploy site to GitHub Pages
+    needs: publish-site-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  publish-site-cloudflare:
+    name: ☁️ Deploy site to Cloudflare Workers
+    needs: publish-site-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site-dist-release
+          path: site/.vitepress/dist
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: site
+
+  publish-site-summary:
+    name: 📣 Site deployment summary
+    needs: [publish-site-pages, publish-site-cloudflare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report combined deployment URLs
+        run: |
+          echo "## 🌐 Site deployment targets" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Pages: https://domainlang.net" >> $GITHUB_STEP_SUMMARY
+          echo "- Cloudflare Workers: https://domainlang-site.workers.dev" >> $GITHUB_STEP_SUMMARY
       
 
