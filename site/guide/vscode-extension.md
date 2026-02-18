@@ -6,6 +6,9 @@ The DomainLang extension for Visual Studio Code gives you a full development env
 
 Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang), or search for **DomainLang** in the VS Code Extensions panel.
 
+![DomainLang in VS Code — light theme](/vscode-domainlang-screenshot-light.png){.light-only}
+![DomainLang in VS Code — dark theme](/vscode-domainlang-screenshot-dark.png){.dark-only}
+
 ::: tip
 The extension is all you need to start modeling. No CLI or SDK installation required.
 :::
@@ -52,6 +55,14 @@ Hover over any element to see a rich tooltip with its full definition — descri
 ### Multi-file workspace
 
 The extension understands `model.yaml` manifests and resolves imports across files. Open a folder containing `.dlang` files and the language server indexes the entire workspace.
+
+### Diagram viewer (beta)
+
+When your model contains `ContextMap` definitions, an **Open diagram** CodeLens link appears above each one. Click it to open that context map as an interactive diagram in a VS Code tab.
+
+The diagram updates live as you edit your model. It renders the bounded contexts and integration relationships defined inside the `ContextMap` block.
+
+The DSL text remains the source of truth — the diagram reflects it.
 
 ## LSP logging settings
 
