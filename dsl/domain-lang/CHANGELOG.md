@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/DomainLang/DomainLang/compare/v0.11.0...v0.12.0) (2026-02-18)
+
+
+### Features
+
+* **diagram:** implement context map diagram generation and layout ([49361c0](https://github.com/DomainLang/DomainLang/commit/49361c00c89efd1eb615d8aa98b651d277321ce4))
+
+
+### Bug Fixes
+
+* **document-symbol-provider:** update reference handling for relationships and metadata ([6553220](https://github.com/DomainLang/DomainLang/commit/6553220c9d2803c6636fb0dd443c7dd44b007405))
+
 ## [0.11.0](https://github.com/DomainLang/DomainLang/compare/v0.10.0...v0.11.0) (2026-02-15)
 
 

@@ -1,6 +1,6 @@
 {
     "name": "vscode-domainlang",
-    "version": "0.11.0",
+    "version": "0.12.0",
     "displayName": "DomainLang",
     "description": "A DSL for Domain-Driven Design",
     "publisher": "DomainLang",
