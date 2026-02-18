@@ -340,7 +340,7 @@ jobs:
         working-directory: site
         run: npm ci
       
-      - name: Build site (includes copy-diagrams)
+      - name: Build site for Cloudflare (base /)
         working-directory: site
         run: npm run build
 
@@ -350,8 +350,14 @@ jobs:
           name: site-dist-fast
           path: ./site/.vitepress/dist
           retention-days: 7
+
+      - name: Build site for GitHub Pages (base /domainlang/)
+        working-directory: site
+        env:
+          VITEPRESS_BASE: /domainlang/
+        run: npm run build
       
-      - name: Upload site artifact
+      - name: Upload site artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site/.vitepress/dist
@@ -556,7 +562,7 @@ jobs:
         working-directory: site
         run: npm ci
       
-      - name: Build site (includes copy-diagrams)
+      - name: Build site for Cloudflare (base /)
         working-directory: site
         run: npm run build
 
@@ -566,8 +572,14 @@ jobs:
           name: site-dist-release
           path: ./site/.vitepress/dist
           retention-days: 7
+
+      - name: Build site for GitHub Pages (base /domainlang/)
+        working-directory: site
+        env:
+          VITEPRESS_BASE: /domainlang/
+        run: npm run build
       
-      - name: Upload site artifact
+      - name: Upload site artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site/.vitepress/dist

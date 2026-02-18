@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { defineConfig } from 'vitepress'
 import type { LanguageRegistration } from 'shiki'
 
@@ -52,9 +53,9 @@ export default defineConfig({
   title: 'DomainLang',
   description: 'Domain-Driven Design, as code. Define, validate, and evolve your DDD models in version-controlled text files.',
   
-  // Base URL - use '/' for custom domain (domainlang.net)
-  // Change to '/DomainLang/' if deploying to GitHub Pages project site
-  base: '/',
+  // Base URL — defaults to '/' for domainlang.net (Cloudflare).
+  // Set VITEPRESS_BASE=/domainlang/ when building for GitHub Pages.
+  base: process.env.VITEPRESS_BASE ?? '/',
   
   // Clean URLs without .html extension
   cleanUrls: true,

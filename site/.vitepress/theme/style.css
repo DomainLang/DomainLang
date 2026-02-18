@@ -98,6 +98,20 @@
 }
 
 /**
+ * Dark/light mode image visibility
+ * -------------------------------------------------------------------------- */
+
+/* Show light-only images only in light mode */
+.dark .light-only {
+  display: none;
+}
+
+/* Show dark-only images only in dark mode */
+html:not(.dark) .dark-only {
+  display: none;
+}
+
+/**
  * Railroad diagram enhancements
  * -------------------------------------------------------------------------- */
 

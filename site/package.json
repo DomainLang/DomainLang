@@ -11,6 +11,7 @@
     "copy-diagrams": "rm -rf public/railroad && cp -r ../dsl/domain-lang/packages/language/docs/railroad public/"
   },
   "devDependencies": {
+    "@types/node": "^25.2.3",
     "vitepress": "^1.6.3",
     "vue": "^3.5.13"
   }
