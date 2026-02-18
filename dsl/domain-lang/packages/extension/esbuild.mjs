@@ -27,7 +27,7 @@ const plugins = [{
     },
 }];
 
-const ctx = await esbuild.context({
+const nodeCtx = await esbuild.context({
     // Entry points for the vscode extension and the language server
     entryPoints: ['src/extension/main.ts', 'src/language/main.ts'],
     outdir: 'out',
@@ -47,9 +47,25 @@ const ctx = await esbuild.context({
     plugins
 });
 
+const webviewCtx = await esbuild.context({
+    entryPoints: ['src/webview/main.ts'],
+    outfile: 'pack/webview.js',
+    bundle: true,
+    target: 'ES2019',
+    format: 'iife',
+    platform: 'browser',
+    loader: { '.ts': 'ts' },
+    sourcemap: !minify,
+    minify,
+    plugins,
+});
+
 if (watch) {
-    await ctx.watch();
+    await nodeCtx.watch();
+    await webviewCtx.watch();
 } else {
-    await ctx.rebuild();
-    ctx.dispose();
+    await nodeCtx.rebuild();
+    await webviewCtx.rebuild();
+    nodeCtx.dispose();
+    webviewCtx.dispose();
 }

@@ -177,4 +177,5 @@ describe('registerToolHandlers', () => {
         expect(validated.diagnostics.warnings).toEqual([]);
         expect(validated.diagnostics.info).toEqual([]);
     });
+
 });

@@ -16,13 +16,18 @@ import { DomainLangFormatter } from './lsp/domain-lang-formatter.js';
 import { DomainLangHoverProvider } from './lsp/hover/domain-lang-hover.js';
 import { DomainLangCompletionProvider } from './lsp/domain-lang-completion.js';
 import { DomainLangCodeActionProvider } from './lsp/domain-lang-code-actions.js';
+import { DomainLangCodeLensProvider } from './lsp/domain-lang-code-lens-provider.js';
 import { DomainLangNodeKindProvider } from './lsp/domain-lang-node-kind-provider.js';
 import { DomainLangDocumentSymbolProvider } from './lsp/domain-lang-document-symbol-provider.js';
+import { SprottyDefaultModule, SprottySharedModule } from 'langium-sprotty';
+import type { IDiagramGenerator, IModelLayoutEngine } from 'sprotty-protocol';
 import { ImportResolver } from './services/import-resolver.js';
 import { ManifestManager } from './services/workspace-manager.js';
 import { PackageBoundaryDetector } from './services/package-boundary-detector.js';
 import { DomainLangWorkspaceManager } from './lsp/domain-lang-workspace-manager.js';
 import { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
+import { DomainLangContextMapDiagramGenerator } from './diagram/context-map-diagram-generator.js';
+import { createElkLayoutEngine } from './diagram/elk-layout-factory.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -40,8 +45,13 @@ export type DomainLangAddedServices = {
         Formatter: DomainLangFormatter,
         HoverProvider: DomainLangHoverProvider,
         CompletionProvider: DomainLangCompletionProvider,
+        CodeLensProvider: DomainLangCodeLensProvider,
         CodeActionProvider: DomainLangCodeActionProvider
-    }
+    },
+    diagram: {
+        DiagramGenerator: IDiagramGenerator,
+        ModelLayoutEngine: IModelLayoutEngine
+    },
 }
 
 /**
@@ -80,8 +90,13 @@ export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices
         Formatter: () => new DomainLangFormatter(),
         HoverProvider: (services) => new DomainLangHoverProvider(services),
         CompletionProvider: (services) => new DomainLangCompletionProvider(services),
+        CodeLensProvider: () => new DomainLangCodeLensProvider(),
         CodeActionProvider: () => new DomainLangCodeActionProvider(),
         DocumentSymbolProvider: (services) => new DomainLangDocumentSymbolProvider(services)
+    },
+    diagram: {
+        DiagramGenerator: (services) => new DomainLangContextMapDiagramGenerator(services as never),
+        ModelLayoutEngine: () => createElkLayoutEngine(),
     },
 };
 
@@ -107,11 +122,13 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
     const shared = inject(
         createDefaultSharedModule(context),
         DomainLangGeneratedSharedModule,
-        DomainLangSharedModule
+        DomainLangSharedModule,
+        SprottySharedModule as never
     );
     const DomainLang = inject(
         createDefaultModule({ shared }),
         DomainLangGeneratedModule,
+        SprottyDefaultModule as never,
         DomainLangModule
     );
     shared.ServiceRegistry.register(DomainLang);

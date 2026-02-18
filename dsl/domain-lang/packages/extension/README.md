@@ -4,6 +4,8 @@ Define your domains, bounded contexts, context maps, and team ownership in a con
 
 DomainLang brings Domain-Driven Design modeling into your editor. You get syntax highlighting, IntelliSense, real-time validation, formatting, and navigation features that make `.dlang` files feel like first-class citizens alongside your code.
 
+![DomainLang in VS Code](images/vscode-domainlang-screenshot-dark.png)
+
 ## Get started in two minutes
 
 1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang).

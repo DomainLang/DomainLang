@@ -32,3 +32,8 @@ export * from './lsp/manifest-diagnostics.js';
 export { DomainLangIndexManager } from './lsp/domain-lang-index-manager.js';
 export { registerDomainLangRefresh, processWatchedFileChanges } from './lsp/domain-lang-refresh.js';
 export { registerToolHandlers } from './lsp/tool-handlers.js';
+
+// Export diagram services (reusable by CLI and extension)
+export { DomainLangContextMapDiagramGenerator } from './diagram/context-map-diagram-generator.js';
+export { ContextMapLayoutConfigurator } from './diagram/context-map-layout-configurator.js';
+export { createElkLayoutEngine, createElkFactory } from './diagram/elk-layout-factory.js';

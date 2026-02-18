@@ -3,6 +3,10 @@ import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { registerLanguageModelTools } from './lm-tools.js';
+import {
+    DiagramPanel,
+    OPEN_DIAGRAM_COMMAND,
+} from './diagram-panel.js';
 
 let client: LanguageClient;
 let outputChannel: vscode.OutputChannel;
@@ -25,6 +29,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         // Register Language Model Tools (PRS-015 Phase 3)
         registerLanguageModelTools(client, context);
         outputChannel.appendLine('DomainLang Language Model Tools registered');
+
+        const diagramPanel = new DiagramPanel(client, outputChannel, context);
+        context.subscriptions.push(
+            vscode.commands.registerCommand(OPEN_DIAGRAM_COMMAND, async (args?: { uri?: string }) => {
+                const requestedUri = args?.uri;
+
+                let document: vscode.TextDocument | undefined;
+                if (requestedUri) {
+                    try {
+                        document = await vscode.workspace.openTextDocument(vscode.Uri.parse(requestedUri));
+                    } catch {
+                        document = undefined;
+                    }
+                }
+
+                document ??= vscode.window.activeTextEditor?.document;
+
+                if (document?.languageId !== 'domain-lang') {
+                    vscode.window.showInformationMessage('Open a DomainLang (.dlang) file to view nodes.');
+                    return;
+                }
+
+                await diagramPanel.openDocument(document);
+            })
+        );
+        outputChannel.appendLine('DomainLang diagram panel registered');
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         outputChannel.appendLine(`Failed to start language server: ${message}`);

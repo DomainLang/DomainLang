@@ -306,6 +306,7 @@ site/dist
 # Build outputs and artifacts
 dsl/domain-lang/packages/*/dist
 dsl/domain-lang/packages/*/coverage
+dsl/domain-lang/packages/*/pack
 dsl/domain-lang/out
 
 # Generated documentation

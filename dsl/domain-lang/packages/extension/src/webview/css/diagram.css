@@ -1,0 +1,202 @@
+/* ── DomainLang context-map diagram styles ── */
+/* DDD community notation: ellipse nodes, U/D edge annotations */
+/* Uses VS Code CSS variables for automatic light/dark theme support */
+/* Note: class-sprotty-node is set ON the shape element (ellipse/rect),
+   not on a parent <g>, so selectors must be element.class, not .class element */
+
+/* ── Canvas ── */
+.sprotty {
+    background: var(--vscode-editor-background, #1e1e1e);
+}
+
+/* ── Bounded context nodes (ellipses) ── */
+/* class-sprotty-node is applied directly on the <ellipse> element */
+ellipse.sprotty-node {
+    fill: var(--vscode-sideBar-background, #252526);
+    stroke: var(--vscode-foreground, #cccccc);
+    stroke-width: 2;
+}
+
+ellipse.sprotty-node.selected {
+    stroke: var(--vscode-focusBorder, #007acc);
+    stroke-width: 2.5;
+}
+
+ellipse.sprotty-node.mouseover {
+    stroke: var(--vscode-focusBorder, #007acc);
+    stroke-width: 2.5;
+}
+
+/* ── Node labels (inside nodes via vbox layout) ── */
+text.sprotty-label {
+    fill: var(--vscode-foreground, #cccccc);
+    font-family: var(--vscode-font-family, sans-serif);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+text.domainlang-node-label {
+    text-anchor: middle;
+    dominant-baseline: middle;
+    alignment-baseline: middle;
+}
+
+/* ── Edges ── */
+.sprotty-edge {
+    fill: none;
+    stroke: var(--vscode-foreground, #cccccc);
+    stroke-width: 2;
+}
+
+.sprotty-edge.selected {
+    stroke: var(--vscode-focusBorder, #007acc);
+    stroke-width: 2.5;
+}
+
+.sprotty-edge.mouseover {
+    stroke: var(--vscode-focusBorder, #007acc);
+}
+
+/* Separate Ways — dotted line, slightly muted */
+.sprotty-edge.separate-ways path {
+    stroke-dasharray: 6 5;
+    opacity: 0.65;
+}
+
+/* Partnership — bold double-width stroke */
+.sprotty-edge.partnership path {
+    stroke-width: 4;
+}
+
+/* ── Smooth edge rendering ── */
+.sprotty-edge path {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Hide routing-point handles (diagram is read-only) */
+circle.sprotty-routing-handle {
+    display: none;
+    pointer-events: none;
+}
+
+/* ── Edge label filled rectangles ── */
+rect.edge-label-bg {
+    fill: var(--vscode-editorWidget-background, #252526);
+    stroke: var(--vscode-editorWidget-border, #454545);
+    stroke-width: 1;
+    opacity: 0.95;
+}
+
+/* ── Edge label text ── */
+/* Reset stroke/stroke-width inherited from .sprotty-edge to avoid outlined text */
+.sprotty-edge text.sprotty-label {
+    fill: var(--vscode-foreground, #cccccc);
+    stroke: none;
+    stroke-width: 0;
+    font-family: var(--vscode-font-family, sans-serif);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+text.domainlang-edge-label {
+    text-anchor: middle;
+    dominant-baseline: middle;
+    alignment-baseline: middle;
+}
+
+/* ── U/D badge labels (DDD Context Map notation) ── */
+/*
+ * No patterns  →  single bordered box with just U or D
+ *                   ┌───┐
+ *                   │ U │
+ *                   └───┘
+ *   With patterns →  outer rect + vertical separator line + text
+ *                    ┌───┬──────────┐
+ *                    │ U │ OHS, PL  │
+ *                    └───┴──────────┘
+ */
+
+/* Role-only box (no-pattern case) */
+rect.ud-role-box {
+    fill: var(--vscode-editor-background, #1e1e1e);
+    stroke: var(--vscode-foreground, #cccccc);
+    stroke-width: 1;
+}
+
+/* Outer bordered rectangle enclosing both role and pattern text (with-pattern case) */
+rect.ud-outer-box {
+    fill: var(--vscode-editor-background, #1e1e1e);
+    stroke: var(--vscode-foreground, #cccccc);
+    stroke-width: 1;
+}
+
+/* Vertical separator line between role cell and pattern cell */
+line.ud-separator {
+    stroke: var(--vscode-foreground, #cccccc);
+    stroke-width: 1;
+}
+
+/* U/D role text — used in both variants */
+text.ud-role-text {
+    fill: var(--vscode-foreground, #cccccc);
+    stroke: none;
+    stroke-width: 0;
+    font-family: var(--vscode-font-family, sans-serif);
+    font-size: 12px;
+    font-weight: 400;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+/* Pattern text (OHS, PL, ACL, CF etc.) */
+text.ud-pattern-text {
+    fill: var(--vscode-foreground, #cccccc);
+    stroke: none;
+    stroke-width: 0;
+    font-family: var(--vscode-font-family, sans-serif);
+    font-size: 12px;
+    font-weight: 400;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+/* ── Edge arrow markers ── */
+.sprotty-edge .arrow {
+    fill: var(--vscode-foreground, #cccccc);
+}
+
+/* ── Missing / unresolved references ── */
+.sprotty .sprotty-missing {
+    stroke: var(--vscode-errorForeground, #f44747);
+    fill: var(--vscode-errorForeground, #f44747);
+}
+
+/* ── Big Ball of Mud nodes (cloud inside ellipse) ── */
+/*
+ * BBoM bounded contexts share the standard ellipse shape (outer boundary).
+ * Inside, a decorative cloud outline sits in the lower portion of the ellipse
+ * beneath the BC name label.  The dashed stroke distinguishes BBoM nodes from
+ * regular bounded contexts.
+ */
+path.bbom-cloud {
+    fill: none;
+    stroke: var(--vscode-editorWarning-foreground, #e9a700);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 2.5;
+    opacity: 0.85;
+}
+
+/* "BBoM" annotation text centred inside the cloud decoration */
+text.bbom-label {
+    fill: var(--vscode-editorWarning-foreground, #e9a700);
+    stroke: none;
+    stroke-width: 0;
+    font-family: var(--vscode-font-family, sans-serif);
+    font-size: 11px;
+    font-weight: 400;
+    font-style: italic;
+    text-anchor: middle;
+    dominant-baseline: central;
+    opacity: 0.9;
+}

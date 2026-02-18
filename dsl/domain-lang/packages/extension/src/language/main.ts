@@ -9,6 +9,13 @@ import {
     registerToolHandlers,
     setLspRuntimeSettings,
 } from '@domainlang/language';
+import {
+    addDiagramHandler,
+    addDiagramSelectionHandler,
+    addTextSelectionHandler,
+    type LangiumSprottyServices,
+    type LangiumSprottySharedServices,
+} from 'langium-sprotty';
 import fs from 'node:fs/promises';
 
 // Create a connection to the client
@@ -58,6 +65,11 @@ registerDomainLangRefresh(shared, DomainLang, {
 
 // Register custom LSP request handlers for VS Code Language Model Tools (PRS-015)
 registerToolHandlers(connection, shared);
+
+// Register Sprotty diagram handlers for langium-sprotty integration
+addDiagramHandler(connection, shared as LangiumSprottySharedServices);
+addDiagramSelectionHandler(DomainLang as unknown as LangiumSprottyServices);
+addTextSelectionHandler(DomainLang as unknown as LangiumSprottyServices, { fitToScreen: 'none' });
 
 // Start the language server with the shared services
 startLanguageServer(shared);

@@ -85,9 +85,12 @@
         "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
+        "elkjs": "^0.8.2",
         "langium": "~4.2.0",
+        "langium-sprotty": "~4.2.0",
         "monaco-editor": "0.55.1",
-        "vite": "6.4.1",
+        "sprotty-elk": "~1.4.0",
+        "sprotty-protocol": "~1.4.0",
         "yaml": "^2.5.0"
     },
     "devDependencies": {

@@ -337,54 +337,68 @@ function executeListQuery(
     entityType: QueryEntityType,
     filters: QueryFilters
 ): Record<string, unknown>[] {
-    switch (entityType) {
-        case 'domains': {
-            let builder = query.domains();
-            if (filters.name) builder = builder.withName(filters.name);
-            if (filters.fqn) builder = builder.withFqn(filters.fqn);
-            return builder.toArray().map((d) => serializeNode(d, query));
-        }
-        case 'bcs': {
-            let builder = query.boundedContexts();
-            if (filters.domain) builder = builder.inDomain(filters.domain);
-            if (filters.team) builder = builder.withTeam(filters.team);
-            if (filters.classification)
-                builder = builder.withClassification(filters.classification);
-            if (filters.metadata) {
-                const [key, value] = filters.metadata.split('=');
-                builder = builder.withMetadata(key, value);
-            }
-            if (filters.name) builder = builder.withName(filters.name) as ReturnType<Query['boundedContexts']>;
-            if (filters.fqn) builder = builder.withFqn(filters.fqn) as ReturnType<Query['boundedContexts']>;
-            return builder.toArray().map((bc) => serializeNode(bc, query));
-        }
-        case 'teams': {
-            let builder = query.teams();
-            if (filters.name) builder = builder.withName(filters.name);
-            return builder.toArray().map((t) => serializeNode(t, query));
-        }
-        case 'classifications': {
-            let builder = query.classifications();
-            if (filters.name) builder = builder.withName(filters.name);
-            return builder.toArray().map((c) => serializeNode(c, query));
-        }
-        case 'relationships': {
-            const rels = query.relationships().toArray();
-            return rels.map((r) => serializeRelationship(r));
-        }
-        case 'context-maps': {
-            let builder = query.contextMaps();
-            if (filters.name) builder = builder.withName(filters.name);
-            return builder.toArray().map((cm) => serializeNode(cm, query));
-        }
-        case 'domain-maps': {
-            let builder = query.domainMaps();
-            if (filters.name) builder = builder.withName(filters.name);
-            return builder.toArray().map((dm) => serializeNode(dm, query));
-        }
-        default:
-            return [];
+    const handlers: Record<QueryEntityType, (activeQuery: Query, activeFilters: QueryFilters) => Record<string, unknown>[]> = {
+        domains: listDomains,
+        bcs: listBoundedContexts,
+        teams: listTeams,
+        classifications: listClassifications,
+        relationships: listRelationships,
+        'context-maps': listContextMaps,
+        'domain-maps': listDomainMaps,
+    };
+
+    return handlers[entityType](query, filters);
+}
+
+function listDomains(query: Query, filters: QueryFilters): Record<string, unknown>[] {
+    let builder = query.domains();
+    if (filters.name) builder = builder.withName(filters.name);
+    if (filters.fqn) builder = builder.withFqn(filters.fqn);
+    return builder.toArray().map((domain) => serializeNode(domain, query));
+}
+
+function listBoundedContexts(query: Query, filters: QueryFilters): Record<string, unknown>[] {
+    let builder = query.boundedContexts();
+    if (filters.domain) builder = builder.inDomain(filters.domain);
+    if (filters.team) builder = builder.withTeam(filters.team);
+    if (filters.classification) {
+        builder = builder.withClassification(filters.classification);
     }
+    if (filters.metadata) {
+        const [key, value] = filters.metadata.split('=');
+        builder = builder.withMetadata(key, value);
+    }
+    if (filters.name) builder = builder.withName(filters.name) as ReturnType<Query['boundedContexts']>;
+    if (filters.fqn) builder = builder.withFqn(filters.fqn) as ReturnType<Query['boundedContexts']>;
+    return builder.toArray().map((boundedContext) => serializeNode(boundedContext, query));
+}
+
+function listTeams(query: Query, filters: QueryFilters): Record<string, unknown>[] {
+    let builder = query.teams();
+    if (filters.name) builder = builder.withName(filters.name);
+    return builder.toArray().map((team) => serializeNode(team, query));
+}
+
+function listClassifications(query: Query, filters: QueryFilters): Record<string, unknown>[] {
+    let builder = query.classifications();
+    if (filters.name) builder = builder.withName(filters.name);
+    return builder.toArray().map((classification) => serializeNode(classification, query));
+}
+
+function listRelationships(query: Query, _filters: QueryFilters): Record<string, unknown>[] {
+    return query.relationships().toArray().map((relationship) => serializeRelationship(relationship));
+}
+
+function listContextMaps(query: Query, filters: QueryFilters): Record<string, unknown>[] {
+    let builder = query.contextMaps();
+    if (filters.name) builder = builder.withName(filters.name);
+    return builder.toArray().map((contextMap) => serializeNode(contextMap, query));
+}
+
+function listDomainMaps(query: Query, filters: QueryFilters): Record<string, unknown>[] {
+    let builder = query.domainMaps();
+    if (filters.name) builder = builder.withName(filters.name);
+    return builder.toArray().map((domainMap) => serializeNode(domainMap, query));
 }
 
 /**

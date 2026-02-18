@@ -32,6 +32,13 @@
         "onLanguage:domain-lang"
     ],
     "contributes": {
+        "commands": [
+            {
+                "command": "domainlang.diagram.open",
+                "title": "DomainLang: Open diagram",
+                "category": "DomainLang"
+            }
+        ],
         "languages": [
             {
                 "id": "domain-lang",
@@ -227,7 +234,7 @@
     },
     "main": "./out/extension/main.cjs",
     "scripts": {
-        "clean": "shx rm -fr *.tsbuildinfo out syntaxes/domain-lang.tmLanguage.json",
+        "clean": "shx rm -fr *.tsbuildinfo out pack syntaxes/domain-lang.tmLanguage.json",
         "vscode:prepublish": "npm run build",
         "build:prepare": "shx mkdir -p ./syntaxes/ && shx cp -f ../language/syntaxes/domain-lang.tmLanguage.json ./syntaxes/domain-lang.tmLanguage.json",
         "build": "npm run build:prepare && tsc -b tsconfig.json && node esbuild.mjs",
@@ -236,6 +243,9 @@
     },
     "dependencies": {
         "@domainlang/language": "0.1.0",
+        "sprotty": "~1.4.0",
+        "sprotty-vscode": "~1.1.0",
+        "sprotty-vscode-webview": "~1.1.0",
         "vscode-languageclient": "~9.0.1",
         "vscode-languageserver": "~9.0.1"
     },
