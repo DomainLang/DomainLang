@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/DomainLang/DomainLang/compare/v0.12.0...v0.12.1) (2026-02-18)
+
+
+### Bug Fixes
+
+* Refactor tests and improve code quality ([c80ff0b](https://github.com/DomainLang/DomainLang/commit/c80ff0bf8824294e58e9aa02d79016009d224342))
+
 ## [0.12.0](https://github.com/DomainLang/DomainLang/compare/v0.11.0...v0.12.0) (2026-02-18)
 
 
