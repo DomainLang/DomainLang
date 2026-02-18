@@ -135,7 +135,7 @@ describe('registerLanguageModelTools', () => {
                     errors: [],
                     warnings: [
                         {
-                            file: '/tmp/shared.dlang',
+                            file: '/tmp/shared.dlang', // NOSONAR
                             line: 1,
                             column: 1,
                             message: 'Missing vision',

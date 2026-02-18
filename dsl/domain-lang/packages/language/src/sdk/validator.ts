@@ -76,6 +76,52 @@ function toValidationDiagnostic(
 }
 
 /**
+ * Collect errors and warnings from an array of Langium documents.
+ */
+function collectDiagnostics(
+    allDocuments: Iterable<{ uri: { fsPath: string }; diagnostics?: Array<{ severity?: number; message: string; range: { start: { line: number; character: number } } }> }>
+): { errors: ValidationDiagnostic[]; warnings: ValidationDiagnostic[] } {
+    const errors: ValidationDiagnostic[] = [];
+    const warnings: ValidationDiagnostic[] = [];
+    for (const doc of allDocuments) {
+        const diagnostics = doc.diagnostics ?? [];
+        const docPath = doc.uri.fsPath;
+        for (const diagnostic of diagnostics) {
+            const validationDiag = toValidationDiagnostic(diagnostic, docPath);
+            if (diagnostic.severity === 1) {
+                errors.push(validationDiag);
+            } else if (diagnostic.severity === 2) {
+                warnings.push(validationDiag);
+            }
+        }
+    }
+    return { errors, warnings };
+}
+
+/**
+ * Count Domain and BoundedContext elements across all documents.
+ */
+function countModelElements(
+    allDocuments: Iterable<{ parseResult?: { value: unknown } }>
+): { domainCount: number; bcCount: number } {
+    let domainCount = 0;
+    let bcCount = 0;
+    for (const doc of allDocuments) {
+        const model = doc.parseResult?.value;
+        if (isModel(model)) {
+            for (const element of model.children ?? []) {
+                if (element.$type === 'Domain') {
+                    domainCount++;
+                } else if (element.$type === 'BoundedContext') {
+                    bcCount++;
+                }
+            }
+        }
+    }
+    return { domainCount, bcCount };
+}
+
+/**
  * Validates a DomainLang model file and all its imports.
  * 
  * Uses the LSP infrastructure to:
@@ -152,40 +198,9 @@ export async function validateFile(
     const allDocuments = Array.from(shared.workspace.LangiumDocuments.all);
     await shared.workspace.DocumentBuilder.build(allDocuments, { validation: true });
 
-    // Collect diagnostics from all loaded documents (entry + imports)
-    const errors: ValidationDiagnostic[] = [];
-    const warnings: ValidationDiagnostic[] = [];
-
-    for (const doc of allDocuments) {
-        const diagnostics = doc.diagnostics ?? [];
-        const diagnosticFile = doc.uri.fsPath;
-
-        for (const diagnostic of diagnostics) {
-            const validationDiag = toValidationDiagnostic(diagnostic, diagnosticFile);
-            if (diagnostic.severity === 1) {
-                errors.push(validationDiag);
-            } else if (diagnostic.severity === 2) {
-                warnings.push(validationDiag);
-            }
-        }
-    }
-
-    // Count model elements across all documents
-    let domainCount = 0;
-    let bcCount = 0;
-
-    for (const doc of allDocuments) {
-        const model = doc.parseResult?.value;
-        if (isModel(model)) {
-            for (const element of model.children ?? []) {
-                if (element.$type === 'Domain') {
-                    domainCount++;
-                } else if (element.$type === 'BoundedContext') {
-                    bcCount++;
-                }
-            }
-        }
-    }
+    // Collect diagnostics and count elements from all loaded documents (entry + imports)
+    const { errors, warnings } = collectDiagnostics(allDocuments);
+    const { domainCount, bcCount } = countModelElements(allDocuments);
 
     return {
         valid: errors.length === 0,
@@ -314,41 +329,9 @@ export async function validateWorkspace(
     const allDocuments = Array.from(shared.workspace.LangiumDocuments.all);
     await shared.workspace.DocumentBuilder.build(allDocuments, { validation: true });
 
-    // Collect diagnostics from ALL documents (not just entry)
-    const errors: ValidationDiagnostic[] = [];
-    const warnings: ValidationDiagnostic[] = [];
-
-    for (const doc of allDocuments) {
-        const diagnostics = doc.diagnostics ?? [];
-        const docPath = doc.uri.fsPath;
-        
-        for (const diagnostic of diagnostics) {
-            const validationDiag = toValidationDiagnostic(diagnostic, docPath);
-            
-            if (diagnostic.severity === 1) {
-                errors.push(validationDiag);
-            } else if (diagnostic.severity === 2) {
-                warnings.push(validationDiag);
-            }
-        }
-    }
-
-    // Count model elements across all documents
-    let domainCount = 0;
-    let bcCount = 0;
-
-    for (const doc of allDocuments) {
-        const model = doc.parseResult?.value;
-        if (isModel(model)) {
-            for (const element of model.children ?? []) {
-                if (element.$type === 'Domain') {
-                    domainCount++;
-                } else if (element.$type === 'BoundedContext') {
-                    bcCount++;
-                }
-            }
-        }
-    }
+    // Collect diagnostics and count elements from ALL documents (not just entry)
+    const { errors, warnings } = collectDiagnostics(allDocuments);
+    const { domainCount, bcCount } = countModelElements(allDocuments);
 
     return {
         valid: errors.length === 0,

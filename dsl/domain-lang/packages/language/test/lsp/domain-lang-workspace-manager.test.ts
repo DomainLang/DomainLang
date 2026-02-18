@@ -70,7 +70,7 @@ describe('DomainLangWorkspaceManager', () => {
             expect(paths).toContain('domains.dlang');
         });
 
-        // TODO: Re-enable once custom entry file loading is stabilized.
+        // Skipped: Re-enable once custom entry file loading is stabilized.
         // Blocked by: Workspace manager state may leak between tests when reusing services.
         test.skip('uses custom entry from model.yaml', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-a2-'));
@@ -206,7 +206,7 @@ describe('DomainLangWorkspaceManager', () => {
             expect(basenames).toContain('standalone.dlang'); // Standalone
         });
 
-        // TODO: Re-enable once module boundary enforcement is implemented.
+        // Skipped: Re-enable once module boundary enforcement is implemented.
         // Blocked by: Workspace manager does not yet exclude unimported files inside module dirs.
         test.skip('does not load standalone files inside module directories', async () => {
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-workspace-c2-'));

@@ -28,9 +28,7 @@
     "categories": [
         "Programming Languages"
     ],
-    "activationEvents": [
-        "onLanguage:domain-lang"
-    ],
+    "activationEvents": [],
     "contributes": {
         "commands": [
             {

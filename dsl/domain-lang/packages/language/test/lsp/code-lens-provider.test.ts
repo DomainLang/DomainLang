@@ -3,9 +3,13 @@ import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, s } from '../test-helpers.js';
 
 let testServices: TestServices;
+let provider: NonNullable<(typeof testServices)['services']['DomainLang']['lsp']['CodeLensProvider']>;
 
 beforeAll(() => {
     testServices = setupTestSuite();
+    const resolved = testServices.services.DomainLang.lsp.CodeLensProvider;
+    if (!resolved) throw new Error('CodeLensProvider not available');
+    provider = resolved;
 });
 
 describe('DomainLangCodeLensProvider', () => {
@@ -26,7 +30,6 @@ describe('DomainLangCodeLensProvider', () => {
                 }
             `
         );
-        const provider = testServices.services.DomainLang.lsp.CodeLensProvider!;
 
         // Act
         const lenses = await provider.provideCodeLens(document, {
@@ -44,7 +47,6 @@ describe('DomainLangCodeLensProvider', () => {
         const document = await testServices.parse(
             s`Domain Sales { vision: "v" }`
         );
-        const provider = testServices.services.DomainLang.lsp.CodeLensProvider!;
 
         // Act
         const lenses = await provider.provideCodeLens(document, {
@@ -67,7 +69,6 @@ describe('DomainLangCodeLensProvider', () => {
                 }
             `
         );
-        const provider = testServices.services.DomainLang.lsp.CodeLensProvider!;
 
         // Act
         const lenses = await provider.provideCodeLens(document, {
@@ -92,7 +93,6 @@ describe('DomainLangCodeLensProvider', () => {
                 }
             `
         );
-        const provider = testServices.services.DomainLang.lsp.CodeLensProvider!;
 
         // Act
         const lenses = await provider.provideCodeLens(document, {
@@ -117,7 +117,6 @@ describe('DomainLangCodeLensProvider', () => {
                 }
             `
         );
-        const provider = testServices.services.DomainLang.lsp.CodeLensProvider!;
 
         // Act
         const lenses = await provider.provideCodeLens(document, {

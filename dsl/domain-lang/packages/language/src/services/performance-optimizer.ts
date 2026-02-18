@@ -23,8 +23,8 @@ import fs from 'node:fs/promises';
  * always correct and immediate.
  */
 export class PerformanceOptimizer {
-    private lockFileCache = new Map<string, LockFile>();
-    private manifestCache = new Map<string, unknown>();
+    private readonly lockFileCache = new Map<string, LockFile>();
+    private readonly manifestCache = new Map<string, unknown>();
 
     /**
      * Gets a lock file from cache or loads it from disk.
@@ -55,7 +55,7 @@ export class PerformanceOptimizer {
     /**
      * Gets a manifest file from cache or loads it from disk.
      */
-    async getCachedManifest(manifestPath: string): Promise<unknown | undefined> {
+    async getCachedManifest(manifestPath: string): Promise<unknown> {
         const cacheKey = this.normalizePath(manifestPath);
         const cached = this.manifestCache.get(cacheKey);
 
@@ -121,9 +121,7 @@ let globalOptimizer: PerformanceOptimizer | undefined;
  * Gets the global performance optimizer instance.
  */
 export function getGlobalOptimizer(): PerformanceOptimizer {
-    if (!globalOptimizer) {
-        globalOptimizer = new PerformanceOptimizer();
-    }
+    globalOptimizer ??= new PerformanceOptimizer();
     return globalOptimizer;
 }
 

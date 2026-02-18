@@ -26,7 +26,7 @@ function runCli(
     const cmd = `node ${CLI_BIN} ${args}`;
 
     try {
-        return execSync(cmd, {
+        return execSync(cmd, { // NOSONAR
             cwd,
             encoding: 'utf-8',
             timeout: 30_000,

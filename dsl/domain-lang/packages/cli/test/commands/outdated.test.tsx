@@ -221,7 +221,7 @@ describe('runOutdated function', () => {
         // Assert
         expect(exitSpy).toHaveBeenCalledWith(0);
         const output = String(stdoutSpy.mock.calls[0]?.[0] ?? '');
-        expect(output).toMatch(/\d+ upgrades, \d+ branches behind, \d+ pinned/);
+        expect(output).toMatch(/\d+ upgrades, \d+ branches behind, \d+ pinned/); // NOSONAR
 
         exitSpy.mockRestore();
         stdoutSpy.mockRestore();

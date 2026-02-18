@@ -68,7 +68,7 @@ describe('CredentialProvider', () => {
                 delete process.env['DLANG_GITHUB_TOKEN'];
                 delete process.env['GITHUB_TOKEN'];
                 mockExecFileAsync.mockResolvedValue({
-                    stdout: 'username=testuser\npassword=testpass\n',
+                    stdout: 'username=testuser\npassword=testpass\n', // NOSONAR
                     stderr: '',
                 });
 
@@ -78,7 +78,7 @@ describe('CredentialProvider', () => {
                 // Assert
                 expect(result).toEqual({
                     username: 'testuser',
-                    password: 'testpass',
+                    password: 'testpass', // NOSONAR
                 });
                 expect(mockExecFileAsync).toHaveBeenCalledWith(
                     'git',
@@ -105,7 +105,7 @@ describe('CredentialProvider', () => {
             test('parses username and password from git credential output', async () => {
                 // Arrange
                 mockExecFileAsync.mockResolvedValue({
-                    stdout: 'username=myuser\npassword=mytoken\n',
+                    stdout: 'username=myuser\npassword=mytoken\n', // NOSONAR
                     stderr: '',
                 });
 
@@ -115,14 +115,14 @@ describe('CredentialProvider', () => {
                 // Assert
                 expect(result).toEqual({
                     username: 'myuser',
-                    password: 'mytoken',
+                    password: 'mytoken', // NOSONAR
                 });
             });
 
             test('handles passwords with equals signs correctly', async () => {
                 // Arrange
                 mockExecFileAsync.mockResolvedValue({
-                    stdout: 'username=user\npassword=pass=with=equals\n',
+                    stdout: 'username=user\npassword=pass=with=equals\n', // NOSONAR
                     stderr: '',
                 });
 
@@ -132,7 +132,7 @@ describe('CredentialProvider', () => {
                 // Assert
                 expect(result).toEqual({
                     username: 'user',
-                    password: 'pass=with=equals',
+                    password: 'pass=with=equals', // NOSONAR
                 });
             });
 
@@ -167,7 +167,7 @@ describe('CredentialProvider', () => {
             test('uses correct host parameter for git credential query', async () => {
                 // Arrange
                 mockExecFileAsync.mockResolvedValue({
-                    stdout: 'username=user\npassword=pass\n',
+                    stdout: 'username=user\npassword=pass\n', // NOSONAR
                     stderr: '',
                 });
 
@@ -256,7 +256,7 @@ describe('CredentialProvider', () => {
             test('caches git credentials and avoids repeated subprocess calls', async () => {
                 // Arrange
                 mockExecFileAsync.mockResolvedValue({
-                    stdout: 'username=user\npassword=token123\n',
+                    stdout: 'username=user\npassword=token123\n', // NOSONAR
                     stderr: '',
                 });
 
@@ -266,8 +266,8 @@ describe('CredentialProvider', () => {
 
                 // Assert - subprocess called only once, both return same value
                 expect(mockExecFileAsync).toHaveBeenCalledTimes(1);
-                expect(result1).toEqual({ username: 'user', password: 'token123' });
-                expect(result2).toEqual({ username: 'user', password: 'token123' });
+                expect(result1).toEqual({ username: 'user', password: 'token123' }); // NOSONAR
+                expect(result2).toEqual({ username: 'user', password: 'token123' }); // NOSONAR
             });
 
             test('caches undefined result to avoid retrying failed lookups', async () => {
@@ -304,7 +304,7 @@ describe('CredentialProvider', () => {
                 const credentials = {
                     token: 'ghp_token',
                     username: 'user',
-                    password: 'pass',
+                    password: 'pass', // NOSONAR
                 };
 
                 // Act
@@ -318,7 +318,7 @@ describe('CredentialProvider', () => {
         describe('basic authentication', () => {
             test('returns Basic header for username/password credentials', () => {
                 // Arrange
-                const credentials = { username: 'testuser', password: 'testpass' };
+                const credentials = { username: 'testuser', password: 'testpass' }; // NOSONAR
 
                 // Act
                 const result = provider.getAuthorizationHeader(credentials);
@@ -330,7 +330,7 @@ describe('CredentialProvider', () => {
 
             test('handles special characters in username and password', () => {
                 // Arrange
-                const credentials = { username: 'user@example.com', password: 'p@ss:w0rd!' };
+                const credentials = { username: 'user@example.com', password: 'p@ss:w0rd!' }; // NOSONAR
 
                 // Act
                 const result = provider.getAuthorizationHeader(credentials);
@@ -353,7 +353,7 @@ describe('CredentialProvider', () => {
 
             test('returns undefined when only password is present', () => {
                 // Arrange
-                const credentials = { password: 'testpass' };
+                const credentials = { password: 'testpass' }; // NOSONAR
 
                 // Act
                 const result = provider.getAuthorizationHeader(credentials);

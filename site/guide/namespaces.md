@@ -1,6 +1,6 @@
 # Namespaces
 
-Namespaces organize your model into logical groups and create qualified names for elements. They're essential for large models and multi-team environments. 
+Namespaces organize your model into logical groups and create qualified names for elements. They're essential for large models and multi-team environments.
 
 ## Keywords
 

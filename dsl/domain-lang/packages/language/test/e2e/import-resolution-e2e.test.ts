@@ -22,19 +22,19 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 
+function createResolver(): { resolver: ImportResolver; manifestManager: ManifestManager } {
+    const manifestManager = new ManifestManager({ autoResolve: false, allowNetwork: false });
+    const services = { imports: { ManifestManager: manifestManager } } as DomainLangServices;
+    const resolver = new ImportResolver(services);
+    return { resolver, manifestManager };
+}
+
 describe('Import Resolution E2E', () => {
     let tempDir: string;
 
     beforeAll(async () => {
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-e2e-'));
     });
-
-    function createResolver(): { resolver: ImportResolver; manifestManager: ManifestManager } {
-        const manifestManager = new ManifestManager({ autoResolve: false, allowNetwork: false });
-        const services = { imports: { ManifestManager: manifestManager } } as DomainLangServices;
-        const resolver = new ImportResolver(services);
-        return { resolver, manifestManager };
-    }
 
     // ==========================================
     // SMOKE: external import with full cache

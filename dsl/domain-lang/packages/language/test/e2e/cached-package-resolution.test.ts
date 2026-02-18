@@ -22,6 +22,13 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 
+function createResolver(): { resolver: ImportResolver; manifestManager: ManifestManager } {
+    const manifestManager = new ManifestManager({ autoResolve: false, allowNetwork: false });
+    const services = { imports: { ManifestManager: manifestManager } } as DomainLangServices;
+    const resolver = new ImportResolver(services);
+    return { resolver, manifestManager };
+}
+
 describe('Cached Package Resolution E2E', () => {
     let tempDir: string;
     let projectRoot: string;
@@ -39,13 +46,6 @@ describe('Cached Package Resolution E2E', () => {
     afterAll(async () => {
         await fs.rm(tempDir, { recursive: true, force: true });
     });
-
-    function createResolver(): { resolver: ImportResolver; manifestManager: ManifestManager } {
-        const manifestManager = new ManifestManager({ autoResolve: false, allowNetwork: false });
-        const services = { imports: { ManifestManager: manifestManager } } as DomainLangServices;
-        const resolver = new ImportResolver(services);
-        return { resolver, manifestManager };
-    }
 
     // ==========================================
     // SMOKE: Relative imports within cached package

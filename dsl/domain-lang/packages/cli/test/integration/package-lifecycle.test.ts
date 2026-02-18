@@ -54,7 +54,7 @@ function dlang(
 ): Record<string, unknown> {
     const cmd = `node ${CLI_BIN} ${args} --json`;
     try {
-        const stdout = execSync(cmd, {
+        const stdout = execSync(cmd, { // NOSONAR
             cwd,
             encoding: 'utf-8',
             timeout: 60_000,

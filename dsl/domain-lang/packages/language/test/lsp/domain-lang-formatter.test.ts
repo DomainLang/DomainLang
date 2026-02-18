@@ -15,6 +15,50 @@ import { setupTestSuite, type TestServices, s } from '../test-helpers.js';
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 // Test file: Non-null assertions are safe as we verify structure exists before accessing
 
+/**
+ * Convert a line/character position to a character offset in the text.
+ */
+function toOffset(text: string, pos: { line: number; character: number }): number {
+    const lines = text.split('\n');
+    let offset = 0;
+    for (let i = 0; i < pos.line && i < lines.length; i++) {
+        offset += lines[i].length + 1; // +1 for the newline
+    }
+    return offset + pos.character;
+}
+
+/**
+ * Return the leading-whitespace count for the first non-empty line
+ * whose trimmed content starts with `pattern`.
+ * Returns -1 if no matching line is found.
+ */
+function indentOf(text: string, pattern: string): number {
+    const line = text.split('\n').find(l => l.trim().startsWith(pattern));
+    if (!line) return -1;
+    return line.search(/\S/);
+}
+
+/**
+ * Apply TextEdits to source text in reverse document order so positions
+ * remain valid as we mutate the string from bottom to top.
+ */
+function applyEdits(text: string, edits: TextEdit[]): string {
+    const sorted = [...edits].sort((a, b) => {
+        if (a.range.start.line !== b.range.start.line) {
+            return b.range.start.line - a.range.start.line;
+        }
+        return b.range.start.character - a.range.start.character;
+    });
+
+    let result = text;
+    for (const edit of sorted) {
+        const start = toOffset(result, edit.range.start);
+        const end = toOffset(result, edit.range.end);
+        result = result.substring(0, start) + edit.newText + result.substring(end);
+    }
+    return result;
+}
+
 describe('DomainLang Formatter', () => {
     let testServices: TestServices;
 
@@ -58,51 +102,7 @@ describe('DomainLang Formatter', () => {
         return { edits, result: applyEdits(source, edits) };
     }
 
-    /**
-     * Apply TextEdits to source text in reverse document order so positions
-     * remain valid as we mutate the string from bottom to top.
-     */
-    function applyEdits(text: string, edits: TextEdit[]): string {
-        const sorted = [...edits].sort((a, b) => {
-            if (a.range.start.line !== b.range.start.line) {
-                return b.range.start.line - a.range.start.line;
-            }
-            return b.range.start.character - a.range.start.character;
-        });
 
-        let result = text;
-        for (const edit of sorted) {
-            const start = toOffset(result, edit.range.start);
-            const end = toOffset(result, edit.range.end);
-            result = result.substring(0, start) + edit.newText + result.substring(end);
-        }
-        return result;
-    }
-
-    /**
-     * Convert a line/character position to a character offset in the text.
-     */
-    function toOffset(text: string, pos: { line: number; character: number }): number {
-        const lines = text.split('\n');
-        let offset = 0;
-        for (let i = 0; i < pos.line && i < lines.length; i++) {
-            offset += lines[i].length + 1; // +1 for the newline
-        }
-        return offset + pos.character;
-    }
-
-    /**
-     * Return the leading-whitespace count for the first non-empty line
-     * whose trimmed content starts with `pattern`.
-     * Returns -1 if no matching line is found.
-     */
-    function indentOf(text: string, pattern: string): number {
-        const line = text.split('\n').find(l => l.trim().startsWith(pattern));
-        if (!line) return -1;
-        return line.search(/\S/);
-    }
-
-    // ====================================================================
     // Already-formatted documents -- should produce zero edits
     // ====================================================================
 

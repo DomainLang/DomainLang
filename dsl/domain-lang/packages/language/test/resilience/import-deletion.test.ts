@@ -11,7 +11,6 @@
  * parsing behavior with EmptyFileSystem. See e2e/import-resolution-e2e.test.ts
  * for full filesystem-based import resolution tests.
  */
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- All array accesses in this file are safe after toHaveLength() checks */
 import { describe, test, expect, beforeAll } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, expectValidDocument } from '../test-helpers.js';
@@ -44,10 +43,10 @@ describe('Import Resilience', () => {
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(2);
-            expect(model.imports![0].uri).toBe('./types.dlang');
-            expect(model.imports![0].alias).toBeUndefined();
-            expect(model.imports![1].uri).toBe('./utils');
-            expect(model.imports![1].alias).toBe('Utils');
+            expect(model.imports[0].uri).toBe('./types.dlang');
+            expect(model.imports[0].alias).toBeUndefined();
+            expect(model.imports[1].uri).toBe('./utils');
+            expect(model.imports[1].alias).toBe('Utils');
         });
     });
 
@@ -65,8 +64,8 @@ describe('Import Resilience', () => {
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
-            expect(model.imports![0].uri).toBe('');
-            expect(model.imports![0].alias).toBeUndefined();
+            expect(model.imports[0].uri).toBe('');
+            expect(model.imports[0].alias).toBeUndefined();
         });
 
         test('should preserve whitespace inside import URI string', async () => {
@@ -82,7 +81,7 @@ describe('Import Resilience', () => {
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
             // Whitespace inside the quoted string is part of the URI value
-            expect(model.imports![0].uri).toBe('  some/path  ');
+            expect(model.imports[0].uri).toBe('  some/path  ');
         });
 
         test('should parse very long import URI', async () => {
@@ -101,9 +100,9 @@ describe('Import Resilience', () => {
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
-            expect(model.imports![0].uri).toBe(longUri);
-            expect(model.imports![0].uri.length).toBeGreaterThan(150);
-            expect(model.imports![0].alias).toBe('LongImport');
+            expect(model.imports[0].uri).toBe(longUri);
+            expect(model.imports[0].uri.length).toBeGreaterThan(150);
+            expect(model.imports[0].alias).toBe('LongImport');
         });
 
         test('should parse import with special characters in path', async () => {
@@ -118,7 +117,7 @@ describe('Import Resilience', () => {
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
-            expect(model.imports![0].uri).toBe('./path-with-dashes/under_scores/dots.v2');
+            expect(model.imports[0].uri).toBe('./path-with-dashes/under_scores/dots.v2');
         });
     });
 
@@ -143,10 +142,10 @@ describe('Import Resilience', () => {
             const model = document.parseResult.value;
             expect(Array.isArray(model.children)).toBe(true);
             expect(Array.isArray(model.imports)).toBe(true);
-            expect(model.imports!.length).toBeGreaterThanOrEqual(1);
+            expect(model.imports.length).toBeGreaterThanOrEqual(1);
 
             // Verify at least the first import was captured by the parser
-            const uris = model.imports!.map(i => i.uri);
+            const uris = model.imports.map(i => i.uri);
             expect(uris).toContain('acme/core');
         });
     });

@@ -66,7 +66,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
     /**
      * DI-injected import resolver. Set via late-binding because
      * WorkspaceManager (shared module) is created before ImportResolver (language module).
-     * Falls back to standalone ensureImportGraphFromDocument when not set.
+     * Always set before any workspace loading begins via `setLanguageServices()`.
      */
     private importResolver: ImportResolver | undefined;
 
@@ -296,35 +296,9 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
      */
     private async loadImportGraph(document: LangiumDocument): Promise<Set<string>> {
         if (!this.importResolver) {
-            // Fallback to standalone utility when DI isn't wired
-            return ensureImportGraphFromDocument(document, this.langiumDocuments);
+            throw new Error('ImportResolver not initialised — ensure setLanguageServices() was called');
         }
-
-        const resolver = this.importResolver;
-        const langiumDocuments = this.langiumDocuments;
-        const visited = new Set<string>();
-
-        async function visit(doc: LangiumDocument): Promise<void> {
-            const uriString = doc.uri.toString();
-            if (visited.has(uriString)) return;
-            visited.add(uriString);
-
-            const model = doc.parseResult.value as { imports?: Array<{ uri?: string }> };
-            for (const imp of model.imports ?? []) {
-                if (!imp.uri) continue;
-
-                try {
-                    const resolvedUri = await resolver.resolveForDocument(doc, imp.uri);
-                    const childDoc = await langiumDocuments.getOrCreateDocument(resolvedUri);
-                    await visit(childDoc);
-                } catch {
-                    // Import resolution failed — validation will report the error
-                }
-            }
-        }
-
-        await visit(document);
-        return visited;
+        return ensureImportGraphFromDocument(document, this.langiumDocuments, this.importResolver);
     }
 
     // --- PRS-017 R7: Progress reporting ---

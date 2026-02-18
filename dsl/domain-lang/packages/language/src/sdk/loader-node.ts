@@ -62,7 +62,7 @@ export async function loadModel(
     options?: LoadOptions
 ): Promise<QueryContext> {
     // Resolve absolute path
-    const path = await import('path');
+    const path = await import('node:path');
     const absolutePath = path.isAbsolute(entryFile) 
         ? entryFile 
         : path.resolve(options?.workspaceDir ?? process.cwd(), entryFile);
@@ -82,7 +82,7 @@ export async function loadModel(
     }
     
     // Read file content and create document
-    const fs = await import('fs/promises');
+    const fs = await import('node:fs/promises');
     const fileContent = await fs.readFile(absolutePath, 'utf-8');
     const uri = URI.file(absolutePath);
     

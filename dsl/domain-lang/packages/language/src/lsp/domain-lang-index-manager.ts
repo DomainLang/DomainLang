@@ -1,7 +1,6 @@
 import type { LangiumDocument, LangiumSharedCoreServices, URI } from 'langium';
 import { DefaultIndexManager, DocumentState } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
-import { resolveImportPath } from '../utils/import-utils.js';
 import type { Model } from '../generated/ast.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
@@ -96,7 +95,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
     /**
      * DI-injected import resolver. Set via late-binding because
      * IndexManager (shared module) is created before ImportResolver (language module).
-     * Falls back to standalone resolveImportPath when not set.
+     * Always set before any document indexing begins via `setLanguageServices()`.
      */
     private importResolver: ImportResolver | undefined;
 
@@ -117,15 +116,13 @@ export class DomainLangIndexManager extends DefaultIndexManager {
     }
 
     /**
-     * Resolves an import path using the DI-injected ImportResolver when available,
-     * falling back to the standalone resolver for backwards compatibility.
+     * Resolves an import path using the DI-injected ImportResolver.
      */
-    private async resolveImport(document: LangiumDocument, specifier: string): Promise<URI> {
-        if (this.importResolver) {
-            return this.importResolver.resolveForDocument(document, specifier);
+    private resolveImport(document: LangiumDocument, specifier: string): Promise<URI> {
+        if (!this.importResolver) {
+            throw new Error('ImportResolver not initialised — ensure setLanguageServices() was called');
         }
-        // Fallback for contexts where language services aren't wired (e.g., tests)
-        return resolveImportPath(document, specifier);
+        return this.importResolver.resolveForDocument(document, specifier);
     }
 
     /**

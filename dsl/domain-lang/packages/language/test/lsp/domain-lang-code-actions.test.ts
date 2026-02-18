@@ -36,6 +36,7 @@ describe('DomainLangCodeActionProvider', () => {
     ): Promise<Array<CodeAction>> => {
         const codeActionProvider = testServices.services.DomainLang.lsp.CodeActionProvider;
         expect(codeActionProvider).not.toBeUndefined();
+        if (!codeActionProvider) throw new Error('CodeActionProvider not available');
 
         // Create a minimal document for testing
         const document = await testServices.parse(`Domain Test {}`);
@@ -49,8 +50,7 @@ describe('DomainLangCodeActionProvider', () => {
             }
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Provider existence asserted above
-        const result = await codeActionProvider!.getCodeActions(document, params);
+        const result = await codeActionProvider.getCodeActions(document, params);
         return (result ?? []).filter((item): item is CodeAction => 'title' in item);
     };
 

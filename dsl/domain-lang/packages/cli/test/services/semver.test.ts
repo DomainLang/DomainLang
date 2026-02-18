@@ -102,10 +102,10 @@ describe('SemVer utilities', () => {
 
     describe('compareSemVer', () => {
         test('compares by major version', () => {
-            const a = parse('1.0.0');
-            const b = parse('2.0.0');
-            expect(compareSemVer(a, b)).toBeLessThan(0);
-            expect(compareSemVer(b, a)).toBeGreaterThan(0);
+            const lower = parse('1.0.0');
+            const higher = parse('2.0.0');
+            expect(compareSemVer(lower, higher)).toBeLessThan(0);
+            expect(compareSemVer(higher, lower)).toBeGreaterThan(0);
         });
 
         test('compares by minor version', () => {
