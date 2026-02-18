@@ -351,10 +351,10 @@ jobs:
           path: ./site/.vitepress/dist
           retention-days: 7
 
-      - name: Build site for GitHub Pages (base /domainlang/)
+      - name: Build site for GitHub Pages (base /DomainLang/)
         working-directory: site
         env:
-          VITEPRESS_BASE: /domainlang/
+          VITEPRESS_BASE: /DomainLang/
         run: npm run build
       
       - name: Upload site artifact for GitHub Pages
@@ -573,10 +573,10 @@ jobs:
           path: ./site/.vitepress/dist
           retention-days: 7
 
-      - name: Build site for GitHub Pages (base /domainlang/)
+      - name: Build site for GitHub Pages (base /DomainLang/)
         working-directory: site
         env:
-          VITEPRESS_BASE: /domainlang/
+          VITEPRESS_BASE: /DomainLang/
         run: npm run build
       
       - name: Upload site artifact for GitHub Pages
