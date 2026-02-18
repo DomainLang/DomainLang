@@ -98,6 +98,16 @@ dependencies:
   ddd-community/patterns: "v2.3.1"
 ```
 
+::: tip Standard library
+The official [DomainLang Patterns](/guide/standard-library) library provides ready-made classifications, evolution stages, archetypes, governance tags, and metadata keys so you don't have to define them yourself:
+
+```bash
+dlang add domainlang/patterns@v1.0.0
+```
+
+See the [standard library guide](/guide/standard-library) for the full reference.
+:::
+
 ### Using imported types
 
 After importing with an alias, access types using the `alias.TypeName` syntax:
@@ -630,6 +640,7 @@ paths:
 
 ## Next steps
 
+- [Standard library](/guide/standard-library) — use the official DDD classifications and metadata keys
 - [CLI](/guide/cli) — manage dependencies from the command line
 - [Examples](/examples/) — see multi-file projects in action
 

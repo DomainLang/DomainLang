@@ -91,6 +91,7 @@ export default defineConfig({
         text: 'Resources',
         items: [
           { text: 'Examples', link: '/examples/' },
+          { text: 'Standard library', link: '/guide/standard-library' },
           { text: 'Roadmap', link: '/roadmap' },
           { text: 'VS Code Extension', link: 'https://marketplace.visualstudio.com/items?itemName=DomainLang.vscode-domainlang' },
           {
@@ -123,6 +124,7 @@ export default defineConfig({
             { text: 'Teams & classifications', link: '/guide/teams-classifications' },
             { text: 'Namespaces', link: '/guide/namespaces' },
             { text: 'Import system', link: '/guide/imports' },
+            { text: 'Standard library', link: '/guide/standard-library' },
           ]
         },
         {

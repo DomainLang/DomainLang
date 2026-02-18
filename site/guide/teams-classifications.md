@@ -152,6 +152,7 @@ BoundedContext EmailService for Platform as GenericSubdomain by PlatformTeam {
 
 ## Next steps
 
+- [Standard library](/guide/standard-library) — use ready-made classifications from `domainlang/patterns` instead of declaring them yourself
 - [Namespaces](/guide/namespaces) — organize large models
 - [Import system](/guide/imports) — split models across files
 

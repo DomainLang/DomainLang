@@ -268,6 +268,52 @@ ContextMap System {
 }
 ```
 
+### Standard library (`domainlang/patterns`)
+
+The official standard library provides ready-made DDD classifications and metadata keys.
+
+**Install:**
+
+```bash
+dlang add domainlang/patterns@v1.0.0
+```
+
+**Usage:**
+
+```dlang
+import "domainlang/patterns" as Patterns
+
+BoundedContext Orders for Sales as Patterns.Strategic.CoreDomain by SalesTeam {
+    description: "Order lifecycle"
+    evolution: Patterns.Evolution.CustomBuilt
+    archetype: Patterns.Archetypes.Execution
+
+    metadata {
+        Patterns.Meta.Status: "Production"
+        Patterns.Meta.Language: "TypeScript"
+    }
+
+    decisions {
+        decision [Patterns.Governance.Architectural] CQRS:
+            "Use CQRS for read/write separation"
+    }
+}
+```
+
+The package namespaces are `Strategic`, `Evolution`, `Archetypes`, `Governance`, and `Meta`. Use an import alias (e.g. `as Patterns`) to qualify references and avoid ambiguity.
+
+**Available namespaces:**
+
+| Namespace | Contents |
+| --- | --- |
+| `Strategic` | `CoreDomain`, `SupportingDomain`, `GenericSubdomain` |
+| `Evolution` | `Genesis`, `CustomBuilt`, `Product`, `Commodity` |
+| `Archetypes` | `Execution`, `Engagement`, `Analysis`, `Gateway`, `Infrastructure`, `Compliance` |
+| `Governance` | `Architectural`, `Organizational`, `Technical`, `Process` |
+| `Meta` | `Status`, `Language`, `Repository`, `Documentation`, `SLA`, `DeploymentTarget`, `APIStyle`, `DataStore`, `Criticality` |
+
+Prefer using the standard library over declaring custom classifications for these common DDD concepts.
+
 ### Imports
 
 ```dlang
@@ -438,6 +484,7 @@ DomainMap Portfolio {
 ## Reference
 
 - Full syntax: [SYNTAX.md](references/SYNTAX.md)
+- Standard library: [domainlang.net/guide/standard-library](https://domainlang.net/guide/standard-library)
 - Documentation: [domainlang.net](https://domainlang.net)
 - Language reference: [domainlang.net/reference/language](https://domainlang.net/reference/language)
 - Getting started: [domainlang.net/guide/getting-started](https://domainlang.net/guide/getting-started)

@@ -245,5 +245,6 @@ Now that you have a working model, explore these areas:
 - [Bounded contexts](/guide/bounded-contexts) — Full syntax for contexts, metadata, and governance
 - [Context maps](/guide/context-maps) — Integration patterns and relationship arrows
 - [VS Code extension](/guide/vscode-extension) — IDE features and AI-powered analysis
+- [Standard library](/guide/standard-library) — Ready-made DDD classifications and metadata keys
 - [Language reference](/reference/language) — Complete syntax and semantics
 - [Examples](/examples/) — Real-world models for banking and healthcare
