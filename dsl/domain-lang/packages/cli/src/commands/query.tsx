@@ -391,15 +391,28 @@ function queryClassifications(query: Query, filters: QueryFilters): QueryResultI
 function queryRelationships(query: Query, _filters: QueryFilters): QueryResultItem[] {
     const relationships = query.relationships().toArray();
 
-    return relationships.map((rel: RelationshipView) => ({
-        name: `${rel.left.name} ${rel.arrow} ${rel.right.name}`,
-        left: rel.left.name,
-        right: rel.right.name,
-        arrow: rel.arrow,
-        leftPatterns: rel.leftPatterns.join(', '),
-        rightPatterns: rel.rightPatterns.join(', '),
-        type: rel.inferredType,
-    }));
+    return relationships.map((rel: RelationshipView) => {
+        if (rel.type === 'symmetric') {
+            const patternDisplay = rel.kind === 'SeparateWays' ? '><' : `[${rel.kind}]`;
+            return {
+                name: `${rel.left.context.name} ${patternDisplay} ${rel.right.context.name}`,
+                left: rel.left.context.name,
+                right: rel.right.context.name,
+                type: 'symmetric',
+                kind: rel.kind,
+            };
+        }
+        return {
+            name: `${rel.left.context.name} ${rel.arrow} ${rel.right.context.name}`,
+            left: rel.left.context.name,
+            right: rel.right.context.name,
+            type: 'directional',
+            kind: rel.kind,
+            arrow: rel.arrow,
+            leftPatterns: rel.left.patterns.map(p => p.$type).join(', '),
+            rightPatterns: rel.right.patterns.map(p => p.$type).join(', '),
+        };
+    });
 }
 
 /**
