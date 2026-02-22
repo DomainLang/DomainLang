@@ -335,7 +335,7 @@ describe('resolveMultiReference', () => {
         const items = [
             { ref: { ref: { name: 'ContextA' } as Record<string, unknown>, $refText: 'ContextA' } },
             { ref: { ref: { name: 'ContextB' } as Record<string, unknown>, $refText: 'ContextB' } },
-        ] as Parameters<typeof resolveMultiReference>[0];
+        ] as unknown as Parameters<typeof resolveMultiReference>[0];
 
         // Act
         const result = resolveMultiReference(items);

@@ -13,11 +13,12 @@ beforeAll(() => {
 // Diagram generation helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 async function generateDiagram(source: string, documentUri: string, selectedContextMapFqn?: string) {
     const document = await testServices.parse(source, { documentUri });
     const generator = testServices.services.DomainLang.diagram.DiagramGenerator;
     return generator.generate({
-        options: { sourceUri: document.uri.toString(), selectedContextMapFqn },
+        options: { sourceUri: document.uri.toString(), ...(selectedContextMapFqn !== undefined ? { selectedContextMapFqn } : {}) },
         state: {
             options: {},
             currentRoot: { type: 'graph', id: 'current-root', children: [] },

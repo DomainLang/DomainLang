@@ -58,6 +58,9 @@ Every feature flows through three layers:
 
 1. **Review inputs:** ADR/PRS requirements, grammar sketch
 2. **Implement grammar:** Edit `.langium` file
+3. **🚨 Run `npm run build` after EVERY edit** - Fix all TypeScript errors immediately; never leave the build broken
+   - A task is NOT complete until `npm run build` exits with code 0
+   - TypeScript errors in any file (including test files) are real failures that block progress
 3. **Regenerate:** `npm run langium:generate`
 4. **Implement services:** Validation, scoping, LSP features
 5. **Write tests:** Ask "design test strategy" for test collaboration

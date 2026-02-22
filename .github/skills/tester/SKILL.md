@@ -37,6 +37,7 @@ If the answer is "yes, it could still pass" — don't write it.
 6. **Mutually exclusive tests** - Tests should not overlap in what they verify
 7. **Never mock LSP providers** - Test through public API with real documents
 8. **Consolidate aggressively** - Merge tests that parse the same input; use 2–3 representative cases not full enumeration
+9. **🚨 BUILD MUST PASS** - After writing or editing test files, run `npm run build` and fix every TypeScript error before the task is complete. Tests passing at runtime but failing `tsc` is unacceptable.
 
 ## Your Role
 

@@ -4,6 +4,8 @@
  * Verifies the pattern classification helpers, abbreviation mappings,
  * and the matchesPattern() disambiguation function used across the SDK.
  */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// Test file: Non-null assertions are safe as we verify structure exists before accessing
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
@@ -101,6 +103,7 @@ describe('isMutualPattern', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('isUpstreamSidePattern / isDownstreamSidePattern / isBBoMSidePattern', () => {
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     async function parseSidePatterns(leftPatterns: string, rightPatterns: string) {
         const document = await testServices.parse(s`
             Domain Sales { vision: "v" }
@@ -146,6 +149,7 @@ describe('isUpstreamSidePattern / isDownstreamSidePattern / isBBoMSidePattern', 
 });
 
 describe('isSharedKernelPattern / isPartnershipPattern / isSeparateWaysPattern', () => {
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     async function parseSymmetricPattern(pattern: string) {
         const document = await testServices.parse(s`
             Domain Sales { vision: "v" }
