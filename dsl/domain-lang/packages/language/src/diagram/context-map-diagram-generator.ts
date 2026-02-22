@@ -2,8 +2,9 @@ import type { LangiumDocument } from 'langium';
 import type { SGraph, SModelElement, SModelRoot, SEdge, SNode } from 'sprotty-protocol';
 import { LangiumDiagramGenerator, type GeneratorContext } from 'langium-sprotty';
 import { fromDocument } from '../sdk/query.js';
-import type { Query } from '../sdk/types.js';
-import type { BoundedContext, ContextMap, Model, Relationship } from '../generated/ast.js';
+import type { Query, RelationshipView } from '../sdk/types.js';
+import { isBigBallOfMud } from '../generated/ast.js';
+import type { BoundedContext, ContextMap, Model, Relationship, SidePattern } from '../generated/ast.js';
 
 /** Ellipse sizing for bounded context nodes — sized for long names like "CustomerManagementContext" */
 const NODE_WIDTH = 280;
@@ -18,29 +19,32 @@ const PATTERN_ABBREVIATIONS: Readonly<Record<string, string>> = {
     PublishedLanguage: 'PL',
     AntiCorruptionLayer: 'ACL',
     Conformist: 'CF',
-    Partnership: 'P',
-    SharedKernel: 'SK',
+    Supplier: 'S',
+    Customer: 'C',
     BigBallOfMud: 'BBoM',
+    SharedKernel: 'SK',
+    Partnership: 'P',
+    SeparateWays: 'SW',
 };
 
 /**
- * Returns the abbreviated form of an integration pattern keyword.
+ * Returns the abbreviated form of a side pattern AST node.
  *
- * Short forms (e.g. `OHS`, `ACL`) are returned unchanged.  Long forms (e.g.
- * `OpenHostService`, `AntiCorruptionLayer`) are mapped to their abbreviation.
+ * Maps the `$type` (e.g. `OpenHostService`, `Conformist`) to its standard
+ * DDD abbreviation (e.g. `OHS`, `CF`).  Unknown types are returned as-is.
  */
-function normalizePattern(pattern: string): string {
-    return PATTERN_ABBREVIATIONS[pattern] ?? pattern;
+function normalizePatternNode(pattern: SidePattern): string {
+    return PATTERN_ABBREVIATIONS[pattern.$type] ?? pattern.$type;
 }
 
 /**
- * Returns `true` when the pattern identifies a Big Ball of Mud participant.
+ * Returns `true` when the side pattern identifies a Big Ball of Mud participant.
  *
  * BBoM is surfaced as a cloud node shape on the bounded context itself, not as
  * a text annotation in the edge badge, so it should be excluded from badge text.
  */
-function isBBoMPattern(pattern: string): boolean {
-    return pattern === 'BBoM' || pattern === 'BigBallOfMud';
+function isBBoMSidePattern(pattern: SidePattern): boolean {
+    return isBigBallOfMud(pattern);
 }
 
 interface DiagramSelection {
@@ -51,11 +55,7 @@ interface DiagramSelection {
 interface RelationshipEdgeParams {
     leftNode: SNode;
     rightNode: SNode;
-    arrow: string;
-    leftPatterns: readonly string[];
-    rightPatterns: readonly string[];
-    type: string | undefined;
-    astNode: Relationship;
+    relationship: RelationshipView;
 }
 
 /**
@@ -98,11 +98,13 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
         // the `node:bbom` Sprotty type so the webview renders them as clouds.
         const bboMNodeKeys = new Set<string>();
         for (const rel of relationships) {
-            if (rel.leftPatterns.some(isBBoMPattern)) {
-                bboMNodeKeys.add(this.getNodeKey(query, rel.left));
-            }
-            if (rel.rightPatterns.some(isBBoMPattern)) {
-                bboMNodeKeys.add(this.getNodeKey(query, rel.right));
+            if (rel.type === 'directional') {
+                if (rel.left.patterns.some(isBBoMSidePattern)) {
+                    bboMNodeKeys.add(this.getNodeKey(query, rel.left.context));
+                }
+                if (rel.right.patterns.some(isBBoMSidePattern)) {
+                    bboMNodeKeys.add(this.getNodeKey(query, rel.right.context));
+                }
             }
         }
 
@@ -110,13 +112,13 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
         this.collectContextMapNodes(selectedMap, query, nodeMap, bboMNodeKeys, args);
 
         for (const relationship of relationships) {
-            this.ensureNode(nodeMap, query, relationship.left, bboMNodeKeys, args);
-            this.ensureNode(nodeMap, query, relationship.right, bboMNodeKeys, args);
+            this.ensureNode(nodeMap, query, relationship.left.context, bboMNodeKeys, args);
+            this.ensureNode(nodeMap, query, relationship.right.context, bboMNodeKeys, args);
         }
 
         const edges = relationships.flatMap((relationship) => {
-            const leftKey = this.getNodeKey(query, relationship.left);
-            const rightKey = this.getNodeKey(query, relationship.right);
+            const leftKey = this.getNodeKey(query, relationship.left.context);
+            const rightKey = this.getNodeKey(query, relationship.right.context);
             const leftNode = nodeMap.get(leftKey);
             const rightNode = nodeMap.get(rightKey);
 
@@ -127,11 +129,7 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
             return this.createRelationshipEdge({
                 leftNode,
                 rightNode,
-                arrow: relationship.arrow,
-                leftPatterns: relationship.leftPatterns,
-                rightPatterns: relationship.rightPatterns,
-                type: relationship.type,
-                astNode: relationship.astNode,
+                relationship,
             }, args);
         });
 
@@ -159,8 +157,17 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
         params: RelationshipEdgeParams,
         args: GeneratorContext
     ): SEdge[] {
-        const { leftNode, rightNode, arrow, leftPatterns, rightPatterns, type, astNode } = params;
-        // Determine source/target based on arrow direction
+        const { leftNode, rightNode, relationship } = params;
+        const astNode = relationship.astNode;
+
+        if (relationship.type === 'symmetric') {
+            return this.createSymmetricEdge(leftNode, rightNode, relationship.kind, astNode, args);
+        }
+
+        // Directional
+        const { arrow, kind, left, right } = relationship;
+
+        // Determine source/target nodes based on arrow direction
         const sourceId = arrow === '<-' ? rightNode.id : leftNode.id;
         const targetId = arrow === '<-' ? leftNode.id : rightNode.id;
 
@@ -171,22 +178,22 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
 
         const children: SModelElement[] = [];
 
-        if (arrow === '<->') {
-            // Partnership / bidirectional — no U/D roles
-            this.addUDBadge(children, edgeId, 'source', leftPatterns, undefined, args);
-            this.addUDBadge(children, edgeId, 'target', rightPatterns, undefined, args);
-        } else if (arrow === '><') {
-            // Separate Ways — no U/D, no patterns
+        if (kind === 'Bidirectional') {
+            // No upstream/downstream roles — show patterns positionally
+            this.addUDBadge(children, edgeId, 'source', left.patterns, undefined, args);
+            this.addUDBadge(children, edgeId, 'target', right.patterns, undefined, args);
         } else {
-            // Unidirectional: -> or <-
-            const sourcePatterns = arrow === '<-' ? rightPatterns : leftPatterns;
-            const targetPatterns = arrow === '<-' ? leftPatterns : rightPatterns;
-            this.addUDBadge(children, edgeId, 'source', sourcePatterns, 'U', args);
-            this.addUDBadge(children, edgeId, 'target', targetPatterns, 'D', args);
+            // Upstream/downstream or Customer/Supplier
+            const sourcePatterns = arrow === '<-' ? right.patterns : left.patterns;
+            const targetPatterns = arrow === '<-' ? left.patterns : right.patterns;
+            const sourceRole: 'U' | 'D' | 'S' | 'C' = kind === 'CustomerSupplier' ? 'S' : 'U';
+            const targetRole: 'U' | 'D' | 'S' | 'C' = kind === 'CustomerSupplier' ? 'C' : 'D';
+            this.addUDBadge(children, edgeId, 'source', sourcePatterns, sourceRole, args);
+            this.addUDBadge(children, edgeId, 'target', targetPatterns, targetRole, args);
         }
 
-        // Center label: relationship type
-        const centerLabel = this.formatRelationshipType(type, arrow);
+        // Center label: relationship kind
+        const centerLabel = this.formatRelationshipKind(kind);
         if (centerLabel) {
             children.push({
                 type: 'label:edge',
@@ -202,9 +209,7 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
         }
 
         let edgeCssClasses: string[] | undefined;
-        if (arrow === '><') {
-            edgeCssClasses = ['separate-ways'];
-        } else if (arrow === '<->') {
+        if (arrow === '<->') {
             edgeCssClasses = ['partnership'];
         }
 
@@ -213,6 +218,63 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
             id: edgeId,
             sourceId,
             targetId,
+            cssClasses: edgeCssClasses,
+            children: children.length > 0 ? children : undefined,
+        };
+
+        this.traceProvider.trace(edge as SModelElement, astNode as unknown as import('langium').AstNode);
+        return [edge];
+    }
+
+    /**
+     * Creates an undirected edge for symmetric relationships (SK, P, SW).
+     *
+     * Symmetric relationships have no upstream/downstream directionality.
+     * The center label shows the relationship kind (e.g. "Shared Kernel").
+     */
+    private createSymmetricEdge(
+        leftNode: SNode,
+        rightNode: SNode,
+        kind: string | undefined,
+        astNode: Relationship,
+        args: GeneratorContext
+    ): SEdge[] {
+        const edgeId = args.idCache.uniqueId(
+            `edge:${leftNode.id}:${rightNode.id}`,
+            astNode
+        );
+
+        const children: SModelElement[] = [];
+
+        const centerLabel = this.formatRelationshipKind(kind);
+        if (centerLabel) {
+            children.push({
+                type: 'label:edge',
+                id: args.idCache.uniqueId(`${edgeId}:type`),
+                text: centerLabel,
+                edgePlacement: {
+                    side: 'on',
+                    position: 0.5,
+                    rotate: false,
+                    offset: 10,
+                },
+            } as unknown as SModelElement);
+        }
+
+        let edgeCssClasses: string[] | undefined;
+        if (kind === 'SeparateWays') {
+            edgeCssClasses = ['separate-ways'];
+        } else if (kind === 'Partnership') {
+            edgeCssClasses = ['partnership'];
+        } else if (kind === 'SharedKernel') {
+            edgeCssClasses = ['shared-kernel'];
+        }
+
+        const edge: SEdge = {
+            type: 'edge',
+            id: edgeId,
+            sourceId: leftNode.id,
+            targetId: rightNode.id,
             cssClasses: edgeCssClasses,
             children: children.length > 0 ? children : undefined,
         };
@@ -235,14 +297,18 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
         children: SModelElement[],
         edgeId: string,
         placement: 'source' | 'target',
-        patterns: readonly string[],
-        role: 'U' | 'D' | undefined,
+        patterns: readonly SidePattern[],
+        role: 'U' | 'D' | 'S' | 'C' | undefined,
         args: GeneratorContext
     ): void {
-        // Normalise pattern names and strip BBoM (shown on node, not in badge)
+        // Normalise pattern names and strip BBoM (shown on node, not in badge).
+        // Also strip Supplier/Customer when they are already expressed as the role letter
+        // to prevent duplicate annotations like "S S" or "C C".
         const badgePatterns = patterns
-            .filter((p) => !isBBoMPattern(p))
-            .map(normalizePattern);
+            .filter((p) => !isBBoMSidePattern(p))
+            .filter((p) => !(role === 'S' && p.$type === 'Supplier'))
+            .filter((p) => !(role === 'C' && p.$type === 'Customer'))
+            .map(normalizePatternNode);
 
         if (!role && badgePatterns.length === 0) {
             return;
@@ -278,25 +344,21 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
      * For `<->` without explicit type, defaults to "Partnership".
      * For `><`, defaults to "Separate Ways".
      */
-    private formatRelationshipType(type: string | undefined, arrow: string): string | undefined {
-        if (type) {
-            return this.displayRelationshipType(type);
-        }
-        if (arrow === '<->') {
-            return 'Partnership';
-        }
-        if (arrow === '><') {
-            return 'Separate Ways';
-        }
-        return undefined;
+    private formatRelationshipKind(kind: string | undefined): string | undefined {
+        if (!kind) return undefined;
+        return this.displayRelationshipKind(kind);
     }
 
-    private displayRelationshipType(type: string): string {
-        switch (type) {
-            case 'CustomerSupplier': return 'Customer/Supplier';
+    private displayRelationshipKind(kind: string): string | undefined {
+        switch (kind) {
+            // Directional kinds are already conveyed by U/D and C/S role badges — no center label needed
+            case 'CustomerSupplier': return undefined;
+            case 'UpstreamDownstream': return undefined;
+            // Symmetric and bidirectional kinds have no role badges, so label them explicitly
             case 'SharedKernel': return 'Shared Kernel';
-            case 'UpstreamDownstream': return 'Upstream/Downstream';
-            default: return type;
+            case 'SeparateWays': return 'Separate Ways';
+            case 'Partnership': return 'Partnership';
+            default: return kind;
         }
     }
 
