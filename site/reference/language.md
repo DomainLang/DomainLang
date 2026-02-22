@@ -157,7 +157,7 @@ BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     }
     
     relationships {
-        [OHS] this -> [CF] Billing
+        this [OHS] -> [CF] Billing
     }
 }
 ```
@@ -256,39 +256,59 @@ BoundedContext Orders for Sales {
 
 | Arrow | Meaning |
 | ----- | ------- |
-| `->` | Upstream to downstream |
-| `<-` | Downstream to upstream |
-| `<->` | Bidirectional |
-| `><` | Separate ways |
+| `->` | Directional — left is upstream, right is downstream |
+| `<-` | Reverse — right is upstream, left is downstream |
+| `<->` | Bidirectional — mutual data flow with explicit patterns |
+| `><` | Separate Ways — contexts have no integration |
 
 ### Integration patterns
 
-| Short | Long Form | Description |
-| ----- | --------- | ----------- |
-| `OHS` | `OpenHostService` | Well-defined protocol for consumers |
-| `CF` | `Conformist` | Adopts upstream model |
-| `ACL` | `AntiCorruptionLayer` | Translates between models |
-| `PL` | `PublishedLanguage` | Shared documented language |
-| `SK` | `SharedKernel` | Shared model subset |
-| `P` | `Partnership` | Coordinated development |
-| `BBoM` | `BigBallOfMud` | No clear structure |
+Patterns are placed between the entity and the arrow.
 
-### Relationship types
+#### Directional patterns (used with `->`, `<-`, and `<->`)
 
-- `Partnership`
-- `SharedKernel`
-- `CustomerSupplier`
-- `UpstreamDownstream`
-- `SeparateWays`
+| Short | Long Form | Side | Description |
+| ----- | --------- | ---- | ----------- |
+| `OHS` | `OpenHostService` | Upstream | Well-defined protocol for consumers |
+| `PL` | `PublishedLanguage` | Upstream | Shared documented language |
+| `S` | `Supplier` | Upstream | Supplies a service to a customer |
+| `CF` | `Conformist` | Downstream | Adopts upstream model |
+| `ACL` | `AntiCorruptionLayer` | Downstream | Translates between models |
+| `C` | `Customer` | Downstream | Consumes a service from a supplier |
+| `BBoM` | `BigBallOfMud` | Either | No clear structure |
+
+#### Symmetric patterns (no arrow)
+
+Symmetric patterns sit between the entities with no arrow. Separate Ways also has an arrow form (`><`).
+
+| Short | Long Form | Arrow form | Description |
+| ----- | --------- | ---------- | ----------- |
+| `SK` | `SharedKernel` | — | Shared model subset |
+| `P` | `Partnership` | — | Coordinated development |
+| `SW` | `SeparateWays` | `><` | No integration |
+
+### Syntax
+
+```text
+BC [UpstreamPatterns] -> [DownstreamPatterns] BC   // directional
+BC [UpstreamPatterns] <- [DownstreamPatterns] BC   // reverse directional
+BC [UpstreamPatterns] <-> [DownstreamPatterns] BC  // bidirectional
+BC [SymmetricPattern] BC                           // symmetric (SK, P, SW)
+BC >< BC                                           // separate ways (arrow form)
+```
+
+Multiple patterns per side are comma-separated: `[OHS, PL]`.
 
 ### Examples
 
 ```dlang
 BoundedContext Orders for Sales {
     relationships {
-        [OHS] this -> [ACL] Payments : UpstreamDownstream
-        [P] this <-> [P] Shipping : Partnership
-        this >< LegacySystem : SeparateWays
+        this [OHS] -> [ACL] Payments        // Orders provides; Payments protects itself
+        this [CF] <- [OHS] Billing          // Billing provides; Orders conforms (reverse arrow)
+        this [OHS] <-> [CF] Shipping        // Orders publishes (OHS), Shipping conforms (CF); mutual dependency
+        this [P] Inventory                  // Partnership — coordinated development
+        this [SW] LegacySystem              // No integration with legacy
     }
 }
 ```
@@ -301,8 +321,8 @@ Visualize bounded context relationships:
 ContextMap Integration {
     contains Checkout, Payments, Shipping
     
-    [OHS] Checkout -> [CF] Payments
-    [OHS] Checkout -> [ACL] Shipping
+    Checkout [OHS] -> [CF] Payments
+    Checkout [OHS] -> [ACL] Shipping
     Payments -> Shipping
 }
 ```

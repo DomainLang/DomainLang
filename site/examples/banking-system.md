@@ -126,7 +126,7 @@ BoundedContext PaymentProcessing for Payments
     }
 
     relationships {
-        [OHS] this -> [CF] AccountManagement
+        this [OHS] -> [CF] AccountManagement
     }
 }
 
@@ -142,7 +142,7 @@ BoundedContext FraudDetection for Compliance
     }
 
     relationships {
-        [ACL] this <- PaymentProcessing
+        PaymentProcessing -> [ACL] this
     }
 }
 
@@ -153,8 +153,8 @@ BoundedContext FraudDetection for Compliance
 ContextMap BankingSystem {
     contains AccountManagement, PaymentProcessing, FraudDetection
 
-    [OHS] PaymentProcessing -> [CF] AccountManagement
-    [OHS] PaymentProcessing -> [ACL] FraudDetection
+    PaymentProcessing [OHS] -> [CF] AccountManagement
+    PaymentProcessing [OHS] -> [ACL] FraudDetection
 }
 ```
 
@@ -201,8 +201,8 @@ terminology {
 The context map shows upstream/downstream relationships:
 
 ```dlang
-[OHS] PaymentProcessing -> [CF] AccountManagement
-[OHS] PaymentProcessing -> [ACL] FraudDetection
+PaymentProcessing [OHS] -> [CF] AccountManagement
+PaymentProcessing [OHS] -> [ACL] FraudDetection
 ```
 
 - PaymentProcessing provides an Open Host Service

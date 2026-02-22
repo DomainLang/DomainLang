@@ -58,8 +58,8 @@ BoundedContext Orders for Sales as CoreDomain by SalesTeam {
 ContextMap Integration {
     contains Orders, Payments, Shipping
     
-    [OHS] Orders -> [CF] Payments
-    [OHS] Orders -> [ACL] Shipping
+    Orders [OHS] -> [CF] Payments
+    Orders [OHS] -> [ACL] Shipping
 }
 ```
 

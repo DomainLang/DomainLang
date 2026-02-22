@@ -205,6 +205,81 @@ const domain = query.domain('Sales');
 const node = query.byFqn('Sales.Orders');
 ```
 
+## Relationships
+
+`query.relationships()` returns a `RelationshipView` discriminated union. Narrow on the `type` property:
+
+### Symmetric relationships
+
+Symmetric relationships have no upstream or downstream — neither context is the provider.
+
+```typescript
+for (const rel of query.relationships()) {
+  if (rel.type === 'symmetric') {
+    console.log(rel.left.context.name);  // e.g. 'Orders'
+    console.log(rel.right.context.name); // e.g. 'Inventory'
+    console.log(rel.kind);               // 'SharedKernel' | 'Partnership' | 'SeparateWays'
+    // Note: '><' (Separate Ways arrow form) resolves to 'SeparateWays'
+  }
+}
+```
+
+### Directional relationships
+
+Directional relationships have three cases, distinguished by `kind`:
+
+| `kind` | Meaning |
+| ------ | ------- |
+| `'UpstreamDownstream'` | Standard upstream/downstream dependency |
+| `'CustomerSupplier'` | Formal supply-chain — Supplier provides, Customer consumes |
+| `'Bidirectional'` | Mutual dependency (`<->`) — no upstream or downstream role |
+
+The `upstream` and `downstream` properties resolve the correct side regardless of arrow direction:
+
+```typescript
+for (const rel of query.relationships()) {
+  if (rel.type !== 'directional') continue;
+
+  console.log(rel.arrow); // '->' | '<-' | '<->'
+  console.log(rel.kind);  // 'UpstreamDownstream' | 'CustomerSupplier' | 'Bidirectional'
+
+  // Positional access (as written in source — use for display/serialization)
+  console.log(rel.left.context.name);
+  console.log(rel.left.patterns.map(p => p.$type));
+
+  // Semantic access (arrow-direction-resolved — use for analysis)
+  // upstream = the provider (Supplier in CustomerSupplier)
+  // downstream = the consumer (Customer in CustomerSupplier)
+  // Both are undefined when kind === 'Bidirectional'
+  if (rel.kind !== 'Bidirectional') {
+    console.log(rel.upstream!.context.name);                 // provider context
+    console.log(rel.upstream!.patterns.map(p => p.$type));  // e.g. ['OpenHostService']
+    console.log(rel.downstream!.context.name);              // consumer context
+    console.log(rel.downstream!.patterns.map(p => p.$type)); // e.g. ['Conformist']
+  }
+}
+```
+
+Arrow direction does not change the meaning of `upstream`/`downstream`:
+
+```typescript
+// These two are semantically equivalent — Orders is always upstream (OHS), Billing always downstream (CF)
+// Orders [OHS] ->  [CF] Billing
+// Billing [CF] <-  [OHS] Orders
+```
+
+### Filtering relationships by kind
+
+```typescript
+const supplierRelationships = query
+  .relationships()
+  .where(r => r.type === 'directional' && r.kind === 'CustomerSupplier');
+
+const sharedKernels = query
+  .relationships()
+  .where(r => r.type === 'symmetric' && r.kind === 'SharedKernel');
+```
+
 ## Next steps
 
 - [CLI](/guide/cli) — manage multi-file projects

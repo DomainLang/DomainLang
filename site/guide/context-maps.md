@@ -1,6 +1,6 @@
-# Context Maps
+# Context maps
 
-A **context map** visualizes the relationships between bounded contexts. It shows how contexts integrate and which patterns govern their interactions.
+A **context map** visualize the relationships between bounded contexts. It shows how contexts integrate and which patterns govern their interactions.
 
 ## Keywords
 
@@ -10,136 +10,137 @@ A **context map** visualizes the relationships between bounded contexts. It show
 
 ## Basic syntax
 
+Use `ContextMap` (or the alias `cmap`) to declare a map and list the contexts it contains:
+
 ```dlang
 ContextMap SalesSystem {
     contains Orders, Billing, Shipping
 }
 ```
 
-## Relationship arrows
-
-| Arrow | Meaning |
-| ----- | ------- |
-| `->` | Upstream to downstream (left provides, right consumes) |
-| `<-` | Downstream to upstream (right provides, left consumes) |
-| `<->` | Bidirectional / Partnership |
-| `><` | Separate Ways (no integration) |
-
 ## Relationships
 
-Define how contexts relate to each other:
+Add relationships inside the map body. An arrow expresses an upstream/downstream dependency between two contexts:
 
 ```dlang
 ContextMap SalesSystem {
     contains Orders, Billing, Shipping
-    
+
     Orders -> Billing
     Orders -> Shipping
 }
 ```
 
-The arrow shows the direction of dependency or data flow.
+All three directional arrow forms are equivalent in semantics — use whichever reads most naturally in your model:
+
+| Arrow | Meaning |
+| ----- | ------- |
+| `->` | Left is upstream, right is downstream |
+| `<-` | Right is upstream, left is downstream |
+| `<->` | Mutual dependency — both contexts integrate with each other |
 
 ## Integration patterns
 
-Annotate relationships with DDD integration patterns:
+Annotate each side of a relationship with a DDD integration pattern. Patterns are placed between the context name and the arrow, in square brackets:
 
 ```dlang
 ContextMap SalesSystem {
     contains Orders, Billing, Shipping
-    
-    [OHS] Orders -> [CF] Billing
-    [ACL] Shipping <- Orders
+
+    Orders [OHS] -> [CF] Billing       // Orders publishes an open protocol; Billing conforms
+    Orders -> [ACL] Shipping           // Shipping protects itself with an anti-corruption layer
 }
 ```
 
-### Available patterns
+### Directional patterns
+
+These patterns apply to relationships with `->`, `<-`, or `<->`. Upstream and downstream refer to the direction of dependency, not the arrow direction:
+
+| Pattern | Keyword | Long form | Side | Description |
+| ------- | ------- | --------- | ---- | ----------- |
+| Open Host Service | `[OHS]` | `[OpenHostService]` | Upstream | Publishes a well-defined protocol for consumers |
+| Published Language | `[PL]` | `[PublishedLanguage]` | Upstream | Uses a shared, documented language for integration |
+| Supplier | `[S]` | `[Supplier]` | Upstream | Supplies a capability to a customer context |
+| Conformist | `[CF]` | `[Conformist]` | Downstream | Adopts the upstream model without translation |
+| Anti-Corruption Layer | `[ACL]` | `[AntiCorruptionLayer]` | Downstream | Translates between models to protect the downstream context |
+| Customer | `[C]` | `[Customer]` | Downstream | Consumes a capability from a supplier context |
+| Big Ball of Mud | `[BBoM]` | `[BigBallOfMud]` | Either | No clear model structure (legacy or brownfield) |
+
+Multiple patterns per side are comma-separated: `[OHS, PL]`.
+
+### Symmetric patterns
+
+Some relationships have no direction — neither context is upstream or downstream. Symmetric patterns sit between the two context names with no arrow:
 
 | Pattern | Keyword | Long form | Description |
 | ------- | ------- | --------- | ----------- |
-| Open Host Service | `[OHS]` | `[OpenHostService]` | Provides a well-defined protocol for others to consume |
-| Conformist | `[CF]` | `[Conformist]` | Adopts the upstream model without translation |
-| Anti-Corruption Layer | `[ACL]` | `[AntiCorruptionLayer]` | Translates between models to protect the downstream context |
-| Published Language | `[PL]` | `[PublishedLanguage]` | Uses a shared, documented language for integration |
-| Shared Kernel | `[SK]` | `[SharedKernel]` | Shares a subset of the domain model |
-| Partnership | `[P]` | `[Partnership]` | Two contexts coordinate development together |
-| Big Ball of Mud | `[BBoM]` | `[BigBallOfMud]` | No clear model structure (legacy, brownfield) |
+| Shared Kernel | `[SK]` | `[SharedKernel]` | Both contexts share a subset of the domain model |
+| Partnership | `[P]` | `[Partnership]` | Both teams co-evolve their models together |
+| Separate Ways | `[SW]` | `[SeparateWays]` | No integration — each context evolves independently |
 
-## Pattern combinations
+```dlang
+Orders [SK] Inventory      // shared model subset
+Orders [P] Catalog         // coordinated development
+Orders [SW] LegacyBilling  // no integration
+```
 
-Patterns can be on either or both sides:
+Separate Ways also has an arrow form: `Orders >< LegacyBilling` (equivalent to `[SW]`).
+
+## Combining patterns
+
+You can put patterns on either or both sides of a directional relationship. Side placement follows the upstream/downstream role, not the arrow direction:
 
 ```dlang
 ContextMap Integration {
-    contains A, B, C, D
-    
-    // Upstream provides OHS, downstream conforms
-    [OHS] A -> [CF] B
-    
-    // Downstream protects itself with ACL
-    [ACL] C <- D
-    
-    // Partnership between equals
-    [P] A <-> [P] B
+    contains Orders, Billing, Catalog, Shipping, Inventory
+
+    // Single pattern on each side
+    Catalog [OHS] -> [CF] Orders
+
+    // Multiple patterns on the upstream side
+    Catalog [OHS, PL] -> [CF, ACL] Billing
+
+    // Customer/Supplier: explicit supply-chain relationship
+    Orders [S] -> [C] Inventory
+
+    // Reverse arrow — equivalent to Catalog [OHS] -> [CF] Shipping
+    Shipping [CF] <- [OHS] Catalog
+
+    // Bidirectional — both sides name their role
+    Orders [OHS] <-> [CF] Billing
+
+    // Symmetric — no arrow
+    Orders [P] Catalog
 }
 ```
-
-## Bidirectional relationships
-
-Use `<->` for mutual dependencies:
-
-```dlang
-ContextMap Partnership {
-    contains Frontend, Backend
-    
-    [P] Frontend <-> [P] Backend
-}
-```
-
-## Relationship types
-
-You can annotate a relationship with a semantic type using the `: Type` suffix:
-
-```dlang
-ContextMap TeamDeps {
-    contains Orders, Payments, Inventory
-    
-    [OHS] Orders -> [CF] Payments : UpstreamDownstream
-    [P] Orders <-> [P] Inventory : Partnership
-}
-```
-
-Available relationship types: `Partnership`, `SharedKernel`, `CustomerSupplier`, `UpstreamDownstream`, `SeparateWays`.
 
 ## Multiple context maps
 
-Large systems often have multiple maps for different views:
+A single map doesn't have to represent everything. Split concerns across separate maps:
 
 ```dlang
-// Technical integration view
+// Technical integration: who calls whom
 ContextMap TechnicalIntegration {
     contains Orders, Inventory, Payments
-    
+
     Orders -> Inventory
     Orders -> Payments
 }
 
-// Team communication view
+// Team dependencies: coordination patterns
 ContextMap TeamDependencies {
     contains OrderContext, InventoryContext
-    
-    [P] OrderContext <-> [P] InventoryContext
+
+    OrderContext [P] InventoryContext
 }
 ```
 
-## Best practices
-
 ::: tip Keep maps focused
-Create separate context maps for different concerns: technical integration, team dependencies, data flow. Don't try to show everything in one map.
+Separate maps for different concerns — technical integration, team ownership, data flow — are easier to reason about than one map that tries to show everything.
 :::
 
-::: warning Avoid god maps
-If your context map has too many contexts (more than 7-10), consider breaking it into focused sub-maps or reviewing your context boundaries.
+::: warning Watch the size
+More than 7–10 contexts in a single map is usually a sign to split the map or revisit your context boundaries.
 :::
 
 ## Examples
@@ -149,17 +150,12 @@ If your context map has too many contexts (more than 7-10), consider breaking it
 ```dlang
 ContextMap ECommerceSystem {
     contains Catalog, Orders, Payments, Shipping, Notifications
-    
-    // Orders orchestrates the flow
-    [OHS] Orders -> [CF] Payments
-    [OHS] Orders -> [CF] Shipping
-    [OHS] Orders -> [CF] Notifications
-    
-    // Catalog provides product data
-    [OHS,PL] Catalog -> [CF] Orders
-    
-    // External carriers integration
-    [BBoM] Shipping >< Notifications
+
+    Catalog [OHS, PL] -> [CF] Orders
+    Orders [OHS] -> [CF] Payments
+    Orders [OHS] -> [CF] Shipping
+    Orders [OHS] -> [CF] Notifications
+    Shipping [SW] Notifications
 }
 ```
 
@@ -168,16 +164,16 @@ ContextMap ECommerceSystem {
 ```dlang
 ContextMap MicroservicesMap {
     contains UserService, OrderService, ProductService, NotificationService
-    
-    [OHS] UserService -> [CF] OrderService
-    [OHS] ProductService -> [CF] OrderService
-    [OHS] OrderService -> [ACL] NotificationService
+
+    UserService [OHS] -> [CF] OrderService
+    ProductService [OHS] -> [CF] OrderService
+    OrderService [OHS] -> [ACL] NotificationService
 }
 ```
 
 ## Domain maps
 
-For a high-level view of your domain portfolio, use `DomainMap` (alias `dmap`):
+For a high-level view of your domain portfolio rather than individual contexts, use `DomainMap` (alias `dmap`):
 
 ```dlang
 DomainMap Portfolio {
@@ -185,7 +181,7 @@ DomainMap Portfolio {
 }
 ```
 
-Domain maps work like context maps but reference domains instead of bounded contexts. Use them to visualize your domain hierarchy at the strategic level.
+Domain maps reference domains, not bounded contexts, and give a strategic overview of your entire portfolio.
 
 ## Next steps
 
@@ -195,5 +191,5 @@ Domain maps work like context maps but reference domains instead of bounded cont
 
 ## See also
 
-- [Language reference: context maps](/reference/language#context-maps) — complete syntax details
-- [Language reference: relationships](/reference/language#relationships) — integration patterns and arrows
+- [Language reference: relationships](/reference/language#relationships) — complete syntax and pattern reference
+

@@ -70,8 +70,8 @@ Map how bounded contexts relate to each other with DDD relationship patterns:
 ContextMap SalesSystem {
     contains Orders, Billing, Shipping
 
-    [OHS] Orders -> [CF] Billing
-    [ACL] Shipping <- Orders
+    Orders [OHS] -> [CF] Billing
+    Orders -> [ACL] Shipping
 }
 ```
 

@@ -91,7 +91,7 @@ BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     }
 
     relationships {
-        [OHS] this -> [ACL] Payments
+        this [OHS] -> [ACL] Payments
     }
 }
 ```
@@ -100,43 +100,55 @@ BoundedContext Orders for Sales as CoreDomain by SalesTeam {
 
 ```dlang
 ContextMap System {
-    contains Orders, Payments, Shipping
+    contains Orders, Payments, Shipping, Inventory, Legacy
     
-    // Basic arrows
-    Orders -> Payments           // upstream to downstream
-    Payments <- Orders           // downstream to upstream
-    Orders <-> Shipping          // bidirectional
-    Orders >< Legacy             // separate ways
+    // Directional — left provides, right consumes
+    Orders -> Payments
+    Orders [OHS] -> [CF] Payments
+    Orders [OHS, PL] -> [CF, ACL] Payments
     
-    // With patterns
-    [OHS] Orders -> [CF] Payments
-    [ACL] Shipping <- Orders
-    [P] Orders <-> [P] Inventory
+    // Customer/Supplier
+    Orders [S] -> [C] Shipping
+    
+    // Reverse directional — right is upstream; patterns still follow upstream/downstream sides
+    Payments [ACL] <- Orders                // Payments side only (downstream)
+    Payments [CF] <- [OHS] Orders           // both sides annotated (upstream on right, downstream on left)
+    
+    // Bidirectional — both sides specify their role
+    Orders [OHS] <-> [CF] Payments
+    Orders [PL] <-> [ACL] Shipping
+    
+    // Symmetric patterns (no arrow)
+    Orders [SK] Inventory            // shared kernel
+    Orders [P] Inventory             // partnership
+    Orders [SW] Legacy               // separate ways
+    Orders >< Legacy                 // separate ways (arrow form)
 }
-```
-
-## Relationship types
-
-```dlang
-// Annotate a relationship with a semantic type
-[OHS] Orders -> [CF] Payments : UpstreamDownstream
-[P] Orders <-> [P] Inventory : Partnership
-
-// Available types: Partnership, SharedKernel,
-//   CustomerSupplier, UpstreamDownstream, SeparateWays
 ```
 
 ## Integration patterns
 
-| Pattern | Short | Description |
-|---------|-------|-------------|
-| Open Host Service | `[OHS]` | Published protocol |
-| Conformist | `[CF]` | Adopts upstream |
-| Anti-Corruption Layer | `[ACL]` | Translates models |
-| Published Language | `[PL]` | Shared language |
-| Shared Kernel | `[SK]` | Shared model |
-| Partnership | `[P]` | Co-development |
-| Big Ball of Mud | `[BBoM]` | No structure |
+### Directional patterns (with `->`, `<-`, and `<->`)
+
+| Pattern | Short | Side | Description |
+| ------- | ----- | ---- | ----------- |
+| Open Host Service | `[OHS]` | Upstream | Published protocol |
+| Published Language | `[PL]` | Upstream | Shared language |
+| Supplier | `[S]` | Upstream | Supplies service |
+| Conformist | `[CF]` | Downstream | Adopts upstream |
+| Anti-Corruption Layer | `[ACL]` | Downstream | Translates models |
+| Customer | `[C]` | Downstream | Consumes service |
+| Big Ball of Mud | `[BBoM]` | Either | No structure |
+
+### Symmetric patterns (no arrow)
+
+Symmetric patterns sit between entities with no arrow:
+
+| Pattern | Short | Arrow form | Description |
+| ------- | ----- | ---------- | ----------- |
+| Shared Kernel | `[SK]` | — | Shared model |
+| Partnership | `[P]` | — | Co-development |
+| Separate Ways | `[SW]` | `><` | No integration |
 
 ## Namespaces
 

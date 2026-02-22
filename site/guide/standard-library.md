@@ -272,8 +272,8 @@ BoundedContext Auth for Platform
 
 ContextMap SalesLandscape {
     contains Orders, Analytics, Auth
-    [OHS] Orders -> [CF] Analytics
-    [ACL] Orders -> Auth
+    Orders [OHS] -> [CF] Analytics
+    Orders [ACL] -> Auth
 }
 ```
 

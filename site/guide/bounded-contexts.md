@@ -201,8 +201,8 @@ Define integration relationships directly inside a bounded context using the `re
 ```dlang
 BoundedContext Orders for Sales {
     relationships {
-        [OHS] this -> [CF] Billing
-        [ACL] this <- Payments
+        this [OHS] -> [CF] Billing
+        Payments -> [ACL] this
     }
 }
 ```

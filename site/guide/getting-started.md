@@ -3,7 +3,7 @@
 In this tutorial, you build a complete DomainLang model with a domain, bounded contexts, team ownership, ubiquitous language, and a context map. By the end, you'll have a reviewable, version-controlled DDD model in your repository.
 
 ::: warning 🚧 Prerelease
-DomainLang is in active development and has not reached v1.0 yet. The language syntax may evolve. See the [roadmap](/roadmap) for planned features.
+DomainLang is in active development and has not reached v1.0 yet. The language syntax may evolve. See the [roadmap](/roadmap) for planned features. This software is provided as-is with no support.
 :::
 
 ## Prerequisites
@@ -160,27 +160,30 @@ ContextMap BookstoreSystem {
 
 ## Step 6: Add relationship patterns (optional)
 
-Annotate relationships with DDD integration patterns:
+Annotate relationships with DDD integration patterns. Patterns go between the entity and the arrow:
 
 ```dlang
 ContextMap BookstoreSystem {
     contains Catalog, Orders, Shipping
     
-    [OHS] Catalog -> [CF] Orders
-    [ACL] Shipping <- Orders
+    Catalog [OHS] -> [CF] Orders
+    Orders [ACL] <- Shipping
 }
 ```
 
 Common patterns:
 
-| Pattern | Meaning               |
-| ------- | --------------------- |
-| `[OHS]` | Open Host Service     |
-| `[CF]`  | Conformist            |
-| `[ACL]` | Anti-Corruption Layer |
-| `[PL]`  | Published Language    |
-| `[SK]`  | Shared Kernel         |
-| `[P]`   | Partnership           |
+| Pattern | Meaning                     |
+| ------- | --------------------------- |
+| `[OHS]` | Open Host Service           |
+| `[CF]`  | Conformist                  |
+| `[ACL]` | Anti-Corruption Layer       |
+| `[PL]`  | Published Language          |
+| `[S]`   | Supplier                    |
+| `[C]`   | Customer                    |
+| `[SK]`  | Shared Kernel (no arrow)    |
+| `[P]`   | Partnership (no arrow)      |
+| `[SW]`  | Separate Ways (no arrow - or only `><`)     |
 
 ## Step 7: Organize with namespaces (optional)
 
@@ -233,7 +236,7 @@ BoundedContext Orders for Bookstore as CoreDomain by OrderTeam {
 
 ContextMap BookstoreSystem {
     contains Catalog, Orders
-    [OHS] Catalog -> [CF] Orders
+    Catalog [OHS] -> [CF] Orders
 }
 ```
 

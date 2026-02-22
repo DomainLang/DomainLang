@@ -121,7 +121,7 @@ BoundedContext AppointmentScheduling for Administration
     }
 
     relationships {
-        [CF] this <- [OHS] ElectronicHealthRecords
+        ElectronicHealthRecords [OHS] -> [CF] this
     }
 }
 
@@ -146,7 +146,7 @@ BoundedContext MedicationManagement for Pharmacy
     }
 
     relationships {
-        [ACL] this <- ElectronicHealthRecords
+        ElectronicHealthRecords -> [ACL] this
     }
 }
 
@@ -157,8 +157,8 @@ BoundedContext MedicationManagement for Pharmacy
 ContextMap HealthcareSystem {
     contains ElectronicHealthRecords, AppointmentScheduling, MedicationManagement
 
-    [OHS] ElectronicHealthRecords -> [CF] AppointmentScheduling
-    [OHS] ElectronicHealthRecords -> [ACL] MedicationManagement
+    ElectronicHealthRecords [OHS] -> [CF] AppointmentScheduling
+    ElectronicHealthRecords [OHS] -> [ACL] MedicationManagement
 }
 ```
 
@@ -195,8 +195,8 @@ terminology {
 The EHR system provides an Open Host Service that other contexts consume:
 
 ```dlang
-[OHS] ElectronicHealthRecords -> [CF] AppointmentScheduling
-[OHS] ElectronicHealthRecords -> [ACL] MedicationManagement
+ElectronicHealthRecords [OHS] -> [CF] AppointmentScheduling
+ElectronicHealthRecords [OHS] -> [ACL] MedicationManagement
 ```
 
 - AppointmentScheduling conforms to the EHR API

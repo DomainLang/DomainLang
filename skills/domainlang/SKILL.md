@@ -77,7 +77,7 @@ BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     }
 
     relationships {
-        [OHS] this -> [CF] Billing
+        this [OHS] -> [CF] Billing
     }
 }
 
@@ -164,8 +164,8 @@ Use the `this` keyword inside a bounded context to define relationships inline:
 ```dlang
 BoundedContext Orders for Sales {
     relationships {
-        [OHS] this -> [CF] Billing
-        [ACL] this <- Payments
+        this [OHS] -> [CF] Billing
+        Payments -> [ACL] this
     }
 }
 ```
@@ -186,12 +186,12 @@ Team DataTeam
 
 ```dlang
 ContextMap SalesSystem {
-    contains Orders, Billing, Shipping
+    contains Orders, Billing, Shipping, Inventory, Legacy
 
-    [OHS] Orders -> [CF] Billing
-    [ACL] Shipping <- Orders
-    [P] Orders <-> [P] Inventory
-    Orders >< Legacy
+    Orders [OHS] -> [CF] Billing
+    Orders -> [ACL] Shipping
+    Orders [P] Inventory
+    Orders [SW] Legacy
 }
 ```
 
@@ -199,50 +199,84 @@ ContextMap SalesSystem {
 
 | Arrow | Meaning |
 | ----- | ------- |
-| `->` | Upstream to downstream (left provides, right consumes) |
-| `<-` | Downstream to upstream (right provides, left consumes) |
-| `<->` | Bidirectional / Partnership |
-| `><` | Separate Ways (no integration) |
+| `->` | Directional — left is upstream, right is downstream |
+| `<-` | Reverse directional — right is upstream, left is downstream |
+| `<->` | Bidirectional — mutual data flow with explicit patterns |
+| `><` | Separate Ways — contexts have no integration |
 
 #### Integration patterns
 
-| Pattern | Short | Long form | Placement |
-| ------- | ----- | --------- | --------- |
-| Open Host Service | `[OHS]` | `[OpenHostService]` | Upstream side |
-| Conformist | `[CF]` | `[Conformist]` | Downstream side |
-| Anti-Corruption Layer | `[ACL]` | `[AntiCorruptionLayer]` | Downstream side |
-| Published Language | `[PL]` | `[PublishedLanguage]` | Upstream side |
-| Shared Kernel | `[SK]` | `[SharedKernel]` | Both sides (requires `<->`) |
-| Partnership | `[P]` | `[Partnership]` | Both sides (requires `<->`) |
+##### Directional patterns (with `->`, `<-`, and `<->`)
+
+| Pattern | Short | Long form | Side |
+| ------- | ----- | --------- | ---- |
+| Open Host Service | `[OHS]` | `[OpenHostService]` | Upstream |
+| Published Language | `[PL]` | `[PublishedLanguage]` | Upstream |
+| Supplier | `[S]` | `[Supplier]` | Upstream |
+| Conformist | `[CF]` | `[Conformist]` | Downstream |
+| Anti-Corruption Layer | `[ACL]` | `[AntiCorruptionLayer]` | Downstream |
+| Customer | `[C]` | `[Customer]` | Downstream |
 | Big Ball of Mud | `[BBoM]` | `[BigBallOfMud]` | Either side |
 
+##### Symmetric patterns (no arrow)
+
+Symmetric patterns sit between entities with no arrow. Separate Ways also has the `><` arrow form.
+
+| Pattern | Short | Long form | Arrow form | Description |
+| ------- | ----- | --------- | ---------- | ----------- |
+| Shared Kernel | `[SK]` | `[SharedKernel]` | — | Shared model subset |
+| Partnership | `[P]` | `[Partnership]` | — | Coordinated development |
+| Separate Ways | `[SW]` | `[SeparateWays]` | `><` | No integration |
+
 **Pattern placement rules:**
-- With `->`: left is **upstream**, right is **downstream**
-- `[OHS]` and `[PL]` go on the upstream (provider) side
-- `[CF]` and `[ACL]` go on the downstream (consumer) side
-- `[SK]` and `[P]` require bidirectional arrow `<->`
+- With `->`, `<-`, `<->`: patterns go between the entity and the arrow: `Entity [Pattern] -> [Pattern] Entity`, `Entity [Pattern] <- [Pattern] Entity`, `Entity [Pattern] <-> [Pattern] Entity`
+- `[OHS]`, `[PL]`, and `[S]` go on the upstream side
+- `[CF]`, `[ACL]`, and `[C]` go on the downstream side
+- `[SK]`, `[P]`, and `[SW]` are symmetric — placed between entities with no arrow: `A [SK] B`
+- `><` is an arrow form for Separate Ways only: `A >< B` (equivalent to `A [SW] B`)
+- Multiple patterns per side: `[OHS, PL]`
 
 ```dlang
 // ✅ Correct: OHS on upstream, CF on downstream
-[OHS] Orders -> [CF] Billing
+Orders [OHS] -> [CF] Billing
 
-// ✅ Correct: ACL on downstream (left side of <-)
-[ACL] Shipping <- Orders
+// ✅ Correct: ACL on downstream (right side)
+Orders -> [ACL] Shipping
+
+// ✅ Correct: Shared kernel (symmetric, no arrow)
+Orders [SK] Inventory
+
+// ✅ Correct: Customer/Supplier
+Orders [S] -> [C] Billing
+
+// ✅ Correct: Separate Ways (three equivalent forms)
+Orders [SW] Legacy
+Orders [SeparateWays] Legacy
+Orders >< Legacy
+
+// ✅ Correct: Reverse directional
+Payments [ACL] <- Orders
+
+// ✅ Correct: Bidirectional directional form
+Orders [OHS] <-> [CF] Shipping
 
 // ❌ Wrong: CF on upstream side — validator warns
-[CF] Orders -> [OHS] Billing
+Orders [CF] -> [OHS] Billing
 ```
 
-#### Relationship types
+#### Relationship semantics
 
-Annotate relationships with a semantic type:
+The arrow and pattern determine the relationship type:
 
-```dlang
-[OHS] Orders -> [CF] Payments : UpstreamDownstream
-[P] Orders <-> [P] Inventory : Partnership
-```
-
-Available types: `Partnership`, `SharedKernel`, `CustomerSupplier`, `UpstreamDownstream`, `SeparateWays`.
+| Arrow + Pattern | Relationship type |
+| --------------- | ----------------- |
+| `A -> B` | Upstream/downstream |
+| `A <- B` | Reverse upstream/downstream |
+| `A <-> B` | Bidirectional |
+| `A [S] -> [C] B` | Customer/supplier |
+| `A [SK] B` | Shared kernel |
+| `A [P] B` | Partnership |
+| `A [SW] B` or `A >< B` | Separate ways |
 
 ### Domain maps
 
@@ -407,7 +441,7 @@ The language server validates models and reports issues:
 | Duplicate fully-qualified names | Error |
 | Circular domain hierarchy | Error |
 | `[ACL]` or `[CF]` on upstream side | Warning |
-| `[SK]` without bidirectional arrow (`<->`) | Warning |
+| `[S]` on downstream or `[C]` on upstream side | Error |
 | Empty context map (no contexts) | Warning |
 | Duplicate relationship in context map | Warning |
 | Header/body conflict for classification or team | Warning |
@@ -457,7 +491,7 @@ BoundedContext Orders for Sales as CoreDomain by SalesTeam {
     }
 
     relationships {
-        [OHS] this -> [CF] Billing
+        this [OHS] -> [CF] Billing
     }
 }
 
@@ -472,8 +506,8 @@ import "@domains/shipping"
 ContextMap SalesLandscape {
     contains Orders, Billing, Shipping
 
-    [OHS] Orders -> [CF] Billing
-    [OHS] Orders -> [ACL] Shipping
+    Orders [OHS] -> [CF] Billing
+    Orders [OHS] -> [ACL] Shipping
 }
 
 DomainMap Portfolio {

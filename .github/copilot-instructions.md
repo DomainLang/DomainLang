@@ -223,11 +223,13 @@ When implementing a PRS from `requirements/`:
 | Subdomain | `Domain Orders in Sales {}` |
 | BoundedContext | `bc OrderContext for Sales as Core by SalesTeam` |
 | ContextMap | `ContextMap Sales { contains OrderContext, BillingContext }` |
-| Relationship | `[OHS] this -> [CF] PaymentContext` |
+| Relationship | `this [OHS] -> [CF] PaymentContext` |
 | Namespace | `namespace acme.sales { ... }` |
 | Import | `import "owner/repo@v1.0.0"` |
 
-**DDD Patterns:** `[OHS]` Open Host Service · `[CF]` Conformist · `[ACL]` Anti-Corruption Layer · `[PL]` Published Language · `[P]` Partnership · `[SK]` Shared Kernel
+**DDD Patterns:** `[OHS]` Open Host Service · `[CF]` Conformist · `[ACL]` Anti-Corruption Layer · `[PL]` Published Language · `[P]` Partnership · `[SK]` Shared Kernel · `[S]` Supplier · `[C]` Customer · `[SW]` Separate Ways
+
+**Arrows:** `->` upstream/downstream · `<-` reverse · `<->` bidirectional · `><` Separate Ways
 
 ## Model Query SDK
 

@@ -29,7 +29,7 @@ The extension validates your model as you type and reports issues in the Problem
 - Duplicate element names (fully qualified)
 - Broken references to domains, teams, or classifications
 - Header/body conflicts for classification and team assignment
-- SharedKernel without bidirectional arrow (`<->`)
+- Supplier/Customer patterns on the wrong side of a directional relationship
 - ACL or Conformist on the wrong side of a relationship
 - Empty context maps and domain maps
 - Duplicate relationships within a context map
