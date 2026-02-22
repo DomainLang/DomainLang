@@ -67,7 +67,7 @@ bc Checkout for Sales as CoreDomain by SalesTeam {
     }
     
     relationships {
-        [OHS] this -> [ACL] Orders : UpstreamDownstream
+        this [OHS] -> [ACL] Orders
     }
 }
 

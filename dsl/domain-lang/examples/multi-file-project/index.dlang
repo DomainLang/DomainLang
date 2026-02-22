@@ -18,7 +18,7 @@ ContextMap SalesSystem {
     contains Orders, Checkout, Catalog
     
     // Checkout orchestrates orders
-    [OHS] Checkout -> [ACL] Orders
+    Checkout [OHS] -> [ACL] Orders
     
     // Catalog provides product data
     Catalog -> Orders

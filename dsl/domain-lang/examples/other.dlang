@@ -6,7 +6,7 @@ Team SupportTeam
 BoundedContext SupportPortal for Marketplace as StrategicLandscape.SupportingDomain by SupportTeam {
     description: "Handles customer support cases and escalations"
     relationships {
-        [OHS] CustomerFacing.ApplicationFramework -> [CF] this
+        CustomerFacing.ApplicationFramework [OHS] -> [CF] this
     }
     terminology {
         term SupportTicket: "Recorded request for assistance"

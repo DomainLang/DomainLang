@@ -183,14 +183,14 @@ bc LegacyPaymentAdapter for Checkout {
 ContextMap CheckoutFlow {
     contains UserAuthentication, ShoppingCart, PaymentProcessing, OrderFulfillment
     
-    [OHS] UserAuthentication -> [CF] ShoppingCart
-    [OHS] ShoppingCart -> [ACL] PaymentProcessing
-    [OHS] PaymentProcessing -> [CF] OrderFulfillment
+    UserAuthentication [OHS] -> [CF] ShoppingCart
+    ShoppingCart [OHS] -> [ACL] PaymentProcessing
+    PaymentProcessing [OHS] -> [CF] OrderFulfillment
 }
 
 ContextMap CatalogServices {
     contains ProductSearch, ProductInventory, ShoppingCart
     
-    [OHS] ProductSearch -> [CF] ProductInventory
-    [OHS] ProductInventory -> [PL] ShoppingCart
+    ProductSearch [OHS] -> [CF] ProductInventory
+    ProductInventory [OHS] -> [PL] ShoppingCart
 }

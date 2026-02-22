@@ -342,9 +342,9 @@ ContextMap ClinicalWorkflow {
     contains ElectronicHealthRecords, MedicationManagement, LaboratoryInformationSystem, RadiologyInformationSystem
 
     // EHR is central to clinical workflow
-    [OHS, PL] ElectronicHealthRecords -> [ACL] MedicationManagement
-    [OHS, PL] ElectronicHealthRecords -> [ACL] LaboratoryInformationSystem
-    [OHS, PL] ElectronicHealthRecords -> [ACL] RadiologyInformationSystem
+    ElectronicHealthRecords [OHS, PL] -> [ACL] MedicationManagement
+    ElectronicHealthRecords [OHS, PL] -> [ACL] LaboratoryInformationSystem
+    ElectronicHealthRecords [OHS, PL] -> [ACL] RadiologyInformationSystem
 
     // Results flow back to EHR
     LaboratoryInformationSystem -> ElectronicHealthRecords
@@ -356,8 +356,8 @@ ContextMap PatientExperience {
     contains AppointmentScheduling, PatientPortal, ElectronicHealthRecords
 
     // Patient portal integrates with scheduling and records
-    [OHS] AppointmentScheduling -> [ACL] PatientPortal
-    [OHS] ElectronicHealthRecords -> [ACL] PatientPortal
+    AppointmentScheduling [OHS] -> [ACL] PatientPortal
+    ElectronicHealthRecords [OHS] -> [ACL] PatientPortal
 
     // Patients book appointments
     PatientPortal -> AppointmentScheduling
@@ -367,7 +367,7 @@ ContextMap RevenueCycle {
     contains PatientBilling, ElectronicHealthRecords, AppointmentScheduling
 
     // Billing needs clinical and appointment data
-    [OHS] ElectronicHealthRecords -> [ACL] PatientBilling
+    ElectronicHealthRecords [OHS] -> [ACL] PatientBilling
     AppointmentScheduling -> PatientBilling
 }
 
@@ -375,7 +375,7 @@ ContextMap MedicationSafety {
     contains MedicationManagement, ElectronicHealthRecords, LaboratoryInformationSystem
 
     // Medication management checks allergies and interactions
-    [SK] MedicationManagement <-> ElectronicHealthRecords : SharedKernel
+    MedicationManagement [SK] ElectronicHealthRecords
 
     // Lab results influence medication decisions
     LaboratoryInformationSystem -> MedicationManagement

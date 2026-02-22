@@ -307,7 +307,7 @@ ContextMap CoreBankingOperations {
     contains AccountManagement, PaymentProcessing, FraudDetection
 
     // Account management provides account data to payments
-    [OHS, PL] AccountManagement -> [ACL] PaymentProcessing
+    AccountManagement [OHS, PL] -> [ACL] PaymentProcessing
 
     // Fraud detection monitors all transactions
     PaymentProcessing -> FraudDetection
@@ -331,10 +331,10 @@ ContextMap CustomerInteractions {
     contains AccountManagement, CustomerService, CardManagement
 
     // Customer service needs account information
-    [OHS] AccountManagement -> [ACL] CustomerService
+    AccountManagement [OHS] -> [ACL] CustomerService
 
     // Card management linked to accounts
-    [SK] CardManagement <-> AccountManagement : SharedKernel
+    CardManagement [SK] AccountManagement
 
     // Customer service helps with card issues
     CustomerService -> CardManagement
@@ -348,7 +348,7 @@ ContextMap PaymentEcosystem {
     PaymentProcessing -> AccountManagement
 
     // Shared payment models
-    [SK] PaymentProcessing <-> CardManagement : SharedKernel
+    PaymentProcessing [SK] CardManagement
 }
 
 // ============================================================================

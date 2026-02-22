@@ -44,7 +44,7 @@ Namespace CustomerFacing {
 
     ContextMap WebExperience {
         contains ApplicationFramework, Listings
-        [SK] ApplicationFramework <-> Listings : SharedKernel
-        [OHS] Listings -> [ACL] ApplicationFramework
+        ApplicationFramework [SK] Listings
+        Listings [OHS] -> [ACL] ApplicationFramework
     }
 }

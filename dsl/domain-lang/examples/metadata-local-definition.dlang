@@ -139,14 +139,14 @@ bc LegacyReporting for Finance {
 ContextMap SalesOperations {
     contains OrderManagement, Pricing, Fulfillment, Shipping
     
-    [OHS] OrderManagement -> [CF] Fulfillment
-    [OHS] Pricing -> [CF] OrderManagement
-    [PL] Fulfillment -> [ACL] Shipping
+    OrderManagement [OHS] -> [CF] Fulfillment
+    Pricing [OHS] -> [CF] OrderManagement
+    Fulfillment [PL] -> [ACL] Shipping
 }
 
 ContextMap SalesFinance {
     contains OrderManagement, BillingEngine, PaymentGateway
     
-    [OHS] OrderManagement -> [ACL] BillingEngine
-    [OHS] BillingEngine -> [CF] PaymentGateway
+    OrderManagement [OHS] -> [ACL] BillingEngine
+    BillingEngine [OHS] -> [CF] PaymentGateway
 }
