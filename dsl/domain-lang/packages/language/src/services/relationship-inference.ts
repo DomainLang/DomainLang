@@ -3,20 +3,26 @@ import type {
     Relationship, 
     StructureElement, 
     BoundedContext,
-    ContextMap
+    ContextMap,
+    DirectionalRelationship,
+    SymmetricRelationship
 } from '../generated/ast.js';
 import { 
     isBoundedContext, 
     isContextMap, 
-    isNamespaceDeclaration 
+    isNamespaceDeclaration,
+    isDirectionalRelationship,
+    isSymmetricRelationship,
+    isSupplier,
+    isCustomer
 } from '../generated/ast.js';
 
 /**
- * Enriches relationships in the model by inferring relationship types
- * from roles and arrow directions.
+ * Enriches relationships in the model by inferring relationship kinds
+ * from AST node type, patterns, and arrow direction.
  * 
- * This service walks the entire model structure and applies inference
- * rules to relationships that don't have an explicit type.
+ * With the entity–relationship–entity grammar, symmetric relationships
+ * derive their kind directly from the AST node type (no heuristics).
  * 
  * @param model - The root model to process
  */
@@ -26,17 +32,14 @@ export function setInferredRelationshipTypes(model: Model): void {
 
 /**
  * Recursively walks structure elements to find and enrich relationships.
- * 
- * @param elements - Array of structure elements to process
- * @param containerBc - Optional container bounded context (for nested contexts)
  */
 function walkStructureElements(
     elements: StructureElement[] = [], 
-    containerBc?: BoundedContext
+    _containerBc?: BoundedContext
 ): void {
     for (const element of elements) {
-    if (isNamespaceDeclaration(element)) {
-            walkStructureElements(element.children, containerBc);
+        if (isNamespaceDeclaration(element)) {
+            walkStructureElements(element.children, _containerBc);
         } else if (isBoundedContext(element)) {
             processContextRelationships(element);
         } else if (isContextMap(element)) {
@@ -47,8 +50,6 @@ function walkStructureElements(
 
 /**
  * Processes relationships within a bounded context.
- * 
- * @param context - The bounded context to process
  */
 function processContextRelationships(context: BoundedContext): void {
     for (const rel of context.relationships) {
@@ -58,8 +59,6 @@ function processContextRelationships(context: BoundedContext): void {
 
 /**
  * Processes relationships within a context map.
- * 
- * @param map - The context map to process
  */
 function processMapRelationships(map: ContextMap): void {
     if (map.relationships) {
@@ -70,52 +69,42 @@ function processMapRelationships(map: ContextMap): void {
 }
 
 /**
- * Enriches a single relationship by inferring its type if not explicitly set.
- * 
- * @param rel - The relationship to enrich
+ * Enriches a single relationship by inferring its kind.
  */
 function enrichRelationship(rel: Relationship): void {
-    if (!rel.type) {
-        rel.inferredType = inferRelationshipType(rel);
+    if (isSymmetricRelationship(rel)) {
+        rel.inferredKind = inferSymmetricKind(rel);
+    } else if (isDirectionalRelationship(rel)) {
+        rel.inferredKind = inferDirectionalKind(rel);
     }
 }
 
 /**
- * Infers relationship type from arrow direction and roles.
- * 
- * Inference rules:
- * - `><` → SeparateWays
- * - `<->` with P roles → Partnership
- * - `<->` with SK roles → SharedKernel
- * - `->` or `<-` → UpstreamDownstream
- * 
- * @param relationship - The relationship to analyze
- * @returns The inferred type or undefined if no rule matches
+ * Infers kind for symmetric relationships — derived from AST node type.
+ * No heuristics needed: the pattern is structurally part of the relationship.
  */
-function inferRelationshipType(relationship: Relationship): string | undefined {
-    const leftPatterns = (relationship.leftPatterns ?? []).map((r: string) => r.toUpperCase());
-    const rightPatterns = (relationship.rightPatterns ?? []).map((r: string) => r.toUpperCase());
-
-    if (relationship.arrow === '><') {
+function inferSymmetricKind(rel: SymmetricRelationship): string {
+    if (rel.pattern) {
+        return rel.pattern.$type;  // 'SharedKernel', 'Partnership', or 'SeparateWays'
+    }
+    if (rel.arrow === '><') {
         return 'SeparateWays';
     }
+    return 'SeparateWays'; // `><` is the only non-pattern symmetric form
+}
+
+/**
+ * Infers kind for directional relationships from side patterns.
+ * 
+ * - Customer/Supplier: has [S] or [C] patterns
+ * - UpstreamDownstream: default for all directional relationships
+ */
+function inferDirectionalKind(rel: DirectionalRelationship): string {
+    const hasSupplier = rel.leftPatterns.some(isSupplier) || rel.rightPatterns.some(isSupplier);
+    const hasCustomer = rel.leftPatterns.some(isCustomer) || rel.rightPatterns.some(isCustomer);
     
-    if (relationship.arrow === '<->') {
-        const noPatterns = leftPatterns.length === 0 && rightPatterns.length === 0;
-        const bothPartners = leftPatterns.includes('P') && rightPatterns.includes('P');
-        
-        if (noPatterns || bothPartners) {
-            return 'Partnership';
-        }
-        
-        if (leftPatterns.includes('SK') && rightPatterns.includes('SK')) {
-            return 'SharedKernel';
-        }
+    if (hasSupplier || hasCustomer) {
+        return 'CustomerSupplier';
     }
-    
-    if (relationship.arrow === '->' || relationship.arrow === '<-') {
-        return 'UpstreamDownstream';
-    }
-    
-    return undefined;
-} 
+    return 'UpstreamDownstream';
+}

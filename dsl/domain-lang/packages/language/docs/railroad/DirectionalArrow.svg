@@ -1,4 +1,4 @@
-<svg data-rule="RelationshipArrow" data-rule="RelationshipArrow" class="railroad-diagram railroad-svg" xmlns="http://www.w3.org/2000/svg" width="165" height="152" viewBox="0 0 165 152">
+<svg data-rule="DirectionalArrow" class="railroad-diagram railroad-svg" xmlns="http://www.w3.org/2000/svg" width="165" height="122" viewBox="0 0 165 122">
 
 <g transform="translate(.5 .5)">
 <path d="M 20 21 v 20 m 10 -20 v 20 m -10 -10 h 20.5"></path>
@@ -29,14 +29,6 @@
 <text x="82" y="95">&#60;-</text>
 </g>
 <path d="M104 91a10 10 0 0 0 10 -10v-40a10 10 0 0 1 10 -10"></path>
-<path d="M40 31a10 10 0 0 1 10 10v70a10 10 0 0 0 10 10"></path>
-<g>
-<path d="M60 121h4"></path>
-<path d="M100 121h4"></path>
-<rect x="64" y="110" width="36" height="22" rx="10" ry="10"></rect>
-<text x="82" y="125">>&#60;</text>
-</g>
-<path d="M104 121a10 10 0 0 0 10 -10v-70a10 10 0 0 1 10 -10"></path>
 </g>
 <path d="M 124 31 h 20 m -10 -10 v 20 m 10 -20 v 20"></path>
 </g>

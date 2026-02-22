@@ -1,6 +1,6 @@
 import type { ValidationAcceptor } from 'langium';
 import type { ContextMap, DomainMap, Relationship, BoundedContextRef } from '../generated/ast.js';
-import { isThisRef } from '../generated/ast.js';
+import { isDirectionalRelationship, isSymmetricRelationship, isThisRef } from '../generated/ast.js';
 import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
 
 /**
@@ -139,9 +139,17 @@ function getRefKey(ref: BoundedContextRef): string {
 function buildRelationshipKey(rel: Relationship): string {
     const left = getRefKey(rel.left);
     const right = getRefKey(rel.right);
-    const leftPatterns = (rel.leftPatterns ?? []).slice().sort((a, b) => a.localeCompare(b)).join(',');
-    const rightPatterns = (rel.rightPatterns ?? []).slice().sort((a, b) => a.localeCompare(b)).join(',');
-    return `[${leftPatterns}]${left}${rel.arrow}[${rightPatterns}]${right}`;
+    const arrow = rel.arrow ?? '';
+
+    if (isDirectionalRelationship(rel)) {
+        const leftPatterns = rel.leftPatterns.map(p => p.$type).sort().join(',');
+        const rightPatterns = rel.rightPatterns.map(p => p.$type).sort().join(',');
+        return `[${leftPatterns}]${left}${arrow}[${rightPatterns}]${right}`;
+    }
+
+    // Symmetric relationship
+    const pattern = isSymmetricRelationship(rel) && rel.pattern ? rel.pattern.$type : '';
+    return `[${pattern}]${left}${arrow}${right}`;
 }
 
 /**

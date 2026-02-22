@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-15T16:27:03.792Z",
+  "generatedAt": "2026-02-22T15:39:55.130Z",
   "version": "1.0.0",
   "categoryOrder": [
     "Model Structure",
@@ -54,6 +54,13 @@
       "ContextMap",
       "DomainMap",
       "ObjectMap"
+    ],
+    "Other": [
+      "DirectionalArrow",
+      "DirectionalRelationship",
+      "SidePattern",
+      "SymmetricPattern",
+      "SymmetricRelationship"
     ],
     "Module System": [
       "ImportStatement",
@@ -144,6 +151,24 @@
         "Assignment"
       ]
     },
+    "DirectionalArrow": {
+      "name": "DirectionalArrow",
+      "category": "Other",
+      "file": "DirectionalArrow.svg",
+      "description": "",
+      "references": []
+    },
+    "DirectionalRelationship": {
+      "name": "DirectionalRelationship",
+      "category": "Other",
+      "file": "DirectionalRelationship.svg",
+      "description": "Directional relationship - upstream/downstream with optional side patterns.",
+      "references": [
+        "BoundedContextRef",
+        "SidePattern",
+        "DirectionalArrow"
+      ]
+    },
     "Domain": {
       "name": "Domain",
       "category": "Strategic Design",
@@ -167,7 +192,7 @@
       "name": "DomainTerm",
       "category": "Domain Knowledge",
       "file": "DomainTerm.svg",
-      "description": "Relationship arrows - symbolic and named types.",
+      "description": "Domain Terminology - Ubiquitous language terms with definitions.",
       "references": [
         "Assignment"
       ]
@@ -256,11 +281,8 @@
       "file": "Relationship.svg",
       "description": "Relationship - Connection between two Bounded Contexts.",
       "references": [
-        "IntegrationPattern",
-        "BoundedContextRef",
-        "RelationshipArrow",
-        "Assignment",
-        "RelationshipType"
+        "DirectionalRelationship",
+        "SymmetricRelationship"
       ]
     },
     "RelationshipArrow": {
@@ -277,6 +299,13 @@
       "description": "",
       "references": []
     },
+    "SidePattern": {
+      "name": "SidePattern",
+      "category": "Other",
+      "file": "SidePattern.svg",
+      "description": "Directional relationship arrows.",
+      "references": []
+    },
     "StructureElement": {
       "name": "StructureElement",
       "category": "Model Structure",
@@ -286,6 +315,23 @@
         "Type",
         "ObjectMap",
         "NamespaceDeclaration"
+      ]
+    },
+    "SymmetricPattern": {
+      "name": "SymmetricPattern",
+      "category": "Other",
+      "file": "SymmetricPattern.svg",
+      "description": "DDD Symmetric Patterns - describe the relationship between two contexts.",
+      "references": []
+    },
+    "SymmetricRelationship": {
+      "name": "SymmetricRelationship",
+      "category": "Other",
+      "file": "SymmetricRelationship.svg",
+      "description": "Symmetric relationship - mutual pattern between two contexts, no directionality.",
+      "references": [
+        "BoundedContextRef",
+        "SymmetricPattern"
       ]
     },
     "Team": {

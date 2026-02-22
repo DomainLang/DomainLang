@@ -204,17 +204,53 @@ DomainMap:
 
 /**
  * Relationship - Connection between two Bounded Contexts.
- * Supports DDD integration patterns (ACL, OHS, PL, etc.) and relationship types.
+ * Uses entity–relationship–entity structure where the relationship expression
+ * (type, arrow, side annotations) sits between the two entity references.
+ * 
+ * Forms:
+ *   Directional: Orders [OHS] -> [CF] Payments
+ *   Symmetric:   CardManagement [SK] AccountManagement
+ *   Separate Ways arrow: Orders >< Payments
  * 
  * [Read more on domainlang.net](https://domainlang.net/reference/language#relationships)
  */
 Relationship:
-    ('[' leftPatterns+=IntegrationPattern (',' leftPatterns+=IntegrationPattern)* ']')? 
+    DirectionalRelationship | SymmetricRelationship
+;
+
+/**
+ * Directional relationship - upstream/downstream with optional side patterns.
+ * 
+ * Examples:
+ *   Orders [OHS] -> [CF] Payments
+ *   Orders [S] -> [C] Payments
+ *   Orders -> Payments
+ *   Orders [OHS] <-> [CF] Payments
+ */
+DirectionalRelationship:
     left=BoundedContextRef
-    arrow=RelationshipArrow
-    ('[' rightPatterns+=IntegrationPattern (',' rightPatterns+=IntegrationPattern)* ']')? 
+    ('[' leftPatterns+=SidePattern (',' leftPatterns+=SidePattern)* ']')?
+    arrow=DirectionalArrow
+    ('[' rightPatterns+=SidePattern (',' rightPatterns+=SidePattern)* ']')?
     right=BoundedContextRef
-    (Assignment type=RelationshipType)?
+;
+
+/**
+ * Symmetric relationship - mutual pattern between two contexts, no directionality.
+ * 
+ * Examples:
+ *   CardManagement [SK] AccountManagement
+ *   Orders [P] Payments
+ *   Orders >< Payments
+ *   Orders [SW] Payments
+ */
+SymmetricRelationship:
+    left=BoundedContextRef
+    (
+        '[' pattern=SymmetricPattern ']'
+      | arrow='><'
+    )
+    right=BoundedContextRef
 ;
 
 /**
@@ -225,40 +261,40 @@ BoundedContextRef:
 ;
 
 /**
- * Relationship arrows - symbolic and named types.
+ * Directional relationship arrows.
  * 
  * Arrow semantics:
  *   ->   Upstream to downstream (left provides, right consumes)
  *   <-   Downstream to upstream (right provides, left consumes)
- *   <->  Bidirectional/Partnership (mutual dependency)
- *   ><   Separate Ways (no integration, teams go their own way)
+ *   <->  Bidirectional (mutual data flow with explicit patterns)
  */
-RelationshipArrow returns string:
-    '<->' | '->' | '<-' | '><'  // Separate Ways
+DirectionalArrow returns string:
+    '<->' | '->' | '<-'
 ;
 
 /**
- * DDD Integration Patterns (used in relationships).
+ * DDD Side Patterns - describe one side's role in a directional relationship.
+ * Each pattern produces a distinct AST node type via {infer} actions.
+ * Short and long forms parse to the same node type.
  */
-IntegrationPattern returns string:
-    'PL' | 'PublishedLanguage'       // Published Language
-    | 'OHS' | 'OpenHostService'      // Open Host Service
-    | 'CF' | 'Conformist'            // Conformist
-    | 'ACL' | 'AntiCorruptionLayer'  // Anti-Corruption Layer
-    | 'P' | 'Partnership'            // Partnership
-    | 'SK' | 'SharedKernel'          // Shared Kernel
-    | 'BBoM' | 'BigBallOfMud'        // Big Ball of Mud
+SidePattern:
+    {infer OpenHostService}     ('OHS' | 'OpenHostService')
+  | {infer PublishedLanguage}   ('PL'  | 'PublishedLanguage')
+  | {infer Conformist}          ('CF'  | 'Conformist')
+  | {infer AntiCorruptionLayer} ('ACL' | 'AntiCorruptionLayer')
+  | {infer Supplier}            ('S'   | 'Supplier')
+  | {infer Customer}            ('C'   | 'Customer')
+  | {infer BigBallOfMud}        ('BBoM'| 'BigBallOfMud')
 ;
 
 /**
- * DDD Relationship Types.
+ * DDD Symmetric Patterns - describe the relationship between two contexts.
+ * These are mutual/shared patterns, not directional.
  */
-RelationshipType returns string:
-    'Partnership' 
-    | 'SharedKernel' 
-    | 'CustomerSupplier' 
-    | 'UpstreamDownstream' 
-    | 'SeparateWays'
+SymmetricPattern:
+    {infer SharedKernel}  ('SK' | 'SharedKernel')
+  | {infer Partnership}   ('P'  | 'Partnership')
+  | {infer SeparateWays}  ('SW' | 'SeparateWays')
 ;
 
 // ============================================================================

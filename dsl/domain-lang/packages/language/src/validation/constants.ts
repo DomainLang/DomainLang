@@ -48,9 +48,12 @@ export const IssueCodes = {
     BoundedContextTeamConflict: 'bounded-context-team-conflict',
     
     // Integration Pattern Issues
-    SharedKernelNotBidirectional: 'shared-kernel-not-bidirectional',
     AclOnWrongSide: 'acl-on-wrong-side',
     ConformistOnWrongSide: 'conformist-on-wrong-side',
+    OhsOnWrongSide: 'ohs-on-wrong-side',
+    SupplierOnWrongSide: 'supplier-on-wrong-side',
+    CustomerOnWrongSide: 'customer-on-wrong-side',
+    SelfSymmetricRelationship: 'self-symmetric-relationship',
     TooManyPatterns: 'too-many-patterns',
     
     // Context/Domain Map Issues
@@ -168,13 +171,6 @@ export const ValidationMessages = {
     // ========================================================================
 
     /**
-     * Warning when SharedKernel pattern uses incorrect arrow direction.
-     * SharedKernel requires bidirectional relationship.
-     */
-    SHARED_KERNEL_MUST_BE_BIDIRECTIONAL: (leftContext: string, rightContext: string, arrow: string) =>
-        `SharedKernel between '${leftContext}' and '${rightContext}' requires bidirectional arrow '<->', not '${arrow}'.`,
-
-    /**
      * Warning when Anti-Corruption Layer is on the wrong side of relationship.
      * ACL should protect the consuming context (downstream).
      */
@@ -187,6 +183,33 @@ export const ValidationMessages = {
      */
     CONFORMIST_ON_WRONG_SIDE: (context: string, side: 'left' | 'right') =>
         `Conformist (CF) on '${context}' should be on downstream (consuming) side, not ${side} side.`,
+
+    /**
+     * Warning when Open Host Service is on the wrong side of relationship.
+     * OHS should be on the upstream (providing) side.
+     */
+    OHS_ON_WRONG_SIDE: (context: string, side: 'left' | 'right') =>
+        `Open Host Service (OHS) on '${context}' should be on upstream (providing) side, not ${side} side.`,
+
+    /**
+     * Error when Supplier is on the wrong side of relationship.
+     * Supplier must always be upstream.
+     */
+    SUPPLIER_ON_WRONG_SIDE: (context: string, _side: 'left' | 'right') =>
+        `Supplier (S) on '${context}' must be on the upstream side. Supplier is always the provider in a Customer/Supplier relationship.`,
+
+    /**
+     * Error when Customer is on the wrong side of relationship.
+     * Customer must always be downstream.
+     */
+    CUSTOMER_ON_WRONG_SIDE: (context: string, _side: 'left' | 'right') =>
+        `Customer (C) on '${context}' must be on the downstream side. Customer is always the consumer in a Customer/Supplier relationship.`,
+
+    /**
+     * Warning when a symmetric relationship references the same context on both sides.
+     */
+    SELF_SYMMETRIC_RELATIONSHIP: (context: string) =>
+        `Symmetric relationship with self: '${context}' has a symmetric relationship with itself. This is likely unintended.`,
 
     /**
      * Info message when relationship has too many integration patterns.
@@ -311,7 +334,7 @@ export const ValidationMessages = {
      */
     CONTEXT_MAP_NO_RELATIONSHIPS: (name: string, count: number) =>
         `Context Map '${name}' contains ${count} contexts but no documented relationships.\n` +
-        `Hint: Add relationships to show how contexts integrate (e.g., '[OHS] A -> [CF] B').`,
+        `Hint: Add relationships to show how contexts integrate (e.g., 'A [OHS] -> [CF] B').`,
 
     /**
      * Warning when a context map contains duplicate relationships.
