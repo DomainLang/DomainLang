@@ -116,14 +116,19 @@ export { fromModel, fromDocument, fromServices, augmentModel } from './query.js'
 export {
     Pattern,
     PatternFullName,
+    PatternAbbreviation,
     PatternAliases,
     matchesPattern,
     isUpstreamPattern,
     isDownstreamPattern,
     isMutualPattern,
+    isUpstreamSidePattern,
+    isDownstreamSidePattern,
+    isBBoMSidePattern,
+    getPatternAbbreviation,
     UpstreamPatterns,
     DownstreamPatterns,
-    MutualPatterns,
+    SymmetricPatterns,
 } from './patterns.js';
 
 export type { IntegrationPattern } from './patterns.js';
@@ -140,6 +145,11 @@ export type {
     LoadOptions,
     BcQueryBuilder,
     RelationshipView,
+    RelationshipSide,
+    DirectionalRelationshipView,
+    DirectionalKind,
+    SymmetricRelationshipView,
+    SymmetricKind,
 } from './types.js';
 
 // Serializers for tool responses (browser-safe)

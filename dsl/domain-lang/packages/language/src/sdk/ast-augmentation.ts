@@ -46,15 +46,19 @@
  * - `fqn` - Computed fully qualified name
  * - `hasType(name)` - Check type matches
  *
- * **Properties added to Relationship:**
- * - `hasPattern(pattern)` - Check if pattern exists on either side
- * - `hasLeftPattern(pattern)` - Check left patterns
- * - `hasRightPattern(pattern)` - Check right patterns
+ * **Properties added to DirectionalRelationship:**
+ * - `isBidirectional` - Check if relationship is bidirectional (`<->`)
+ * - `leftContextName` - Resolved name of left context (handles `this`)
+ * - `rightContextName` - Resolved name of right context (handles `this`)
+ * - `hasPattern(patternType)` - Check if pattern exists on either side
+ * - `hasLeftPattern(patternType)` - Check left patterns
+ * - `hasRightPattern(patternType)` - Check right patterns
  * - `isUpstream(side)` - Check if side is upstream
  * - `isDownstream(side)` - Check if side is downstream
- * - `isBidirectional` - Check if relationship is bidirectional
- * - `leftContextName` - Resolved name of left context
- * - `rightContextName` - Resolved name of right context
+ *
+ * **Properties added to SymmetricRelationship:**
+ * - `leftContextName` - Resolved name of left context (handles `this`)
+ * - `rightContextName` - Resolved name of right context (handles `this`)
  *
  * @module sdk/ast-augmentation
  */
@@ -109,9 +113,9 @@ declare module '../generated/ast.js' {
     }
 
     /**
-     * Augmented Relationship with SDK helper methods.
+     * Augmented DirectionalRelationship with SDK helper methods.
      */
-    interface Relationship {
+    interface DirectionalRelationship {
         /** Resolved name of left context (handles 'this') */
         readonly leftContextName: string;
         /** Resolved name of right context (handles 'this') */
@@ -120,35 +124,40 @@ declare module '../generated/ast.js' {
         readonly isBidirectional: boolean;
         
         /**
-         * Checks if the relationship has a specific integration pattern on either side.
-         * Accepts both abbreviations (SK, ACL) and full names (SharedKernel, AntiCorruptionLayer).
-         * @param pattern - Pattern abbreviation or full name
+         * Checks if the relationship has a specific side pattern on either side.
+         * Accepts pattern $type names like 'OpenHostService', 'Conformist', etc.
          */
-        hasPattern(pattern: import('./patterns.js').IntegrationPattern | string): boolean;
+        hasPattern(patternType: string): boolean;
         
         /**
-         * Checks if the left side has a specific integration pattern.
-         * @param pattern - Pattern abbreviation or full name
+         * Checks if the left side has a specific side pattern.
          */
-        hasLeftPattern(pattern: import('./patterns.js').IntegrationPattern | string): boolean;
+        hasLeftPattern(patternType: string): boolean;
         
         /**
-         * Checks if the right side has a specific integration pattern.
-         * @param pattern - Pattern abbreviation or full name
+         * Checks if the right side has a specific side pattern.
          */
-        hasRightPattern(pattern: import('./patterns.js').IntegrationPattern | string): boolean;
+        hasRightPattern(patternType: string): boolean;
         
         /**
          * Checks if the specified side is upstream (provider) in this relationship.
-         * @param side - 'left' or 'right'
          */
         isUpstream(side: 'left' | 'right'): boolean;
         
         /**
          * Checks if the specified side is downstream (consumer) in this relationship.
-         * @param side - 'left' or 'right'
          */
         isDownstream(side: 'left' | 'right'): boolean;
+    }
+
+    /**
+     * Augmented SymmetricRelationship with SDK helper methods.
+     */
+    interface SymmetricRelationship {
+        /** Resolved name of left context (handles 'this') */
+        readonly leftContextName: string;
+        /** Resolved name of right context (handles 'this') */
+        readonly rightContextName: string;
     }
 }
 

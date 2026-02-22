@@ -13,6 +13,7 @@ import type {
     Model,
     NamespaceDeclaration,
     Relationship,
+    SidePattern,
     Team,
 } from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
@@ -281,29 +282,103 @@ export interface BcQueryBuilder extends QueryBuilder<BoundedContext> {
 }
 
 /**
- * Unified view of a relationship between two BoundedContexts.
- * Relationships can be defined in BoundedContext blocks or ContextMap.
+ * One side of a relationship: the bounded context and its annotated integration patterns.
+ * For symmetric relationships `patterns` is always empty — the pattern lives on the relationship itself.
  */
-export interface RelationshipView {
-    /** Left-hand side BoundedContext */
-    readonly left: BoundedContext;
-    /** Right-hand side BoundedContext */
-    readonly right: BoundedContext;
-    /** Relationship direction arrow */
-    readonly arrow: '->' | '<-' | '<->' | '><';
-    /** Integration patterns on left side (e.g., ['OHS', 'PL']) */
-    readonly leftPatterns: readonly string[];
-    /** Integration patterns on right side (e.g., ['CF', 'ACL']) */
-    readonly rightPatterns: readonly string[];
-    /** Explicit relationship type if specified */
-    readonly type?: string;
-    /** SDK-inferred relationship type based on patterns */
-    readonly inferredType?: string;
+export interface RelationshipSide {
+    /** The bounded context on this side */
+    readonly context: BoundedContext;
+    /** Integration patterns annotated on this side (directional relationships only) */
+    readonly patterns: readonly SidePattern[];
+}
+
+/**
+ * DDD kind of a directional relationship.
+ * Fully discriminates all three structural cases.
+ */
+export type DirectionalKind = 'UpstreamDownstream' | 'CustomerSupplier' | 'Bidirectional';
+
+/**
+ * Directional relationship: has an arrow expressing dependency between two contexts.
+ * Discriminate on `type` to access directional or symmetric properties.
+ * Discriminate on `kind` to handle upstream/downstream vs customer/supplier vs bidirectional.
+ */
+export interface DirectionalRelationshipView {
+    readonly type: 'directional';
+    /** DDD semantic kind — determines which roles each side plays */
+    readonly kind: DirectionalKind;
+    /** Arrow as written in source (use for display/serialization) */
+    readonly arrow: '->' | '<-' | '<->';
+    /** Left side as written in source — always defined */
+    readonly left: RelationshipSide;
+    /** Right side as written in source — always defined */
+    readonly right: RelationshipSide;
+    /**
+     * The upstream (provider) side with its patterns.
+     * Defined when `kind` is `'UpstreamDownstream'` or `'CustomerSupplier'`.
+     * `undefined` when `kind` is `'Bidirectional'` — no upstream role exists.
+     */
+    readonly upstream: RelationshipSide | undefined;
+    /**
+     * The downstream (consumer) side with its patterns.
+     * Defined when `kind` is `'UpstreamDownstream'` or `'CustomerSupplier'`.
+     * `undefined` when `kind` is `'Bidirectional'` — no downstream role exists.
+     */
+    readonly downstream: RelationshipSide | undefined;
     /** Source of the relationship definition */
     readonly source: 'BoundedContext' | 'ContextMap';
     /** Original AST relationship node */
     readonly astNode: Relationship;
 }
+
+/** Resolved symmetric integration pattern kind. */
+export type SymmetricKind = 'SharedKernel' | 'Partnership' | 'SeparateWays';
+
+/**
+ * Symmetric relationship: no arrow; neither context is upstream or downstream.
+ * Discriminate on `type` to access directional or symmetric properties.
+ */
+export interface SymmetricRelationshipView {
+    readonly type: 'symmetric';
+    /**
+     * Always-resolved symmetric integration pattern.
+     * `><` resolves to `'SeparateWays'`.
+     */
+    readonly kind: SymmetricKind;
+    /**
+     * Left side as written in source.
+     * `patterns` is always empty — symmetric patterns attach to the relationship, not each side.
+     */
+    readonly left: RelationshipSide;
+    /**
+     * Right side as written in source.
+     * `patterns` is always empty — symmetric patterns attach to the relationship, not each side.
+     */
+    readonly right: RelationshipSide;
+    /** Source of the relationship definition */
+    readonly source: 'BoundedContext' | 'ContextMap';
+    /** Original AST relationship node */
+    readonly astNode: Relationship;
+}
+
+/**
+ * Unified view of a relationship between two BoundedContexts.
+ * Relationships can be defined in BoundedContext blocks or ContextMap.
+ * Discriminate on `type` to access directional or symmetric properties.
+ *
+ * @example
+ * ```typescript
+ * for (const rel of query.relationships()) {
+ *   if (rel.type === 'symmetric') {
+ *     console.log(rel.kind); // 'SharedKernel' | 'Partnership' | 'SeparateWays'
+ *   } else {
+ *     console.log(rel.kind);  // 'UpstreamDownstream' | 'CustomerSupplier' | 'Bidirectional'
+ *     console.log(rel.arrow); // '->' | '<-' | '<->'
+ *   }
+ * }
+ * ```
+ */
+export type RelationshipView = DirectionalRelationshipView | SymmetricRelationshipView;
 
 /**
  * Internal index structure for O(1) lookups.

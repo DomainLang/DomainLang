@@ -21,12 +21,16 @@ import {
     isBoundedContext,
     isClassification,
     isContextMap,
+    isDirectionalRelationship,
     isDomain,
     isDomainMap,
     isModel,
     isNamespaceDeclaration,
+    isSymmetricRelationship,
     isTeam,
     isThisRef,
+    isSupplier,
+    isCustomer,
 } from '../generated/ast.js';
 import { QualifiedNameProvider } from '../lsp/domain-lang-naming.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
@@ -39,6 +43,7 @@ import {
 import { isDownstreamPattern, isUpstreamPattern, matchesPattern } from './patterns.js';
 import type {
     BcQueryBuilder,
+    DirectionalKind,
     ModelIndexes,
     Query,
     QueryBuilder,
@@ -331,14 +336,39 @@ class QueryImpl implements Query {
             return undefined;
         }
 
+        if (isSymmetricRelationship(rel)) {
+            // Grammar invariant: either `arrow === '><'` (SeparateWays shorthand, pattern undefined)
+            // OR `pattern` is set (explicit [SK]/[P]/[SW] brackets). Never both; never neither
+            // (validation rejects a bare "A B" without pattern or arrow).
+            // The fallback to 'SeparateWays' correctly handles the `><` case.
+            return {
+                type: 'symmetric' as const,
+                kind: (rel.pattern?.$type ?? 'SeparateWays') as 'SharedKernel' | 'Partnership' | 'SeparateWays',
+                left: { context: left, patterns: [] },
+                right: { context: right, patterns: [] },
+                source,
+                astNode: rel,
+            };
+        }
+
+        const arrow = rel.arrow as '->' | '<-' | '<->';
+        const leftSide = { context: left, patterns: rel.leftPatterns };
+        const rightSide = { context: right, patterns: rel.rightPatterns };
+        const hasSupplier = rel.leftPatterns.some(isSupplier) || rel.rightPatterns.some(isSupplier);
+        const hasCustomer = rel.leftPatterns.some(isCustomer) || rel.rightPatterns.some(isCustomer);
+        const kind: DirectionalKind = arrow === '<->'
+            ? 'Bidirectional'
+            : (hasSupplier || hasCustomer) ? 'CustomerSupplier' : 'UpstreamDownstream';
+        const upstreamSide = arrow === '->' ? leftSide : arrow === '<-' ? rightSide : undefined;
+        const downstreamSide = arrow === '->' ? rightSide : arrow === '<-' ? leftSide : undefined;
         return {
-            left,
-            right,
-            arrow: rel.arrow,
-            leftPatterns: rel.leftPatterns,
-            rightPatterns: rel.rightPatterns,
-            type: rel.type,
-            inferredType: this.inferRelationshipType(rel),
+            type: 'directional' as const,
+            kind,
+            arrow,
+            left: leftSide,
+            right: rightSide,
+            upstream: upstreamSide,
+            downstream: downstreamSide,
             source,
             astNode: rel,
         };
@@ -358,41 +388,6 @@ class QueryImpl implements Query {
         return ref.link?.ref;
     }
 
-    /**
-     * Infers relationship type from integration patterns.
-     * Simple heuristic based on common DDD pattern combinations.
-     */
-    private inferRelationshipType(rel: Relationship): string | undefined {
-        const leftPatterns = rel.leftPatterns;
-        const rightPatterns = rel.rightPatterns;
-
-        // Partnership: Bidirectional with P or SK
-        if (rel.arrow === '<->' && (leftPatterns.includes('P') || leftPatterns.includes('SK'))) {
-            return 'Partnership';
-        }
-
-        // Shared Kernel: SK pattern
-        if (leftPatterns.includes('SK') || rightPatterns.includes('SK')) {
-            return 'SharedKernel';
-        }
-
-        // Customer-Supplier: OHS + CF
-        if (leftPatterns.includes('OHS') && rightPatterns.includes('CF')) {
-            return 'CustomerSupplier';
-        }
-
-        // Upstream-Downstream: directional arrow
-        if (rel.arrow === '->') {
-            return 'UpstreamDownstream';
-        }
-
-        // Separate Ways
-        if (rel.arrow === '><') {
-            return 'SeparateWays';
-        }
-
-        return undefined;
-    }
 }
 
 /**
@@ -726,38 +721,52 @@ export function augmentRelationship(rel: Relationship, containingBc?: BoundedCon
         // Helper methods for pattern matching (type-safe, no magic strings)
         hasPattern: {
             value: (pattern: string): boolean => {
-                return rel.leftPatterns.some(p => matchesPattern(p, pattern)) ||
-                       rel.rightPatterns.some(p => matchesPattern(p, pattern));
+                if (isDirectionalRelationship(rel)) {
+                    return rel.leftPatterns.some(p => matchesPattern(p.$type, pattern)) ||
+                           rel.rightPatterns.some(p => matchesPattern(p.$type, pattern));
+                }
+                if (isSymmetricRelationship(rel) && rel.pattern) {
+                    return matchesPattern(rel.pattern.$type, pattern);
+                }
+                return false;
             },
             enumerable: false,
             configurable: true,
         },
         hasLeftPattern: {
             value: (pattern: string): boolean => {
-                return rel.leftPatterns.some(p => matchesPattern(p, pattern));
+                if (isDirectionalRelationship(rel)) {
+                    return rel.leftPatterns.some(p => matchesPattern(p.$type, pattern));
+                }
+                return false;
             },
             enumerable: false,
             configurable: true,
         },
         hasRightPattern: {
             value: (pattern: string): boolean => {
-                return rel.rightPatterns.some(p => matchesPattern(p, pattern));
+                if (isDirectionalRelationship(rel)) {
+                    return rel.rightPatterns.some(p => matchesPattern(p.$type, pattern));
+                }
+                return false;
             },
             enumerable: false,
             configurable: true,
         },
         isUpstream: {
             value: (side: 'left' | 'right'): boolean => {
+                if (!isDirectionalRelationship(rel)) return false;
                 const patterns = side === 'left' ? rel.leftPatterns : rel.rightPatterns;
-                return patterns.some(p => isUpstreamPattern(p));
+                return patterns.some(p => isUpstreamPattern(p.$type));
             },
             enumerable: false,
             configurable: true,
         },
         isDownstream: {
             value: (side: 'left' | 'right'): boolean => {
+                if (!isDirectionalRelationship(rel)) return false;
                 const patterns = side === 'left' ? rel.leftPatterns : rel.rightPatterns;
-                return patterns.some(p => isDownstreamPattern(p));
+                return patterns.some(p => isDownstreamPattern(p.$type));
             },
             enumerable: false,
             configurable: true,

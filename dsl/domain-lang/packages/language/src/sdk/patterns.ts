@@ -1,147 +1,185 @@
-/**
- * Integration Patterns - Type-safe constants for DDD integration patterns.
- * 
- * Use these constants instead of magic strings when checking relationship patterns.
- * 
- * @example
- * ```typescript
- * import { Pattern } from '../sdk/patterns.js';
- * 
- * // Instead of: hasPattern('SK') or hasPattern('SharedKernel')
- * // Use:
- * if (relationship.hasPattern(Pattern.SharedKernel)) {
- *     // ...
- * }
- * ```
- */
+import type { SidePattern, SymmetricPattern } from '../generated/ast.js';
+import {
+    isOpenHostService,
+    isPublishedLanguage,
+    isConformist,
+    isAntiCorruptionLayer,
+    isSupplier,
+    isCustomer,
+    isBigBallOfMud,
+    isSharedKernel,
+    isPartnership,
+    isSeparateWays,
+} from '../generated/ast.js';
 
 /**
- * Integration pattern abbreviations as used in the grammar.
- * These are the canonical abbreviations recognized by DomainLang.
+ * Pattern constants for programmatic use.
+ * Values match the AST $type names.
  */
 export const Pattern = {
-    // Upstream patterns (provider side)
-    /** Open Host Service - exposes a clean API for consumers */
-    OHS: 'OHS',
-    /** Published Language - shared data format/protocol */
-    PL: 'PL',
-    
-    // Downstream patterns (consumer side)
-    /** Conformist - accepts upstream model without translation */
-    CF: 'CF',
-    /** Anti-Corruption Layer - translates upstream model */
-    ACL: 'ACL',
-    
-    // Mutual patterns (both sides)
-    /** Shared Kernel - shared code/model ownership */
-    SK: 'SK',
-    /** Partnership - coordinated development */
-    P: 'P',
-    
-    // Relationship types
-    /** Customer/Supplier - negotiated contract */
-    CustomerSupplier: 'Customer/Supplier',
-    /** Separate Ways - no integration */
-    SeparateWays: 'Separate Ways',
-    /** Big Ball of Mud - legacy or unstructured */
-    BigBallOfMud: 'Big Ball of Mud',
-} as const;
-
-/**
- * Full names for integration patterns.
- * Used when patterns are spelled out in documentation blocks.
- */
-export const PatternFullName = {
+    // Side patterns (directional)
     OHS: 'OpenHostService',
     PL: 'PublishedLanguage',
     CF: 'Conformist',
     ACL: 'AntiCorruptionLayer',
+    S: 'Supplier',
+    C: 'Customer',
+    BBoM: 'BigBallOfMud',
+    // Symmetric patterns
     SK: 'SharedKernel',
     P: 'Partnership',
+    SW: 'SeparateWays',
 } as const;
 
 /**
- * Mapping from abbreviations to full names and vice versa.
+ * Mapping from short abbreviation to full $type name.
+ */
+export const PatternFullName: Record<string, string> = {
+    OHS: 'OpenHostService',
+    PL: 'PublishedLanguage',
+    CF: 'Conformist',
+    ACL: 'AntiCorruptionLayer',
+    S: 'Supplier',
+    C: 'Customer',
+    BBoM: 'BigBallOfMud',
+    SK: 'SharedKernel',
+    P: 'Partnership',
+    SW: 'SeparateWays',
+};
+
+/**
+ * Mapping from $type name to short abbreviation.
+ */
+export const PatternAbbreviation: Record<string, string> = {
+    OpenHostService: 'OHS',
+    PublishedLanguage: 'PL',
+    Conformist: 'CF',
+    AntiCorruptionLayer: 'ACL',
+    Supplier: 'S',
+    Customer: 'C',
+    BigBallOfMud: 'BBoM',
+    SharedKernel: 'SK',
+    Partnership: 'P',
+    SeparateWays: 'SW',
+};
+
+/**
+ * All short+long forms that map to a given canonical $type name.
  */
 export const PatternAliases: Record<string, readonly string[]> = {
-    // Abbreviation -> [abbreviation, fullName]
     OHS: ['OHS', 'OpenHostService'],
     PL: ['PL', 'PublishedLanguage'],
     CF: ['CF', 'Conformist'],
     ACL: ['ACL', 'AntiCorruptionLayer'],
+    S: ['S', 'Supplier'],
+    C: ['C', 'Customer'],
+    BBoM: ['BBoM', 'BigBallOfMud'],
     SK: ['SK', 'SharedKernel'],
     P: ['P', 'Partnership'],
-    
-    // Full names map to same
+    SW: ['SW', 'SeparateWays'],
     OpenHostService: ['OHS', 'OpenHostService'],
     PublishedLanguage: ['PL', 'PublishedLanguage'],
     Conformist: ['CF', 'Conformist'],
     AntiCorruptionLayer: ['ACL', 'AntiCorruptionLayer'],
+    Supplier: ['S', 'Supplier'],
+    Customer: ['C', 'Customer'],
+    BigBallOfMud: ['BBoM', 'BigBallOfMud'],
     SharedKernel: ['SK', 'SharedKernel'],
     Partnership: ['P', 'Partnership'],
+    SeparateWays: ['SW', 'SeparateWays'],
 };
 
-/**
- * Type representing any valid integration pattern (abbreviation or full name).
- */
-export type IntegrationPattern = 
-    | typeof Pattern[keyof typeof Pattern]
-    | typeof PatternFullName[keyof typeof PatternFullName];
+/** Union of all pattern type names */
+export type IntegrationPattern = typeof Pattern[keyof typeof Pattern];
 
 /**
- * Checks if a pattern string matches any of the expected aliases.
- * Handles both abbreviations and full names case-insensitively.
- * 
- * @param actual - Pattern string from the AST
- * @param expected - Pattern to match (abbreviation or full name)
- * @returns true if patterns match
+ * Checks if a pattern name matches an expected pattern.
+ * Works with both $type names and short abbreviations.
  */
 export function matchesPattern(actual: string, expected: string): boolean {
     const normalizedActual = actual.trim();
     const aliases = PatternAliases[expected];
-    
     if (aliases) {
         return aliases.some(alias => 
             alias.toLowerCase() === normalizedActual.toLowerCase()
         );
     }
-    
-    // Fallback: direct comparison
     return normalizedActual.toLowerCase() === expected.toLowerCase();
 }
 
-/**
- * Patterns that are typically on the upstream (provider) side.
- */
-export const UpstreamPatterns: readonly string[] = ['OHS', 'OpenHostService', 'PL', 'PublishedLanguage'];
+/** Side patterns that belong on the upstream side */
+export const UpstreamPatterns: readonly string[] = ['OpenHostService', 'PublishedLanguage', 'Supplier'];
+/** Side patterns that belong on the downstream side */
+export const DownstreamPatterns: readonly string[] = ['Conformist', 'AntiCorruptionLayer', 'Customer'];
+/** Symmetric patterns (mutual) */
+export const SymmetricPatterns: readonly string[] = ['SharedKernel', 'Partnership', 'SeparateWays'];
 
 /**
- * Patterns that are typically on the downstream (consumer) side.
+ * Checks if a side pattern AST node is an upstream pattern. 
  */
-export const DownstreamPatterns: readonly string[] = ['CF', 'Conformist', 'ACL', 'AntiCorruptionLayer'];
+export function isUpstreamSidePattern(pattern: SidePattern): boolean {
+    return isOpenHostService(pattern) || isPublishedLanguage(pattern) || isSupplier(pattern);
+}
 
 /**
- * Patterns that require mutual/bidirectional relationships.
+ * Checks if a side pattern AST node is a downstream pattern.
  */
-export const MutualPatterns: readonly string[] = ['SK', 'SharedKernel', 'P', 'Partnership'];
+export function isDownstreamSidePattern(pattern: SidePattern): boolean {
+    return isConformist(pattern) || isAntiCorruptionLayer(pattern) || isCustomer(pattern);
+}
 
 /**
- * Checks if a pattern is typically an upstream pattern.
+ * Checks if a side pattern AST node is a Big Ball of Mud.
+ */
+export function isBBoMSidePattern(pattern: SidePattern): boolean {
+    return isBigBallOfMud(pattern);
+}
+
+/**
+ * Checks if a pattern string name is an upstream pattern.
  */
 export function isUpstreamPattern(pattern: string): boolean {
     return UpstreamPatterns.some(p => matchesPattern(pattern, p));
 }
 
 /**
- * Checks if a pattern is typically a downstream pattern.
+ * Checks if a pattern string name is a downstream pattern.
  */
 export function isDownstreamPattern(pattern: string): boolean {
     return DownstreamPatterns.some(p => matchesPattern(pattern, p));
 }
 
 /**
- * Checks if a pattern requires bidirectional relationships.
+ * Checks if a pattern string name is a mutual/symmetric pattern.
  */
 export function isMutualPattern(pattern: string): boolean {
-    return MutualPatterns.some(p => matchesPattern(pattern, p));
+    return SymmetricPatterns.some(p => matchesPattern(pattern, p));
+}
+
+/**
+ * Gets the short abbreviation for a pattern $type name.
+ */
+export function getPatternAbbreviation(typeName: string): string {
+    return PatternAbbreviation[typeName] ?? typeName;
+}
+
+/**
+ * Checks if a symmetric pattern is a Shared Kernel.
+ */
+export function isSharedKernelPattern(pattern: SymmetricPattern): boolean {
+    return isSharedKernel(pattern);
+}
+
+/**
+ * Checks if a symmetric pattern is a Partnership.
+ */
+export function isPartnershipPattern(pattern: SymmetricPattern): boolean {
+    return isPartnership(pattern);
+}
+
+/**
+ * Checks if a symmetric pattern is Separate Ways.
+ */
+export function isSeparateWaysPattern(pattern: SymmetricPattern): boolean {
+    return isSeparateWays(pattern);
 }

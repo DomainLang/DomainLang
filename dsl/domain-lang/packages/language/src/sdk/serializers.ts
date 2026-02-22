@@ -165,18 +165,31 @@ export function serializeNode(node: AstNode, query: Query): Record<string, unkno
  * @returns Serialized relationship object
  */
 export function serializeRelationship(view: RelationshipView): Record<string, unknown> {
-    // RelationshipView.left and .right are BoundedContext (which have name property)
-    const leftName = view.left.name;
-    const rightName = view.right.name;
+    const leftName = view.left.context.name;
+    const rightName = view.right.context.name;
+    if (view.type === 'symmetric') {
+        const patternDisplay = view.kind === 'SeparateWays' ? '><' : `[${view.kind}]`;
+        return {
+            type: 'symmetric',
+            name: `${leftName} ${patternDisplay} ${rightName}`,
+            left: leftName,
+            right: rightName,
+            kind: view.kind,
+            source: view.source,
+        };
+    }
     return {
-        $type: 'Relationship',
+        type: 'directional',
+        kind: view.kind,
         name: `${leftName} ${view.arrow} ${rightName}`,
         left: leftName,
         right: rightName,
         arrow: view.arrow,
-        leftPatterns: view.leftPatterns,
-        rightPatterns: view.rightPatterns,
-        inferredType: view.inferredType,
+        leftPatterns: view.left.patterns.map(p => p.$type),
+        rightPatterns: view.right.patterns.map(p => p.$type),
+        upstreamPatterns: view.upstream?.patterns.map(p => p.$type),
+        downstreamPatterns: view.downstream?.patterns.map(p => p.$type),
+        source: view.source,
     };
 }
 
