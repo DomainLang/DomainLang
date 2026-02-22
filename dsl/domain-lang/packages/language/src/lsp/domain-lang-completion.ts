@@ -1193,10 +1193,19 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         acceptor(context, {
             label: 'relationship (with patterns)',
             kind: CompletionItemKind.Snippet,
-            insertText: '[${1|OHS,PL,ACL,CF,P,SK|}] ${2:Context1} -> [${3|OHS,PL,ACL,CF,P,SK|}] ${4:Context2}',
+            insertText: '${1:Context1} [${2|OHS,PL,ACL,CF,S,BBoM|}] -> [${3|CF,ACL,C,BBoM|}] ${4:Context2}',
             insertTextFormat: InsertTextFormat.Snippet,
-            documentation: 'Add a relationship with integration patterns',
+            documentation: 'Add a directional relationship with side patterns',
             sortText: '1_relationship_patterns'
+        });
+
+        acceptor(context, {
+            label: 'relationship (symmetric)',
+            kind: CompletionItemKind.Snippet,
+            insertText: '${1:Context1} [${2|SK,P,SW|}] ${3:Context2}',
+            insertTextFormat: InsertTextFormat.Snippet,
+            documentation: 'Add a symmetric relationship (Shared Kernel, Partnership, or Separate Ways)',
+            sortText: '1_relationship_symmetric'
         });
     }
 
@@ -1230,32 +1239,50 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         acceptor: CompletionAcceptor,
         context: CompletionContext
     ): void {
-        // Integration pattern completions
-        const patterns = [
-            { label: 'OHS (Open Host Service)', insertText: '[OHS]', doc: 'Open Host Service pattern' },
-            { label: 'PL (Published Language)', insertText: '[PL]', doc: 'Published Language pattern' },
-            { label: 'ACL (Anti-Corruption Layer)', insertText: '[ACL]', doc: 'Anti-Corruption Layer pattern' },
-            { label: 'CF (Conformist)', insertText: '[CF]', doc: 'Conformist pattern' },
-            { label: 'P (Partnership)', insertText: '[P]', doc: 'Partnership pattern' },
-            { label: 'SK (Shared Kernel)', insertText: '[SK]', doc: 'Shared Kernel pattern' }
+        // Side patterns (for directional relationships)
+        const sidePatterns = [
+            { label: 'OHS (Open Host Service)', insertText: '[OHS]', doc: 'Open Host Service — upstream side pattern' },
+            { label: 'PL (Published Language)', insertText: '[PL]', doc: 'Published Language — upstream side pattern' },
+            { label: 'CF (Conformist)', insertText: '[CF]', doc: 'Conformist — downstream side pattern' },
+            { label: 'ACL (Anti-Corruption Layer)', insertText: '[ACL]', doc: 'Anti-Corruption Layer — downstream side pattern' },
+            { label: 'S (Supplier)', insertText: '[S]', doc: 'Supplier — upstream side (Customer/Supplier)' },
+            { label: 'C (Customer)', insertText: '[C]', doc: 'Customer — downstream side (Customer/Supplier)' },
+            { label: 'BBoM (Big Ball of Mud)', insertText: '[BBoM]', doc: 'Big Ball of Mud — either side' },
         ];
 
-        for (const pattern of patterns) {
+        for (const pattern of sidePatterns) {
             acceptor(context, {
                 label: pattern.label,
                 kind: CompletionItemKind.EnumMember,
                 insertText: pattern.insertText,
                 documentation: pattern.doc,
-                sortText: `0_${pattern.label}`
+                sortText: `0_side_${pattern.label}`
             });
         }
 
-        // Relationship arrow completions
+        // Symmetric patterns (for symmetric relationships)
+        const symmetricPatterns = [
+            { label: 'SK (Shared Kernel)', insertText: '[SK]', doc: 'Shared Kernel — symmetric relationship' },
+            { label: 'P (Partnership)', insertText: '[P]', doc: 'Partnership — symmetric relationship' },
+            { label: 'SW (Separate Ways)', insertText: '[SW]', doc: 'Separate Ways — symmetric relationship' },
+        ];
+
+        for (const pattern of symmetricPatterns) {
+            acceptor(context, {
+                label: pattern.label,
+                kind: CompletionItemKind.EnumMember,
+                insertText: pattern.insertText,
+                documentation: pattern.doc,
+                sortText: `0_sym_${pattern.label}`
+            });
+        }
+
+        // Directional arrows
         const arrows = [
             { label: '->', doc: 'Upstream to downstream' },
             { label: '<-', doc: 'Downstream to upstream' },
-            { label: '<->', doc: 'Bidirectional/Partnership' },
-            { label: '><', doc: 'Separate Ways' }
+            { label: '<->', doc: 'Bidirectional with patterns' },
+            { label: '><', doc: 'Separate Ways (arrow form)' },
         ];
 
         for (const arrow of arrows) {

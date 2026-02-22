@@ -385,14 +385,17 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
     private getRelationshipHover(node: AstNode, commentBlock: string, _importAlias?: string): string | undefined {
         if (!ast.isRelationship(node)) return undefined;
 
-        const leftPatterns = node.leftPatterns.join(', ');
-        const rightPatterns = node.rightPatterns.join(', ');
         const fields: string[] = [
-            `${this.refLink(node.left.link)} ${node.arrow} ${this.refLink(node.right.link)}`
+            `${this.refLink(node.left.link)} ${node.arrow ?? '↔'} ${this.refLink(node.right.link)}`
         ];
-        if (node.type) fields.push(`**Type:** \`${node.type}\``);
-        if (leftPatterns) fields.push(`**Left patterns:** ${leftPatterns}`);
-        if (rightPatterns) fields.push(`**Right patterns:** ${rightPatterns}`);
+        if (ast.isDirectionalRelationship(node)) {
+            const leftPatterns = node.leftPatterns.map(p => p.$type).join(', ');
+            const rightPatterns = node.rightPatterns.map(p => p.$type).join(', ');
+            if (leftPatterns) fields.push(`**Left patterns:** ${leftPatterns}`);
+            if (rightPatterns) fields.push(`**Right patterns:** ${rightPatterns}`);
+        } else if (ast.isSymmetricRelationship(node) && node.pattern) {
+            fields.push(`**Pattern:** ${node.pattern.$type}`);
+        }
 
         return this.formatHover(commentBlock, '🔗', 'relationship', undefined, fields);
     }
@@ -439,8 +442,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
     private formatRelationshipLine(rel: ast.Relationship): string {
         const left = this.refLink(rel.left?.link);
         const right = this.refLink(rel.right?.link);
-        const type = rel.type ? ` \`${rel.type}\`` : '';
-        return `- ${left} ${rel.arrow} ${right}${type}`;
+        return `- ${left} ${rel.arrow ?? '↔'} ${right}`;
     }
 
     /**

@@ -22,9 +22,11 @@ import {
     isBoundedContext,
     isClassification,
     isContextMap,
+    isDirectionalRelationship,
     isDomain,
     isDomainMap,
     isRelationship,
+    isSymmetricRelationship,
     isTeam,
 } from '../generated/ast.js';
 import {
@@ -133,9 +135,15 @@ function explainClassification(classification: Classification): string {
 function explainRelationship(relationship: Relationship): string {
     const leftName = relationship.left.link?.ref?.name ?? 'unknown';
     const rightName = relationship.right.link?.ref?.name ?? 'unknown';
-    const arrow = relationship.arrow;
 
-    const description = `Relationship from **${leftName}** ${arrow} **${rightName}**`;
+    let relationText = '↔';
+    if (isDirectionalRelationship(relationship)) {
+        relationText = relationship.arrow;
+    } else if (isSymmetricRelationship(relationship)) {
+        relationText = relationship.pattern ? `[${relationship.pattern.$type}]` : '><';
+    }
+
+    const description = `Relationship from **${leftName}** ${relationText} **${rightName}**`;
     return formatHoverContent('', '🔗', 'relationship', undefined, [description]);
 }
 

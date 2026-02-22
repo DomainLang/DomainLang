@@ -102,35 +102,38 @@ export const keywordExplanations: Record<string, string> = {
     this: `**this** - References the current bounded context in relationships.${REL_LINK}`,
 
     // ========================================================================
-    // DDD Integration Patterns
+    // DDD Side Patterns (directional relationships)
     // ========================================================================
-    acl: `**ACL** - Anti-Corruption Layer. Protects from external models by translating between domains.${REL_LINK}`,
-    anticorruptionlayer: `**AntiCorruptionLayer** - Protects from external models by translating between domains.${REL_LINK}`,
-    ohs: `**OHS** - Open Host Service. Provides a well-documented API for integration.${REL_LINK}`,
-    openhostservice: `**OpenHostService** - Provides a well-documented API for integration.${REL_LINK}`,
-    pl: `**PL** - Published Language. Documented language for inter-context communication.${REL_LINK}`,
-    publishedlanguage: `**PublishedLanguage** - Documented language for inter-context communication.${REL_LINK}`,
-    cf: `**CF** - Conformist. Adopts upstream model without translation.${REL_LINK}`,
-    conformist: `**Conformist** - Adopts upstream model without translation.${REL_LINK}`,
-    p: `**P** - Partnership. Two teams with mutual dependency and shared goals.${REL_LINK}`,
-    partnership: `**Partnership** - Two teams with mutual dependency and shared goals.${REL_LINK}`,
-    sk: `**SK** - Shared Kernel. Shared code/data requiring careful coordination.${REL_LINK}`,
-    sharedkernel: `**SharedKernel** - Shared code/data requiring careful coordination.${REL_LINK}`,
-    bbom: `**BBoM** - Big Ball of Mud. Legacy area without clear boundaries.${REL_LINK}`,
-    bigballofmud: `**BigBallOfMud** - Legacy area without clear boundaries.${REL_LINK}`,
+    acl: `**ACL** - Anti-Corruption Layer. Protects from external models by translating between domains. Used on the downstream side.${REL_LINK}`,
+    anticorruptionlayer: `**AntiCorruptionLayer** - Anti-Corruption Layer. Protects from external models by translating between domains. Used on the downstream side.${REL_LINK}`,
+    ohs: `**OHS** - Open Host Service. Provides a well-documented API for integration. Used on the upstream side.${REL_LINK}`,
+    openhostservice: `**OpenHostService** - Open Host Service. Provides a well-documented API for integration. Used on the upstream side.${REL_LINK}`,
+    pl: `**PL** - Published Language. Documented language for inter-context communication. Used on the upstream side.${REL_LINK}`,
+    publishedlanguage: `**PublishedLanguage** - Published Language. Documented language for inter-context communication. Used on the upstream side.${REL_LINK}`,
+    cf: `**CF** - Conformist. Adopts upstream model without translation. Used on the downstream side.${REL_LINK}`,
+    conformist: `**Conformist** - Conformist. Adopts upstream model without translation. Used on the downstream side.${REL_LINK}`,
+    s: `**S** - Supplier. Negotiated contract provider in a Customer/Supplier relationship. Must be on the upstream side.${REL_LINK}`,
+    supplier: `**Supplier** - Negotiated contract provider in a Customer/Supplier relationship. Must be on the upstream side.${REL_LINK}`,
+    c: `**C** - Customer. Negotiated contract consumer in a Customer/Supplier relationship. Must be on the downstream side.${REL_LINK}`,
+    customer: `**Customer** - Negotiated contract consumer in a Customer/Supplier relationship. Must be on the downstream side.${REL_LINK}`,
+    bbom: `**BBoM** - Big Ball of Mud. Legacy area without clear boundaries. Can appear on either side.${REL_LINK}`,
+    bigballofmud: `**BigBallOfMud** - Big Ball of Mud. Legacy area without clear boundaries. Can appear on either side.${REL_LINK}`,
 
     // ========================================================================
-    // Relationship Types
+    // DDD Symmetric Patterns (symmetric relationships — entity [Pattern] entity)
     // ========================================================================
-    customersupplier: `**CustomerSupplier** - Downstream depends on upstream with influence over priorities.${REL_LINK}`,
-    upstreamdownstream: `**UpstreamDownstream** - One context depends on another's model.${REL_LINK}`,
-    separateways: `**SeparateWays** - Contexts with no integration, solving problems independently.${REL_LINK}`,
+    p: `**P** - Partnership. Symmetric relationship: two teams with mutual dependency and shared goals. Usage: \`A [P] B\`${REL_LINK}`,
+    partnership: `**Partnership** - Symmetric relationship: two teams with mutual dependency and shared goals. Usage: \`A [Partnership] B\`${REL_LINK}`,
+    sk: `**SK** - Shared Kernel. Symmetric relationship: shared code/data requiring careful coordination between both contexts. Usage: \`A [SK] B\`${REL_LINK}`,
+    sharedkernel: `**SharedKernel** - Symmetric relationship: shared code/data requiring careful coordination between both contexts. Usage: \`A [SharedKernel] B\`${REL_LINK}`,
+    sw: `**SW** - Separate Ways. Symmetric relationship: contexts with no integration, solving problems independently. Usage: \`A [SW] B\` or \`A >< B\`${REL_LINK}`,
+    separateways: `**SeparateWays** - Symmetric relationship: contexts with no integration. Usage: \`A [SeparateWays] B\` or \`A >< B\`${REL_LINK}`,
 
     // ========================================================================
     // Relationship Arrows
     // ========================================================================
-    '->': `**->** - Unidirectional dependency (upstream to downstream).${REL_LINK}`,
-    '<->': `**<->** - Bidirectional dependency (mutual).${REL_LINK}`,
-    '<-': `**<-** - Reverse unidirectional dependency (downstream to upstream).${REL_LINK}`,
-    '><': `**><** - Separate Ways (no integration).${REL_LINK}`,
+    '->': `**->** - Directional: upstream (left) to downstream (right). Example: \`Orders [OHS] -> [CF] Payments\`${REL_LINK}`,
+    '<->': `**<->** - Bidirectional: both sides have patterns, mutual data flow. Example: \`Orders [OHS] <-> [CF] Payments\`${REL_LINK}`,
+    '<-': `**<-** - Reverse directional: upstream (right) to downstream (left). Example: \`Payments [ACL] <- Orders\`${REL_LINK}`,
+    '><': `**><** - Separate Ways: no integration between contexts. Equivalent to \`[SW]\`. Example: \`Orders >< Legacy\`${REL_LINK}`,
 };
