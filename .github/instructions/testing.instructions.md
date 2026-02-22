@@ -5,12 +5,30 @@ applyTo: "**/*.test.ts"
 
 # Testing Guidelines
 
-> Write tests that verify behavior, not implementation. Every test must follow AAA pattern.
+> Write **as few tests as possible** that verify real behavior, not implementation. Every test must follow AAA pattern.
+
+## 🚨 PRIME DIRECTIVE: Fewer, Better Tests
+
+> **The goal is NEVER to write many tests. The goal is to write as few tests as possible that cover real functionality and edge cases well enough.**
+
+**NEVER write a test that:**
+- Asserts a constant or enum value (`Pattern.OHS === 'OpenHostService'`) — these can never break
+- Re-reads a trivial property back out after assigning it (`domain.name === 'Sales'` when parsing `Domain Sales {}`)
+- Exhaustively covers every enum member in a separate test case — 1 positive + 1 negative is enough
+- Parses the same DSL input twice in two separate tests — merge the assertions into one test
+- Tests the same code path with trivially different inputs that exercise no new branches
+- Would pass even if the implementation were deleted (tautological)
+
+**Self-check before writing a test:** "If I deleted the implementation of this feature, would this test fail?"
+If no → don't write it.
+
+**Before adding a new test file or test, ask:** "What specific branch, rule, or transformation could be wrong here? What is the minimal set of cases that exercises all of them?"
 
 ## Critical Rules
 
 1. **MANDATORY AAA Pattern** - Every test needs `// Arrange`, `// Act`, `// Assert` comments
 1. **Test BEHAVIOR, not IMPLEMENTATION** - Would your test fail if the feature broke for users?
+1. **No tautological tests** - Never assert constants, simple assignments, or what the code trivially guarantees
 1. **Never mock LSP provider methods** - Test through public LSP API with real documents
 1. **Use `setupTestSuite()`** - Handles cleanup automatically
 1. **One focus per test** - Test one behavior in isolation

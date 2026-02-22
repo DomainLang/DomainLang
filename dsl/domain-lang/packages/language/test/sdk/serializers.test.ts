@@ -9,6 +9,7 @@ import {
     serializeRelationship,
     normalizeEntityType,
     ENTITY_ALIASES,
+    resolveMultiReference,
 } from '../../src/sdk/serializers.js';
 import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
 import type { TestServices } from '../test-helpers.js';
@@ -272,6 +273,96 @@ describe('serializeRelationship', () => {
 
         // Assert
         expect(serialized.name).toBe('OrderContext -> PaymentContext');
+    });
+
+    test('should use >< display for SeparateWays symmetric relationship', async () => {
+        // Arrange
+        const document = await testServices.parse(s`
+            Domain Sales { vision: "v" }
+            bc ContextA for Sales {}
+            bc ContextB for Sales {}
+            ContextMap M {
+                contains ContextA, ContextB
+                ContextA >< ContextB
+            }
+        `);
+        expectValidDocument(document);
+        const query = fromDocument(document);
+        const rel = requireValue(query.relationships().first(), 'Expected relationship');
+
+        // Act
+        const serialized = serializeRelationship(rel);
+
+        // Assert
+        expect(serialized.type).toBe('symmetric');
+        expect(serialized.kind).toBe('SeparateWays');
+        expect(serialized.name).toBe('ContextA >< ContextB');
+    });
+
+    test('should use [SharedKernel] display for SharedKernel symmetric relationship', async () => {
+        // Arrange
+        const document = await testServices.parse(s`
+            Domain Sales { vision: "v" }
+            bc ContextA for Sales {}
+            bc ContextB for Sales {}
+            ContextMap M {
+                contains ContextA, ContextB
+                ContextA [SK] ContextB
+            }
+        `);
+        expectValidDocument(document);
+        const query = fromDocument(document);
+        const rel = requireValue(query.relationships().first(), 'Expected relationship');
+
+        // Act
+        const serialized = serializeRelationship(rel);
+
+        // Assert
+        expect(serialized.type).toBe('symmetric');
+        expect(serialized.kind).toBe('SharedKernel');
+        expect(serialized.name).toBe('ContextA [SharedKernel] ContextB');
+    });
+
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// resolveMultiReference Tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('resolveMultiReference', () => {
+    test('should resolve array of items with resolved refs to an array of names', () => {
+        // Arrange
+        const items = [
+            { ref: { ref: { name: 'ContextA' } as Record<string, unknown>, $refText: 'ContextA' } },
+            { ref: { ref: { name: 'ContextB' } as Record<string, unknown>, $refText: 'ContextB' } },
+        ] as Parameters<typeof resolveMultiReference>[0];
+
+        // Act
+        const result = resolveMultiReference(items);
+
+        // Assert
+        expect(result).toEqual(['ContextA', 'ContextB']);
+    });
+
+    test('should filter out items with unresolved refs', () => {
+        // Arrange
+        const items = [
+            { ref: { ref: { name: 'ContextA' } as Record<string, unknown>, $refText: 'ContextA' } },
+            { ref: { ref: undefined, $refText: 'UnresolvedContext' } },
+            { ref: undefined },
+        ] as Parameters<typeof resolveMultiReference>[0];
+
+        // Act
+        const result = resolveMultiReference(items);
+
+        // Assert
+        expect(result).toEqual(['ContextA']);
+    });
+
+    test('should return empty array for undefined or empty input', () => {
+        // Arrange & Act & Assert
+        expect(resolveMultiReference(undefined)).toEqual([]);
+        expect(resolveMultiReference([])).toEqual([]);
     });
 });
 

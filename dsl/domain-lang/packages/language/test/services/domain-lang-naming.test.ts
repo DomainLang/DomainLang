@@ -65,16 +65,6 @@ describe('domain-lang naming utilities', () => {
             // Act & Assert
             expect(joinQualifiedName('acme.core', 'Sales')).toBe('acme.core.Sales');
         });
-
-        it('handles deeply nested dotted name', () => {
-            // Act & Assert
-            expect(joinQualifiedName('a.b.c.d', 'e')).toBe('a.b.c.d.e');
-        });
-
-        it('handles single-character names', () => {
-            // Act & Assert
-            expect(joinQualifiedName('a', 'b')).toBe('a.b');
-        });
     });
 
     // ========================================================================

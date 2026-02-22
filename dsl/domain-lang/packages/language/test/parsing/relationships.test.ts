@@ -52,7 +52,11 @@ function getSymmetric(doc: LangiumDocument<Model>): SymmetricRelationship[] {
 // ============================================================================
 
 describe('Directional arrow types', () => {
-    test('should parse -> as DirectionalRelationship with arrow ->', async () => {
+    test.each([
+        ['->'],
+        ['<-'],
+        ['<->'],
+    ] as const)('should parse %s arrow', async (arrow) => {
         // Arrange
         const input = s`
             Domain Sales {}
@@ -61,7 +65,7 @@ describe('Directional arrow types', () => {
 
             ContextMap TestMap {
                 contains OrderContext, PaymentContext
-                OrderContext -> PaymentContext
+                OrderContext ${arrow} PaymentContext
             }
         `;
 
@@ -72,53 +76,7 @@ describe('Directional arrow types', () => {
         expectValidDocument(document);
         const rels = getDirectional(document);
         expect(rels).toHaveLength(1);
-        expect(rels[0].arrow).toBe('->');
-    });
-
-    test('should parse <- as DirectionalRelationship with arrow <-', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext <- PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getDirectional(document);
-        expect(rels).toHaveLength(1);
-        expect(rels[0].arrow).toBe('<-');
-    });
-
-    test('should parse <-> as DirectionalRelationship with arrow <->', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext <-> PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getDirectional(document);
-        expect(rels).toHaveLength(1);
-        expect(rels[0].arrow).toBe('<->');
+        expect(rels[0].arrow).toBe(arrow);
     });
 });
 
@@ -130,59 +88,11 @@ describe('Symmetric relationship forms', () => {
     test.each([
         ['SK', 'SharedKernel'],
         ['SharedKernel', 'SharedKernel'],
-    ] as const)('should parse [%s] as SymmetricRelationship with SharedKernel pattern', async (keyword, expectedType) => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext [${keyword}] PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getSymmetric(document);
-        expect(rels).toHaveLength(1);
-        expect(rels[0].pattern?.$type).toBe(expectedType);
-    });
-
-    test.each([
         ['P', 'Partnership'],
         ['Partnership', 'Partnership'],
-    ] as const)('should parse [%s] as SymmetricRelationship with Partnership pattern', async (keyword, expectedType) => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                OrderContext [${keyword}] PaymentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getSymmetric(document);
-        expect(rels).toHaveLength(1);
-        expect(rels[0].pattern?.$type).toBe(expectedType);
-    });
-
-    test.each([
         ['SW', 'SeparateWays'],
         ['SeparateWays', 'SeparateWays'],
-    ] as const)('should parse [%s] as SymmetricRelationship with SeparateWays pattern', async (keyword, expectedType) => {
+    ] as const)('should parse [%s] as SymmetricRelationship with %s pattern', async (keyword, expectedType) => {
         // Arrange
         const input = s`
             Domain Sales {}

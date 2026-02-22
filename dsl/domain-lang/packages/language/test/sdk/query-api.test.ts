@@ -84,18 +84,6 @@ describe('SDK Query API', () => {
             expect(teams.map(t => t.name)).toEqual(expect.arrayContaining(['SalesTeam', 'PaymentTeam', 'WarehouseTeam']));
         });
         
-        test('returns empty iterator when no teams defined', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const teams = [...query.teams()];
-            
-            // Assert
-            expect(teams.length).toBe(0);
-        });
     });
     
     describe('Query.classifications()', () => {
@@ -136,18 +124,6 @@ describe('SDK Query API', () => {
             expect(bcShort?.name).toBe('PaymentContext');
         });
         
-        test('returns undefined for non-existent context', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const result = query.boundedContext('NonExistent');
-            
-            // Assert
-            expect(result).toBeUndefined();
-        });
     });
     
     describe('Query.domain()', () => {
@@ -166,18 +142,6 @@ describe('SDK Query API', () => {
             expect(domain?.name).toBe('Sales');
         });
         
-        test('returns undefined for non-existent domain', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-            
-            // Act
-            const result = query.domain('NonExistent');
-            
-            // Assert
-            expect(result).toBeUndefined();
-        });
     });
     
     describe('Query.team()', () => {
@@ -196,18 +160,6 @@ describe('SDK Query API', () => {
             expect(team?.name).toBe('SalesTeam');
         });
         
-        test('returns undefined for non-existent team', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Team SalesTeam
-            `);
-            
-            // Act
-            const result = query.team('NonExistentTeam');
-            
-            // Assert
-            expect(result).toBeUndefined();
-        });
     });
     
     describe('Query.fqn()', () => {

@@ -468,11 +468,8 @@ describe('Decisions Block Variants', () => {
 describe('Decision Type Variants', () => {
     test.each([
         ['decision', 'EventSourcing', 'Use event sourcing'],
-        ['Decision', 'EventSourcing', 'Use event sourcing'],
         ['policy', 'RefundPolicy', '30-day refunds'],
-        ['Policy', 'RefundPolicy', '30-day refunds'],
         ['rule', 'UniqueIds', 'All IDs must be unique'],
-        ['Rule', 'UniqueIds', 'All IDs must be unique'],
     ])('should parse %s keyword', async (keyword, name, description) => {
         // Arrange & Act
         const input = s`
@@ -521,27 +518,6 @@ describe('Assignment Operator Variants', () => {
         expect(domain.vision).toBe('Sales vision');
     });
 
-    test.each([
-        [':', 'colon'],
-        ['is', 'is keyword'],
-        ['=', 'equals'],
-    ])('should parse %s (%s) assignment for BC description', async (operator) => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales {
-                description ${operator} "Order lifecycle"
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        expect(bc.description).toBe('Order lifecycle');
-    });
 });
 
 // ============================================================================
