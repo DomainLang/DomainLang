@@ -35,8 +35,8 @@ describe('Validation Tests', () => {
             // Arrange & Act
             const document = await testServices.parse(s`
                 Domain A in B {}
-                Domain B in C {}
-                Domain C in A {}
+                Domain B in Cx {}
+                Domain Cx in A {}
             `);
 
             // Assert
@@ -247,7 +247,7 @@ describe('Validation Tests', () => {
 
                 ContextMap TestMap {
                     contains BC1, BC2
-                    [OHS] BC1 -> [CF] BC2 : CustomerSupplier
+                    BC1 [OHS] -> [CF] BC2
                 }
             `);
 

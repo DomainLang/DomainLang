@@ -21,8 +21,8 @@ describe('Circular Reference Handling', () => {
     test.each([
         {
             label: '3-way circular chain',
-            input: 'Domain A in B {}\nDomain B in C {}\nDomain C in A {}',
-            expectedPairs: [['A', 'B'], ['B', 'C'], ['C', 'A']],
+            input: 'Domain A in B {}\nDomain B in Cx {}\nDomain Cx in A {}',
+            expectedPairs: [['A', 'B'], ['B', 'Cx'], ['Cx', 'A']],
         },
         {
             label: 'mutual reference',

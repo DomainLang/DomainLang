@@ -134,9 +134,9 @@ describe('ContextMap Relationship Linking', () => {
 
             ContextMap PatternMap {
                 contains OrderContext, PaymentContext
-                [OHS] OrderContext -> [CF] PaymentContext
-                [ACL] PaymentContext <- [PL] OrderContext
-                [SK] OrderContext <-> PaymentContext
+                OrderContext [OHS] -> [CF] PaymentContext
+                PaymentContext [ACL] <- [PL] OrderContext
+                OrderContext [SK] PaymentContext
             }
         `;
 
@@ -157,7 +157,7 @@ describe('ContextMap Relationship Linking', () => {
         expect(ctxMap.relationships[1].left.link?.ref?.name).toBe('PaymentContext');
         expect(ctxMap.relationships[1].right.link?.ref?.name).toBe('OrderContext');
 
-        // Third relationship: SK OrderContext <-> PaymentContext
+        // Third relationship: OrderContext [SK] PaymentContext (symmetric)
         expect(ctxMap.relationships[2].left.link?.ref?.name).toBe('OrderContext');
         expect(ctxMap.relationships[2].right.link?.ref?.name).toBe('PaymentContext');
     });
@@ -525,7 +525,7 @@ describe('This Reference Linking', () => {
             BoundedContext OrderContext for Sales {
                 description: "Self-referencing context"
                 relationships {
-                    [OHS] this -> [CF] PaymentContext
+                    this [OHS] -> [CF] PaymentContext
                 }
             }
         `;

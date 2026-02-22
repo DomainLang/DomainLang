@@ -250,6 +250,29 @@ describe('DomainLang Formatter', () => {
             // contains line should be indented inside DomainMap
             expect(indentOf(result, 'contains')).toBeGreaterThan(indentOf(result, 'DomainMap'));
         });
+
+        test('formats directional relationship spacing', async () => {
+            // Arrange & Act
+            const { edits, result } = await formatAndApply(
+                s`Domain Sales {} bc Orders for Sales {} bc Billing for Sales {} ContextMap M { contains Orders, Billing Orders[OHS,PL]->[CF,ACL]Billing }`
+            );
+
+            // Assert
+            expect(edits.length).toBeGreaterThan(0);
+            expect(result).toContain('Orders [OHS, PL] -> [CF, ACL] Billing');
+        });
+
+        test('formats symmetric relationship spacing', async () => {
+            // Arrange & Act
+            const { edits, result } = await formatAndApply(
+                s`Domain Sales {} bc Orders for Sales {} bc Legacy for Sales {} ContextMap M { contains Orders, Legacy Orders[SK]Legacy Orders><Legacy }`
+            );
+
+            // Assert
+            expect(edits.length).toBeGreaterThan(0);
+            expect(result).toContain('Orders [SK] Legacy');
+            expect(result).toContain('Orders >< Legacy');
+        });
     });
 
     // ====================================================================

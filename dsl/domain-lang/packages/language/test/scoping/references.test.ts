@@ -39,7 +39,7 @@ describe('Scoping: References', () => {
 
             ContextMap SalesMap {
                 contains OrderContext, PaymentContext
-                [OHS] OrderContext -> [CF] PaymentContext : CustomerSupplier
+                OrderContext [OHS] -> [CF] PaymentContext
             }
         `);
 
@@ -59,7 +59,6 @@ describe('Scoping: References', () => {
         const relationship = contextMap.relationships[0];
         expect(relationship.left.link?.ref?.name).toBe('OrderContext');
         expect(relationship.right.link?.ref?.name).toBe('PaymentContext');
-        expect(relationship.type).toBe('CustomerSupplier');
     });
 
     // ── Edge / Error (~80%) ───────────────────────────────────────────
@@ -73,7 +72,7 @@ describe('Scoping: References', () => {
 
                 ContextMap BadMap {
                     contains PaymentContext
-                    GhostContext -> PaymentContext : CustomerSupplier
+                    GhostContext -> PaymentContext
                 }
             `,
             ghostSide: 'left' as const,
@@ -87,7 +86,7 @@ describe('Scoping: References', () => {
 
                 ContextMap BadMap {
                     contains OrderContext
-                    OrderContext -> GhostContext : CustomerSupplier
+                    OrderContext -> GhostContext
                 }
             `,
             ghostSide: 'right' as const,
@@ -136,14 +135,14 @@ describe('Scoping: References', () => {
 
     test.each([
         {
-            arrowType: '<->',
-            relType: 'Partnership',
+            pattern: '[P]',
+            description: 'Partnership',
         },
         {
-            arrowType: '><',
-            relType: 'SeparateWays',
+            pattern: '><',
+            description: 'SeparateWays',
         },
-    ])('$arrowType relationship arrow resolves both sides', async ({ arrowType, relType }) => {
+    ])('$description symmetric relationship resolves both sides', async ({ pattern }) => {
         // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales {}
@@ -152,7 +151,7 @@ describe('Scoping: References', () => {
 
             ContextMap TestMap {
                 contains OrderContext, PaymentContext
-                OrderContext ${arrowType} PaymentContext : ${relType}
+                OrderContext ${pattern} PaymentContext
             }
         `);
 
@@ -163,8 +162,6 @@ describe('Scoping: References', () => {
         expect(contextMap.relationships).toHaveLength(1);
 
         const rel = contextMap.relationships[0];
-        expect(rel.arrow).toBe(arrowType);
-        expect(rel.type).toBe(relType);
         expect(rel.left.link?.ref?.name).toBe('OrderContext');
         expect(rel.right.link?.ref?.name).toBe('PaymentContext');
     });
@@ -173,14 +170,14 @@ describe('Scoping: References', () => {
         // Arrange & Act
         const document = await testServices.parse(s`
             Domain Sales {}
-            BoundedContext A for Sales
-            BoundedContext B for Sales
-            BoundedContext C for Sales
+            BoundedContext Ax for Sales
+            BoundedContext Bx for Sales
+            BoundedContext Cx for Sales
 
             ContextMap MultiRelMap {
-                contains A, B, C
-                [OHS] A -> [CF] B : CustomerSupplier
-                B <-> C : Partnership
+                contains Ax, Bx, Cx
+                Ax [OHS] -> [CF] Bx
+                Bx [P] Cx
             }
         `);
 
@@ -190,13 +187,11 @@ describe('Scoping: References', () => {
         const contextMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
         expect(contextMap.relationships).toHaveLength(2);
 
-        expect(contextMap.relationships[0].left.link?.ref?.name).toBe('A');
-        expect(contextMap.relationships[0].right.link?.ref?.name).toBe('B');
-        expect(contextMap.relationships[0].type).toBe('CustomerSupplier');
+        expect(contextMap.relationships[0].left.link?.ref?.name).toBe('Ax');
+        expect(contextMap.relationships[0].right.link?.ref?.name).toBe('Bx');
 
-        expect(contextMap.relationships[1].left.link?.ref?.name).toBe('B');
-        expect(contextMap.relationships[1].right.link?.ref?.name).toBe('C');
-        expect(contextMap.relationships[1].type).toBe('Partnership');
+        expect(contextMap.relationships[1].left.link?.ref?.name).toBe('Bx');
+        expect(contextMap.relationships[1].right.link?.ref?.name).toBe('Cx');
     });
 
     // Integration patterns resolution covered by linking.test.ts "ContextMap Linking"

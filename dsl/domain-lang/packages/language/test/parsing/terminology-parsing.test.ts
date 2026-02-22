@@ -77,7 +77,7 @@ describe('Basic Terminology Parsing', () => {
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Order: "A customer purchase request"
-                    term Customer: "A person who places orders"
+                    term Buyer: "A person who places orders"
                     term Product: "An item available for purchase"
                 }
             }
@@ -91,7 +91,7 @@ describe('Basic Terminology Parsing', () => {
         const terms = bc.terminology;
 
         expect(terms).toHaveLength(3);
-        expect(terms.map(t => t.name)).toEqual(['Order', 'Customer', 'Product']);
+        expect(terms.map(t => t.name)).toEqual(['Order', 'Buyer', 'Product']);
     });
 });
 
@@ -159,7 +159,7 @@ describe('Term Synonyms', () => {
 
             BoundedContext OrderContext for Sales {
                 terminology {
-                    term Customer: "A person who places orders" aka Client
+                    term Buyer: "A person who places orders" aka Client
                 }
             }
         `;
@@ -171,7 +171,7 @@ describe('Term Synonyms', () => {
         const bc = getFirstBoundedContext(document);
         const term = bc.terminology[0];
 
-        expect(term.name).toBe('Customer');
+        expect(term.name).toBe('Buyer');
         expect(term.synonyms).toHaveLength(1);
         expect(term.synonyms[0]).toBe('Client');
     });
@@ -183,7 +183,7 @@ describe('Term Synonyms', () => {
 
             BoundedContext OrderContext for Sales {
                 terminology {
-                    term Customer: "A person who places orders" aka Client, Buyer, Purchaser
+                    term Buyer: "A person who places orders" aka Client, Purchaser, Patron
                 }
             }
         `;
@@ -194,7 +194,7 @@ describe('Term Synonyms', () => {
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
-        expect(term.synonyms).toEqual(['Client', 'Buyer', 'Purchaser']);
+        expect(term.synonyms).toEqual(['Client', 'Purchaser', 'Patron']);
     });
 
     test('should parse synonyms keyword as aka alias', async () => {
@@ -258,7 +258,7 @@ describe('Complex Term Definitions', () => {
 
             BoundedContext OrderContext for Sales {
                 terminology {
-                    term Customer: "A person or organization that purchases products" aka Client, Buyer examples "Acme Corp", "John Doe"
+                    term Buyer: "A person or organization that purchases products" aka Client, Purchaser examples "Acme Corp", "John Doe"
                 }
             }
         `;
@@ -269,9 +269,9 @@ describe('Complex Term Definitions', () => {
         expectValidDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
-        expect(term.name).toBe('Customer');
+        expect(term.name).toBe('Buyer');
         expect(term.meaning).toBe('A person or organization that purchases products');
-        expect(term.synonyms).toEqual(['Client', 'Buyer']);
+        expect(term.synonyms).toEqual(['Client', 'Purchaser']);
         expect(term.examples).toEqual(['Acme Corp', 'John Doe']);
     });
 
@@ -394,7 +394,7 @@ describe('Terminology Edge Cases', () => {
             BoundedContext OrderContext for Sales {
                 terminology {
                     term Order: "A purchase request",
-                    term Customer: "A person placing orders"
+                    term Buyer: "A person placing orders"
                 }
             }
         `;
@@ -406,7 +406,7 @@ describe('Terminology Edge Cases', () => {
         const terms = getFirstBoundedContext(document).terminology;
         expect(terms).toHaveLength(2);
         expect(terms[0].name).toBe('Order');
-        expect(terms[1].name).toBe('Customer');
+        expect(terms[1].name).toBe('Buyer');
     });
 });
 

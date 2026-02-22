@@ -44,7 +44,7 @@ describe('Scoping: Multi-Target References', () => {
 
             ContextMap AmbiguousMap {
                 contains Dup, Unique
-                Dup -> Unique : CustomerSupplier
+                Dup -> Unique
             }
         `);
 

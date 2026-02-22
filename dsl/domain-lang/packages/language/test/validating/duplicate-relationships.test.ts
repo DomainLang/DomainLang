@@ -28,8 +28,8 @@ describe('Duplicate Relationship Validation', () => {
 
             ContextMap ECommerceMap {
                 contains OrderContext, PaymentContext
-                [OHS] OrderContext -> [CF] PaymentContext
-                [OHS] OrderContext -> [CF] PaymentContext
+                OrderContext [OHS] -> [CF] PaymentContext
+                OrderContext [OHS] -> [CF] PaymentContext
             }
         `;
 
@@ -46,15 +46,15 @@ describe('Duplicate Relationship Validation', () => {
         {
             scenario: 'different directions',
             relationships: s`
-                [OHS] OrderContext -> [CF] PaymentContext
-                OrderContext <-> PaymentContext
+                OrderContext [OHS] -> [CF] PaymentContext
+                OrderContext [P] PaymentContext
             `,
         },
         {
             scenario: 'different integration patterns',
             relationships: s`
-                [OHS] OrderContext -> [CF] PaymentContext
-                [PL] OrderContext -> [ACL] PaymentContext
+                OrderContext [OHS] -> [CF] PaymentContext
+                OrderContext [PL] -> [ACL] PaymentContext
             `,
         },
     ])('accepts distinct relationships ($scenario)', async ({ relationships }) => {

@@ -253,15 +253,19 @@ describe('SDK Query API', () => {
                 bc PaymentContext for Sales
                 ContextMap SalesMap {
                     contains OrderContext, PaymentContext
-                    [OHS] OrderContext -> [CF] PaymentContext : CustomerSupplier
+                    OrderContext [OHS] -> [CF] PaymentContext
                 }
             `);
             const rels = [...query.relationships()];
             expect(rels).toHaveLength(1);
-            expect(rels[0].left.name).toBe('OrderContext');
-            expect(rels[0].right.name).toBe('PaymentContext');
-            expect(rels[0].arrow).toBe('->');
-            expect(rels[0].source).toBe('ContextMap');
+            const rel = rels[0];
+            expect(rel.left.context.name).toBe('OrderContext');
+            expect(rel.right.context.name).toBe('PaymentContext');
+            expect(rel.type).toBe('directional');
+            if (rel.type === 'directional') {
+                expect(rel.arrow).toBe('->');
+            }
+            expect(rel.source).toBe('ContextMap');
         });
 
         test('returns relationships from bounded contexts using this', async () => {
@@ -270,20 +274,220 @@ describe('SDK Query API', () => {
                 bc PaymentContext for Sales
                 bc OrderContext for Sales {
                     relationships {
-                        [OHS] this -> [CF] PaymentContext : CustomerSupplier
+                        this [OHS] -> [CF] PaymentContext
                     }
                 }
             `);
             const rels = [...query.relationships()];
             expect(rels).toHaveLength(1);
-            expect(rels[0].left.name).toBe('OrderContext');
-            expect(rels[0].right.name).toBe('PaymentContext');
+            expect(rels[0].left.context.name).toBe('OrderContext');
+            expect(rels[0].right.context.name).toBe('PaymentContext');
             expect(rels[0].source).toBe('BoundedContext');
         });
 
         test('returns empty for model with no relationships', async () => {
             const { query } = await loadModelFromText(`Domain Sales { vision: "v" }`);
             expect([...query.relationships()]).toHaveLength(0);
+        });
+    });
+
+    // ========================================================================
+    // RELATIONSHIP VIEW — directional
+    // ========================================================================
+
+    describe('RelationshipView — directional', () => {
+
+        test('single pattern each side: upstream/downstream sides and patterns are correct', async () => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain D { vision: "v" }
+                bc Catalog for D
+                bc Orders for D
+                ContextMap M {
+                    contains Catalog, Orders
+                    Catalog [OHS] -> [CF] Orders
+                }
+            `);
+
+            // Act
+            const rels = [...query.relationships()];
+
+            // Assert
+            expect(rels).toHaveLength(1);
+            const rel = rels[0];
+            expect(rel.type).toBe('directional');
+            if (rel.type !== 'directional') return;
+            expect(rel.kind).toBe('UpstreamDownstream');
+            expect(rel.arrow).toBe('->');
+            expect(rel.left.context.name).toBe('Catalog');
+            expect(rel.right.context.name).toBe('Orders');
+            expect(rel.upstream?.context.name).toBe('Catalog');
+            expect(rel.upstream?.patterns.map(p => p.$type)).toEqual(['OpenHostService']);
+            expect(rel.downstream?.context.name).toBe('Orders');
+            expect(rel.downstream?.patterns.map(p => p.$type)).toEqual(['Conformist']);
+        });
+
+        test('multiple patterns per side are all captured', async () => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain D { vision: "v" }
+                bc Catalog for D
+                bc Billing for D
+                ContextMap M {
+                    contains Catalog, Billing
+                    Catalog [OHS, PL] -> [CF, ACL] Billing
+                }
+            `);
+
+            // Act
+            const rel = [...query.relationships()][0];
+
+            // Assert
+            expect(rel.type).toBe('directional');
+            if (rel.type !== 'directional') return;
+            expect(rel.upstream?.patterns.map(p => p.$type)).toEqual(
+                expect.arrayContaining(['OpenHostService', 'PublishedLanguage'])
+            );
+            expect(rel.downstream?.patterns.map(p => p.$type)).toEqual(
+                expect.arrayContaining(['Conformist', 'AntiCorruptionLayer'])
+            );
+        });
+
+        test('customer/supplier patterns resolve kind to CustomerSupplier', async () => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain D { vision: "v" }
+                bc Orders for D
+                bc Inventory for D
+                ContextMap M {
+                    contains Orders, Inventory
+                    Orders [S] -> [C] Inventory
+                }
+            `);
+
+            // Act
+            const rel = [...query.relationships()][0];
+
+            // Assert
+            expect(rel.type).toBe('directional');
+            if (rel.type !== 'directional') return;
+            expect(rel.kind).toBe('CustomerSupplier');
+            expect(rel.upstream?.context.name).toBe('Orders');
+            expect(rel.upstream?.patterns.map(p => p.$type)).toContain('Supplier');
+            expect(rel.downstream?.context.name).toBe('Inventory');
+            expect(rel.downstream?.patterns.map(p => p.$type)).toContain('Customer');
+        });
+
+        test('reverse arrow (<-): upstream and downstream sides are swapped relative to left/right', async () => {
+            // Arrange — Shipping [CF] <- [OHS] Catalog  means Catalog is upstream, Shipping is downstream
+            const { query } = await loadModelFromText(`
+                Domain D { vision: "v" }
+                bc Shipping for D
+                bc Catalog for D
+                ContextMap M {
+                    contains Shipping, Catalog
+                    Shipping [CF] <- [OHS] Catalog
+                }
+            `);
+
+            // Act
+            const rel = [...query.relationships()][0];
+
+            // Assert
+            expect(rel.type).toBe('directional');
+            if (rel.type !== 'directional') return;
+            expect(rel.kind).toBe('UpstreamDownstream');
+            expect(rel.arrow).toBe('<-');
+            expect(rel.left.context.name).toBe('Shipping');
+            expect(rel.right.context.name).toBe('Catalog');
+            // Upstream is the right side (provider), downstream is the left side (consumer)
+            expect(rel.upstream?.context.name).toBe('Catalog');
+            expect(rel.upstream?.patterns.map(p => p.$type)).toContain('OpenHostService');
+            expect(rel.downstream?.context.name).toBe('Shipping');
+            expect(rel.downstream?.patterns.map(p => p.$type)).toContain('Conformist');
+        });
+
+        test('bidirectional (<->): kind is Bidirectional, upstream and downstream are undefined', async () => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain D { vision: "v" }
+                bc Orders for D
+                bc Billing for D
+                ContextMap M {
+                    contains Orders, Billing
+                    Orders [OHS] <-> [CF] Billing
+                }
+            `);
+
+            // Act
+            const rel = [...query.relationships()][0];
+
+            // Assert
+            expect(rel.type).toBe('directional');
+            if (rel.type !== 'directional') return;
+            expect(rel.kind).toBe('Bidirectional');
+            expect(rel.arrow).toBe('<->');
+            expect(rel.upstream).toBeUndefined();
+            expect(rel.downstream).toBeUndefined();
+            expect(rel.left.patterns.map(p => p.$type)).toContain('OpenHostService');
+            expect(rel.right.patterns.map(p => p.$type)).toContain('Conformist');
+        });
+    });
+
+    // ========================================================================
+    // RELATIONSHIP VIEW — symmetric
+    // ========================================================================
+
+    describe('RelationshipView — symmetric', () => {
+
+        test.each([
+            { pattern: '[P]',  expectedKind: 'Partnership'   },
+            { pattern: '[SK]', expectedKind: 'SharedKernel'  },
+            { pattern: '[SW]', expectedKind: 'SeparateWays'  },
+        ])('$pattern resolves kind to $expectedKind', async ({ pattern, expectedKind }) => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain D { vision: "v" }
+                bc Orders for D
+                bc Catalog for D
+                ContextMap M {
+                    contains Orders, Catalog
+                    Orders ${pattern} Catalog
+                }
+            `);
+
+            // Act
+            const rel = [...query.relationships()][0];
+
+            // Assert
+            expect(rel.type).toBe('symmetric');
+            if (rel.type !== 'symmetric') return;
+            expect(rel.kind).toBe(expectedKind);
+            expect(rel.left.context.name).toBe('Orders');
+            expect(rel.right.context.name).toBe('Catalog');
+            expect(rel.left.patterns).toHaveLength(0);
+            expect(rel.right.patterns).toHaveLength(0);
+        });
+
+        test('>< shorthand resolves to SeparateWays', async () => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain D { vision: "v" }
+                bc Orders for D
+                bc Payments for D
+                ContextMap M {
+                    contains Orders, Payments
+                    Orders >< Payments
+                }
+            `);
+
+            // Act
+            const rel = [...query.relationships()][0];
+
+            // Assert
+            expect(rel.type).toBe('symmetric');
+            if (rel.type !== 'symmetric') return;
+            expect(rel.kind).toBe('SeparateWays');
         });
     });
 

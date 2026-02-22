@@ -232,7 +232,7 @@ describe('SDK QueryBuilder', () => {
             const { query } = await loadModelFromText(`
                 Domain A { vision: "v" }
                 Domain B { vision: "v" }
-                Domain C { vision: "v" }
+                Domain Cx { vision: "v" }
             `);
             let iterationCount = 0;
 

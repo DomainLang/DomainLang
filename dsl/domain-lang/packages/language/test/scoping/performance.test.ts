@@ -99,7 +99,7 @@ describe('Scoping: Performance', () => {
 
         // Chain relationships: Ctx0->Ctx1, Ctx1->Ctx2, ...
         const relationships = Array.from({ length: bcCount - 1 }, (_, i) =>
-            `Ctx${i} -> Ctx${i + 1} : CustomerSupplier`
+            `Ctx${i} -> Ctx${i + 1}`
         ).join('\n');
 
         const input = s`

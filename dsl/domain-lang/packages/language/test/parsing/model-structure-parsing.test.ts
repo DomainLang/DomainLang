@@ -225,7 +225,7 @@ describe('Grammar Completeness Tests', () => {
                     evolution: Mature
 
                     relationships {
-                        [OHS] this -> [CF] TestBC : CustomerSupplier
+                        this [OHS] -> [CF] TestBC
                     }
 
                     terminology {

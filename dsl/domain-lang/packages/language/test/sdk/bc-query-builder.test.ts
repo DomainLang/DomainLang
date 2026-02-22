@@ -127,14 +127,14 @@ describe('SDK BcQueryBuilder', () => {
             const { query } = await loadModelFromText(`
                 Domain Sales { vision: "v" }
                 Team T
-                Classification C
+                Classification Cx
                 Metadata m
             `);
 
             // Assert
             expect(query.boundedContexts().inDomain('Sales').count()).toBe(0);
             expect(query.boundedContexts().withTeam('T').count()).toBe(0);
-            expect(query.boundedContexts().withClassification('C').count()).toBe(0);
+            expect(query.boundedContexts().withClassification('Cx').count()).toBe(0);
             expect(query.boundedContexts().withMetadata('m').count()).toBe(0);
         });
     });

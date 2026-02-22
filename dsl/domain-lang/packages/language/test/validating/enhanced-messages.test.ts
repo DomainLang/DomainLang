@@ -68,26 +68,44 @@ describe('Enhanced Error Messages', () => {
 
     test.each([
         {
-            label: 'SharedKernel with wrong arrow',
-            body: '[SK] Context1 -> [SK] Context2',
-            diagnosticMatch: 'SharedKernel',
-            messageContains: 'bidirectional',
-        },
-        {
             label: 'ACL on wrong side',
-            body: '[ACL] Context1 -> Context2',
+            body: 'Context1 [ACL] -> Context2',
             diagnosticMatch: 'Anti-Corruption Layer',
             messageContains: 'downstream',
         },
         {
             label: 'Conformist on wrong side',
-            body: '[CF] Context1 -> Context2',
+            body: 'Context1 [CF] -> Context2',
             diagnosticMatch: 'Conformist',
             messageContains: 'downstream',
         },
         {
+            label: 'OHS on wrong side',
+            body: 'Context1 -> [OHS] Context2',
+            diagnosticMatch: 'Open Host Service',
+            messageContains: 'upstream',
+        },
+        {
+            label: 'Supplier on wrong side',
+            body: 'Context1 -> [S] Context2',
+            diagnosticMatch: 'Supplier',
+            messageContains: 'upstream side',
+        },
+        {
+            label: 'Customer on wrong side',
+            body: 'Context1 [C] -> Context2',
+            diagnosticMatch: 'Customer',
+            messageContains: 'downstream side',
+        },
+        {
+            label: 'self symmetric relationship',
+            body: 'Context1 [SK] Context1',
+            diagnosticMatch: 'Symmetric relationship with self',
+            messageContains: 'likely unintended',
+        },
+        {
             label: 'too many patterns',
-            body: '[OHS, PL, ACL, CF] Context1 -> Context2',
+            body: 'Context1 [OHS, PL, ACL, CF] -> Context2',
             diagnosticMatch: 'Too many',
             messageContains: '1-2 patterns',
         },

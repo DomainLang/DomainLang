@@ -11,8 +11,8 @@
 
 import { describe, test, expect } from 'vitest';
 import { loadModelFromText, matchesPattern } from '../../src/sdk/index.js';
-import type { BoundedContext, Domain, Relationship } from '../../src/generated/ast.js';
-import { isBoundedContext, isDomain, isContextMap } from '../../src/generated/ast.js';
+import type { BoundedContext, Domain, DirectionalRelationship, Relationship } from '../../src/generated/ast.js';
+import { isBoundedContext, isDomain, isContextMap, isDirectionalRelationship } from '../../src/generated/ast.js';
 import { AstUtils } from 'langium';
 
 // Import the augmentation module to enable TypeScript type extensions
@@ -333,7 +333,7 @@ describe('SDK AST Augmentation', () => {
                 Domain Sales { vision: "v" }
                 bc OrderContext for Sales {
                     relationships {
-                        [OHS, PL] this -> [CF, ACL] PaymentContext
+                        this [OHS, PL] -> [CF, ACL] PaymentContext
                     }
                 }
                 bc PaymentContext for Sales
@@ -341,27 +341,30 @@ describe('SDK AST Augmentation', () => {
 
             // Act
             const rel = findFirstRelationship(model);
+            expect(rel).not.toBeUndefined();
+            expect(isDirectionalRelationship(rel)).toBe(true);
+            const drel = rel as DirectionalRelationship;
 
             // Assert
             // Pattern checks
-            expect(rel!.hasPattern('OHS')).toBe(true);
-            expect(rel!.hasPattern('CF')).toBe(true);
-            expect(rel!.hasPattern('ACL')).toBe(true); // ACL is on right, hasPattern checks both sides
-            expect(rel!.hasLeftPattern('OHS')).toBe(true);
-            expect(rel!.hasLeftPattern('PL')).toBe(true);
-            expect(rel!.hasLeftPattern('CF')).toBe(false);
-            expect(rel!.hasRightPattern('CF')).toBe(true);
-            expect(rel!.hasRightPattern('ACL')).toBe(true);
-            expect(rel!.hasRightPattern('OHS')).toBe(false);
+            expect(drel.hasPattern('OHS')).toBe(true);
+            expect(drel.hasPattern('CF')).toBe(true);
+            expect(drel.hasPattern('ACL')).toBe(true); // ACL is on right, hasPattern checks both sides
+            expect(drel.hasLeftPattern('OHS')).toBe(true);
+            expect(drel.hasLeftPattern('PL')).toBe(true);
+            expect(drel.hasLeftPattern('CF')).toBe(false);
+            expect(drel.hasRightPattern('CF')).toBe(true);
+            expect(drel.hasRightPattern('ACL')).toBe(true);
+            expect(drel.hasRightPattern('OHS')).toBe(false);
             // Context names
-            expect(rel!.leftContextName).toBe('OrderContext');
-            expect(rel!.rightContextName).toBe('PaymentContext');
+            expect(drel.leftContextName).toBe('OrderContext');
+            expect(drel.rightContextName).toBe('PaymentContext');
             // Directionality
-            expect(rel!.isBidirectional).toBe(false);
-            expect(rel!.isUpstream('left')).toBe(true);
-            expect(rel!.isDownstream('right')).toBe(true);
-            expect(rel!.isUpstream('right')).toBe(false);
-            expect(rel!.isDownstream('left')).toBe(false);
+            expect(drel.isBidirectional).toBe(false);
+            expect(drel.isUpstream('left')).toBe(true);
+            expect(drel.isDownstream('right')).toBe(true);
+            expect(drel.isUpstream('right')).toBe(false);
+            expect(drel.isDownstream('left')).toBe(false);
         });
 
         // Edge: bidirectional relationship
@@ -371,7 +374,7 @@ describe('SDK AST Augmentation', () => {
                 Domain Sales { vision: "v" }
                 bc OrderContext for Sales {
                     relationships {
-                        [SK] this <-> PaymentContext
+                        this <-> PaymentContext
                     }
                 }
                 bc PaymentContext for Sales
@@ -379,9 +382,12 @@ describe('SDK AST Augmentation', () => {
 
             // Act
             const rel = findFirstRelationship(model);
+            expect(rel).not.toBeUndefined();
+            expect(isDirectionalRelationship(rel)).toBe(true);
+            const drel = rel as DirectionalRelationship;
 
             // Assert
-            expect(rel!.isBidirectional).toBe(true);
+            expect(drel.isBidirectional).toBe(true);
         });
 
         // Edge: relationship with no patterns
@@ -399,14 +405,17 @@ describe('SDK AST Augmentation', () => {
 
             // Act
             const rel = findFirstRelationship(model);
+            expect(rel).not.toBeUndefined();
+            expect(isDirectionalRelationship(rel)).toBe(true);
+            const drel = rel as DirectionalRelationship;
 
             // Assert
-            expect(rel!.hasPattern('OHS')).toBe(false);
-            expect(rel!.hasPattern('CF')).toBe(false);
-            expect(rel!.hasLeftPattern('OHS')).toBe(false);
-            expect(rel!.hasRightPattern('CF')).toBe(false);
-            expect(rel!.isUpstream('left')).toBe(false);
-            expect(rel!.isDownstream('right')).toBe(false);
+            expect(drel.hasPattern('OHS')).toBe(false);
+            expect(drel.hasPattern('CF')).toBe(false);
+            expect(drel.hasLeftPattern('OHS')).toBe(false);
+            expect(drel.hasRightPattern('CF')).toBe(false);
+            expect(drel.isUpstream('left')).toBe(false);
+            expect(drel.isDownstream('right')).toBe(false);
         });
 
         // Edge: ContextMap relationship (not in a BC)
@@ -419,16 +428,19 @@ describe('SDK AST Augmentation', () => {
 
                 ContextMap ECommerceMap {
                     contains OrderContext, PaymentContext
-                    [OHS] OrderContext -> [CF] PaymentContext : CustomerSupplier
+                    OrderContext [OHS] -> [CF] PaymentContext
                 }
             `);
 
             // Act
             // Find rel from ContextMap not BC
-            let rel: Relationship | undefined;
+            let rel: DirectionalRelationship | undefined;
             for (const node of AstUtils.streamAllContents(model as import('langium').AstNode)) {
                 if (isContextMap(node) && node.relationships.length > 0) {
-                    rel = node.relationships[0];
+                    const first = node.relationships[0];
+                    if (isDirectionalRelationship(first)) {
+                        rel = first;
+                    }
                     break;
                 }
             }

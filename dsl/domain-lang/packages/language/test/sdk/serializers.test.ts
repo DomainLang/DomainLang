@@ -196,7 +196,7 @@ describe('serializeNode', () => {
             Domain Sales { vision: "v" }
             bc OrderContext for Sales {
                 relationships {
-                    [OHS] this -> [CF] PaymentContext
+                    this [OHS] -> [CF] PaymentContext
                 }
             }
         `);
@@ -225,7 +225,7 @@ describe('serializeRelationship', () => {
             Domain Sales { vision: "v" }
             bc OrderContext for Sales {
                 relationships {
-                    [OHS] this -> [CF] PaymentContext
+                    this [OHS] -> [CF] PaymentContext
                 }
             }
             bc PaymentContext for Sales {}
@@ -240,16 +240,15 @@ describe('serializeRelationship', () => {
         const serialized = serializeRelationship(rel);
 
         // Assert
-        expect(serialized.$type).toBe('Relationship');
+        expect(serialized.type).toBe('directional');
         expect(serialized.left).toBe('OrderContext');
         expect(serialized.right).toBe('PaymentContext');
         expect(serialized.arrow).toBe('->');
-        expect(serialized.leftPatterns).toEqual(['OHS']);
-        expect(serialized.rightPatterns).toEqual(['CF']);
-        expect(typeof serialized.inferredType).toBe('string');
-        if (typeof serialized.inferredType === 'string') {
-            expect(serialized.inferredType.length).toBeGreaterThan(0);
-        }
+        expect(serialized.kind).toBe('UpstreamDownstream');
+        expect(serialized.leftPatterns).toEqual(['OpenHostService']);
+        expect(serialized.rightPatterns).toEqual(['Conformist']);
+        expect(serialized.upstreamPatterns).toEqual(['OpenHostService']);
+        expect(serialized.downstreamPatterns).toEqual(['Conformist']);
     });
 
     test('should format relationship name consistently', async () => {

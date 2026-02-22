@@ -193,7 +193,7 @@ describe('generateExplanation - Relationship', () => {
             Domain Sales { vision: "v" }
             bc OrderContext for Sales {
                 relationships {
-                    [OHS] this -> [CF] PaymentContext
+                    this [OHS] -> [CF] PaymentContext
                 }
             }
             bc PaymentContext for Sales {}
@@ -203,7 +203,7 @@ describe('generateExplanation - Relationship', () => {
         const bc = query.boundedContext('OrderContext');
         expect(bc?.name).toBe('OrderContext');
         const relationship = bc!.relationships[0];
-        expect(relationship.$type).toBe('Relationship');
+        expect(relationship.$type).toBe('DirectionalRelationship');
 
         // Act
         const explanation = generateExplanation(relationship);

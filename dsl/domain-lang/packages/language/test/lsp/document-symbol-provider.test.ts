@@ -358,13 +358,13 @@ describe('DocumentSymbolProvider', () => {
                     Rule DiscountRule
                 }
                 terminology {
-                    Term Customer "A person who buys"
+                    Term Buyer "A person who buys"
                 }
                 metadata {
                     Language: "TypeScript"
                 }
                 relationships {
-                    [OHS] this -> [CF] External
+                    this [OHS] -> [CF] External
                 }
             }
             bc External for Sales {}
@@ -385,7 +385,7 @@ describe('DocumentSymbolProvider', () => {
         // Terminology: DomainTerm → Field
         const termFolder = expectSymbol(bc.children, 'terminology');
         if (!termFolder.children) throw new Error('Expected terminology folder to have children');
-        const term = expectSymbol(termFolder.children, 'Customer');
+        const term = expectSymbol(termFolder.children, 'Buyer');
         expect(term.kind).toBe(SymbolKind.Field);
 
         // Metadata: MetadataEntry → Field
