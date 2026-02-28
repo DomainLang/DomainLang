@@ -93,9 +93,9 @@ Apache-2.0
 ---
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="images/thinkability-logo-dark-theme.svg">
-  <source media="(prefers-color-scheme: light)" srcset="images/thinkability-logo-light-theme.svg">
-  <img alt="thinkability" height="60" src="images/thinkability-logo-light-theme.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="images/thinkability-logo-dark-theme.png">
+  <source media="(prefers-color-scheme: light)" srcset="images/thinkability-logo-light-theme.png">
+  <img alt="thinkability" height="60" src="images/thinkability-logo-light-theme.png">
 </picture>
 
 
