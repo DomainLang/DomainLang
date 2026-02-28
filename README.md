@@ -108,4 +108,5 @@ Apache 2.0 (see LICENSE)
   <img alt="thinkability" height="30" src="images/thinkability-logo-light-theme.svg">
 </picture>
 
-Sponsored by [thinkability](https://thinkability.dk)
+
+This project is sponsored by [thinkability](https://thinkability.dk)

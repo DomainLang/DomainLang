@@ -167,8 +167,8 @@ export default defineConfig({
     
     // Footer
     footer: {
-      message: 'Released under the Apache 2.0 License.',
-      copyright: 'Copyright © 2024-2026 <a href="https://github.com/larsbaunwall">Lars Baunwall</a>. Built with ❤️ in Denmark.'
+      message: 'Sponsored by <a href="https://thinkability.dk" target="_blank" rel="noopener noreferrer"><img class="sponsor-logo-light" src="/thinkability-logo-light-theme.svg" alt="thinkability"><img class="sponsor-logo-dark" src="/thinkability-logo-dark-theme.svg" alt="thinkability"></a>',
+      copyright: 'Copyright © 2024-2026 <a href="https://github.com/larsbaunwall">Lars Baunwall</a>. Released under the Apache 2.0 License.'
     },
     
     // Edit link

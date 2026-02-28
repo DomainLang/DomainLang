@@ -3,6 +3,20 @@
  * https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/vars.css
  */
 
+/**
+ * Sponsor badge: light theme shows light-theme logo, dark theme shows dark-theme logo.
+ */
+.sponsor-logo-light,
+.sponsor-logo-dark {
+  display: inline !important;
+  height: 2em !important;
+  width: auto !important;
+  vertical-align: middle;
+}
+.sponsor-logo-dark { display: none !important; }
+.dark .sponsor-logo-light { display: none !important; }
+.dark .sponsor-logo-dark { display: inline !important; }
+
 :root {
   /* Brand colors - derived from DomainLang logo */
   /* Primary: Cyan #00e5fc, Secondary: Blue #027fff */
