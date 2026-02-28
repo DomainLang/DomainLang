@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.13.0](https://github.com/DomainLang/DomainLang/compare/v0.12.0...v0.13.0) (2026-02-28)
+
+
+### Features
+
+* **cli:** update query command for RelationshipView in PRS-019 ([b96bd03](https://github.com/DomainLang/DomainLang/commit/b96bd0394ec4125fd89c41390346c02e11719240))
+* **diagram:** update context map diagram for new relationship model ([f1c2481](https://github.com/DomainLang/DomainLang/commit/f1c248120c912fcaee2ab4210e4ac59f09e47d94))
+* **examples:** update example .dlang files to new relationship syntax ([f931099](https://github.com/DomainLang/DomainLang/commit/f9310998c925aea566dcf52bb9569410e99a48a9))
+* **grammar:** redesign relationship syntax for PRS-019 ([02aa26c](https://github.com/DomainLang/DomainLang/commit/02aa26c38a9cf4f6d8609ed6db656954915daaee))
+* **lsp:** update hover, completion, formatter and explain for PRS-019 ([d8c1710](https://github.com/DomainLang/DomainLang/commit/d8c171032e88db9de7a159d7efd5a20a28b575ed))
+* **sdk:** add RelationshipView types and query API for PRS-019 ([22da668](https://github.com/DomainLang/DomainLang/commit/22da668597df65a63cd0a2a036a08488e3fb8ab0))
+* **tests:** enhance relationship validation and diagram generation tests ([060c43b](https://github.com/DomainLang/DomainLang/commit/060c43be5f6350f43cc2abd9cba7ff54c25d8d76))
+
+
+### Bug Fixes
+
+* Refactor tests and improve code quality ([c80ff0b](https://github.com/DomainLang/DomainLang/commit/c80ff0bf8824294e58e9aa02d79016009d224342))
+* **tests:** resolve TS build errors and lint warnings in test files ([9844365](https://github.com/DomainLang/DomainLang/commit/9844365188c1d4f11649596b4694dc1f47cdb559))
+* Use png for extension readme ([1b316a7](https://github.com/DomainLang/DomainLang/commit/1b316a727ef04abdd55a71ac39be8d25e6c6a482))
+
+
+### Documentation
+
+* Add sponsor message and logo ([0b94b02](https://github.com/DomainLang/DomainLang/commit/0b94b0253e71cad94171bc7bf336c3e1d075b4a8))
+
 ## [0.12.0](https://github.com/DomainLang/DomainLang/compare/v0.11.0...v0.12.0) (2026-02-18)
 
 
