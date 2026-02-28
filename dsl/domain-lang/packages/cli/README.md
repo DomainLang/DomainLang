@@ -80,3 +80,14 @@ dlang query bcs --classification Core   # Inspect your Core contexts
 ## License
 
 Apache-2.0
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/DomainLang/DomainLang/main/images/thinkability-logo-dark-theme.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/DomainLang/DomainLang/main/images/thinkability-logo-light-theme.svg">
+  <img alt="Thinkability" height="60" src="https://raw.githubusercontent.com/DomainLang/DomainLang/main/images/thinkability-logo-light-theme.svg">
+</picture>
+
+
+This project is sponsored by [thinkability](https://thinkability.dk)

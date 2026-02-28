@@ -89,3 +89,14 @@ Found a bug or have a feature idea? Open an issue on [GitHub](https://github.com
 ## License
 
 Apache-2.0
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/thinkability-logo-dark-theme.svg">
+  <source media="(prefers-color-scheme: light)" srcset="images/thinkability-logo-light-theme.svg">
+  <img alt="thinkability" height="60" src="images/thinkability-logo-light-theme.svg">
+</picture>
+
+
+This project is sponsored by [thinkability](https://thinkability.dk)
