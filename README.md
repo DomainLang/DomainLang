@@ -99,3 +99,13 @@ Before submitting code, run `npm test` and `npm run lint` from `dsl/domain-lang/
 ## License
 
 Apache 2.0 (see LICENSE)
+
+---
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/thinkability-logo-dark-theme.svg">
+  <source media="(prefers-color-scheme: light)" srcset="images/thinkability-logo-light-theme.svg">
+  <img alt="thinkability" height="30" src="images/thinkability-logo-light-theme.svg">
+</picture>
+
+Sponsored by [thinkability](https://thinkability.dk)
