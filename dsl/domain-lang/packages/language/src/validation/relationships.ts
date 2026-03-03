@@ -10,7 +10,7 @@ import {
     isSupplier,
     isCustomer,
 } from '../generated/ast.js';
-import { ValidationMessages, buildCodeDescription } from './constants.js';
+import { ValidationMessages, IssueCodes, buildCodeDescription } from './constants.js';
 
 function getContextName(ref: BoundedContextRef): string {
     if (isThisRef(ref)) {
@@ -158,14 +158,14 @@ function validateCustomerSupplierPlacement(
         const allPatterns = [...relationship.leftPatterns, ...relationship.rightPatterns];
         if (allPatterns.some(isSupplier)) {
             accept('error',
-                'Supplier [S] cannot be used on a bidirectional (<->) relationship — Customer/Supplier is inherently directional.',
-                { node: relationship, property: relationship.leftPatterns.some(isSupplier) ? 'leftPatterns' : 'rightPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
+                ValidationMessages.SUPPLIER_ON_BIDIRECTIONAL(),
+                { node: relationship, property: relationship.leftPatterns.some(isSupplier) ? 'leftPatterns' : 'rightPatterns', code: IssueCodes.SupplierOnBidirectional, codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
             );
         }
         if (allPatterns.some(isCustomer)) {
             accept('error',
-                'Customer [C] cannot be used on a bidirectional (<->) relationship — Customer/Supplier is inherently directional.',
-                { node: relationship, property: relationship.leftPatterns.some(isCustomer) ? 'leftPatterns' : 'rightPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
+                ValidationMessages.CUSTOMER_ON_BIDIRECTIONAL(),
+                { node: relationship, property: relationship.leftPatterns.some(isCustomer) ? 'leftPatterns' : 'rightPatterns', code: IssueCodes.CustomerOnBidirectional, codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
             );
         }
     }

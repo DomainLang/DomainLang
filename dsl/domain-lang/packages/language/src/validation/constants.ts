@@ -53,6 +53,8 @@ export const IssueCodes = {
     OhsOnWrongSide: 'ohs-on-wrong-side',
     SupplierOnWrongSide: 'supplier-on-wrong-side',
     CustomerOnWrongSide: 'customer-on-wrong-side',
+    SupplierOnBidirectional: 'supplier-on-bidirectional',
+    CustomerOnBidirectional: 'customer-on-bidirectional',
     SelfSymmetricRelationship: 'self-symmetric-relationship',
     TooManyPatterns: 'too-many-patterns',
     
@@ -204,6 +206,20 @@ export const ValidationMessages = {
      */
     CUSTOMER_ON_WRONG_SIDE: (context: string, _side: 'left' | 'right') =>
         `Customer (C) on '${context}' must be on the downstream side. Customer is always the consumer in a Customer/Supplier relationship.`,
+
+    /**
+     * Error when Supplier is used on a bidirectional relationship.
+     * Customer/Supplier is inherently directional.
+     */
+    SUPPLIER_ON_BIDIRECTIONAL: () =>
+        'Supplier [S] cannot be used on a bidirectional (<->) relationship — Customer/Supplier is inherently directional.',
+
+    /**
+     * Error when Customer is used on a bidirectional relationship.
+     * Customer/Supplier is inherently directional.
+     */
+    CUSTOMER_ON_BIDIRECTIONAL: () =>
+        'Customer [C] cannot be used on a bidirectional (<->) relationship — Customer/Supplier is inherently directional.',
 
     /**
      * Warning when a symmetric relationship references the same context on both sides.

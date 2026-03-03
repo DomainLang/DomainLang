@@ -6,7 +6,7 @@
     "publisher": "DomainLang",
     "author": "larsbaunwall",
     "homepage": "https://domainlang.net",
-    "license": "Apache License 2.0",
+    "license": "Apache-2.0",
     "icon": "images/icon.png",
     "keywords": [
         "ddd",
