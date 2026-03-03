@@ -75,6 +75,10 @@ export class DependencyResolver {
      * @returns Generated lock file
      */
     async resolveDependencies(): Promise<LockFile> {
+        // Clear accumulated messages from any previous invocation
+        this.overrideMessages = [];
+        this.resolutionMessages = [];
+
         // Load root package config
         const rootConfig = await this.loadPackageConfig(this.workspaceRoot);
         

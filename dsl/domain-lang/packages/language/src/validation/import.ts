@@ -341,10 +341,9 @@ export class ImportValidator {
                     data: { code: IssueCodes.ImportEscapesWorkspace, alias }
                 });
             }
-        } catch (error) {
+        } catch {
             // ManifestManager not initialized - skip workspace boundary check
             // This can happen for standalone files without model.yaml
-            console.warn(`Could not validate workspace boundary for path dependency: ${error}`);
         }
     }
 
@@ -385,9 +384,9 @@ export class ImportValidator {
                     data: { code: IssueCodes.ImportNotInstalled, alias }
                 });
             }
-        } catch (error) {
-            // ManifestManager not initialized - log warning but continue
-            console.warn(`Could not validate cached package for ${alias}: ${error}`);
+        } catch {
+            // ManifestManager not initialized - skip cache validation
+            // This can happen for standalone files without model.yaml
         }
     }
 
@@ -396,7 +395,11 @@ export class ImportValidator {
      * Per PRS-010: Project-local cache at .dlang/packages/{owner}/{repo}/{commit}/
      */
     private getCacheDirectory(workspaceRoot: string, source: string, commitHash: string): string {
-        const [owner, repo] = source.split('/');
+        const parts = source.split('/');
+        if (parts.length < 2 || !parts[0] || !parts[1]) {
+            throw new Error(`Invalid import source format: expected owner/repo, got '${source}'`);
+        }
+        const [owner, repo] = parts;
         return path.join(workspaceRoot, '.dlang', 'packages', owner, repo, commitHash);
     }
 

@@ -70,7 +70,11 @@ export async function findWorkspaceRoot(startPath: string): Promise<string | und
 export async function readManifest(manifestPath: string): Promise<ModelManifest | undefined> {
     try {
         const content = await fs.readFile(manifestPath, 'utf-8');
-        return (YAML.parse(content) ?? {}) as ModelManifest;
+        const parsed = YAML.parse(content) ?? {};
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            throw new Error(`model.yaml must contain a mapping, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`);
+        }
+        return parsed as ModelManifest;
     } catch (error) {
         if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
             return undefined;
@@ -89,7 +93,8 @@ export async function readEntryFromManifest(manifestPath: string): Promise<strin
     try {
         const manifest = await readManifest(manifestPath);
         return manifest?.model?.entry ?? DEFAULT_ENTRY_FILE;
-    } catch {
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
         return DEFAULT_ENTRY_FILE;
     }
 }
