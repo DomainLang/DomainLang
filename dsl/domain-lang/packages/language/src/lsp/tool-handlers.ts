@@ -366,7 +366,9 @@ function listBoundedContexts(query: Query, filters: QueryFilters): Record<string
         builder = builder.withClassification(filters.classification);
     }
     if (filters.metadata) {
-        const [key, value] = filters.metadata.split('=');
+        const eqIdx = filters.metadata.indexOf('=');
+        const key = eqIdx >= 0 ? filters.metadata.slice(0, eqIdx) : filters.metadata;
+        const value = eqIdx >= 0 ? filters.metadata.slice(eqIdx + 1) : '';
         builder = builder.withMetadata(key, value);
     }
     if (filters.name) builder = builder.withName(filters.name) as ReturnType<Query['boundedContexts']>;

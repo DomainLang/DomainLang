@@ -50,8 +50,9 @@ export async function ensureImportGraphFromDocument(
         const resolvedUri = await importResolver.resolveForDocument(doc, imp.uri);
         const childDoc = await langiumDocuments.getOrCreateDocument(resolvedUri);
         await visit(childDoc);
-      } catch {
+      } catch (error) {
         // Import resolution failed — validation will report the error
+        console.error('Import resolution failed for', imp.uri, ':', error);
       }
     }
   }
