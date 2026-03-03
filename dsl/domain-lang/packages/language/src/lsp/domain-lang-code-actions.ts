@@ -15,6 +15,9 @@ import { CodeActionKind } from 'vscode-languageserver';
 import type { MaybePromise, LangiumDocument } from 'langium';
 import type { CodeActionProvider } from 'langium/lsp';
 import { IssueCodes } from '../validation/constants.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('CodeActions');
 
 /**
  * Shape of diagnostic data used for code action matching.
@@ -57,7 +60,7 @@ export class DomainLangCodeActionProvider implements CodeActionProvider {
 
             return result.length > 0 ? result : undefined;
         } catch (error) {
-            console.error('Error in getCodeActions:', error);
+            log.error('Error in getCodeActions', { error: error instanceof Error ? error.message : String(error) });
             return undefined;
         }
     }
