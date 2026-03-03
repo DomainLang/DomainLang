@@ -336,6 +336,9 @@ export class ManifestManager {
         if (context) {
             context.lockFile = undefined;
         }
+        if (this.activeRoot) {
+            getGlobalOptimizer().invalidateCache(this.activeRoot);
+        }
     }
 
     /**

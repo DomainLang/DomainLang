@@ -255,7 +255,8 @@ async function handleList(
     };
     } catch (error) {
         console.error('domainlang/list handler error:', error);
-        return { entityType: normalizeEntityType(params.type), count: 0, results: [] };
+        const safeType: QueryEntityType = (() => { try { return normalizeEntityType(params.type); } catch { return 'bcs'; } })();
+        return { entityType: safeType, count: 0, results: [] };
     }
 }
 

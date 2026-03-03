@@ -84,19 +84,42 @@ export const ENTITY_ALIASES: Record<string, QueryEntityType> = {
     'dmaps': 'domain-maps',
 };
 
+const CANONICAL_ENTITY_TYPES = new Set<QueryEntityType>([
+    'domains', 'bcs', 'teams', 'classifications', 'relationships', 'context-maps', 'domain-maps',
+]);
+
 /**
  * Normalize an entity type input (which may be an alias) to its canonical form.
+ * Throws for unknown entity types.
  */
 export function normalizeEntityType(input: string): QueryEntityType {
     if (input in ENTITY_ALIASES) {
         return ENTITY_ALIASES[input];
     }
-    return input as QueryEntityType;
+    if (CANONICAL_ENTITY_TYPES.has(input as QueryEntityType)) {
+        return input as QueryEntityType;
+    }
+    throw new Error(`Unknown entity type: '${input}'. Valid types: ${[...CANONICAL_ENTITY_TYPES].join(', ')}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic AST Serialization
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * SDK-augmented properties added via Object.defineProperties in query.ts.
+ * These are not part of the raw Langium AST and must be excluded from
+ * serialization to avoid corrupted output (e.g. Map → '{}' via JSON.stringify).
+ */
+const SDK_AUGMENTED_PROPS = new Set([
+    'effectiveClassification',
+    'effectiveTeam',
+    'metadataMap',
+    'fqn',            // re-added explicitly at the bottom of serializeNode
+    'leftContextName',
+    'rightContextName',
+    'isBidirectional',
+]);
 
 /**
  * Serialize any Langium AST node to a plain JSON object.
@@ -121,8 +144,16 @@ export function serializeNode(node: AstNode, query: Query): Record<string, unkno
         if (key.startsWith('$') && key !== '$type') {
             continue;
         }
+
+        // Skip SDK-augmented computed properties (not raw AST data)
+        if (SDK_AUGMENTED_PROPS.has(key)) {
+            continue;
+        }
         
-        if (isReference(value)) {
+        if (value instanceof Map) {
+            // Convert Map to plain object to avoid JSON.stringify producing '{}'
+            result[key] = Object.fromEntries(value);
+        } else if (isReference(value)) {
             // Reference<T> → name string
             const ref = value.ref;
             result[key] = (ref && 'name' in ref) ? (ref as { name?: string }).name : value.$refText;

@@ -33,7 +33,10 @@ export async function waitForState(
     }
 
     return new Promise((resolve, reject) => {
+        let settled = false;
+
         const timer = setTimeout(() => {
+            settled = true;
             reject(new Error(
                 `Document ${document.uri.toString()} did not reach state ${targetState} within ${timeout}ms. ` +
                 `Current state: ${document.state}`
@@ -41,7 +44,9 @@ export async function waitForState(
         }, timeout);
 
         const checkState = (): void => {
+            if (settled) return;
             if (document.state >= targetState) {
+                settled = true;
                 clearTimeout(timer);
                 resolve();
             } else {
