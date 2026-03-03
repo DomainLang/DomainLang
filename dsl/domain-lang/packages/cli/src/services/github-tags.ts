@@ -46,7 +46,7 @@ export async function fetchTags(
         headers['Authorization'] = authHeader;
     }
 
-    const url = `https://api.github.com/repos/${owner}/${repo}/tags?per_page=100`;
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tags?per_page=100`;
     const response = await fetchWithRetry(url, { headers });
 
     if (!response.ok) {

@@ -274,7 +274,7 @@ jobs:
           fi
       
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@master # NOSONAR
+        uses: SonarSource/sonarqube-scan-action@v4.2.1 # NOSONAR
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
