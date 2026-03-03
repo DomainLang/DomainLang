@@ -1,7 +1,7 @@
 import type { LangiumDocument, LangiumSharedCoreServices, URI } from 'langium';
 import { DefaultIndexManager, DocumentState } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
-import type { Model } from '../generated/ast.js';
+import { isModel } from '../generated/ast.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { ImportInfo } from '../services/types.js';
@@ -311,7 +311,11 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return;
         }
 
-        const model = document.parseResult.value as unknown as Model;
+        const parseValue = document.parseResult.value;
+        if (!isModel(parseValue)) {
+            return;
+        }
+        const model = parseValue;
         if (!model.imports) {
             return;
         }
@@ -389,7 +393,11 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return;
         }
 
-        const model = document.parseResult.value as unknown as Model;
+        const parseValue = document.parseResult.value;
+        if (!isModel(parseValue)) {
+            return;
+        }
+        const model = parseValue;
         if (!model.imports || model.imports.length === 0) {
             return;
         }
