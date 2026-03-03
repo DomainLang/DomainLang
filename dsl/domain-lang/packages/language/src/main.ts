@@ -17,18 +17,10 @@ const { shared, DomainLang } = createDomainLangServices({ connection, ...NodeFil
 // Register custom LSP request handlers for VS Code Language Model Tools (PRS-015)
 registerToolHandlers(connection, shared);
 
+// R-014: Single onInitialize handler combining settings application and workspace init
 shared.lsp.LanguageServer.onInitialize((params) => {
     applyLspSettings(params.initializationOptions);
-});
 
-connection.onDidChangeConfiguration((params) => {
-    applyLspSettings(params.settings);
-});
-
-// Initialize workspace manager when language server initializes
-// Uses Langium's LanguageServer.onInitialize hook (not raw connection handler)
-// This integrates properly with Langium's initialization flow
-shared.lsp.LanguageServer.onInitialize((params) => {
     // Use workspaceFolders (preferred) over deprecated rootUri
     const folders = params.workspaceFolders;
     const workspaceRoot = folders?.[0]?.uri
@@ -41,11 +33,15 @@ shared.lsp.LanguageServer.onInitialize((params) => {
         const workspaceManager = DomainLang.imports.ManifestManager;
         workspaceManager.initialize(workspaceRoot).catch(error => {
             const message = error instanceof Error ? error.message : String(error);
-            console.warn(`Failed to initialize workspace: ${message}`);
+            connection.console.warn(`Failed to initialize workspace: ${message}`);
             // Continue without workspace - local imports will still work
         });
-        console.warn(`DomainLang workspace root: ${workspaceRoot}`);
+        connection.console.warn(`DomainLang workspace root: ${workspaceRoot}`);
     }
+});
+
+connection.onDidChangeConfiguration((params) => {
+    applyLspSettings(params.settings);
 });
 
 registerDomainLangRefresh(shared, DomainLang);
@@ -67,10 +63,10 @@ if (entryFile) {
                 shared.workspace.LangiumDocuments,
                 DomainLang.imports.ImportResolver
             );
-            console.warn(`Successfully loaded import graph from ${entryFile}`);
+            connection.console.warn(`Successfully loaded import graph from ${entryFile}`);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            console.error(`Failed to preload import graph from ${entryFile}: ${message}`);
+            connection.console.error(`Failed to preload import graph from ${entryFile}: ${message}`);
             // Notify LSP client of the error
             connection.console.error(
                 `DomainLang: Could not load entry file ${entryFile}. Error: ${message}`
@@ -78,22 +74,40 @@ if (entryFile) {
         }
     };
 
-    // Initial load from entry file, then start the server
-    await reloadFromEntry();
+    // B-020: Debounced reload to avoid concurrent reloads on rapid changes
+    let reloadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+    function scheduleReload(): void {
+        if (reloadDebounceTimer !== undefined) clearTimeout(reloadDebounceTimer);
+        reloadDebounceTimer = setTimeout(() => {
+            reloadDebounceTimer = undefined;
+            reloadFromEntry().catch(e => {
+                const message = e instanceof Error ? e.message : String(e);
+                connection.console.error(`DomainLang: Scheduled reload failed: ${message}`);
+            });
+        }, 300);
+    }
+
+    // R-013: Wrap initial load in try/catch for graceful degradation
+    try {
+        await reloadFromEntry();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        connection.console.error(`DomainLang: Initial entry file load failed: ${message}`);
+    }
     startLanguageServer(shared);
 
     // Any change within the loaded graph should trigger a reload from the entry
-    shared.workspace.TextDocuments.onDidChangeContent(async (event) => {
+    shared.workspace.TextDocuments.onDidChangeContent((event) => {
         const changed = event.document.uri;
         if (currentGraph.has(changed)) {
-            await reloadFromEntry();
+            scheduleReload();
         }
     });
 
     // If the entry file itself is opened/changed, also reload
-    shared.workspace.TextDocuments.onDidOpen(async (event) => {
+    shared.workspace.TextDocuments.onDidOpen((event) => {
         if (URI.parse(event.document.uri).fsPath === URI.file(entryFile).fsPath) {
-            await reloadFromEntry();
+            scheduleReload();
         }
     });
 } else {

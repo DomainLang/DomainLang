@@ -49,7 +49,7 @@ export class ImportValidator {
         imp: ImportStatement,
         accept: ValidationAcceptor,
         document: LangiumDocument,
-        _cancelToken: Cancellation.CancellationToken
+        cancelToken: Cancellation.CancellationToken
     ): Promise<void> {
         if (!imp.uri) {
             accept('error', ValidationMessages.IMPORT_MISSING_URI(), {
@@ -64,6 +64,8 @@ export class ImportValidator {
         // PRS-017 R3: Check for import cycles detected during indexing
         this.checkImportCycle(document, imp, accept);
 
+        if (cancelToken.isCancellationRequested) return;
+
         // First, verify the import resolves to a valid file
         // This catches renamed/moved/deleted files immediately
         const resolveError = await this.validateImportResolves(imp, document, accept);
@@ -74,6 +76,8 @@ export class ImportValidator {
         if (!this.isExternalImport(imp.uri)) {
             return;
         }
+
+        if (cancelToken.isCancellationRequested) return;
 
         // Initialize workspace manager from document location
         const docDir = path.dirname(document.uri.fsPath);
@@ -108,6 +112,8 @@ export class ImportValidator {
 
         // External source dependencies require lock file and cached packages
         if (dependency.source) {
+            if (cancelToken.isCancellationRequested) return;
+
             const lockFile = await this.workspaceManager.getLockFile();
             if (!lockFile) {
                 accept('error', ValidationMessages.IMPORT_NOT_INSTALLED(key), {
