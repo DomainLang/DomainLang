@@ -111,8 +111,11 @@ export async function getEntryPath(manifestPath: string): Promise<string> {
 }
 
 /**
- * Discovers all manifest files within given directories.
- * Only checks direct children, not recursive subdirectories.
+ * Discovers all manifest files within given directories by walking up the
+ * directory tree from each directory to the filesystem root.
+ * 
+ * Uses {@link findNearestManifest} for each directory, which walks up ancestor
+ * directories until a manifest is found or the filesystem root is reached.
  * 
  * @param directories - Array of absolute directory paths to search
  * @returns Array of manifest info objects
