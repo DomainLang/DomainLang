@@ -273,14 +273,22 @@ class QueryImpl implements Query {
         return new QueryBuilderImpl(nsIterator(), this.fqnProvider);
     }
 
+    /**
+     * Looks up an AST node by its fully-qualified name.
+     *
+     * **Caller responsibility:** The map stores heterogeneous `AstNode` values indexed by FQN.
+     * The generic `T` parameter is a convenience cast — the caller MUST verify the actual type
+     * using a type guard (e.g. `isDomain`, `isBoundedContext`) before using the result as `T`.
+     * Passing an incorrect `T` will produce a mistyped value without a runtime error.
+     */
     byFqn<T extends AstNode = AstNode>(fqn: string): T | undefined {
         return this.getIndexes().byFqn.get(fqn) as T | undefined;
     }
 
     domain(name: string): Domain | undefined {
-        // Try FQN lookup first
-        const byFqn = this.byFqn<Domain>(name);
-        if (byFqn) {
+        // Try FQN lookup first, guarded to ensure it is actually a Domain node
+        const byFqn = this.byFqn(name);
+        if (byFqn && isDomain(byFqn)) {
             return byFqn;
         }
 
@@ -290,9 +298,9 @@ class QueryImpl implements Query {
     }
 
     boundedContext(name: string): BoundedContext | undefined {
-        // Try FQN lookup first
-        const byFqn = this.byFqn<BoundedContext>(name);
-        if (byFqn) {
+        // Try FQN lookup first, guarded to ensure it is actually a BoundedContext node
+        const byFqn = this.byFqn(name);
+        if (byFqn && isBoundedContext(byFqn)) {
             return byFqn;
         }
 
