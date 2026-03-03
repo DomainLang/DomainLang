@@ -18,7 +18,8 @@ export type ImportResolutionReason =
     | 'not-installed'
     | 'dependency-not-found'
     | 'missing-entry'
-    | 'unresolvable';
+    | 'unresolvable'
+    | 'escapes-workspace';
 
 /**
  * Structured error for import resolution failures.
@@ -340,6 +341,31 @@ export class ImportResolver {
      *   2. Try ./path.dlang (file fallback)
      */
     private async resolveLocalPath(resolved: string, original: string): Promise<URI> {
+        // Workspace boundary check: prevent path traversal outside workspace root.
+        // Only enforced when a model.yaml manifest is present (workspace mode).
+        // In standalone mode (no manifest), the workspace root defaults to the
+        // importing directory and legitimate `../` imports would otherwise be blocked.
+        try {
+            const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
+            const manifestPath = await this.workspaceManager.getManifestPath();
+            if (manifestPath) {
+                const normalizedResolved = path.resolve(resolved);
+                const normalizedRoot = path.resolve(workspaceRoot);
+                if (!normalizedResolved.startsWith(normalizedRoot + path.sep) && normalizedResolved !== normalizedRoot) {
+                    throw new ImportResolutionError({
+                        specifier: original,
+                        attemptedPaths: [resolved],
+                        reason: 'escapes-workspace',
+                        hint: 'Import paths must stay within the workspace root.',
+                        message: `Import '${original}' resolves outside the workspace root.`
+                    });
+                }
+            }
+        } catch (e) {
+            // Re-throw ImportResolutionError; ignore if workspace root is not yet initialized
+            if (e instanceof ImportResolutionError) throw e;
+        }
+
         const ext = path.extname(resolved);
 
         if (ext === '.dlang') {

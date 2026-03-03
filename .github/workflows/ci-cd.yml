@@ -177,7 +177,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           npm run --workspace packages/language test -- --coverage
-          npm run --workspace packages/cli test -- --coverage
+          INTEGRATION_TESTS=true npm run --workspace packages/cli test -- --coverage
       
       - name: Verify coverage files exist
         if: always()
