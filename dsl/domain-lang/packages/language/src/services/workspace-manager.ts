@@ -102,6 +102,14 @@ export class ManifestManager {
     /**
      * The currently active workspace root (set by last initialize() call).
      * Used by methods like getWorkspaceRoot(), getManifest(), etc.
+     * 
+     * SAFETY: This is shared mutable state that can be clobbered when concurrent
+     * initialize() calls interleave. Each call sets activeRoot immediately after
+     * the async findWorkspaceRoot() resolves, so two overlapping calls for different
+     * paths can leave activeRoot pointing at whichever resolved last. In practice
+     * this is benign because: (a) each workspace context is independently cached in
+     * workspaceContexts, and (b) the LSP serialises most document operations.
+     * A full mutex would eliminate the race but adds significant complexity.
      */
     private activeRoot: string | undefined;
 

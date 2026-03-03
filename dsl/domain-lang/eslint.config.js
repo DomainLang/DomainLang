@@ -41,6 +41,8 @@ export default [
                 }
             ],
             '@typescript-eslint/no-non-null-assertion': 'error',
+            // Disabled: requires type-aware linting (parserOptions.project), which
+            // significantly increases lint time. Enable if type-aware linting is configured.
             '@typescript-eslint/no-floating-promises': 'off'
         }
     },

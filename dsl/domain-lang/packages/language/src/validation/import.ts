@@ -56,7 +56,7 @@ export class ImportValidator {
                 node: imp,
                 keyword: 'import',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportMissingUri }
+                code: IssueCodes.ImportMissingUri
             });
             return;
         }
@@ -89,7 +89,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportRequiresManifest, specifier: imp.uri }
+                code: IssueCodes.ImportRequiresManifest,
+                data: { specifier: imp.uri }
             });
             return;
         }
@@ -102,7 +103,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportNotInManifest, alias: imp.uri }
+                code: IssueCodes.ImportNotInManifest,
+                data: { alias: imp.uri }
             });
             return;
         }
@@ -120,7 +122,8 @@ export class ImportValidator {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportNotInstalled, alias: key }
+                    code: IssueCodes.ImportNotInstalled,
+                    data: { alias: key }
                 });
                 return;
             }
@@ -174,7 +177,8 @@ export class ImportValidator {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportUnresolved, uri: imp.uri }
+                    code: IssueCodes.ImportUnresolved,
+                    data: { uri: imp.uri }
                 });
                 return true;
             }
@@ -190,8 +194,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
+                code: IssueCodes.ImportUnresolved,
                 data: {
-                    code: IssueCodes.ImportUnresolved,
                     uri: imp.uri,
                     ...(error instanceof ImportResolutionError && { reason: error.reason }),
                 }
@@ -280,7 +284,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportConflictingSourcePath, alias }
+                code: IssueCodes.ImportConflictingSourcePath,
+                data: { alias }
             });
             return;
         }
@@ -290,7 +295,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportMissingSourceOrPath, alias }
+                code: IssueCodes.ImportMissingSourceOrPath,
+                data: { alias }
             });
             return;
         }
@@ -300,7 +306,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportMissingRef, alias }
+                code: IssueCodes.ImportMissingRef,
+                data: { alias }
             });
         }
 
@@ -323,7 +330,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportAbsolutePath, alias, path: dependencyPath }
+                code: IssueCodes.ImportAbsolutePath,
+                data: { alias, path: dependencyPath }
             });
             return;
         }
@@ -338,7 +346,8 @@ export class ImportValidator {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportEscapesWorkspace, alias }
+                    code: IssueCodes.ImportEscapesWorkspace,
+                    data: { alias }
                 });
             }
         } catch {
@@ -366,7 +375,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportNotInstalled, alias }
+                code: IssueCodes.ImportNotInstalled,
+                data: { alias }
             });
             return;
         }
@@ -381,7 +391,8 @@ export class ImportValidator {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportNotInstalled, alias }
+                    code: IssueCodes.ImportNotInstalled,
+                    data: { alias }
                 });
             }
         } catch {
@@ -446,7 +457,7 @@ export class ImportValidator {
             node: imp,
             property: 'uri',
             codeDescription: buildCodeDescription('language.md', 'imports'),
-            data: { code: IssueCodes.ImportCycleDetected }
+            code: IssueCodes.ImportCycleDetected
         });
     }
 }

@@ -19,6 +19,7 @@ import { PackageDownloader } from './package-downloader.js';
 import { PackageCache } from './package-cache.js';
 import { CredentialProvider } from './credential-provider.js';
 import { defaultFileSystem, type FileSystemService } from './filesystem.js';
+import { detectRefType } from './semver.js';
 
 /**
  * Installation options.
@@ -366,7 +367,7 @@ export class InstallService {
         onProgress?.({ type: 'package-start', pkg: source, status: 'resolving' });
 
         const downloadResult = await this.downloader.download(owner, repo, ref);
-        const refType = this.detectRefType(ref);
+        const refType = detectRefType(ref);
 
         onProgress?.({ type: 'package-complete', pkg: source, cached: false });
         return {
@@ -504,24 +505,6 @@ export class InstallService {
         }
 
         return { added, removed, changed };
-    }
-
-    /**
-     * Detect ref type from ref string.
-     */
-    private detectRefType(ref: string): 'tag' | 'branch' | 'commit' {
-        // If ref is a commit SHA (40 hex chars), it's a commit
-        if (/^[0-9a-f]{40}$/i.test(ref)) {
-            return 'commit';
-        }
-
-        // If ref matches SemVer pattern, it's likely a tag
-        if (/^v?\d+\.\d+\.\d+/.test(ref)) {
-            return 'tag';
-        }
-
-        // Otherwise, assume it's a branch
-        return 'branch';
     }
 
     /**
