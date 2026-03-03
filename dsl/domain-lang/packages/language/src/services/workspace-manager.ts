@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import YAML from 'yaml';
 import { getGlobalOptimizer } from './performance-optimizer.js';
@@ -13,6 +14,13 @@ import type {
     PathAliases,
     WorkspaceManagerOptions 
 } from './types.js';
+
+function isRelativeSafePath(entry: string): boolean {
+    if (entry.startsWith('/')) return false;
+    if (/^[a-zA-Z]:[/\\]/.test(entry)) return false;
+    if (entry.includes('../') || entry.includes('..\\')) return false;
+    return true;
+}
 
 const DEFAULT_MANIFEST_FILES = [
     'model.yaml'
@@ -453,7 +461,12 @@ export class ManifestManager {
         try {
             const content = await fs.readFile(manifestPath, 'utf-8');
             const manifest = YAML.parse(content) as { model?: { entry?: string } };
-            return manifest?.model?.entry ?? 'index.dlang';
+            const entry = manifest?.model?.entry ?? 'index.dlang';
+            if (!isRelativeSafePath(entry)) {
+                console.warn(`Unsafe entry path '${entry}' in package manifest, falling back to index.dlang`);
+                return 'index.dlang';
+            }
+            return entry;
         } catch {
             return 'index.dlang';
         }
@@ -685,8 +698,16 @@ export class ManifestManager {
         const resolvedPath = path.resolve(manifestDir, localPath);
         const workspaceRoot = this.activeRoot || manifestDir;
 
+        // Follow symlinks before comparing to workspace boundary (R-030)
+        let realResolvedPath: string;
+        try {
+            realResolvedPath = realpathSync(resolvedPath);
+        } catch {
+            realResolvedPath = resolvedPath;
+        }
+
         // Check if resolved path is within workspace
-        const relativePath = path.relative(workspaceRoot, resolvedPath);
+        const relativePath = path.relative(workspaceRoot, realResolvedPath);
         if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
             throw new Error(
                 `Invalid local path '${alias}' in ${manifestPath}:\n` +
