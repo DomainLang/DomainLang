@@ -9,7 +9,7 @@
  * - Import-aware: Provides completions for local paths, aliases, and dependencies
  */
 
-import type { AstNode, AstNodeDescription, LangiumDocument, ReferenceInfo } from 'langium';
+import type { AstNode, AstNodeDescription, LangiumDocument, Reference, ReferenceInfo } from 'langium';
 import { AstUtils, GrammarAST } from 'langium';
 import { CompletionAcceptor, CompletionContext, DefaultCompletionProvider, NextFeature } from 'langium/lsp';
 import { CompletionItemKind, CompletionList, InsertTextFormat, TextEdit } from 'vscode-languageserver';
@@ -18,6 +18,9 @@ import * as ast from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { ManifestManager } from '../services/workspace-manager.js';
 import type { ModelManifest, DependencySpec } from '../services/types.js';
+
+/** Simple item-only acceptor used by internal helpers that don't require a CompletionContext. */
+type ItemAcceptor = (item: CompletionItem) => void;
 
 /**
  * Top-level snippet templates for creating new AST nodes.
@@ -378,25 +381,18 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         }
 
         const items: CompletionItem[] = [];
-        const collector = (_ctx: unknown, item: CompletionItem): void => { items.push(item); };
-
-        // Re-use the acceptor-based helpers by wrapping the collector
-        // We pass `undefined as unknown` for context since the collector ignores it
-        const ctx = undefined as unknown as CompletionContext;
-        const accept = ((_context: CompletionContext, item: CompletionItem): void => {
-            collector(undefined, item);
-        }) as CompletionAcceptor;
+        const ia: ItemAcceptor = (item) => items.push(item);
 
         if (currentInput === '' || !currentInput) {
-            this.addAllStarterOptions(ctx, accept, manifest);
+            this.addAllStarterOptions(ia, manifest);
         } else if (currentInput.startsWith('@')) {
-            this.addAliasCompletions(ctx, accept, currentInput, manifest);
+            this.addAliasCompletions(ia, currentInput, manifest);
         } else if (currentInput.startsWith('./') || currentInput.startsWith('../')) {
-            this.addLocalPathStarters(ctx, accept);
+            this.addLocalPathStarters(ia);
         } else if (currentInput.includes('/') && !currentInput.startsWith('.')) {
-            this.addDependencyCompletions(ctx, accept, currentInput, manifest);
+            this.addDependencyCompletions(ia, currentInput, manifest);
         } else {
-            this.addFilteredOptions(ctx, accept, currentInput, manifest);
+            this.addFilteredOptions(ia, currentInput, manifest);
         }
 
         return items;
@@ -458,9 +454,9 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
             } as AstNode;
             AstUtils.assignMandatoryProperties(this.astReflection, node);
         }
-        const reference = { $refText: '' } as unknown;
+        const reference: Reference<AstNode> = { $refText: '', ref: undefined };
         const refInfo: ReferenceInfo = {
-            reference: reference as ReferenceInfo['reference'],
+            reference,
             container: node,
             property: assignment.feature,
         };
@@ -664,22 +660,24 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         } catch {
             // Continue with undefined manifest – will show basic starters
         }
-        
+
+        const ia: ItemAcceptor = (item) => acceptor(context, item);
+
         if (currentInput.startsWith('@')) {
             // Alias completions
-            this.addAliasCompletions(context, acceptor, currentInput, manifest);
+            this.addAliasCompletions(ia, currentInput, manifest);
         } else if (currentInput.startsWith('./') || currentInput.startsWith('../')) {
             // Local path completions
-            this.addLocalPathStarters(context, acceptor);
+            this.addLocalPathStarters(ia);
         } else if (currentInput === '' || !currentInput) {
             // Show all starter options
-            this.addAllStarterOptions(context, acceptor, manifest);
+            this.addAllStarterOptions(ia, manifest);
         } else if (currentInput.includes('/') && !currentInput.startsWith('.')) {
             // External dependency - filter by partial input
-            this.addDependencyCompletions(context, acceptor, currentInput, manifest);
+            this.addDependencyCompletions(ia, currentInput, manifest);
         } else {
             // Show all options for partial input (e.g., typing 'l' should show matching items)
-            this.addFilteredOptions(context, acceptor, currentInput, manifest);
+            this.addFilteredOptions(ia, currentInput, manifest);
         }
     }
 
@@ -703,10 +701,10 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
     /**
      * Add local path starters.
      */
-    private addLocalPathStarters(context: CompletionContext, acceptor: CompletionAcceptor): void {
+    private addLocalPathStarters(acceptor: ItemAcceptor): void {
         // Would need async fs access to list directories
         // For now, just acknowledge the path exists
-        acceptor(context, {
+        acceptor({
             label: '(type path)',
             kind: CompletionItemKind.Text,
             insertText: '',
@@ -719,19 +717,18 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
      * Add all starter options when input is empty.
      */
     private addAllStarterOptions(
-        context: CompletionContext,
-        acceptor: CompletionAcceptor,
+        acceptor: ItemAcceptor,
         manifest?: ModelManifest
     ): void {
         // Local starters
-        acceptor(context, {
+        acceptor({
             label: './',
             kind: CompletionItemKind.Folder,
             insertText: './',
             documentation: 'Import from current directory',
             sortText: '0_local_current'
         });
-        acceptor(context, {
+        acceptor({
             label: '../',
             kind: CompletionItemKind.Folder,
             insertText: '../',
@@ -742,7 +739,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         // Add aliases if available
         if (manifest?.paths) {
             for (const alias of Object.keys(manifest.paths)) {
-                acceptor(context, {
+                acceptor({
                     label: alias,
                     kind: CompletionItemKind.Module,
                     detail: `→ ${manifest.paths[alias]}`,
@@ -760,7 +757,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
                 const depName = typeof dep === 'string' ? depKey : (dep.source ?? depKey);
                 const version = typeof dep === 'string' ? dep : (dep.ref ?? 'latest');
                 
-                acceptor(context, {
+                acceptor({
                     label: depName,
                     kind: CompletionItemKind.Module,
                     detail: `📦 ${version}`,
@@ -776,8 +773,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
      * Add alias completions that match the current input.
      */
     private addAliasCompletions(
-        context: CompletionContext,
-        acceptor: CompletionAcceptor,
+        acceptor: ItemAcceptor,
         currentInput: string,
         manifest?: ModelManifest
     ): void {
@@ -789,7 +785,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
 
         for (const [alias, targetPath] of Object.entries(manifest.paths)) {
             if (alias.toLowerCase().startsWith(inputLower)) {
-                acceptor(context, {
+                acceptor({
                     label: alias,
                     kind: CompletionItemKind.Module,
                     detail: `→ ${targetPath}`,
@@ -805,8 +801,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
      * Add dependency completions that match the current input.
      */
     private addDependencyCompletions(
-        context: CompletionContext,
-        acceptor: CompletionAcceptor,
+        acceptor: ItemAcceptor,
         currentInput: string,
         manifest?: ModelManifest
     ): void {
@@ -822,7 +817,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
             const version = typeof dep === 'string' ? dep : (dep.ref ?? 'latest');
             
             if (depName.toLowerCase().startsWith(inputLower)) {
-                acceptor(context, {
+                acceptor({
                     label: depName,
                     kind: CompletionItemKind.Module,
                     detail: `📦 ${version}`,
@@ -839,21 +834,20 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
      * Shows aliases and dependencies that match the user's partial input.
      */
     private addFilteredOptions(
-        context: CompletionContext,
-        acceptor: CompletionAcceptor,
+        acceptor: ItemAcceptor,
         currentInput: string,
         manifest?: ModelManifest
     ): void {
         // Offer local path starters when the partial input could match ./ or ../
         if ('./'.startsWith(currentInput) || '../'.startsWith(currentInput)) {
-            acceptor(context, {
+            acceptor({
                 label: './',
                 kind: CompletionItemKind.Folder,
                 insertText: './',
                 documentation: 'Import from current directory',
                 sortText: '0_local_current'
             });
-            acceptor(context, {
+            acceptor({
                 label: '../',
                 kind: CompletionItemKind.Folder,
                 insertText: '../',
@@ -863,8 +857,8 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         }
 
         // Delegate to existing helpers for alias and dependency filtering
-        this.addAliasCompletions(context, acceptor, currentInput, manifest);
-        this.addDependencyCompletions(context, acceptor, currentInput, manifest);
+        this.addAliasCompletions(acceptor, currentInput, manifest);
+        this.addDependencyCompletions(acceptor, currentInput, manifest);
     }
 
     private async handleNodeCompletions(

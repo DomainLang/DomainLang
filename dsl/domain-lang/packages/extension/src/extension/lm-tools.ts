@@ -9,12 +9,15 @@ import * as vscode from 'vscode';
 import type { LanguageClient } from 'vscode-languageclient/node.js';
 
 /**
- * LanguageClient.State.Running value.
- * The State enum is not exported from the public vscode-languageclient API,
- * so we define the constant here for readability.
+ * LanguageClient state values mirroring the State enum from vscode-languageclient.
+ * The State enum is not exported in the public vscode-languageclient API,
+ * so we define named constants here for readability and type safety.
+ * Values: Stopped=1, Running=2, Starting=3
  * @see https://github.com/microsoft/vscode-languageserver-node/blob/main/client/src/common/client.ts
  */
-const CLIENT_STATE_RUNNING = 2;
+const ClientState = {
+    Running: 2,
+} as const;
 
 /**
  * Registers all DomainLang Language Model Tools.
@@ -30,12 +33,21 @@ export function registerLanguageModelTools(
     // Register domainlang_validate tool
     const validateTool = vscode.lm.registerTool('domainlang_validate', {
         invoke: async (options, _token: vscode.CancellationToken) => {
-            return invokeValidate(client, options.input as { file?: string }, _token);
+            const raw = options.input;
+            if (typeof raw !== 'object' || raw === null) {
+                throw new Error('Invalid tool input: expected an object');
+            }
+            const input = raw as { file?: unknown };
+            if (input.file !== undefined && typeof input.file !== 'string') {
+                throw new Error('Invalid tool input: file must be a string');
+            }
+            return invokeValidate(client, { file: input.file }, _token);
         },
         prepareInvocation: async (options, _token: vscode.CancellationToken) => {
-            const input = options.input as { file?: string };
-            const message = input.file 
-                ? `Validating ${input.file}...`
+            const raw = options.input;
+            const file = typeof raw === 'object' && raw !== null ? (raw as { file?: unknown }).file : undefined;
+            const message = typeof file === 'string'
+                ? `Validating ${file}...`
                 : 'Validating DomainLang workspace...';
             return {
                 invocationMessage: message
@@ -46,12 +58,17 @@ export function registerLanguageModelTools(
     // Register domainlang_list tool
     const listTool = vscode.lm.registerTool('domainlang_list', {
         invoke: async (options, _token: vscode.CancellationToken) => {
-            return invokeList(client, options.input as { type: string; filters?: unknown }, _token);
+            const raw = options.input;
+            if (typeof raw !== 'object' || raw === null || typeof (raw as { type?: unknown }).type !== 'string') {
+                throw new Error('Invalid tool input: expected an object with a string type field');
+            }
+            return invokeList(client, raw as { type: string; filters?: unknown }, _token);
         },
         prepareInvocation: async (options, _token: vscode.CancellationToken) => {
-            const input = options.input as { type: string };
+            const raw = options.input;
+            const type = typeof raw === 'object' && raw !== null ? (raw as { type?: unknown }).type : undefined;
             return {
-                invocationMessage: `Querying ${input.type}...`
+                invocationMessage: `Querying ${typeof type === 'string' ? type : 'entities'}...`
             };
         }
     });
@@ -59,13 +76,22 @@ export function registerLanguageModelTools(
     // Register domainlang_get tool
     const getTool = vscode.lm.registerTool('domainlang_get', {
         invoke: async (options, _token: vscode.CancellationToken) => {
-            return invokeGet(client, options.input as { fqn?: string; summary?: boolean }, _token);
+            const raw = options.input;
+            if (typeof raw !== 'object' || raw === null) {
+                throw new Error('Invalid tool input: expected an object');
+            }
+            const input = raw as { fqn?: unknown; summary?: unknown };
+            if (input.fqn !== undefined && typeof input.fqn !== 'string') {
+                throw new Error('Invalid tool input: fqn must be a string');
+            }
+            return invokeGet(client, { fqn: input.fqn, summary: input.summary === true }, _token);
         },
         prepareInvocation: async (options, _token: vscode.CancellationToken) => {
-            const input = options.input as { fqn?: string; summary?: boolean };
-            const message = input.summary 
+            const raw = options.input;
+            const obj = typeof raw === 'object' && raw !== null ? (raw as { fqn?: unknown; summary?: unknown }) : {};
+            const message = obj.summary === true
                 ? 'Getting model summary...'
-                : `Retrieving ${input.fqn}...`;
+                : `Retrieving ${typeof obj.fqn === 'string' ? obj.fqn : 'entity'}...`;
             return {
                 invocationMessage: message
             };
@@ -75,12 +101,17 @@ export function registerLanguageModelTools(
     // Register domainlang_explain tool
     const explainTool = vscode.lm.registerTool('domainlang_explain', {
         invoke: async (options, _token: vscode.CancellationToken) => {
-            return invokeExplain(client, options.input as { fqn: string }, _token);
+            const raw = options.input;
+            if (typeof raw !== 'object' || raw === null || typeof (raw as { fqn?: unknown }).fqn !== 'string') {
+                throw new Error('Invalid tool input: expected an object with a string fqn field');
+            }
+            return invokeExplain(client, { fqn: (raw as { fqn: string }).fqn }, _token);
         },
         prepareInvocation: async (options, _token: vscode.CancellationToken) => {
-            const input = options.input as { fqn: string };
+            const raw = options.input;
+            const fqn = typeof raw === 'object' && raw !== null ? (raw as { fqn?: unknown }).fqn : undefined;
             return {
-                invocationMessage: `Explaining ${input.fqn}...`
+                invocationMessage: `Explaining ${typeof fqn === 'string' ? fqn : 'entity'}...`
             };
         }
     });
@@ -98,7 +129,7 @@ export function registerLanguageModelTools(
  * Returns an error result if not ready, or undefined if ready.
  */
 function checkClientReady(client: LanguageClient): vscode.LanguageModelToolResult | undefined {
-    if (client.state !== CLIENT_STATE_RUNNING) {
+    if (client.state !== ClientState.Running) {
         return new vscode.LanguageModelToolResult([
             new vscode.LanguageModelTextPart('Error: Language server is not running. Please wait for it to start or reload the window.')
         ]);
