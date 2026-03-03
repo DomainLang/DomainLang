@@ -18,6 +18,9 @@ import * as ast from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { ManifestManager } from '../services/workspace-manager.js';
 import type { ModelManifest, DependencySpec } from '../services/types.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('CompletionProvider');
 
 /** Simple item-only acceptor used by internal helpers that don't require a CompletionContext. */
 type ItemAcceptor = (item: CompletionItem) => void;
@@ -406,7 +409,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         try {
             await this.safeCompletionFor(context, next, acceptor);
         } catch (error) {
-            console.error('Error in completionFor:', error);
+            log.error('Error in completionFor', { error: error instanceof Error ? error.message : String(error) });
             // Fall back to default completion on error
             await super.completionFor(context, next, acceptor);
         }
