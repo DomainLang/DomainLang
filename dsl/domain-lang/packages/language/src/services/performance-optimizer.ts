@@ -56,7 +56,8 @@ export class PerformanceOptimizer {
      * Gets a manifest file from cache or loads it from disk.
      */
     async getCachedManifest(manifestPath: string): Promise<unknown> {
-        const cacheKey = this.normalizePath(manifestPath);
+        // Key by workspaceRoot (parent dir) so invalidateCache(workspaceRoot) hits the right entry
+        const cacheKey = this.normalizePath(path.dirname(manifestPath));
         const cached = this.manifestCache.get(cacheKey);
 
         if (cached) {

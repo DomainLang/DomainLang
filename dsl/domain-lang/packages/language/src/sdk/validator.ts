@@ -10,7 +10,7 @@
  */
 
 import { NodeFileSystem } from 'langium/node';
-import { URI } from 'langium';
+import { URI, AstUtils } from 'langium';
 import { createDomainLangServices } from '../domain-lang-module.js';
 import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
 import { isModel } from '../generated/ast.js';
@@ -109,7 +109,7 @@ function countModelElements(
     for (const doc of allDocuments) {
         const model = doc.parseResult?.value;
         if (isModel(model)) {
-            for (const element of model.children ?? []) {
+            for (const element of AstUtils.streamAllContents(model)) {
                 if (element.$type === 'Domain') {
                     domainCount++;
                 } else if (element.$type === 'BoundedContext') {
