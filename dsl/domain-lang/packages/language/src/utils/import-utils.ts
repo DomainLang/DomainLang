@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { URI, type LangiumDocument, type LangiumDocuments } from 'langium';
-import type { Model } from '../generated/ast.js';
+import { isModel, type Model } from '../generated/ast.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 
 /**
@@ -42,7 +42,9 @@ export async function ensureImportGraphFromDocument(
     if (visited.has(uriString)) return;
     visited.add(uriString);
 
-    const model = doc.parseResult.value as unknown as Model;
+    const parseValue = doc.parseResult.value;
+    if (!isModel(parseValue)) return;
+    const model: Model = parseValue;
     for (const imp of model.imports ?? []) {
       if (!imp.uri) continue;
 
@@ -50,8 +52,9 @@ export async function ensureImportGraphFromDocument(
         const resolvedUri = await importResolver.resolveForDocument(doc, imp.uri);
         const childDoc = await langiumDocuments.getOrCreateDocument(resolvedUri);
         await visit(childDoc);
-      } catch {
+      } catch (error) {
         // Import resolution failed — validation will report the error
+        console.error('Import resolution failed for', imp.uri, ':', error);
       }
     }
   }

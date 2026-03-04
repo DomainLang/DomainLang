@@ -15,13 +15,15 @@ import { CodeActionKind } from 'vscode-languageserver';
 import type { MaybePromise, LangiumDocument } from 'langium';
 import type { CodeActionProvider } from 'langium/lsp';
 import { IssueCodes } from '../validation/constants.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('CodeActions');
 
 /**
  * Shape of diagnostic data used for code action matching.
  * Must match the data structure used in validators.
  */
 interface ImportDiagnosticData {
-    code: string;
     alias?: string;
     specifier?: string;
     path?: string;
@@ -58,7 +60,7 @@ export class DomainLangCodeActionProvider implements CodeActionProvider {
 
             return result.length > 0 ? result : undefined;
         } catch (error) {
-            console.error('Error in getCodeActions:', error);
+            log.error('Error in getCodeActions', { error: error instanceof Error ? error.message : String(error) });
             return undefined;
         }
     }
@@ -66,37 +68,38 @@ export class DomainLangCodeActionProvider implements CodeActionProvider {
     /**
      * Creates code actions for a specific diagnostic.
      * 
-     * Matches on diagnostic.data.code to determine which quick fix to offer.
+     * Matches on diagnostic.code to determine which quick fix to offer.
      */
     private createCodeActions(
         diagnostic: Diagnostic, 
         document: LangiumDocument, 
         accept: (ca: CodeAction | undefined) => void
     ): void {
+        const code = typeof diagnostic.code === 'string' ? diagnostic.code : undefined;
+        if (!code) return;
         const data = diagnostic.data as ImportDiagnosticData | undefined;
-        if (!data?.code) return;
 
-        switch (data.code) {
+        switch (code) {
             case IssueCodes.ImportNotInManifest:
-                if (data.alias) {
+                if (data?.alias) {
                     accept(this.createAddToManifestAction(diagnostic, document, data.alias));
                 }
                 break;
 
             case IssueCodes.ImportRequiresManifest:
-                if (data.specifier) {
+                if (data?.specifier) {
                     accept(this.createCreateManifestAction(diagnostic, document, data.specifier));
                 }
                 break;
 
             case IssueCodes.ImportNotInstalled:
-                if (data.alias) {
+                if (data?.alias) {
                     accept(this.createRunInstallAction(diagnostic, data.alias));
                 }
                 break;
 
             case IssueCodes.ImportMissingRef:
-                if (data.alias) {
+                if (data?.alias) {
                     accept(this.createAddRefAction(diagnostic, data.alias));
                 }
                 break;

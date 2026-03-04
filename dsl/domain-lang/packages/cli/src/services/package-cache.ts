@@ -16,7 +16,7 @@
  * All operations use atomic writes (temp → rename) to prevent cache corruption.
  */
 
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { extract } from 'tar';
 import { defaultFileSystem, type FileSystemService } from './filesystem.js';
@@ -65,6 +65,7 @@ export class PackageCache {
      * @returns True if the package exists in the cache
      */
     async has(owner: string, repo: string, commitSha: string): Promise<boolean> {
+        this.validatePackageCoords(owner, repo, commitSha);
         const packagePath = this.getPackagePath(owner, repo, commitSha);
         return this.fs.existsSync(packagePath);
     }
@@ -78,6 +79,7 @@ export class PackageCache {
      * @returns Absolute path to the package, or undefined if not cached
      */
     async get(owner: string, repo: string, commitSha: string): Promise<string | undefined> {
+        this.validatePackageCoords(owner, repo, commitSha);
         const packagePath = this.getPackagePath(owner, repo, commitSha);
         if (this.fs.existsSync(packagePath)) {
             return packagePath;
@@ -94,6 +96,7 @@ export class PackageCache {
      * @returns Package metadata, or undefined if not cached or metadata missing
      */
     async getMetadata(owner: string, repo: string, commitSha: string): Promise<PackageMetadata | undefined> {
+        this.validatePackageCoords(owner, repo, commitSha);
         const packagePath = this.getPackagePath(owner, repo, commitSha);
         const metadataPath = join(packagePath, '.dlang-metadata.json');
         
@@ -120,6 +123,7 @@ export class PackageCache {
      * @param metadata - Metadata to store
      */
     async putMetadata(owner: string, repo: string, commitSha: string, metadata: PackageMetadata): Promise<void> {
+        this.validatePackageCoords(owner, repo, commitSha);
         const packagePath = this.getPackagePath(owner, repo, commitSha);
         const metadataPath = join(packagePath, '.dlang-metadata.json');
         
@@ -140,6 +144,7 @@ export class PackageCache {
      * @throws Error if extraction or filesystem operations fail
      */
     async put(owner: string, repo: string, commitSha: string, tarballPath: string): Promise<string> {
+        this.validatePackageCoords(owner, repo, commitSha);
         const finalPath = this.getPackagePath(owner, repo, commitSha);
         const tempDir = join(this.packagesDir, `.tmp-${randomUUID()}`);
 
@@ -219,6 +224,24 @@ export class PackageCache {
      */
     private getPackagePath(owner: string, repo: string, commitSha: string): string {
         return resolve(this.packagesDir, owner, repo, commitSha);
+    }
+
+    private validatePackageCoords(owner: string, repo: string, commitSha: string): void {
+        const namePattern = /^[a-zA-Z0-9._-]+$/;
+        if (!namePattern.test(owner)) {
+            throw new Error(`Invalid owner: '${owner}' contains disallowed characters`);
+        }
+        if (!namePattern.test(repo)) {
+            throw new Error(`Invalid repo: '${repo}' contains disallowed characters`);
+        }
+        if (!/^[0-9a-f]{7,40}$/i.test(commitSha)) {
+            throw new Error(`Invalid commitSha: '${commitSha}' is not a valid git SHA`);
+        }
+        const packagePath = this.getPackagePath(owner, repo, commitSha);
+        const normalizedPackagesDir = resolve(this.packagesDir);
+        if (!packagePath.startsWith(normalizedPackagesDir + sep)) {
+            throw new Error(`Invalid package coordinates: path escapes cache directory`);
+        }
     }
 
     /**

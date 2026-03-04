@@ -66,7 +66,8 @@ describe('DomainLangCodeActionProvider', () => {
         message: 'Test diagnostic',
         severity: DiagnosticSeverity.Error,
         source: 'domain-lang',
-        data: { code, alias, specifier }
+        code,
+        data: { alias, specifier }
     });
 
     // ==========================================
@@ -208,10 +209,11 @@ describe('DomainLangCodeActionProvider', () => {
             message: 'External issue',
             severity: DiagnosticSeverity.Warning,
             source: 'eslint',
-            data: { code: IssueCodes.ImportNotInManifest, alias: 'something' }
+            code: IssueCodes.ImportNotInManifest,
+            data: { alias: 'something' }
         };
         const actions = await getCodeActions(diagnostic);
-        // Provider processes based on data.code regardless of source
+        // Provider processes based on diagnostic.code regardless of source
         expect(actions).toHaveLength(1);
     });
 });

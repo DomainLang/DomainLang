@@ -1,7 +1,7 @@
 import type { LangiumDocument, LangiumSharedCoreServices, URI } from 'langium';
 import { DefaultIndexManager, DocumentState } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
-import type { Model } from '../generated/ast.js';
+import { isModel } from '../generated/ast.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { ImportInfo } from '../services/types.js';
@@ -161,8 +161,8 @@ export class DomainLangIndexManager extends DefaultIndexManager {
         }
 
         // Ensure imports are loaded and track dependencies
-        await this.ensureImportsLoaded(document);
-        await this.trackImportDependencies(document);
+        await this.ensureImportsLoaded(document, cancelToken);
+        await this.trackImportDependencies(document, cancelToken);
 
         // R3: Detect import cycles after tracking dependencies
         this.detectAndStoreCycles(uri);
@@ -298,7 +298,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      * 1. That the imported URI is depended upon (for direct change detection)
      * 2. The import specifier and alias (for scope resolution)
      */
-    private async trackImportDependencies(document: LangiumDocument): Promise<void> {
+    private async trackImportDependencies(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
         const importingUri = document.uri.toString();
         
         // First, remove old dependencies from this document
@@ -311,7 +311,11 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return;
         }
 
-        const model = document.parseResult.value as unknown as Model;
+        const parseValue = document.parseResult.value;
+        if (!isModel(parseValue)) {
+            return;
+        }
+        const model = parseValue;
         if (!model.imports) {
             return;
         }
@@ -319,6 +323,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
         const importInfoList: ImportInfo[] = [];
         
         for (const imp of model.imports) {
+            if (cancelToken.isCancellationRequested) return;
             if (!imp.uri) continue;
             const info = await this.resolveAndTrackImport(document, imp, importingUri);
             importInfoList.push(info);
@@ -375,7 +380,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
      * 
      * Works for both workspace files and standalone files.
      */
-    private async ensureImportsLoaded(document: LangiumDocument): Promise<void> {
+    private async ensureImportsLoaded(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
         const uriString = document.uri.toString();
         
         // Skip if already processed (avoid redundant work and infinite loops)
@@ -389,7 +394,11 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return;
         }
 
-        const model = document.parseResult.value as unknown as Model;
+        const parseValue = document.parseResult.value;
+        if (!isModel(parseValue)) {
+            return;
+        }
+        const model = parseValue;
         if (!model.imports || model.imports.length === 0) {
             return;
         }
@@ -399,6 +408,7 @@ export class DomainLangIndexManager extends DefaultIndexManager {
         const newDocs: LangiumDocument[] = [];
 
         for (const imp of model.imports) {
+            if (cancelToken.isCancellationRequested) return;
             if (!imp.uri) continue;
 
             try {

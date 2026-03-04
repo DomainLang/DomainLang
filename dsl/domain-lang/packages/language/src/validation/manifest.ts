@@ -383,8 +383,8 @@ export class ManifestValidator {
         if (/^v?\d+\.\d+\.\d+/.test(ref)) {
             return true;
         }
-        // Branch names (simple word chars)
-        if (/^[\w][\w.-]*$/.test(ref)) {
+        // Branch names (word chars, dots, hyphens, and slashes for feature/branch-name)
+        if (/^[\w][\w./-]*$/.test(ref)) {
             return true;
         }
         // Commit SHAs (40 hex chars)

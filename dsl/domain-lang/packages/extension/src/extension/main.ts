@@ -11,6 +11,18 @@ import {
 let client: LanguageClient;
 let outputChannel: vscode.OutputChannel;
 
+/**
+ * LanguageClient state values mirroring the State enum from vscode-languageclient.
+ * The State enum is not exported in the public vscode-languageclient API,
+ * so we define named constants here for readability and type safety.
+ * Values: Stopped=1, Running=2, Starting=3
+ * @see https://github.com/microsoft/vscode-languageserver-node/blob/main/client/src/common/client.ts
+ */
+const ClientState = {
+    Stopped: 1,
+    Running: 2,
+} as const;
+
 interface DomainLangLspSettings {
     traceImports: boolean;
     infoLogs: boolean;
@@ -137,9 +149,9 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
         throw error;
     }
 
-    // Register server crash handler
-    client.onDidChangeState((event) => {
-        if (event.newState === 3) { // State.Stopped
+    // Register server crash handler (R-026: push disposable to subscriptions)
+    const stateChangeDisposable = client.onDidChangeState((event) => {
+        if (event.newState === ClientState.Stopped) {
             outputChannel.appendLine('Language server stopped unexpectedly');
             vscode.window.showWarningMessage(
                 'DomainLang language server stopped. Reload window to restart.',
@@ -151,6 +163,7 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
             });
         }
     });
+    context.subscriptions.push(stateChangeDisposable);
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration('domainlang.lsp')) {
@@ -163,7 +176,10 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
             },
         };
 
-        client.sendNotification('workspace/didChangeConfiguration', { settings });
+        // R-027: guard against sending notifications when the client is not running
+        if (client.state === ClientState.Running) {
+            client.sendNotification('workspace/didChangeConfiguration', { settings });
+        }
     }));
 
     return client;

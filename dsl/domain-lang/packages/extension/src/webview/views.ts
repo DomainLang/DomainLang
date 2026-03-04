@@ -378,11 +378,18 @@ function buildSmoothPath(points: Point[]): string {
 @injectable()
 export class SmoothBezierEdgeView extends PolylineEdgeView {
     /**
-     * Overrides the parent `render()` to inject dynamic obstacle-avoidance
-     * waypoints into `edge.routingPoints` before the edge router runs.
+     * Computed obstacle-avoidance waypoints for the current render pass.
+     * Stored as instance state to pass from render() to renderLine() without
+     * mutating the readonly edge model. Reset on every render() call.
+     */
+    private pendingWaypoints: Point[] = [];
+
+    /**
+     * Overrides the parent `render()` to compute dynamic obstacle-avoidance
+     * waypoints and store them for use in `renderLine()`.
      *
-     * The router (and `EdgeLayoutDecorator`) will then use these waypoints
-     * for both path rendering and label positioning.
+     * Waypoints are stored in `pendingWaypoints` rather than written back to
+     * `edge.routingPoints`, avoiding mutation of readonly model state.
      */
     override render(edge: Readonly<SEdgeImpl>, context: RenderingContext, args?: IViewArgs): VNode | undefined {
         const source = edge.source;
@@ -413,9 +420,9 @@ export class SmoothBezierEdgeView extends PolylineEdgeView {
                 });
             }
 
-            // Inject our waypoints so the router and EdgeLayoutDecorator
-            // position labels along the same path we draw.
-            (edge as SEdgeImpl).routingPoints = interiorWaypoints;
+            this.pendingWaypoints = interiorWaypoints;
+        } else {
+            this.pendingWaypoints = [];
         }
 
         return super.render(edge, context, args);
@@ -424,10 +431,17 @@ export class SmoothBezierEdgeView extends PolylineEdgeView {
     /**
      * Draws a smooth bézier path through the routed points.
      *
-     * The `segments` are now produced by the standard router using our
-     * injected waypoints, so labels and path are automatically aligned.
+     * When obstacle-avoidance waypoints were computed in `render()`, they are
+     * inserted between the first and last segment anchors and used directly,
+     * avoiding any model mutation.
      */
     protected override renderLine(edge: SEdgeImpl, segments: Point[], _context: RenderingContext): VNode {
+        const waypoints = this.pendingWaypoints;
+        if (waypoints.length > 0 && segments.length >= 2) {
+            const first = segments[0];
+            const last = segments[segments.length - 1];
+            return svg('path', { d: buildSmoothPath([first, ...waypoints, last]) });
+        }
         return svg('path', { d: buildSmoothPath(segments) });
     }
 }

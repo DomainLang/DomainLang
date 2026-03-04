@@ -95,6 +95,10 @@ export const DomainLangModule: Module<DomainLangServices, PartialLangiumServices
         DocumentSymbolProvider: (services) => new DomainLangDocumentSymbolProvider(services)
     },
     diagram: {
+        // SAFETY: LangiumDiagramGenerator (from langium-sprotty) expects a services type that
+        // includes Sprotty-specific extensions not present in DomainLangServices at compile time.
+        // The services object is structurally compatible at runtime because SprottyDefaultModule
+        // (injected above) augments the container with the required Sprotty services.
         DiagramGenerator: (services) => new DomainLangContextMapDiagramGenerator(services as never),
         ModelLayoutEngine: () => createElkLayoutEngine(),
     },
@@ -123,11 +127,17 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
         createDefaultSharedModule(context),
         DomainLangGeneratedSharedModule,
         DomainLangSharedModule,
+        // SAFETY: SprottySharedModule's type parameter is not directly compatible with
+        // LangiumSharedServices at the DI container level. The module is structurally
+        // compatible at runtime; this cast bridges the compile-time type gap.
         SprottySharedModule as never
     );
     const DomainLang = inject(
         createDefaultModule({ shared }),
         DomainLangGeneratedModule,
+        // SAFETY: SprottyDefaultModule's type parameter is not directly compatible with
+        // PartialLangiumServices at the DI container level. The module is structurally
+        // compatible at runtime; this cast bridges the compile-time type gap.
         SprottyDefaultModule as never,
         DomainLangModule
     );
@@ -140,10 +150,20 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
     const indexManager = shared.workspace.IndexManager;
     if (indexManager instanceof DomainLangIndexManager) {
         indexManager.setLanguageServices(DomainLang);
+    } else {
+        throw new Error(
+            `Expected DomainLangIndexManager but got ${indexManager?.constructor.name ?? 'undefined'}. ` +
+            `Cannot initialize language services.`
+        );
     }
     const workspaceManager = shared.workspace.WorkspaceManager;
     if (workspaceManager instanceof DomainLangWorkspaceManager) {
         workspaceManager.setLanguageServices(DomainLang);
+    } else {
+        throw new Error(
+            `Expected DomainLangWorkspaceManager but got ${workspaceManager?.constructor.name ?? 'undefined'}. ` +
+            `Cannot initialize language services.`
+        );
     }
     
     if (!context.connection) {

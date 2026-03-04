@@ -70,7 +70,11 @@ export async function findWorkspaceRoot(startPath: string): Promise<string | und
 export async function readManifest(manifestPath: string): Promise<ModelManifest | undefined> {
     try {
         const content = await fs.readFile(manifestPath, 'utf-8');
-        return (YAML.parse(content) ?? {}) as ModelManifest;
+        const parsed = YAML.parse(content) ?? {};
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            throw new Error(`model.yaml must contain a mapping, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`);
+        }
+        return parsed as ModelManifest;
     } catch (error) {
         if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
             return undefined;
@@ -89,7 +93,8 @@ export async function readEntryFromManifest(manifestPath: string): Promise<strin
     try {
         const manifest = await readManifest(manifestPath);
         return manifest?.model?.entry ?? DEFAULT_ENTRY_FILE;
-    } catch {
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
         return DEFAULT_ENTRY_FILE;
     }
 }
@@ -106,8 +111,11 @@ export async function getEntryPath(manifestPath: string): Promise<string> {
 }
 
 /**
- * Discovers all manifest files within given directories.
- * Only checks direct children, not recursive subdirectories.
+ * Discovers all manifest files within given directories by walking up the
+ * directory tree from each directory to the filesystem root.
+ * 
+ * Uses {@link findNearestManifest} for each directory, which walks up ancestor
+ * directories until a manifest is found or the filesystem root is reached.
  * 
  * @param directories - Array of absolute directory paths to search
  * @returns Array of manifest info objects

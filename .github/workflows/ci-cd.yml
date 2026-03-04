@@ -177,7 +177,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           npm run --workspace packages/language test -- --coverage
-          npm run --workspace packages/cli test -- --coverage
+          INTEGRATION_TESTS=true npm run --workspace packages/cli test -- --coverage
       
       - name: Verify coverage files exist
         if: always()
@@ -274,7 +274,7 @@ jobs:
           fi
       
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@master # NOSONAR
+        uses: SonarSource/sonarqube-scan-action@v6.0.0 # NOSONAR
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io

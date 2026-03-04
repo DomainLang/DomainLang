@@ -27,6 +27,9 @@ import {
 import type { QueryEntityType, QueryFilters } from '../sdk/serializers.js';
 import type { Model } from '../generated/ast.js';
 import { generateExplanation } from './explain.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('ToolHandlers');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Request/Response Types
@@ -212,7 +215,7 @@ async function handleValidate(
         diagnostics: { errors, warnings, info },
     };
     } catch (error) {
-        console.error('domainlang/validate handler error:', error);
+        log.error('domainlang/validate handler error', { error: error instanceof Error ? error.message : String(error) });
         return { count: 0, diagnostics: { errors: [], warnings: [], info: [] } };
     }
 }
@@ -254,8 +257,9 @@ async function handleList(
         results: allResults,
     };
     } catch (error) {
-        console.error('domainlang/list handler error:', error);
-        return { entityType: normalizeEntityType(params.type), count: 0, results: [] };
+        log.error('domainlang/list handler error', { error: error instanceof Error ? error.message : String(error) });
+        const safeType: QueryEntityType = (() => { try { return normalizeEntityType(params.type); } catch { return 'bcs'; } })();
+        return { entityType: safeType, count: 0, results: [] };
     }
 }
 
@@ -290,7 +294,7 @@ async function handleGet(
 
     return { result: null };
     } catch (error) {
-        console.error('domainlang/get handler error:', error);
+        log.error('domainlang/get handler error', { error: error instanceof Error ? error.message : String(error) });
         return { result: null };
     }
 }
@@ -320,7 +324,7 @@ async function handleExplain(
             explanation: `Element not found: ${params.fqn}`,
         };
     } catch (error) {
-        console.error('domainlang/explain handler error:', error);
+        log.error('domainlang/explain handler error', { error: error instanceof Error ? error.message : String(error) });
         return { explanation: `Error explaining element: ${params.fqn}` };
     }
 }
@@ -365,7 +369,9 @@ function listBoundedContexts(query: Query, filters: QueryFilters): Record<string
         builder = builder.withClassification(filters.classification);
     }
     if (filters.metadata) {
-        const [key, value] = filters.metadata.split('=');
+        const eqIdx = filters.metadata.indexOf('=');
+        const key = eqIdx >= 0 ? filters.metadata.slice(0, eqIdx) : filters.metadata;
+        const value = eqIdx >= 0 ? filters.metadata.slice(eqIdx + 1) : '';
         builder = builder.withMetadata(key, value);
     }
     if (filters.name) builder = builder.withName(filters.name) as ReturnType<Query['boundedContexts']>;

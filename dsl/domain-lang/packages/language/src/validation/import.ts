@@ -49,20 +49,22 @@ export class ImportValidator {
         imp: ImportStatement,
         accept: ValidationAcceptor,
         document: LangiumDocument,
-        _cancelToken: Cancellation.CancellationToken
+        cancelToken: Cancellation.CancellationToken
     ): Promise<void> {
         if (!imp.uri) {
             accept('error', ValidationMessages.IMPORT_MISSING_URI(), {
                 node: imp,
                 keyword: 'import',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportMissingUri }
+                code: IssueCodes.ImportMissingUri
             });
             return;
         }
 
         // PRS-017 R3: Check for import cycles detected during indexing
         this.checkImportCycle(document, imp, accept);
+
+        if (cancelToken.isCancellationRequested) return;
 
         // First, verify the import resolves to a valid file
         // This catches renamed/moved/deleted files immediately
@@ -75,6 +77,8 @@ export class ImportValidator {
             return;
         }
 
+        if (cancelToken.isCancellationRequested) return;
+
         // Initialize workspace manager from document location
         const docDir = path.dirname(document.uri.fsPath);
         await this.workspaceManager.initialize(docDir);
@@ -85,7 +89,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportRequiresManifest, specifier: imp.uri }
+                code: IssueCodes.ImportRequiresManifest,
+                data: { specifier: imp.uri }
             });
             return;
         }
@@ -98,7 +103,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportNotInManifest, alias: imp.uri }
+                code: IssueCodes.ImportNotInManifest,
+                data: { alias: imp.uri }
             });
             return;
         }
@@ -108,13 +114,16 @@ export class ImportValidator {
 
         // External source dependencies require lock file and cached packages
         if (dependency.source) {
+            if (cancelToken.isCancellationRequested) return;
+
             const lockFile = await this.workspaceManager.getLockFile();
             if (!lockFile) {
                 accept('error', ValidationMessages.IMPORT_NOT_INSTALLED(key), {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportNotInstalled, alias: key }
+                    code: IssueCodes.ImportNotInstalled,
+                    data: { alias: key }
                 });
                 return;
             }
@@ -168,7 +177,8 @@ export class ImportValidator {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportUnresolved, uri: imp.uri }
+                    code: IssueCodes.ImportUnresolved,
+                    data: { uri: imp.uri }
                 });
                 return true;
             }
@@ -184,8 +194,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
+                code: IssueCodes.ImportUnresolved,
                 data: {
-                    code: IssueCodes.ImportUnresolved,
                     uri: imp.uri,
                     ...(error instanceof ImportResolutionError && { reason: error.reason }),
                 }
@@ -274,7 +284,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportConflictingSourcePath, alias }
+                code: IssueCodes.ImportConflictingSourcePath,
+                data: { alias }
             });
             return;
         }
@@ -284,7 +295,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportMissingSourceOrPath, alias }
+                code: IssueCodes.ImportMissingSourceOrPath,
+                data: { alias }
             });
             return;
         }
@@ -294,7 +306,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportMissingRef, alias }
+                code: IssueCodes.ImportMissingRef,
+                data: { alias }
             });
         }
 
@@ -317,7 +330,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportAbsolutePath, alias, path: dependencyPath }
+                code: IssueCodes.ImportAbsolutePath,
+                data: { alias, path: dependencyPath }
             });
             return;
         }
@@ -332,13 +346,13 @@ export class ImportValidator {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportEscapesWorkspace, alias }
+                    code: IssueCodes.ImportEscapesWorkspace,
+                    data: { alias }
                 });
             }
-        } catch (error) {
+        } catch {
             // ManifestManager not initialized - skip workspace boundary check
             // This can happen for standalone files without model.yaml
-            console.warn(`Could not validate workspace boundary for path dependency: ${error}`);
         }
     }
 
@@ -361,7 +375,8 @@ export class ImportValidator {
                 node: imp,
                 property: 'uri',
                 codeDescription: buildCodeDescription('language.md', 'imports'),
-                data: { code: IssueCodes.ImportNotInstalled, alias }
+                code: IssueCodes.ImportNotInstalled,
+                data: { alias }
             });
             return;
         }
@@ -376,12 +391,13 @@ export class ImportValidator {
                     node: imp,
                     property: 'uri',
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportNotInstalled, alias }
+                    code: IssueCodes.ImportNotInstalled,
+                    data: { alias }
                 });
             }
-        } catch (error) {
-            // ManifestManager not initialized - log warning but continue
-            console.warn(`Could not validate cached package for ${alias}: ${error}`);
+        } catch {
+            // ManifestManager not initialized - skip cache validation
+            // This can happen for standalone files without model.yaml
         }
     }
 
@@ -390,7 +406,11 @@ export class ImportValidator {
      * Per PRS-010: Project-local cache at .dlang/packages/{owner}/{repo}/{commit}/
      */
     private getCacheDirectory(workspaceRoot: string, source: string, commitHash: string): string {
-        const [owner, repo] = source.split('/');
+        const parts = source.split('/');
+        if (parts.length < 2 || !parts[0] || !parts[1]) {
+            throw new Error(`Invalid import source format: expected owner/repo, got '${source}'`);
+        }
+        const [owner, repo] = parts;
         return path.join(workspaceRoot, '.dlang', 'packages', owner, repo, commitHash);
     }
 
@@ -437,7 +457,7 @@ export class ImportValidator {
             node: imp,
             property: 'uri',
             codeDescription: buildCodeDescription('language.md', 'imports'),
-            data: { code: IssueCodes.ImportCycleDetected }
+            code: IssueCodes.ImportCycleDetected
         });
     }
 }

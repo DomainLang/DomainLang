@@ -199,7 +199,7 @@ export class PackageDownloader {
         }
 
         // Use unified commits endpoint — resolves tags, branches, and short SHAs in one call
-        const url = `${this.githubApiBaseUrl}/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}`;
+        const url = `${this.githubApiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(ref)}`;
         const response = await this.fetchGitHub(url);
 
         if (!response.ok) {
@@ -222,7 +222,7 @@ export class PackageDownloader {
      * Validate a commit SHA exists in the repository.
      */
     private async validateCommitSha(owner: string, repo: string, sha: string): Promise<string> {
-        const url = `${this.githubApiBaseUrl}/repos/${owner}/${repo}/commits/${sha}`;
+        const url = `${this.githubApiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(sha)}`;
         const response = await this.fetchGitHub(url);
 
         if (!response.ok) {
@@ -245,7 +245,7 @@ export class PackageDownloader {
         commitSha: string,
         pkg: string
     ): Promise<{ tarballPath: string; integrity: string; resolved: string }> {
-        const url = `${this.githubApiBaseUrl}/repos/${owner}/${repo}/tarball/${commitSha}`;
+        const url = `${this.githubApiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tarball/${encodeURIComponent(commitSha)}`;
         
         this.emit({ type: 'downloading', pkg, bytesReceived: 0 });
 

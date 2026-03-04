@@ -312,4 +312,38 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
             warnSpy.mockRestore();
         });
     });
+
+    // ========================================================================
+    // Security: workspace boundary enforcement
+    // ========================================================================
+
+    describe('Security: workspace boundary enforcement', () => {
+        test('rejects import that escapes workspace root when manifest is present', async () => {
+            // Arrange - workspace with model.yaml at proj root
+            const proj = path.join(tempDir, 'proj-secured');
+            await writeFile(path.join(proj, 'model.yaml'), 'model:\n  name: secured\n');
+            await writeFile(path.join(proj, 'main.dlang'), '');
+
+            // Act & Assert - trying to traverse outside proj root via ../../
+            await expect(
+                resolver.resolveFrom(proj, '../../outside.dlang')
+            ).rejects.toMatchObject({
+                reason: 'escapes-workspace',
+            });
+        });
+
+        test('allows parent-reference import in standalone mode (no manifest)', async () => {
+            // Arrange - no model.yaml, standalone mode
+            const base = path.join(tempDir, 'standalone', 'sub');
+            const parentFile = path.join(tempDir, 'standalone', 'shared.dlang');
+            await writeFile(parentFile, 'Domain Shared {}');
+            await fs.mkdir(base, { recursive: true });
+
+            // Act - ../shared.dlang should resolve fine in standalone mode
+            const uri = await resolver.resolveFrom(base, '../shared.dlang');
+
+            // Assert
+            expect(uri.fsPath).toBe(parentFile);
+        });
+    });
 });

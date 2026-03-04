@@ -205,6 +205,10 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
                     rotate: false,
                     offset: 10,
                 },
+                // SAFETY: sprotty-protocol's SModelElement lacks `text` and `edgePlacement`,
+                // but the sprotty runtime resolves label elements by `type` and accepts these
+                // extra fields. The double cast is required because the object literal has
+                // properties beyond what the compile-time type declares.
             } as unknown as SModelElement);
         }
 
@@ -258,6 +262,10 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
                     rotate: false,
                     offset: 10,
                 },
+                // SAFETY: sprotty-protocol's SModelElement lacks `text` and `edgePlacement`,
+                // but the sprotty runtime resolves label elements by `type` and accepts these
+                // extra fields. The double cast is required because the object literal has
+                // properties beyond what the compile-time type declares.
             } as unknown as SModelElement);
         }
 
@@ -329,6 +337,10 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
                 rotate: false,
                 offset: 0,
             },
+            // SAFETY: sprotty-protocol's SModelElement lacks `text` and `edgePlacement`,
+            // but the sprotty runtime resolves label elements by `type` and accepts these
+            // extra fields. The double cast is required because the object literal has
+            // properties beyond what the compile-time type declares.
         } as unknown as SModelElement);
     }
 
@@ -436,6 +448,10 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
             type: 'label',
             id: `${nodeId}:label`,
             text: label,
+            // SAFETY: sprotty-protocol's SModelElement lacks `text`, but the sprotty
+            // runtime resolves label elements by `type` and accepts this extra field.
+            // The double cast is required because the object literal has properties
+            // beyond what the compile-time type declares.
         } as unknown as SModelElement;
     }
 

@@ -31,21 +31,17 @@ export interface OutputConfig {
  * @returns Output configuration
  */
 export function parseOutputConfig(args: string[]): OutputConfig {
-    const hasFlag = (flag: string): boolean =>
-        args.includes(flag) || args.includes(`--${flag}`);
-
-    // Determine output mode
+    // Determine output mode — only match flags with explicit '--' prefix
     let mode: OutputMode = 'rich';
-    if (hasFlag('--json') || hasFlag('json')) {
+    if (args.includes('--json')) {
         mode = 'json';
-    } else if (hasFlag('--quiet') || hasFlag('-q') || hasFlag('quiet')) {
+    } else if (args.includes('--quiet') || args.includes('-q')) {
         mode = 'quiet';
     }
 
     // Check for no-color flag or environment
     const noColor =
-        hasFlag('--no-color') ||
-        hasFlag('no-color') ||
+        args.includes('--no-color') ||
         process.env['NO_COLOR'] !== undefined ||
         process.env['TERM'] === 'dumb';
 

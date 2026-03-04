@@ -38,6 +38,9 @@ import type { DomainLangServices } from '../domain-lang-module.js';
 import type { DomainLangIndexManager } from './domain-lang-index-manager.js';
 import type { PackageBoundaryDetector } from '../services/package-boundary-detector.js';
 import type { ImportInfo } from '../services/types.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('ScopeProvider');
 
 /**
  * Custom scope provider that restricts cross-file references to imported documents only.
@@ -84,7 +87,7 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
             const descriptions = this.computeVisibleDescriptions(referenceType, document);
             return new MapScope(descriptions);
         } catch (error) {
-            console.error('Error in getGlobalScope:', error);
+            log.error('Error in getGlobalScope', { error: error instanceof Error ? error.message : String(error) });
             return EMPTY_SCOPE;
         }
     }

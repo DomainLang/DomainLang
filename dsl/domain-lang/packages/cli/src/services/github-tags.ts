@@ -46,7 +46,7 @@ export async function fetchTags(
         headers['Authorization'] = authHeader;
     }
 
-    const url = `https://api.github.com/repos/${owner}/${repo}/tags?per_page=100`;
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tags?per_page=100`;
     const response = await fetchWithRetry(url, { headers });
 
     if (!response.ok) {
@@ -92,6 +92,11 @@ export function classifyUpgrade(
 ): 'major' | 'minor' | 'patch' {
     const cur = current.replace(/^v/, '').split('.');
     const lat = latest.replace(/^v/, '').split('.');
+
+    // Require at least major.minor for a meaningful comparison
+    if (cur.length < 2 || lat.length < 2 || !cur[0] || !cur[1] || !lat[0] || !lat[1]) {
+        return 'patch';
+    }
 
     if (lat[0] !== cur[0]) return 'major';
     if (lat[1] !== cur[1]) return 'minor';

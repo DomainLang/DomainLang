@@ -68,6 +68,9 @@ registerToolHandlers(connection, shared);
 
 // Register Sprotty diagram handlers for langium-sprotty integration
 addDiagramHandler(connection, shared as LangiumSprottySharedServices);
+// SAFETY: DomainLang services are structurally compatible with LangiumSprottyServices
+// at runtime because they include all required Sprotty service registrations.
+// The compile-time types differ due to DI container wrapper types.
 addDiagramSelectionHandler(DomainLang as unknown as LangiumSprottyServices);
 addTextSelectionHandler(DomainLang as unknown as LangiumSprottyServices, { fitToScreen: 'none' });
 
@@ -94,5 +97,5 @@ function extractLspSettings(source: unknown): { traceImports: boolean; infoLogs:
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
