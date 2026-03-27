@@ -91,7 +91,7 @@
         "monaco-editor": "0.55.1",
         "sprotty-elk": "~1.4.0",
         "sprotty-protocol": "~1.4.0",
-        "yaml": "^2.5.0"
+        "yaml": "^2.8.3"
     },
     "devDependencies": {
         "@types/node": "~20.19.33",
