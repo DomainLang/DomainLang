@@ -383,7 +383,7 @@ export class ManifestValidator {
         if (/^v?\d+\.\d+\.\d+/.test(ref)) {
             return true;
         }
-        // Branch names (word chars, dots, hyphens, and slashes for feature/branch-name)
+        // Branch names (allow word chars, dots, hyphens, and forward slashes for feature branches)
         if (/^[\w][\w./-]*$/.test(ref)) {
             return true;
         }

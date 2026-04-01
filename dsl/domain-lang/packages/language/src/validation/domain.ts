@@ -40,36 +40,36 @@ function validateNoCyclicDomainHierarchy(
         return;
     }
     
-    const visited = new Set<Domain>();
-    const path: string[] = [domain.name];
+    const visited = new Set<string>();
+    const cyclePath: string[] = [domain.name];
     let current: Domain | undefined = domain.parent.ref;
-    
+
     while (current) {
-        // Check if we've encountered this domain before (cycle detected)
-        if (visited.has(current)) {
+        // Check if we've encountered this domain name before (cycle detected within traversal)
+        if (visited.has(current.name)) {
             // We found a cycle - report it
-            path.push(current.name);
-            accept('error', ValidationMessages.DOMAIN_CIRCULAR_HIERARCHY(path), {
+            cyclePath.push(current.name);
+            accept('error', ValidationMessages.DOMAIN_CIRCULAR_HIERARCHY(cyclePath), {
                 node: domain,
                 property: 'parent',
                 codeDescription: buildCodeDescription('language.md', 'domain-hierarchy')
             });
             return;
         }
-        
-        // Check if we've looped back to the starting domain
-        if (current === domain) {
-            path.push(domain.name);
-            accept('error', ValidationMessages.DOMAIN_CIRCULAR_HIERARCHY(path), {
+
+        // Check if we've looped back to the starting domain (by name, not object identity)
+        if (current.name === domain.name) {
+            cyclePath.push(domain.name);
+            accept('error', ValidationMessages.DOMAIN_CIRCULAR_HIERARCHY(cyclePath), {
                 node: domain,
                 property: 'parent',
                 codeDescription: buildCodeDescription('language.md', 'domain-hierarchy')
             });
             return;
         }
-        
-        visited.add(current);
-        path.push(current.name);
+
+        visited.add(current.name);
+        cyclePath.push(current.name);
         current = current.parent?.ref;
     }
 }

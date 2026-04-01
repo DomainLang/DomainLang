@@ -142,7 +142,7 @@ export const ValidationMessages = {
      * @param inlineClassification - The inline classification name (from 'as')
      * @param blockClassification - The block classification name (from 'classification:')
      */
-    BOUNDED_CONTEXT_CLASSIFICATION_CONFLICT: (bcName: string, inlineClassification?: string, blockClassification?: string) => {
+    BOUNDED_CONTEXT_CLASSIFICATION_CONFLICT: (_bcName: string, inlineClassification?: string, blockClassification?: string) => {
         const inlinePart = inlineClassification ? ` ('as ${inlineClassification}')` : '';
         const blockPart = blockClassification ? ` ('classification: ${blockClassification}')` : '';
         return `Classification specified both inline${inlinePart} and in block${blockPart}. Inline value takes precedence.`;
@@ -155,7 +155,7 @@ export const ValidationMessages = {
      * @param inlineTeam - The inline team name (from 'by')
      * @param blockTeam - The block team name (from 'team:')
      */
-    BOUNDED_CONTEXT_TEAM_CONFLICT: (bcName: string, inlineTeam?: string, blockTeam?: string) => {
+    BOUNDED_CONTEXT_TEAM_CONFLICT: (_bcName: string, inlineTeam?: string, blockTeam?: string) => {
         const inlinePart = inlineTeam ? ` ('by ${inlineTeam}')` : '';
         const blockPart = blockTeam ? ` ('team: ${blockTeam}')` : '';
         return `Team specified both inline${inlinePart} and in block${blockPart}. Inline value takes precedence.`;

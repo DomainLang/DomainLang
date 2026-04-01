@@ -47,7 +47,7 @@ function validateContextMapReferences(
                 // Find the CST node for this specific reference
                 property: 'boundedContexts',
                 index: map.boundedContexts.indexOf(multiRef),
-                code: IssueCodes.UnresolvedReference
+                data: { code: IssueCodes.UnresolvedReference }
             });
         }
     }
@@ -116,7 +116,7 @@ function validateDomainMapReferences(
                 node: map,
                 property: 'domains',
                 index: map.domains.indexOf(multiRef),
-                code: IssueCodes.UnresolvedReference
+                data: { code: IssueCodes.UnresolvedReference }
             });
         }
     }
@@ -124,21 +124,25 @@ function validateDomainMapReferences(
 
 /**
  * Gets a canonical name for a BoundedContextRef for comparison purposes.
+ * Returns null when the reference is unresolved to avoid false-positive duplicate warnings.
  */
-function getRefKey(ref: BoundedContextRef): string {
+function getRefKey(ref: BoundedContextRef): string | null {
     if (isThisRef(ref)) {
         return 'this';
     }
-    return ref.link?.$refText ?? '';
+    const text = ref.link?.$refText;
+    return text || null;
 }
 
 /**
  * Builds a canonical key for a relationship for duplicate detection.
  * The key captures both endpoints, arrow direction, and integration patterns.
+ * Returns null when either endpoint is unresolved (already reported as a separate error).
  */
-function buildRelationshipKey(rel: Relationship): string {
+function buildRelationshipKey(rel: Relationship): string | null {
     const left = getRefKey(rel.left);
     const right = getRefKey(rel.right);
+    if (left === null || right === null) return null;
     const arrow = rel.arrow ?? '';
 
     if (isDirectionalRelationship(rel)) {
@@ -147,9 +151,10 @@ function buildRelationshipKey(rel: Relationship): string {
         return `[${leftPatterns}]${left}${arrow}[${rightPatterns}]${right}`;
     }
 
-    // Symmetric relationship
+    // Symmetric relationship — sort endpoints so A [SK] B and B [SK] A share the same key
     const pattern = isSymmetricRelationship(rel) && rel.pattern ? rel.pattern.$type : '';
-    return `[${pattern}]${left}${arrow}${right}`;
+    const [a, b] = [left, right].sort();
+    return `[${pattern}]${a}${arrow}${b}`;
 }
 
 /**
@@ -170,10 +175,11 @@ function validateNoDuplicateRelationships(
     for (let i = 0; i < map.relationships.length; i++) {
         const rel = map.relationships[i];
         const key = buildRelationshipKey(rel);
-        
+        if (key === null) continue; // Unresolved endpoints — skip, error already reported elsewhere
+
         if (seen.has(key)) {
             accept('warning', ValidationMessages.CONTEXT_MAP_DUPLICATE_RELATIONSHIP(
-                getRefKey(rel.left), getRefKey(rel.right)
+                getRefKey(rel.left) ?? '', getRefKey(rel.right) ?? ''
             ), {
                 node: rel,
                 property: 'arrow',

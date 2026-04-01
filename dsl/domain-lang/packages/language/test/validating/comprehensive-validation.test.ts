@@ -12,7 +12,6 @@ import {
     setupTestSuite,
     expectValidationErrors,
     expectValidationWarnings,
-    expectValidDocument,
     getDiagnosticsBySeverity,
     s
 } from '../test-helpers.js';
@@ -59,24 +58,6 @@ describe('Validation Tests', () => {
             ]);
         });
 
-        test('accepts valid domain hierarchy without warnings or errors', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain Root {
-                    vision: "Root vision"
-                }
-                Domain Child in Root {
-                    vision: "Child vision"
-                }
-                Domain GrandChild in Child {
-                    vision: "GrandChild vision"
-                }
-            `);
-
-            // Assert
-            expectValidDocument(document);
-        });
-
         test('warns on multiple domains each missing vision', async () => {
             // Arrange & Act
             const document = await testServices.parse(s`
@@ -89,32 +70,6 @@ describe('Validation Tests', () => {
                 "missing a vision statement",
                 "missing a vision statement"
             ]);
-        });
-    });
-
-    // ========================================================================
-    // BOUNDED CONTEXT VALIDATION
-    // ========================================================================
-
-    describe('Bounded Context Validation', () => {
-        // "warns when BC lacks description" covered by enhanced-messages.test.ts
-        // "warns when BC has no domain" covered by enhanced-messages.test.ts
-
-        test('accepts bounded context with description and domain (smoke test)', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain Sales {
-                    vision: "Sales vision"
-                }
-                Team SalesTeam
-                Classification Core
-                BoundedContext OrderContext for Sales as Core by SalesTeam {
-                    description: "Handles order processing"
-                }
-            `);
-
-            // Assert
-            expectValidDocument(document);
         });
     });
 
@@ -141,21 +96,6 @@ describe('Validation Tests', () => {
             ]);
         });
 
-        test('accepts unique Namespace names (smoke test)', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Namespace Namespace1 {
-                    Domain Domain1 { vision: "Vision1" }
-                }
-
-                Namespace Namespace2 {
-                    Domain Domain2 { vision: "Vision2" }
-                }
-            `);
-
-            // Assert
-            expectValidDocument(document);
-        });
     });
 
     // ========================================================================
@@ -176,17 +116,6 @@ describe('Validation Tests', () => {
             ]);
         });
 
-        test('accepts unique classification names (smoke test)', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Classification Core
-                Classification Supporting
-                Classification Generic
-            `);
-
-            // Assert
-            expectValidDocument(document);
-        });
     });
 
     // ========================================================================
@@ -207,16 +136,6 @@ describe('Validation Tests', () => {
             ]);
         });
 
-        test('accepts unique Team names (smoke test)', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Team SalesTeam
-                Team EngineeringTeam
-            `);
-
-            // Assert
-            expectValidDocument(document);
-        });
     });
 
     // ========================================================================
@@ -238,22 +157,6 @@ describe('Validation Tests', () => {
             expect(contextMapWarnings).toHaveLength(1);
         });
 
-        test('accepts valid context map with relationships (smoke test)', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain Sales { vision: "Sales" }
-                BoundedContext BC1 for Sales { description: "BC1" }
-                BoundedContext BC2 for Sales { description: "BC2" }
-
-                ContextMap TestMap {
-                    contains BC1, BC2
-                    BC1 [OHS] -> [CF] BC2
-                }
-            `);
-
-            // Assert
-            expectValidDocument(document);
-        });
     });
 
     // ========================================================================

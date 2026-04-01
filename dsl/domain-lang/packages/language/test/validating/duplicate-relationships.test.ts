@@ -45,14 +45,14 @@ describe('Duplicate Relationship Validation', () => {
     test.each([
         {
             scenario: 'different directions',
-            relationships: s`
+            relationships: `
                 OrderContext [OHS] -> [CF] PaymentContext
                 OrderContext [P] PaymentContext
             `,
         },
         {
             scenario: 'different integration patterns',
-            relationships: s`
+            relationships: `
                 OrderContext [OHS] -> [CF] PaymentContext
                 OrderContext [PL] -> [ACL] PaymentContext
             `,

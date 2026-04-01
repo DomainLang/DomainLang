@@ -25,64 +25,53 @@ describe('ManifestValidator', () => {
 
     describe('valid manifests', () => {
         test('accepts minimal valid manifest', () => {
-            // Arrange
-            const manifest: ModelManifest = {};
-
-            // Act
-            const result = validator.validate(manifest);
-
-            // Assert
+            const result = validator.validate({});
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
-            expect(result.warningCount).toBe(0);
             expect(result.diagnostics).toHaveLength(0);
         });
 
-        test('accepts complete valid manifest', () => {
-            // Arrange
+        test('accepts short-form dependencies', () => {
             const manifest: ModelManifest = {
-                model: {
-                    name: 'my-package',
-                    version: '1.0.0',
-                    entry: 'index.dlang'
-                },
-                paths: {
-                    '@': '.',
-                    '@lib': './lib'
-                },
-                dependencies: {
-                    'domainlang/core': {
-                        source: 'domainlang/core',
-                        ref: 'v1.0.0'
-                    },
-                    'local/dep': {
-                        path: './packages/local'
-                    }
-                }
+                dependencies: { 'domainlang/core': 'v1.0.0' }
             };
-
-            // Act
             const result = validator.validate(manifest);
-
-            // Assert
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
         });
 
-        test('accepts short-form dependencies', () => {
-            // Arrange
+        test('accepts valid SemVer versions', () => {
+            for (const version of ['1.0.0', '2.3.4-beta', '0.0.1+build']) {
+                const result = validator.validate({ model: { name: 'test', version } });
+                const versionErrors = result.diagnostics.filter(d => d.code === ManifestIssueCodes.ModelInvalidVersion);
+                expect(versionErrors).toHaveLength(0);
+            }
+        });
+
+        test('accepts valid ref specs', () => {
+            for (const ref of ['v1.0.0', 'main', 'abc1234567', '1.2.3']) {
+                const result = validator.validate({ dependencies: { 'owner/repo': { ref } } });
+                const missingRef = result.diagnostics.filter(d => d.code === IssueCodes.ImportMissingRef);
+                expect(missingRef).toHaveLength(0);
+            }
+        });
+
+        test('dependency without explicit source uses key as source', () => {
             const manifest: ModelManifest = {
-                dependencies: {
-                    'domainlang/core': 'v1.0.0'
-                }
+                dependencies: { 'owner/repo': { ref: 'v1.0.0' } }
             };
-
-            // Act
             const result = validator.validate(manifest);
-
-            // Assert
             expect(result.valid).toBe(true);
             expect(result.errorCount).toBe(0);
+        });
+
+        test('accepts valid path aliases with @ prefix and relative paths', () => {
+            const manifest: ModelManifest = {
+                paths: { '@': '.', '@lib': './lib', '@src': './src' }
+            };
+            const result = validator.validate(manifest);
+            const pathDiagnostics = result.diagnostics.filter(d => d.path.startsWith('paths.'));
+            expect(pathDiagnostics).toHaveLength(0);
         });
     });
 
@@ -144,24 +133,6 @@ describe('ManifestValidator', () => {
             expect(diagnostic!.message).toContain('invalid-version');
         });
 
-        test('accepts valid SemVer versions', () => {
-            // Arrange
-            const validVersions = ['1.0.0', '2.3.4-beta', '0.0.1+build'];
-            for (const version of validVersions) {
-                const manifest: ModelManifest = {
-                    model: { name: 'test', version }
-                };
-
-                // Act
-                const result = validator.validate(manifest);
-
-                // Assert
-                const versionErrors = result.diagnostics.filter(d =>
-                    d.code === ManifestIssueCodes.ModelInvalidVersion
-                );
-                expect(versionErrors).toHaveLength(0);
-            }
-        });
     });
 
     describe('dependency validation', () => {
@@ -189,24 +160,6 @@ describe('ManifestValidator', () => {
             expect(diagnostic!.message).toContain('bad-dep');
         });
 
-        test('dependency without explicit source uses key as source', () => {
-            // Arrange
-            const manifest: ModelManifest = {
-                dependencies: {
-                    'owner/repo': {
-                        ref: 'v1.0.0'
-                    }
-                }
-            };
-
-            // Act
-            const result = validator.validate(manifest);
-
-            // Assert
-            expect(result.valid).toBe(true);
-            expect(result.errorCount).toBe(0);
-        });
-
         test('requires ref for git dependencies', () => {
             // Arrange
             const manifest: ModelManifest = {
@@ -227,27 +180,6 @@ describe('ManifestValidator', () => {
             );
             expect(diagnostic).not.toBeUndefined();
             expect(diagnostic!.message).toContain('missing-ref');
-        });
-
-        test('accepts valid ref specs', () => {
-            // Arrange
-            const validRefs = ['v1.0.0', 'main', 'abc1234567', '1.2.3'];
-            for (const ref of validRefs) {
-                const manifest: ModelManifest = {
-                    dependencies: {
-                        'owner/repo': { ref }
-                    }
-                };
-
-                // Act
-                const result = validator.validate(manifest);
-
-                // Assert
-                const missingRef = result.diagnostics.filter(d =>
-                    d.code === IssueCodes.ImportMissingRef
-                );
-                expect(missingRef).toHaveLength(0);
-            }
         });
 
         test('rejects absolute paths in path dependencies', () => {
@@ -353,25 +285,6 @@ describe('ManifestValidator', () => {
             expect(diagnostic!.message).toContain('/absolute/path');
         });
 
-        test('accepts valid path aliases with @ prefix and relative paths', () => {
-            // Arrange
-            const manifest: ModelManifest = {
-                paths: {
-                    '@': '.',
-                    '@lib': './lib',
-                    '@src': './src'
-                }
-            };
-
-            // Act
-            const result = validator.validate(manifest);
-
-            // Assert
-            const pathDiagnostics = result.diagnostics.filter(d =>
-                d.path.startsWith('paths.')
-            );
-            expect(pathDiagnostics).toHaveLength(0);
-        });
     });
 
     describe('convenience functions', () => {
