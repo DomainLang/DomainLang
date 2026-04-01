@@ -10,7 +10,7 @@
  */
 
 import { NodeFileSystem } from 'langium/node';
-import { URI, AstUtils } from 'langium';
+import { AstUtils, URI } from 'langium';
 import { createDomainLangServices } from '../domain-lang-module.js';
 import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
 import { isModel } from '../generated/ast.js';

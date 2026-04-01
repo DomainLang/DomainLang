@@ -69,7 +69,7 @@ export function metadataAsMap(bc: BoundedContext): ReadonlyMap<string, string> {
     for (const entry of bc.metadata ?? []) {
         const key = entry.key?.ref?.name;
         const value = entry.value;
-        if (key && value) {
+        if (key && value != null) {
             map.set(key, value);
         }
     }
