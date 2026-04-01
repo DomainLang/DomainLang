@@ -34,7 +34,7 @@ describe('PackageCache', () => {
             // Arrange - Fresh cache with no packages
 
             // Act
-            const result = await cache.has('domainlang', 'core', 'abc123');
+            const result = await cache.has('domainlang', 'core', 'abc1234');
 
             // Assert
             expect(result).toBe(false);
@@ -42,12 +42,12 @@ describe('PackageCache', () => {
 
         test('should return true for existing package', async () => {
             // Arrange - Create a package directory manually
-            const packagePath = join(testDir, '.dlang', 'packages', 'domainlang', 'core', 'abc123');
+            const packagePath = join(testDir, '.dlang', 'packages', 'domainlang', 'core', 'abc1234');
             await mkdir(packagePath, { recursive: true });
             await writeFile(join(packagePath, 'model.yaml'), 'version: "1.0.0"');
 
             // Act
-            const result = await cache.has('domainlang', 'core', 'abc123');
+            const result = await cache.has('domainlang', 'core', 'abc1234');
 
             // Assert
             expect(result).toBe(true);
@@ -59,7 +59,7 @@ describe('PackageCache', () => {
             // Arrange - Fresh cache with no packages
 
             // Act
-            const result = await cache.get('domainlang', 'core', 'abc123');
+            const result = await cache.get('domainlang', 'core', 'abc1234');
 
             // Assert
             expect(result).toBeUndefined();
@@ -67,12 +67,12 @@ describe('PackageCache', () => {
 
         test('should return absolute path for existing package', async () => {
             // Arrange - Create a package directory manually
-            const packagePath = join(testDir, '.dlang', 'packages', 'domainlang', 'core', 'abc123');
+            const packagePath = join(testDir, '.dlang', 'packages', 'domainlang', 'core', 'abc1234');
             await mkdir(packagePath, { recursive: true });
             await writeFile(join(packagePath, 'model.yaml'), 'version: "1.0.0"');
 
             // Act
-            const result = await cache.get('domainlang', 'core', 'abc123');
+            const result = await cache.get('domainlang', 'core', 'abc1234');
 
             // Assert
             expect(result).toBe(packagePath);
@@ -90,7 +90,7 @@ describe('PackageCache', () => {
             });
 
             // Act
-            const cachedPath = await cache.put('domainlang', 'core', 'abc123', tarballPath);
+            const cachedPath = await cache.put('domainlang', 'core', 'abc1234', tarballPath);
 
             // Assert
             expect(existsSync(cachedPath)).toBe(true);
@@ -106,7 +106,7 @@ describe('PackageCache', () => {
             });
 
             // Act
-            const cachedPath = await cache.put('domainlang', 'core', 'abc123', tarballPath);
+            const cachedPath = await cache.put('domainlang', 'core', 'abc1234', tarballPath);
 
             // Assert - Files should be at root level, not under 'core-main/'
             expect(existsSync(cachedPath)).toBe(true);
@@ -125,8 +125,8 @@ describe('PackageCache', () => {
             });
 
             // Act - Simulate concurrent install: both try to cache same package
-            const path1 = await cache.put('domainlang', 'core', 'abc123', tarball1);
-            const path2 = await cache.put('domainlang', 'core', 'abc123', tarball2);
+            const path1 = await cache.put('domainlang', 'core', 'abc1234', tarball1);
+            const path2 = await cache.put('domainlang', 'core', 'abc1234', tarball2);
 
             // Assert - Both should return the same path
             expect(path1).toBe(path2);
@@ -139,7 +139,7 @@ describe('PackageCache', () => {
 
             // Act & Assert
             await expect(
-                cache.put('domainlang', 'core', 'abc123', invalidTarball)
+                cache.put('domainlang', 'core', 'abc1234', invalidTarball)
             ).rejects.toThrow(/Failed to cache package/);
 
             // Assert - No temp directories should remain
@@ -159,7 +159,7 @@ describe('PackageCache', () => {
             });
 
             // Act
-            const cachedPath = await cache.put('acme', 'patterns', 'def456', tarballPath);
+            const cachedPath = await cache.put('acme', 'patterns', 'def4567', tarballPath);
 
             // Assert
             expect(existsSync(cachedPath)).toBe(true);
@@ -175,11 +175,11 @@ describe('PackageCache', () => {
             const tarballPath = await createTestTarball(testDir, {
                 'model.yaml': 'version: "1.0.0"',
             });
-            const cachedPath = await cache.put('domainlang', 'core', 'abc123', tarballPath);
+            const cachedPath = await cache.put('domainlang', 'core', 'abc1234', tarballPath);
             expect(existsSync(cachedPath)).toBe(true);
 
             // Act
-            await cache.remove('domainlang', 'core', 'abc123');
+            await cache.remove('domainlang', 'core', 'abc1234');
 
             // Assert
             expect(existsSync(cachedPath)).toBe(false);
@@ -190,7 +190,7 @@ describe('PackageCache', () => {
 
             // Act & Assert - Should not throw
             await expect(
-                cache.remove('domainlang', 'core', 'nonexistent')
+                cache.remove('domainlang', 'core', 'aabbcc0')
             ).resolves.toBeUndefined();
         });
 
@@ -198,11 +198,11 @@ describe('PackageCache', () => {
             // Arrange - Create two packages
             const tarball1 = await createTestTarball(testDir, { 'file1.txt': 'content1' });
             const tarball2 = await createTestTarball(testDir, { 'file2.txt': 'content2' });
-            const path1 = await cache.put('domainlang', 'core', 'abc123', tarball1);
-            const path2 = await cache.put('domainlang', 'core', 'def456', tarball2);
+            const path1 = await cache.put('domainlang', 'core', 'abc1234', tarball1);
+            const path2 = await cache.put('domainlang', 'core', 'def4567', tarball2);
 
             // Act - Remove only first package
-            await cache.remove('domainlang', 'core', 'abc123');
+            await cache.remove('domainlang', 'core', 'abc1234');
 
             // Assert - First removed, second remains
             expect(existsSync(path1)).toBe(false);
@@ -215,8 +215,8 @@ describe('PackageCache', () => {
             // Arrange - Create multiple packages
             const tarball1 = await createTestTarball(testDir, { 'file1.txt': 'content1' });
             const tarball2 = await createTestTarball(testDir, { 'file2.txt': 'content2' });
-            await cache.put('domainlang', 'core', 'abc123', tarball1);
-            await cache.put('acme', 'patterns', 'def456', tarball2);
+            await cache.put('domainlang', 'core', 'abc1234', tarball1);
+            await cache.put('acme', 'patterns', 'def4567', tarball2);
             const packagesDir = join(testDir, '.dlang', 'packages');
             expect(existsSync(packagesDir)).toBe(true);
 
@@ -237,16 +237,16 @@ describe('PackageCache', () => {
         test('should allow cache to be used after clear', async () => {
             // Arrange - Create package, then clear
             const tarball1 = await createTestTarball(testDir, { 'file1.txt': 'content1' });
-            await cache.put('domainlang', 'core', 'abc123', tarball1);
+            await cache.put('domainlang', 'core', 'abc1234', tarball1);
             await cache.clear();
 
             // Act - Add new package after clear
             const tarball2 = await createTestTarball(testDir, { 'file2.txt': 'content2' });
-            const cachedPath = await cache.put('domainlang', 'core', 'def456', tarball2);
+            const cachedPath = await cache.put('domainlang', 'core', 'def4567', tarball2);
 
             // Assert - Cache works after clear
             expect(existsSync(cachedPath)).toBe(true);
-            expect(await cache.has('domainlang', 'core', 'def456')).toBe(true);
+            expect(await cache.has('domainlang', 'core', 'def4567')).toBe(true);
         });
     });
 });

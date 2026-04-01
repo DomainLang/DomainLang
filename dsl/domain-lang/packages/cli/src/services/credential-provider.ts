@@ -155,8 +155,9 @@ export class CredentialProvider {
      * @throws Error if git command fails or times out
      */
     private async getGitCredentials(host: string): Promise<GitHubCredentials | undefined> {
+        // Reject hosts containing control characters to prevent git credential protocol injection
         if (/[\n\r\0]/.test(host)) {
-            throw new Error(`Invalid host: contains control characters`);
+            return undefined;
         }
         const input = `protocol=https\nhost=${host}\n\n`;
 

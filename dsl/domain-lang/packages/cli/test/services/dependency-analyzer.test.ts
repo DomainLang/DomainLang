@@ -37,7 +37,7 @@ describe('DependencyAnalyzer', () => {
                         ref: '1.0.0',
                         refType: 'tag',
                         resolved: 'https://github.com/acme/patterns',
-                        commit: 'abc123',
+                        commit: 'abc1234',
                     },
                 },
             };
@@ -67,7 +67,7 @@ describe('DependencyAnalyzer', () => {
             const tree = [{
                 packageKey: 'acme/patterns',
                 ref: '1.0.0',
-                commit: 'abc123',
+                commit: 'abc1234',
                 dependencies: [],
                 depth: 0,
             }];
@@ -84,7 +84,7 @@ describe('DependencyAnalyzer', () => {
             const tree = [{
                 packageKey: 'acme/patterns',
                 ref: '1.0.0',
-                commit: 'abc123',
+                commit: 'abc1234',
                 dependencies: [{
                     packageKey: 'acme/core',
                     ref: '2.0.0',
@@ -132,7 +132,7 @@ describe('DependencyAnalyzer', () => {
                         ref: '1.0.0',
                         refType: 'tag',
                         resolved: 'https://github.com/acme/patterns',
-                        commit: 'abc123',
+                        commit: 'abc1234',
                     },
                 },
             };
@@ -223,13 +223,13 @@ describe('DependencyAnalyzer', () => {
                         ref: '1.0.0',
                         refType: 'tag',
                         resolved: 'https://github.com/acme/a',
-                        commit: 'aaa',
+                        commit: 'aaaaaaa',
                     },
                     'acme/b': {
                         ref: '1.0.0',
                         refType: 'tag',
                         resolved: 'https://github.com/acme/b',
-                        commit: 'bbb',
+                        commit: 'bbbbbbb',
                     },
                 },
             };
@@ -250,18 +250,18 @@ describe('DependencyAnalyzer', () => {
                         ref: '1.0.0',
                         refType: 'tag',
                         resolved: 'https://github.com/acme/a',
-                        commit: 'aaa111',
+                        commit: 'aaa1111',
                     },
                     'acme/b': {
                         ref: '1.0.0',
                         refType: 'tag',
                         resolved: 'https://github.com/acme/b',
-                        commit: 'bbb222',
+                        commit: 'bbb2222',
                     },
                 },
             };
 
-            const cacheA = join(tempHome, '.dlang', 'cache', 'github', 'acme', 'a', 'aaa111');
+            const cacheA = join(tempHome, '.dlang', 'cache', 'github', 'acme', 'a', 'aaa1111');
             await fs.mkdir(cacheA, { recursive: true });
             await fs.writeFile(
                 join(cacheA, 'model.yaml'),
@@ -273,7 +273,7 @@ describe('DependencyAnalyzer', () => {
                 'utf-8'
             );
 
-            const cacheB = join(tempHome, '.dlang', 'cache', 'github', 'acme', 'b', 'bbb222');
+            const cacheB = join(tempHome, '.dlang', 'cache', 'github', 'acme', 'b', 'bbb2222');
             await fs.mkdir(cacheB, { recursive: true });
             await fs.writeFile(
                 join(cacheB, 'model.yaml'),

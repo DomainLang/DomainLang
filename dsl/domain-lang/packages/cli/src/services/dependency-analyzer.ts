@@ -290,6 +290,13 @@ export class DependencyAnalyzer {
      */
     private getCacheDir(packageKey: string, commit: string, workspaceRoot?: string): string {
         const [owner, repo] = packageKey.split('/');
+        // Validate inputs to prevent path traversal (B-001)
+        if (!owner || !repo || !/^[a-zA-Z0-9_.-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(repo)) {
+            throw new Error(`Invalid package key: ${packageKey}`);
+        }
+        if (!/^[0-9a-f]{7,40}$/i.test(commit)) {
+            throw new Error(`Invalid commit SHA: ${commit}`);
+        }
         
         // Prefer project-local cache if workspaceRoot is provided
         if (workspaceRoot) {

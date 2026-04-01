@@ -8,7 +8,7 @@
  */
 import { CredentialProvider } from './credential-provider.js';
 import { fetchWithRetry } from './fetch-utils.js';
-import { compareVersions } from './semver.js';
+import { compareVersions, parseSemVer } from './semver.js';
 
 /**
  * GitHub API tag response shape (subset).
@@ -90,6 +90,8 @@ export function classifyUpgrade(
     current: string,
     latest: string,
 ): 'major' | 'minor' | 'patch' {
+    if (!parseSemVer(current) || !parseSemVer(latest)) return 'major';
+
     const cur = current.replace(/^v/, '').split('.');
     const lat = latest.replace(/^v/, '').split('.');
 
