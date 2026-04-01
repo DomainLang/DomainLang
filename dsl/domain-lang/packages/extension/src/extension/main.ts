@@ -164,6 +164,7 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
         }
     });
     context.subscriptions.push(stateChangeDisposable);
+>>>>>>> 82fe31c (fix(extension): fix disposable leak in LSP client state listener)
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration('domainlang.lsp')) {
