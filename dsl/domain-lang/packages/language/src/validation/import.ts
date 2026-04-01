@@ -110,7 +110,7 @@ export class ImportValidator {
         }
 
         const { key, dependency } = match;
-        this.validateDependencyConfig(dependency, key, accept, imp);
+        if (!this.validateDependencyConfig(dependency, key, accept, imp)) return;
 
         // External source dependencies require lock file and cached packages
         if (dependency.source) {
@@ -272,13 +272,14 @@ export class ImportValidator {
 
     /**
      * Validates dependency configuration.
+     * Returns false if a blocking error was found (caller should stop processing).
      */
     private validateDependencyConfig(
         dependency: ExtendedDependencySpec,
         alias: string,
         accept: ValidationAcceptor,
         imp: ImportStatement
-    ): void {
+    ): boolean {
         if (dependency.source && dependency.path) {
             accept('error', ValidationMessages.IMPORT_CONFLICTING_SOURCE_PATH(alias), {
                 node: imp,
@@ -287,7 +288,7 @@ export class ImportValidator {
                 code: IssueCodes.ImportConflictingSourcePath,
                 data: { alias }
             });
-            return;
+            return false;
         }
 
         if (!dependency.source && !dependency.path) {
@@ -298,7 +299,7 @@ export class ImportValidator {
                 code: IssueCodes.ImportMissingSourceOrPath,
                 data: { alias }
             });
-            return;
+            return false;
         }
 
         if (dependency.source && !dependency.ref) {
@@ -314,6 +315,8 @@ export class ImportValidator {
         if (dependency.path) {
             this.validateLocalPathDependency(dependency.path, alias, accept, imp);
         }
+
+        return true;
     }
 
     /**
@@ -396,14 +399,19 @@ export class ImportValidator {
                 });
             }
         } catch {
-            // ManifestManager not initialized - skip cache validation
-            // This can happen for standalone files without model.yaml
+            // ManifestManager not initialized yet — emit a soft warning so the user isn't left with a silent pass
+            accept('warning', `Could not fully validate dependency '${alias}': workspace not yet initialized. Re-save to re-validate.`, {
+                node: imp,
+                property: 'uri',
+                codeDescription: buildCodeDescription('language.md', 'imports')
+            });
         }
     }
 
     /**
      * Gets the cache directory for a dependency.
      * Per PRS-010: Project-local cache at .dlang/packages/{owner}/{repo}/{commit}/
+     * The source field comes from user-controlled model.yaml, so validate the result stays within the cache dir.
      */
     private getCacheDirectory(workspaceRoot: string, source: string, commitHash: string): string {
         const parts = source.split('/');
@@ -411,7 +419,13 @@ export class ImportValidator {
             throw new Error(`Invalid import source format: expected owner/repo, got '${source}'`);
         }
         const [owner, repo] = parts;
-        return path.join(workspaceRoot, '.dlang', 'packages', owner, repo, commitHash);
+        const cacheBase = path.join(workspaceRoot, '.dlang', 'packages');
+        const result = path.join(cacheBase, owner, repo, commitHash);
+        if (!result.startsWith(cacheBase + path.sep)) {
+            // source contains traversal segments — return an impossible path so directoryExists returns false
+            return path.join(cacheBase, '__invalid__');
+        }
+        return result;
     }
 
     /**
@@ -429,11 +443,11 @@ export class ImportValidator {
     // --- PRS-017 R3: Import cycle detection ---
 
     /**
-     * Reports a warning if the current document is part of an import cycle.
+     * Reports a warning if the current import statement points to a document in a cycle.
      *
      * Cycle data is populated during indexing by DomainLangIndexManager.
-     * This method reads the pre-computed cycles and emits a diagnostic
-     * on the import statement contributing to the cycle.
+     * Only the import statement whose target is part of the cycle is annotated;
+     * other imports in the same file are skipped to avoid duplicate diagnostics.
      */
     private checkImportCycle(
         document: LangiumDocument,
@@ -444,6 +458,13 @@ export class ImportValidator {
 
         const cycle = this.indexManager.getCycleForDocument(document.uri.toString());
         if (!cycle || cycle.length === 0) return;
+
+        // Only annotate the import whose URI matches a document in the cycle.
+        // Compare by the last path segment (basename) to avoid needing async URI resolution.
+        if (!imp.uri) return;
+        const impBasename = imp.uri.split('/').at(-1) ?? imp.uri;
+        const isInCycle = cycle.some(uri => (uri.split('/').at(-1) ?? uri) === impBasename);
+        if (!isInCycle) return;
 
         // Build human-readable cycle display using basenames
         const cycleDisplay = cycle

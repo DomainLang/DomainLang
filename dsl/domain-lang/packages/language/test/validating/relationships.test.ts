@@ -69,9 +69,9 @@ describe('Relationship Validation', () => {
     // ─────────────────────────────────────────────────────────────────────────
 
     describe('<-> arrow Customer/Supplier restriction', () => {
-        test('error: Supplier on left side of <-> relationship', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
+        test('error: Supplier on either side of <-> relationship', async () => {
+            // Arrange & Act — test both left and right placement
+            const leftDoc = await testServices.parse(s`
                 Domain Sales { vision: "v" }
                 bc ContextA for Sales {}
                 bc ContextB for Sales {}
@@ -80,34 +80,7 @@ describe('Relationship Validation', () => {
                     ContextA [Supplier] <-> ContextB
                 }
             `);
-
-            // Assert
-            expectValidationErrors(document, [
-                'Supplier [S] cannot be used on a bidirectional (<->) relationship',
-            ]);
-        });
-
-        test('error: Customer on right side of <-> relationship', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain Sales { vision: "v" }
-                bc ContextA for Sales {}
-                bc ContextB for Sales {}
-                ContextMap M {
-                    contains ContextA, ContextB
-                    ContextA <-> [Customer] ContextB
-                }
-            `);
-
-            // Assert
-            expectValidationErrors(document, [
-                'Customer [C] cannot be used on a bidirectional (<->) relationship',
-            ]);
-        });
-
-        test('error: Supplier on right side of <-> relationship', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
+            const rightDoc = await testServices.parse(s`
                 Domain Sales { vision: "v" }
                 bc ContextA for Sales {}
                 bc ContextB for Sales {}
@@ -118,14 +91,13 @@ describe('Relationship Validation', () => {
             `);
 
             // Assert
-            expectValidationErrors(document, [
-                'Supplier [S] cannot be used on a bidirectional (<->) relationship',
-            ]);
+            expectValidationErrors(leftDoc, ['Supplier [S] cannot be used on a bidirectional (<->) relationship']);
+            expectValidationErrors(rightDoc, ['Supplier [S] cannot be used on a bidirectional (<->) relationship']);
         });
 
-        test('error: Customer on left side of <-> relationship', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
+        test('error: Customer on either side of <-> relationship', async () => {
+            // Arrange & Act — test both left and right placement
+            const leftDoc = await testServices.parse(s`
                 Domain Sales { vision: "v" }
                 bc ContextA for Sales {}
                 bc ContextB for Sales {}
@@ -134,11 +106,19 @@ describe('Relationship Validation', () => {
                     ContextA [Customer] <-> ContextB
                 }
             `);
+            const rightDoc = await testServices.parse(s`
+                Domain Sales { vision: "v" }
+                bc ContextA for Sales {}
+                bc ContextB for Sales {}
+                ContextMap M {
+                    contains ContextA, ContextB
+                    ContextA <-> [Customer] ContextB
+                }
+            `);
 
             // Assert
-            expectValidationErrors(document, [
-                'Customer [C] cannot be used on a bidirectional (<->) relationship',
-            ]);
+            expectValidationErrors(leftDoc, ['Customer [C] cannot be used on a bidirectional (<->) relationship']);
+            expectValidationErrors(rightDoc, ['Customer [C] cannot be used on a bidirectional (<->) relationship']);
         });
     });
 
@@ -147,6 +127,23 @@ describe('Relationship Validation', () => {
     // ─────────────────────────────────────────────────────────────────────────
 
     describe('pattern count info diagnostics', () => {
+        test('no info: exactly 3 patterns on a side does not trigger the diagnostic', async () => {
+            // Off-by-one boundary: 3 is the threshold — only 4+ should trigger
+            const document = await testServices.parse(s`
+                Domain Sales { vision: "v" }
+                bc ContextA for Sales {}
+                bc ContextB for Sales {}
+                ContextMap M {
+                    contains ContextA, ContextB
+                    ContextA [OHS, PL, S] -> ContextB
+                }
+            `);
+
+            // Assert
+            const infos = getDiagnosticsBySeverity(document, 3);
+            expect(infos.some(d => d.message.includes('Too many integration patterns'))).toBe(false);
+        });
+
         test('info: more than 3 patterns on left side', async () => {
             // Arrange & Act
             const document = await testServices.parse(s`
@@ -183,22 +180,5 @@ describe('Relationship Validation', () => {
             expect(infos.some(d => d.message.includes('Too many integration patterns') && d.message.includes('right'))).toBe(true);
         });
 
-        test('no info for exactly 3 patterns per side', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain Sales { vision: "v" }
-                bc ContextA for Sales {}
-                bc ContextB for Sales {}
-                ContextMap M {
-                    contains ContextA, ContextB
-                    ContextA [OHS, PL, BBoM] -> [CF, ACL, BBoM] ContextB
-                }
-            `);
-
-            // Assert
-            const infos = getDiagnosticsBySeverity(document, 3);
-            const patternCountInfos = infos.filter(d => d.message.includes('Too many integration patterns'));
-            expect(patternCountInfos).toHaveLength(0);
-        });
     });
 });

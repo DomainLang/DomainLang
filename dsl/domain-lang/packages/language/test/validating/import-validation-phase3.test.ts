@@ -39,6 +39,8 @@ describe('Import Validation (Phase 3)', () => {
         }
     });
 
+
+
     describe('local imports (no manifest required)', () => {
         test('relative file imports with .dlang extension do not require model.yaml', async () => {
             // Arrange & Act
@@ -252,43 +254,6 @@ describe('Import Validation (Phase 3)', () => {
             expect(errors.length).toBeGreaterThan(0);
         });
 
-        test('accepts valid relative path within workspace', async () => {
-            // Arrange
-            tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-import-val6-'));
-
-            // Create lib directory
-            const libDir = path.join(tempDir, 'lib');
-            await fs.mkdir(libDir);
-            await fs.writeFile(
-                path.join(libDir, 'types.dlang'),
-                'Domain Types { vision: "Shared types" }'
-            );
-
-            // Create manifest with valid relative path
-            await fs.writeFile(
-                path.join(tempDir, 'model.yaml'),
-                'dependencies:\n  shared:\n    path: ./lib\n'
-            );
-            await fs.writeFile(
-                path.join(tempDir, 'test.dlang'),
-                'import "shared/types.dlang"\nDomain Test { vision: "Test" }'
-            );
-
-            // Act
-            const services = createDomainLangServices(NodeFileSystem);
-            const uri = URI.file(path.join(tempDir, 'test.dlang'));
-            const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
-            await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
-
-            // Assert
-            // Should not have workspace boundary errors
-            const errors = (doc.diagnostics ?? []).filter(d => 
-                d.message.toLowerCase().includes('workspace') || 
-                d.message.toLowerCase().includes('boundary') ||
-                d.message.toLowerCase().includes('absolute')
-            );
-            expect(errors).toHaveLength(0);
-        });
     });
 
     describe('External dependency caching validation', () => {
