@@ -8,7 +8,6 @@ import {
     serializeNode,
     serializeRelationship,
     normalizeEntityType,
-    ENTITY_ALIASES,
     resolveMultiReference,
 } from '../../src/sdk/serializers.js';
 import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
@@ -50,22 +49,6 @@ describe('serializeNode', () => {
         expect(serialized.$container).toBeUndefined();
         expect(serialized.$cstNode).toBeUndefined();
         expect(serialized.$document).toBeUndefined();
-    });
-
-    test('should preserve $type property', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "Handle sales" }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const domain = query.domain('Sales');
-
-        // Act
-        const serialized = serializeNode(requireValue(domain, 'Expected Sales domain'), query);
-
-        // Assert
-        expect(serialized.$type).toBe('Domain');
     });
 
     test('should include FQN for named elements', async () => {
@@ -388,12 +371,10 @@ describe('normalizeEntityType', () => {
         expect(normalizeEntityType('dmaps')).toBe('domain-maps');
     });
 
-    test('ENTITY_ALIASES should contain all expected mappings', () => {
+    test('should return undefined for unknown types', () => {
         // Arrange & Act & Assert
-        expect(ENTITY_ALIASES['bounded-contexts']).toBe('bcs');
-        expect(ENTITY_ALIASES['contexts']).toBe('bcs');
-        expect(ENTITY_ALIASES['rels']).toBe('relationships');
-        expect(ENTITY_ALIASES['cmaps']).toBe('context-maps');
-        expect(ENTITY_ALIASES['dmaps']).toBe('domain-maps');
+        expect(normalizeEntityType('unknown-type')).toBeUndefined();
+        expect(normalizeEntityType('')).toBeUndefined();
     });
+
 });

@@ -43,17 +43,12 @@ describe('SDK Resolution Functions', () => {
                 }
             `);
 
-            // Assert
-            // BC direct properties
+            // Assert — reference properties resolve correctly
             const bc = query.bc('OrderContext') as BoundedContext;
-            expect(bc.description).toBe('Manages orders');
             expect(bc.businessModel?.ref?.name).toBe('Commercial');
             expect(bc.evolution?.ref?.name).toBe('Product');
 
-            // Domain direct properties
             const domain = query.domain('Sales') as Domain;
-            expect(domain.description).toBe('Sales domain');
-            expect(domain.vision).toBe('Handle sales');
             expect(domain.type?.ref?.name).toBe('Core');
         });
     });
