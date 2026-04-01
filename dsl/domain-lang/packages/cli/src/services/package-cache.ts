@@ -154,10 +154,12 @@ export class PackageCache {
 
             // Extract tarball to temp directory with strip: 1
             // (removes the top-level directory from the tarball)
+            // Reject symlinks to prevent zip-slip-via-symlink path traversal
             await extract({
                 file: tarballPath,
                 cwd: tempDir,
                 strip: 1,
+                filter: (_path, entry) => !('type' in entry && entry.type === 'SymbolicLink'),
             });
 
             // Ensure parent directory exists for the final path
@@ -223,6 +225,12 @@ export class PackageCache {
      * @returns Absolute path to the package directory
      */
     private getPackagePath(owner: string, repo: string, commitSha: string): string {
+        if (!/^[0-9a-f]{7,40}$/i.test(commitSha)) {
+            throw new Error(`Invalid commit SHA: ${commitSha}`);
+        }
+        if (!/^[a-zA-Z0-9_.-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(repo)) {
+            throw new Error(`Invalid owner or repo: ${owner}/${repo}`);
+        }
         return resolve(this.packagesDir, owner, repo, commitSha);
     }
 
