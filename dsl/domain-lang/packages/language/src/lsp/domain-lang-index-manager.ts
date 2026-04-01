@@ -311,12 +311,8 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return;
         }
 
-        const parseValue = document.parseResult.value;
-        if (!isModel(parseValue)) {
-            return;
-        }
-        const model = parseValue;
-        if (!model.imports) {
+        const model = document.parseResult.value;
+        if (!isModel(model) || !model.imports) {
             return;
         }
 
@@ -394,12 +390,8 @@ export class DomainLangIndexManager extends DefaultIndexManager {
             return;
         }
 
-        const parseValue = document.parseResult.value;
-        if (!isModel(parseValue)) {
-            return;
-        }
-        const model = parseValue;
-        if (!model.imports || model.imports.length === 0) {
+        const model = document.parseResult.value;
+        if (!isModel(model) || !model.imports || model.imports.length === 0) {
             return;
         }
 
@@ -467,10 +459,17 @@ export class DomainLangIndexManager extends DefaultIndexManager {
     /**
      * Removes a document from all dependency sets.
      * Called when a document's imports change or it's deleted.
+     *
+     * Uses the forward graph (documentImportInfo) to find only the reverse-graph sets
+     * that contain this document, avoiding an O(N) scan over all imported documents.
      */
     private removeDocumentFromDependencies(uri: string): void {
-        for (const deps of this.importDependencies.values()) {
-            deps.delete(uri);
+        const importInfoList = this.documentImportInfo.get(uri);
+        if (!importInfoList) return;
+        for (const info of importInfoList) {
+            if (info.resolvedUri) {
+                this.importDependencies.get(info.resolvedUri)?.delete(uri);
+            }
         }
     }
 

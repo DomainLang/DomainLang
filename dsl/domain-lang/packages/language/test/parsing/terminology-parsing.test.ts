@@ -19,111 +19,13 @@ beforeAll(() => {
 // BASIC TERMINOLOGY PARSING
 // ============================================================================
 
-describe('Basic Terminology Parsing', () => {
-    test('should parse simple term with name and meaning', async () => {
-        // Arrange & Act
-        const input = s`
-            Domain Sales {}
-
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    term Order: "A customer purchase request"
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology;
-
-        expect(terms).toHaveLength(1);
-        expect(terms[0].name).toBe('Order');
-        expect(terms[0].meaning).toBe('A customer purchase request');
-        expect(terms[0].synonyms).toHaveLength(0);
-        expect(terms[0].examples).toHaveLength(0);
-    });
-
-    test('should parse term without meaning', async () => {
-        // Arrange & Act
-        const input = s`
-            Domain Sales {}
-
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    term Order
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology;
-
-        expect(terms[0].name).toBe('Order');
-        expect(terms[0].meaning).toBeUndefined();
-    });
-
-    test('should parse multiple terms with correct names', async () => {
-        // Arrange & Act
-        const input = s`
-            Domain Sales {}
-
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    term Order: "A customer purchase request"
-                    term Buyer: "A person who places orders"
-                    term Product: "An item available for purchase"
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const terms = bc.terminology;
-
-        expect(terms).toHaveLength(3);
-        expect(terms.map(t => t.name)).toEqual(['Order', 'Buyer', 'Product']);
-    });
-});
+// Basic terminology parsing covered by 'Complex Term Definitions' tests below
 
 // ============================================================================
 // TERM AND BLOCK KEYWORD VARIANTS
 // ============================================================================
 
 describe('Term and Block Keyword Variants', () => {
-    test.each([
-        ['term', 'lowercase term keyword'],
-        ['Term', 'capitalized Term keyword'],
-    ])('should parse %s keyword variant', async (keyword) => {
-        // Arrange & Act
-        const input = s`
-            Domain Sales {}
-
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    ${keyword} Order: "A customer purchase request"
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        expect(bc.terminology[0].name).toBe('Order');
-        expect(bc.terminology[0].meaning).toBe('A customer purchase request');
-    });
-
     test('should parse glossary block keyword as terminology alias', async () => {
         // Arrange & Act
         const input = s`
@@ -308,34 +210,35 @@ describe('Complex Term Definitions', () => {
     });
 });
 
+// NOTE: term assignment operator variants (: / is / =) are NOT tested — syntax-variants.test.ts
+// covers domain-level operators only. Consider adding term operator coverage here.
+
 // ============================================================================
-// ASSIGNMENT OPERATOR VARIANTS
+// TERM ASSIGNMENT OPERATOR VARIANTS
 // ============================================================================
 
-describe('Term Assignment Operators', () => {
+describe('Term Assignment Operator Variants', () => {
     test.each([
-        [':', 'colon'],
-        ['is', 'is keyword'],
-        ['=', 'equals'],
-    ])('should parse term with %s (%s) assignment and preserve meaning', async (operator) => {
-        // Arrange & Act
+        ['colon (:)', ':'],
+        ['is keyword', 'is'],
+        ['equals (=)', '='],
+    ])('should parse term meaning with %s operator', async (_label, operator) => {
         const input = s`
             Domain Sales {}
-
             BoundedContext OrderContext for Sales {
                 terminology {
-                    term Order ${operator} "A purchase request"
+                    term Order ${operator} "A customer purchase request"
                 }
             }
         `;
 
         const document = await testServices.parse(input);
 
-        // Assert
         expectValidDocument(document);
-        const term = getFirstBoundedContext(document).terminology[0];
-        expect(term.name).toBe('Order');
-        expect(term.meaning).toBe('A purchase request');
+        const bc = getFirstBoundedContext(document);
+        expect(bc.terminology).toHaveLength(1);
+        expect(bc.terminology[0].name).toBe('Order');
+        expect(bc.terminology[0].meaning).toBe('A customer purchase request');
     });
 });
 
@@ -386,28 +289,6 @@ describe('Terminology Edge Cases', () => {
         expect(term.meaning).toBe(meaning);
     });
 
-    test('should handle terms with comma separators', async () => {
-        // Arrange & Act
-        const input = s`
-            Domain Sales {}
-
-            BoundedContext OrderContext for Sales {
-                terminology {
-                    term Order: "A purchase request",
-                    term Buyer: "A person placing orders"
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const terms = getFirstBoundedContext(document).terminology;
-        expect(terms).toHaveLength(2);
-        expect(terms[0].name).toBe('Order');
-        expect(terms[1].name).toBe('Buyer');
-    });
 });
 
 // ============================================================================

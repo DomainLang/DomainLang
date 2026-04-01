@@ -171,26 +171,7 @@ describe('ContextMap Relationship Linking', () => {
 
 describe('Domain Reference Linking', () => {
 
-    // SMOKE: basic domain reference
-    test('BC domain reference resolves to correct domain name', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {
-                vision: "Sales domain"
-            }
-
-            BoundedContext OrderContext for Sales
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Act
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-
-        // Assert
-        expect(bc.domain?.ref?.name).toBe('Sales');
-    });
+    // SMOKE: basic domain reference covered by model-structure-parsing.test.ts
 
     // EDGE: parent domain subdomain hierarchy resolution
     test('parent domain references resolve through multi-level hierarchy', async () => {
@@ -614,32 +595,5 @@ describe('Complex Linking Scenarios', () => {
         expect(bc.domain?.ref?.name).toBe('Sales');
     });
 
-    // EDGE: metadata reference in BC metadata block
-    test('metadata references in BC metadata block resolve correctly', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            Metadata Language
-            Metadata Framework
-
-            bc OrderContext for Sales {
-                metadata {
-                    Language: "TypeScript"
-                    Framework: "Express"
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Act
-        expectValidDocument(document);
-        const bc = getFirstBoundedContext(document);
-        const metadata = bc.metadata ?? [];
-
-        // Assert
-        expect(metadata).toHaveLength(2);
-        expect(metadata[0]?.key?.ref?.name).toBe('Language');
-        expect(metadata[1]?.key?.ref?.name).toBe('Framework');
-    });
+    // Metadata reference linking covered in metadata.test.ts
 });

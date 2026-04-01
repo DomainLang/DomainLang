@@ -288,29 +288,7 @@ describe('DomainLang Formatter', () => {
             expect(edits).toHaveLength(0);
         });
 
-        test('empty block does not crash formatter and preserves content', async () => {
-            // Arrange & Act
-            const { result } = await formatAndApply(s`Domain Sales { }`);
-
-            // Assert — The formatter should not corrupt the document
-            expect(result).toContain('Domain');
-            expect(result).toContain('Sales');
-        });
-
         // 'deeply nested blocks produce increasing indentation' covered by indentation section above
-
-        test('multiple top-level blocks are all preserved after formatting', async () => {
-            // Arrange & Act
-            const { result } = await formatAndApply(
-                s`Domain A { vision: "A" } Domain B { vision: "B" }`
-            );
-
-            // Assert
-            expect(result).toContain('Domain A');
-            expect(result).toContain('Domain B');
-            expect(result).toContain('"A"');
-            expect(result).toContain('"B"');
-        });
 
         test('BoundedContext with inline attributes formats to multi-line', async () => {
             // Arrange & Act

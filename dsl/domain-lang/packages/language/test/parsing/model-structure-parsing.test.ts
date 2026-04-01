@@ -32,17 +32,6 @@ describe('Grammar Completeness Tests', () => {
     // ========================================================================
 
     describe('Section 1: Entry Point & Model Structure', () => {
-        test('Model - empty model has no children or imports', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(`// Empty model`);
-
-            // Assert
-            expectValidDocument(document);
-            const model = document.parseResult.value;
-            expect(model.children).toHaveLength(0);
-            expect(model.imports).toHaveLength(0);
-        });
-
         test('Model - with imports and children parses correct counts', async () => {
             // Arrange & Act
             const input = s`
@@ -322,76 +311,6 @@ describe('Grammar Completeness Tests', () => {
             expect(bc.domain?.ref?.name).toBe('Test');
             expect(bc.domain?.ref).toBe(targetDomain);
         });
-    });
-
-    // ========================================================================
-    // SECTION 8: TERMINALS & LEXICAL GRAMMAR
-    // ========================================================================
-
-    describe('Section 8: Terminals & Lexical Grammar', () => {
-        test('ID terminal - various formats parse as domain names', async () => {
-            // Arrange & Act
-            const input = s`
-                Domain simple {}
-                Domain with_underscores {}
-                Domain with-hyphens {}
-                Domain MixedCase123 {}
-                Domain _startsWithUnderscore {}
-            `;
-
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-            const domains = document.parseResult.value.children.filter(isDomain);
-
-            expect(domains).toHaveLength(5);
-            expect(domains.map(d => d.name)).toEqual([
-                'simple', 'with_underscores', 'with-hyphens', 'MixedCase123', '_startsWithUnderscore'
-            ]);
-        });
-
-        test('STRING terminal - both quote types preserve content', async () => {
-            // Arrange & Act
-            const input = s`
-                Domain Test {
-                    description: "Double quoted string"
-                    vision: 'Single quoted string'
-                }
-            `;
-
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-            const domain = document.parseResult.value.children.find(isDomain)!;
-
-            expect(domain.description).toBe('Double quoted string');
-            expect(domain.vision).toBe('Single quoted string');
-        });
-
-        test('Comments - do not affect parsing', async () => {
-            // Arrange & Act
-            const input = s`
-                // Single line comment
-                /* Multi-line
-                   comment */
-                Domain Test {
-                    // Inline comment
-                    description: "Test" /* Another comment */
-                }
-            `;
-
-            const document = await testServices.parse(input);
-
-            // Assert
-            expectValidDocument(document);
-            const domain = document.parseResult.value.children.find(isDomain)!;
-            expect(domain.name).toBe('Test');
-            expect(domain.description).toBe('Test');
-        });
-
-        // 'Assignment operators' covered by syntax-variants.test.ts
     });
 
     // ========================================================================

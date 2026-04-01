@@ -403,30 +403,6 @@ bc TestContext as Core.Baunwalls.Jannie {}`;
         });
     });
 
-    describe('Relationship hovers', () => {
-        test('shows arrow and bounded context references', async () => {
-            // Arrange & Act
-            const hover = await getHoverAt(
-                s`
-                Domain Sales {}
-                bc A for Sales
-                bc B for Sales
-                ContextMap SalesMap {
-                    contains A, B
-                    A -> B
-                }
-                `,
-                5,
-                6 // '-' in '->' arrow
-            );
-
-            // Assert — Relationship hover may land on the arrow token or return undefined
-            // depending on parser CST leaf positioning; verify it doesn't throw
-            if (hover) {
-                expect(hover.contents.value).toContain('(relationship)');
-            }
-        });
-    });
 
     // ================================================================
     // Documentation comments
@@ -588,32 +564,6 @@ Classification Core`,
     // 'this' reference hover (LSP audit)
     // ================================================================
 
-    describe('this reference hover', () => {
-        test('hovering over "this" inside a context map returns parent hover', async () => {
-            // Arrange & Act
-            const hover = await getHoverAt(
-                s`
-                    Domain Sales { vision: "Sales domain" }
-                    bc OrderContext for Sales
-                    bc BillingContext for Sales
-                    ContextMap SalesMap {
-                        contains OrderContext, BillingContext
-                        [OHS] this -> [CF] BillingContext
-                    }
-                `,
-                5,
-                10 // position of 'this' in '[OHS] this'
-            );
-
-            // Assert — 'this' resolves to the parent ContextMap hover
-            // The key test is that the call does not crash (MaybePromise fix)
-            if (hover) {
-                expect(hover.contents.kind).toBe('markdown');
-                expect(hover.contents.value).toContain('SalesMap');
-            }
-        });
-
-    });
 
     // ================================================================
     // Error handling

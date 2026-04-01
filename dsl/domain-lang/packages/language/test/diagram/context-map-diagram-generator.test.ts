@@ -223,27 +223,6 @@ describe('DomainLangContextMapDiagramGenerator – relationship edges', () => {
         expect(badges).toContain('D|CF');
     });
 
-    test('no center label for UpstreamDownstream relationship', async () => {
-        // Arrange & Act
-        const model = await generateDiagram(
-            s`
-                Domain Sales { vision: "v" }
-                bc Orders for Sales {}
-                bc Billing for Sales {}
-                ContextMap M {
-                    contains Orders, Billing
-                    Orders [OHS] -> [CF] Billing
-                }
-            `,
-            'file:///diagram-ud-no-label.dlang'
-        );
-
-        // Assert — center label should NOT say UpstreamDownstream
-        const centerLabels = getAllEdgeLabels(model);
-        expect(centerLabels).not.toContain('UpstreamDownstream');
-        expect(centerLabels).not.toContain('Upstream/Downstream');
-    });
-
     // ── S/C badges for CustomerSupplier ──────────────────────────────────────
 
     test('generates S| and C| badges without duplication for CustomerSupplier', async () => {

@@ -107,12 +107,25 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
         document: LangiumDocument
     ): Stream<AstNodeDescription> {
         const docUri = document.uri.toString();
+
+        // Pre-compute a single index: URI → descriptions for this type.
+        // A single allElements() call is O(M); repeated calls below would be O((1+N)×M).
+        const descByUri = new Map<string, AstNodeDescription[]>();
+        for (const desc of this.indexManager.allElements(referenceType)) {
+            const uriStr = desc.documentUri.toString();
+            let bucket = descByUri.get(uriStr);
+            if (!bucket) {
+                bucket = [];
+                descByUri.set(uriStr, bucket);
+            }
+            bucket.push(desc);
+        }
+
         const allVisibleDescriptions: AstNodeDescription[] = [];
 
         // 1. Always include current document's own symbols
-        const ownDescriptions = this.indexManager.allElements(referenceType)
-            .filter(desc => desc.documentUri.toString() === docUri);
-        allVisibleDescriptions.push(...ownDescriptions.toArray());
+        const ownDescriptions = descByUri.get(docUri) ?? [];
+        allVisibleDescriptions.push(...ownDescriptions);
 
         // 2. Get import info (with aliases)
         const importInfo = this.domainLangIndexManager.getImportInfo(docUri);
@@ -127,9 +140,9 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
             }
 
             // Add descriptions from the directly imported document
-            this.addDescriptionsFromImport(
+            this.addDescriptionsFromImportFast(
                 imp,
-                referenceType,
+                descByUri,
                 processedUris,
                 allVisibleDescriptions
             );
@@ -137,7 +150,7 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
             // 4. Check for package-boundary transitive imports
             this.addPackageBoundaryTransitiveImports(
                 imp,
-                referenceType,
+                descByUri,
                 document,
                 processedUris,
                 allVisibleDescriptions
@@ -148,31 +161,22 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
     }
 
     /**
-     * Adds descriptions from a single import, applying alias prefixing if needed.
-     *
-     * @param imp - Import information (specifier, alias, resolved URI)
-     * @param referenceType - The AST type being referenced
-     * @param processedUris - Set of already-processed URIs to avoid duplicates
-     * @param output - Array to append visible descriptions to
+     * Adds descriptions from a single import using the pre-computed descByUri index.
      */
-    private addDescriptionsFromImport(
+    private addDescriptionsFromImportFast(
         imp: ImportInfo,
-        referenceType: string,
+        descByUri: Map<string, AstNodeDescription[]>,
         processedUris: Set<string>,
         output: AstNodeDescription[]
     ): void {
-        const descriptions = this.indexManager.allElements(referenceType)
-            .filter(desc => desc.documentUri.toString() === imp.resolvedUri);
+        const descriptions = descByUri.get(imp.resolvedUri) ?? [];
 
         if (imp.alias) {
-            // With alias: prefix all names with alias
-            // Example: CoreDomain → ddd.CoreDomain
             for (const desc of descriptions) {
                 output.push(this.createAliasedDescription(desc, imp.alias));
             }
         } else {
-            // Without alias: use original names
-            output.push(...descriptions.toArray());
+            output.push(...descriptions);
         }
 
         processedUris.add(imp.resolvedUri);
@@ -188,14 +192,14 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
      * Local file imports remain non-transitive.
      *
      * @param imp - Import information for the direct import
-     * @param referenceType - The AST type being referenced
+     * @param descByUri - Pre-computed index of descriptions by document URI
      * @param currentDocument - The document making the reference
      * @param processedUris - Set of already-processed URIs to avoid duplicates
      * @param output - Array to append visible descriptions to
      */
     private addPackageBoundaryTransitiveImports(
         imp: ImportInfo,
-        referenceType: string,
+        descByUri: Map<string, AstNodeDescription[]>,
         currentDocument: LangiumDocument,
         processedUris: Set<string>,
         output: AstNodeDescription[]
@@ -218,13 +222,13 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
             if (samePackage) {
                 // Within package boundary: include transitive imports
                 // Apply the top-level import's alias (if any)
-                this.addDescriptionsFromImport(
+                this.addDescriptionsFromImportFast(
                     {
                         specifier: transitiveImp.specifier,
                         alias: imp.alias, // Use the top-level import's alias
                         resolvedUri: transitiveImp.resolvedUri
                     },
-                    referenceType,
+                    descByUri,
                     processedUris,
                     output
                 );

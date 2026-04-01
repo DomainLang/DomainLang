@@ -322,6 +322,9 @@ export class ManifestManager {
             context.manifestCache = undefined;
             context.lockFile = undefined;
         }
+        if (this.activeRoot) {
+            getGlobalOptimizer().invalidateCache(this.activeRoot);
+        }
     }
 
     /**
@@ -452,12 +455,20 @@ export class ManifestManager {
                 const suffix = specifier.slice(key.length);
                 if (suffix) {
                     // Import with subpath: owner/package/subpath
-                    return path.join(packageDir, suffix);
+                    const resolved = path.join(packageDir, suffix);
+                    if (!resolved.startsWith(packageDir + path.sep)) {
+                        return undefined; // traversal attempt — treat as not found
+                    }
+                    return resolved;
                 }
 
                 // Read entry point from package's model.yaml
                 const entryPoint = await this.readPackageEntry(packageDir);
-                return path.join(packageDir, entryPoint);
+                const entryResolved = path.join(packageDir, entryPoint);
+                if (!entryResolved.startsWith(packageDir + path.sep) && entryResolved !== packageDir) {
+                    return undefined; // entry escapes package dir — treat as not found
+                }
+                return entryResolved;
             }
         }
 
@@ -473,8 +484,8 @@ export class ManifestManager {
             const content = await fs.readFile(manifestPath, 'utf-8');
             const manifest = YAML.parse(content) as { model?: { entry?: string } };
             const entry = manifest?.model?.entry ?? 'index.dlang';
-            if (!isRelativeSafePath(entry)) {
-                console.warn(`Unsafe entry path '${entry}' in package manifest, falling back to index.dlang`);
+            // Reject entries with path traversal or absolute paths (R-029)
+            if (typeof entry !== 'string' || entry.includes('..') || path.isAbsolute(entry)) {
                 return 'index.dlang';
             }
             return entry;
@@ -740,6 +751,10 @@ export class ManifestManager {
 
         for (const [key, value] of Object.entries(parsed.dependencies ?? {})) {
             if (!value || typeof value.ref !== 'string' || typeof value.resolved !== 'string' || typeof value.commit !== 'string') {
+                continue;
+            }
+            // Reject commits that are not valid hex SHAs (B-001)
+            if (!/^[0-9a-f]{7,40}$/i.test(value.commit)) {
                 continue;
             }
             dependencies[key] = {

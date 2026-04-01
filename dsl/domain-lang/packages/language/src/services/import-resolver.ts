@@ -211,6 +211,21 @@ export class ImportResolver {
         // Local relative paths (./path or ../path) - directory-first resolution
         if (specifier.startsWith('./') || specifier.startsWith('../')) {
             const resolved = path.resolve(baseDir, specifier);
+            // Only enforce workspace boundary when a manifest exists.
+            // Without a manifest, workspaceRoot is a fallback to baseDir, which would
+            // incorrectly block valid ../path imports from subdirectories (no model.yaml).
+            const manifestPath = await this.workspaceManager.getManifestPath();
+            if (manifestPath) {
+                const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
+                if (!resolved.startsWith(workspaceRoot + path.sep) && resolved !== workspaceRoot) {
+                    throw new ImportResolutionError({
+                        specifier,
+                        reason: 'unresolvable',
+                        hint: 'Relative imports must stay within the workspace directory.',
+                        message: `Import '${specifier}' escapes the workspace boundary.`
+                    });
+                }
+            }
             return this.resolveLocalPath(resolved, specifier);
         }
 
@@ -241,6 +256,15 @@ export class ImportResolver {
             const manifestDir = manifestPath ? path.dirname(manifestPath) : root;
             const resolvedBase = path.resolve(manifestDir, targetPath);
             const resolved = remainder ? path.join(resolvedBase, remainder) : resolvedBase;
+            // Guard against traversal past the alias target via the remainder segment
+            if (!resolved.startsWith(resolvedBase + path.sep) && resolved !== resolvedBase) {
+                throw new ImportResolutionError({
+                    specifier,
+                    reason: 'unresolvable',
+                    hint: 'Import path escapes the alias target directory.',
+                    message: `Import '${specifier}' traverses outside the alias target.`
+                });
+            }
             return this.resolveLocalPath(resolved, specifier);
         }
 
@@ -248,6 +272,15 @@ export class ImportResolver {
         if (specifier.startsWith('@/')) {
             const relativePath = specifier.slice(2);
             const resolved = path.join(root, relativePath);
+            // Guard against escaping workspace root via ../ in the relative path
+            if (!resolved.startsWith(root + path.sep) && resolved !== root) {
+                throw new ImportResolutionError({
+                    specifier,
+                    reason: 'unresolvable',
+                    hint: 'Import path escapes the workspace root.',
+                    message: `Import '${specifier}' traverses outside the workspace.`
+                });
+            }
             return this.resolveLocalPath(resolved, specifier);
         }
 
@@ -402,7 +435,17 @@ export class ImportResolver {
             const moduleManifestPath = path.join(resolved, 'model.yaml');
             const entryPoint = await this.readModuleEntry(moduleManifestPath);
             const entryFile = path.join(resolved, entryPoint);
-            
+
+            // Guard against model.entry escaping the module directory
+            if (!entryFile.startsWith(resolved + path.sep) && entryFile !== resolved) {
+                throw new ImportResolutionError({
+                    specifier: original,
+                    reason: 'unresolvable',
+                    hint: `The module's model.yaml specifies an entry path that escapes the module directory.`,
+                    message: `Module entry '${entryPoint}' in '${moduleManifestPath}' escapes module boundary.`
+                });
+            }
+
             if (await this.fileExists(entryFile)) {
                 return URI.file(entryFile);
             }

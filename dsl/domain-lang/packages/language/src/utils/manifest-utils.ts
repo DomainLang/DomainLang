@@ -107,7 +107,9 @@ export async function readEntryFromManifest(manifestPath: string): Promise<strin
  */
 export async function getEntryPath(manifestPath: string): Promise<string> {
     const entry = await readEntryFromManifest(manifestPath);
-    return path.resolve(path.dirname(manifestPath), entry);
+    const manifestDir = path.dirname(manifestPath);
+    const resolved = path.resolve(manifestDir, entry);
+    return resolved;
 }
 
 /**

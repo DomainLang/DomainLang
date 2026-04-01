@@ -66,8 +66,6 @@ if (entryFile) {
             connection.console.warn(`Successfully loaded import graph from ${entryFile}`);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            connection.console.error(`Failed to preload import graph from ${entryFile}: ${message}`);
-            // Notify LSP client of the error
             connection.console.error(
                 `DomainLang: Could not load entry file ${entryFile}. Error: ${message}`
             );

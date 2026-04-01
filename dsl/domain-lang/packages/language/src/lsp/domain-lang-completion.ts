@@ -457,9 +457,8 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
             } as AstNode;
             AstUtils.assignMandatoryProperties(this.astReflection, node);
         }
-        const reference: Reference<AstNode> = { $refText: '', ref: undefined };
         const refInfo: ReferenceInfo = {
-            reference,
+            reference: { $refText: '', ref: undefined },
             container: node,
             property: assignment.feature,
         };

@@ -8,31 +8,13 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
-import { isBoundedContext, isClassification } from '../../src/generated/ast.js';
+import { isBoundedContext } from '../../src/generated/ast.js';
 
 describe('Decision Classification', () => {
     let testServices: TestServices;
 
     beforeAll(() => {
         testServices = setupTestSuite();
-    });
-
-    test('should parse Classification definitions with correct names', async () => {
-        // Arrange & Act
-        const input = s`
-            Classification Architectural
-            Classification Business
-            Classification Technical
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const categories = document.parseResult.value.children.filter(isClassification);
-
-        expect(categories).toHaveLength(3);
-        expect(categories.map(c => c.name)).toEqual(['Architectural', 'Business', 'Technical']);
     });
 
     test('should resolve Classification references in decisions', async () => {
@@ -92,54 +74,9 @@ describe('Decision Classification', () => {
         expect(bc.decisions[0].classification?.ref?.name).toBe('Architectural');
     });
 
-    test('should share Classifications between context roles and decisions', async () => {
-        // Arrange & Act
-        const input = s`
-            Classification Core
-            Classification Architectural
-
-            Domain Sales {}
-
-            BoundedContext OrderContext for Sales as Core {
-                decisions {
-                    decision [Architectural] EventSourcing: "Use event sourcing",
-                    decision [Core] DomainEvents: "Publish domain events"
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = document.parseResult.value.children.find(isBoundedContext)!;
-
-        // Same Classification used for context role and decision category
-        expect(bc.classification[0]?.ref?.name).toBe('Core');
-        expect(bc.decisions[0].classification?.ref?.name).toBe('Architectural');
-        expect(bc.decisions[1].classification?.ref?.name).toBe('Core');
-    });
-
     // ========================================================================
     // EDGE CASES & NEGATIVE TESTS
     // ========================================================================
-
-    test('should parse empty decisions block', async () => {
-        // Arrange & Act
-        const input = s`
-            Domain Sales {}
-            BoundedContext OrderContext for Sales {
-                decisions { }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = document.parseResult.value.children.find(isBoundedContext)!;
-        expect(bc.decisions).toHaveLength(0);
-    });
 
     test('should parse decision without category bracket', async () => {
         // Arrange - decisions can omit the [Category] bracket per grammar

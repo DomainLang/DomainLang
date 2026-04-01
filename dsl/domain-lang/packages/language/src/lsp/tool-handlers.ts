@@ -96,6 +96,8 @@ export interface ListResponse {
     count: number;
     /** Serialized results */
     results: Record<string, unknown>[];
+    /** Error message if the request could not be fulfilled */
+    error?: string;
 }
 
 /**
@@ -230,32 +232,35 @@ async function handleList(
 ): Promise<ListResponse> {
     try {
         const entityType = normalizeEntityType(params.type);
-    const filters = params.filters ?? {};
-
-    // Get all documents and merge results
-    const langiumDocs = sharedServices.workspace.LangiumDocuments;
-    const documents = Array.from(langiumDocs.all);
-
-    const allResults: Record<string, unknown>[] = [];
-    const seen = new Set<string>(); // Deduplicate by FQN
-
-    for (const doc of documents) {
-        const query = fromDocument(doc as LangiumDocument<Model>);
-        const results = executeListQuery(query, entityType, filters);
-
-        for (const result of results) {
-            const fqn = result.fqn as string | undefined;
-            if (fqn && seen.has(fqn)) continue;
-            if (fqn) seen.add(fqn);
-            allResults.push(result);
+        if (!entityType) {
+            return { entityType: params.type as never, count: 0, results: [], error: `Unknown entity type: ${params.type}` };
         }
-    }
+        const filters = params.filters ?? {};
 
-    return {
-        entityType,
-        count: allResults.length,
-        results: allResults,
-    };
+        // Get all documents and merge results
+        const langiumDocs = sharedServices.workspace.LangiumDocuments;
+        const documents = Array.from(langiumDocs.all);
+
+        const allResults: Record<string, unknown>[] = [];
+        const seen = new Set<string>(); // Deduplicate by FQN
+
+        for (const doc of documents) {
+            const query = fromDocument(doc as LangiumDocument<Model>);
+            const results = executeListQuery(query, entityType, filters);
+
+            for (const result of results) {
+                const fqn = result.fqn as string | undefined;
+                if (fqn && seen.has(fqn)) continue;
+                if (fqn) seen.add(fqn);
+                allResults.push(result);
+            }
+        }
+
+        return {
+            entityType,
+            count: allResults.length,
+            results: allResults,
+        };
     } catch (error) {
         log.error('domainlang/list handler error', { error: error instanceof Error ? error.message : String(error) });
         const safeType: QueryEntityType = (() => { try { return normalizeEntityType(params.type); } catch { return 'bcs'; } })();
@@ -371,7 +376,7 @@ function listBoundedContexts(query: Query, filters: QueryFilters): Record<string
     if (filters.metadata) {
         const eqIdx = filters.metadata.indexOf('=');
         const key = eqIdx >= 0 ? filters.metadata.slice(0, eqIdx) : filters.metadata;
-        const value = eqIdx >= 0 ? filters.metadata.slice(eqIdx + 1) : '';
+        const value = eqIdx >= 0 ? filters.metadata.slice(eqIdx + 1) : undefined;
         builder = builder.withMetadata(key, value);
     }
     if (filters.name) builder = builder.withName(filters.name) as ReturnType<Query['boundedContexts']>;
