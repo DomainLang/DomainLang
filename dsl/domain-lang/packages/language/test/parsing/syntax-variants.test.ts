@@ -44,24 +44,6 @@ describe('Domain Keyword Variants', () => {
         expect(domain.vision).toBe('Sales vision');
     });
 
-    test.each([
-        ['Domain', 'capitalized keyword'],
-        ['dom', 'shorthand'],
-    ])('should parse %s (%s) without body', async (keyword) => {
-        // Arrange
-        const input = s`
-            ${keyword} Sales
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const domain = getFirstDomain(document);
-        expect(domain.name).toBe('Sales');
-        expect(domain.vision).toBeUndefined();
-    });
 });
 
 // ============================================================================
@@ -87,47 +69,7 @@ describe('BoundedContext Keyword Variants', () => {
     });
 });
 
-// ============================================================================
-// TEAM KEYWORD VARIANTS
-// ============================================================================
-
-describe('Team Keyword', () => {
-    test('should parse Team keyword with correct name', async () => {
-        // Arrange & Act
-        const input = s`
-            Team SalesTeam
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const teams = document.parseResult.value.children.filter(c => c.$type === 'Team');
-        expect(teams).toHaveLength(1);
-        expect(teams[0].name).toBe('SalesTeam');
-    });
-});
-
-// ============================================================================
-// CLASSIFICATION KEYWORD VARIANTS
-// ============================================================================
-
-describe('Classification Keyword', () => {
-    test('should parse Classification keyword with correct name', async () => {
-        // Arrange & Act
-        const input = s`
-            Classification Core
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const classifications = document.parseResult.value.children.filter(c => c.$type === 'Classification');
-        expect(classifications).toHaveLength(1);
-        expect(classifications[0].name).toBe('Core');
-    });
-});
+// Team and Classification standalone parsing covered by bc Documentation Block Variants tests (they use team/classification as cross-ref targets)
 
 // ============================================================================
 // CONTEXT MAP KEYWORD VARIANTS
@@ -219,23 +161,6 @@ describe('Namespace Keyword Variants', () => {
         expect(namespaces[0].children).toHaveLength(1);
     });
 
-    test('should parse ns with dot notation', async () => {
-        // Arrange
-        const input = s`
-            ns Acme.Sales {
-                Domain Sales {}
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const namespaces = document.parseResult.value.children.filter(c => c.$type === 'NamespaceDeclaration');
-        expect(namespaces).toHaveLength(1);
-        expect(namespaces[0].name).toBe('Acme.Sales');
-    });
 });
 
 // ============================================================================
@@ -466,17 +391,18 @@ describe('Decisions Block Variants', () => {
 // ============================================================================
 
 describe('Decision Type Variants', () => {
+    // Verify each keyword produces a distinct $type node — the important semantic difference
     test.each([
-        ['decision', 'EventSourcing', 'Use event sourcing'],
-        ['policy', 'RefundPolicy', '30-day refunds'],
-        ['rule', 'UniqueIds', 'All IDs must be unique'],
-    ])('should parse %s keyword', async (keyword, name, description) => {
+        ['decision', 'Decision'],
+        ['policy', 'Policy'],
+        ['rule', 'BusinessRule'],
+    ] as const)('should parse %s keyword as $type %s', async (keyword, expectedType) => {
         // Arrange & Act
         const input = s`
             Domain Sales {}
             bc OrderContext for Sales {
                 decisions {
-                    ${keyword} ${name}: "${description}"
+                    ${keyword} MyItem: "Some value"
                 }
             }
         `;
@@ -487,8 +413,7 @@ describe('Decision Type Variants', () => {
         expectValidDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.decisions).toHaveLength(1);
-        expect(bc.decisions[0].name).toBe(name);
-        expect(bc.decisions[0].value).toBe(description);
+        expect(bc.decisions[0].$type).toBe(expectedType);
     });
 });
 

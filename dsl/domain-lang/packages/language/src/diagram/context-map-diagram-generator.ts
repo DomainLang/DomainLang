@@ -484,8 +484,7 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
     }
 
     private getNodeKey(query: Query, boundedContext: BoundedContext): string {
-        const fqn = query.fqn(boundedContext);
-        return fqn ?? boundedContext.name;
+        return query.fqn(boundedContext);
     }
 
     // ── Selection helpers ──

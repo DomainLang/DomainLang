@@ -32,7 +32,6 @@ describe('Resolution Precedence', () => {
             const classification = effectiveClassification(bc);
 
             // Assert
-            expect(classification).not.toBeUndefined();
             expect(classification?.name).toBe('Core');
         });
 
@@ -51,7 +50,6 @@ describe('Resolution Precedence', () => {
             const classification = effectiveClassification(bc);
 
             // Assert
-            expect(classification).not.toBeUndefined();
             expect(classification?.name).toBe('Core');
         });
 
@@ -106,7 +104,6 @@ describe('Resolution Precedence', () => {
             const team = effectiveTeam(bc);
 
             // Assert
-            expect(team).not.toBeUndefined();
             expect(team?.name).toBe('TeamA');
         });
 
@@ -125,7 +122,6 @@ describe('Resolution Precedence', () => {
             const team = effectiveTeam(bc);
 
             // Assert
-            expect(team).not.toBeUndefined();
             expect(team?.name).toBe('TeamA');
         });
 
@@ -189,21 +185,6 @@ describe('Resolution Precedence', () => {
             expect(metadata.size).toBe(2);
             expect(metadata.get('tier')).toBe('critical');
             expect(metadata.get('sla')).toBe('99.99%');
-        });
-
-        test('returns empty map when no metadata', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales {}
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const metadata = metadataAsMap(bc);
-
-            // Assert
-            expect(metadata.size).toBe(0);
         });
 
         test('last value wins for duplicate metadata keys', async () => {

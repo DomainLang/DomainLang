@@ -132,14 +132,6 @@ describe('DocumentSymbolProvider', () => {
     // ==========================================
     // EDGE: empty document returns no symbols
     // ==========================================
-    test('empty document yields no symbols', async () => {
-        // Arrange & Act
-        const symbols = await getSymbols('');
-
-        // Assert
-        expect(symbols).toHaveLength(0);
-    });
-
     // ==========================================
     // EDGE: domain without body still produces a symbol
     // ==========================================

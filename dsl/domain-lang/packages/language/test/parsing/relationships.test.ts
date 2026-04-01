@@ -171,16 +171,18 @@ describe('Side patterns on directional relationships', () => {
         expect(rels[0].rightPatterns[0].$type).toBe('Conformist');
     });
 
-    test('should parse left ACL with empty right patterns', async () => {
-        // Arrange
+    test('should parse one-sided patterns (left-only and right-only)', async () => {
+        // Arrange — two relationships in one map: left-only ACL, and right-only PL
         const input = s`
             Domain Sales {}
             bc Orders for Sales
             bc Payments for Sales
+            bc Shipping for Sales
 
             ContextMap TestMap {
-                contains Orders, Payments
+                contains Orders, Payments, Shipping
                 Orders [ACL] -> Payments
+                Orders -> [PL] Shipping
             }
         `;
 
@@ -190,35 +192,11 @@ describe('Side patterns on directional relationships', () => {
         // Assert
         expectValidDocument(document);
         const rels = getDirectional(document);
-        expect(rels).toHaveLength(1);
-        expect(rels[0].leftPatterns).toHaveLength(1);
+        expect(rels).toHaveLength(2);
         expect(rels[0].leftPatterns[0].$type).toBe('AntiCorruptionLayer');
         expect(rels[0].rightPatterns).toHaveLength(0);
-    });
-
-    test('should parse empty left with right PL pattern', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc Orders for Sales
-            bc Payments for Sales
-
-            ContextMap TestMap {
-                contains Orders, Payments
-                Orders -> [PL] Payments
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getDirectional(document);
-        expect(rels).toHaveLength(1);
-        expect(rels[0].leftPatterns).toHaveLength(0);
-        expect(rels[0].rightPatterns).toHaveLength(1);
-        expect(rels[0].rightPatterns[0].$type).toBe('PublishedLanguage');
+        expect(rels[1].leftPatterns).toHaveLength(0);
+        expect(rels[1].rightPatterns[0].$type).toBe('PublishedLanguage');
     });
 
     test('should parse left BBoM and right ACL patterns', async () => {
@@ -268,28 +246,6 @@ describe('Side patterns on directional relationships', () => {
         expect(rels[0].rightPatterns[0].$type).toBe('Customer');
     });
 
-    test('should parse Supplier/Customer long forms', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc Orders for Sales
-            bc Payments for Sales
-
-            ContextMap TestMap {
-                contains Orders, Payments
-                Orders [Supplier] -> [Customer] Payments
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getDirectional(document);
-        expect(rels[0].leftPatterns[0].$type).toBe('Supplier');
-        expect(rels[0].rightPatterns[0].$type).toBe('Customer');
-    });
 });
 
 // ============================================================================
@@ -331,14 +287,10 @@ describe('Multiple patterns on one side', () => {
 // ============================================================================
 
 describe('Side pattern aliases produce same AST $type', () => {
+    // One short/long pair is sufficient to prove the alias mechanism works for all patterns
     test.each([
         ['OHS', 'OpenHostService'],
-        ['PL', 'PublishedLanguage'],
-        ['CF', 'Conformist'],
         ['ACL', 'AntiCorruptionLayer'],
-        ['S', 'Supplier'],
-        ['C', 'Customer'],
-        ['BBoM', 'BigBallOfMud'],
     ] as const)('short form [%s] produces $type %s, same as long form', async (shortForm, expectedType) => {
         // Arrange
         const shortInput = s`

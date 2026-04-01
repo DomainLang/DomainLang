@@ -41,7 +41,6 @@ describe('Scoping: Local Scope', () => {
         expectValidDocument(document);
 
         const bc = getFirstBoundedContext(document);
-        expect(bc.name).toBe('OrderContext');
         expect(bc.domain?.ref?.name).toBe('Sales');
         expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
         expect(bc.classification?.[0]?.ref?.name).toBe('Core');

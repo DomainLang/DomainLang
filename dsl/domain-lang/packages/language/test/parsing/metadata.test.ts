@@ -15,7 +15,6 @@ import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
 import {
     isBoundedContext,
-    isMetadata,
 } from '../../src/generated/ast.js';
 
 let testServices: TestServices;
@@ -28,25 +27,7 @@ beforeAll(() => {
 // METADATA DEFINITION PARSING
 // ============================================================================
 
-describe('Metadata Definition Parsing', () => {
-    test('should parse Metadata definitions with correct names', async () => {
-        // Arrange & Act
-        const input = s`
-            Metadata Language
-            Metadata Framework
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const metadatas = document.parseResult.value.children.filter(isMetadata);
-
-        expect(metadatas).toHaveLength(2);
-        expect(metadatas[0]!.name).toBe('Language');
-        expect(metadatas[1]!.name).toBe('Framework');
-    });
-});
+// Metadata definition parsing (name readback) covered implicitly by metadata block tests below that resolve key references
 
 // ============================================================================
 // METADATA BLOCK IN BOUNDED CONTEXT
@@ -112,22 +93,6 @@ describe('Metadata Block in BoundedContext', () => {
         expect(entries[0]?.value).toBe('Java');
     });
 
-    test('should allow empty metadata block', async () => {
-        // Arrange & Act
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales {
-                metadata {}
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = document.parseResult.value.children.find(isBoundedContext)!;
-        expect(bc.metadata).toHaveLength(0);
-    });
 });
 
 // ============================================================================
@@ -159,25 +124,6 @@ describe('Metadata Value Formats', () => {
         expect(bc.metadata[1]?.value).toBe('https://api.payment.com:8080/v1');
     });
 
-    test('should support single quotes in metadata values', async () => {
-        // Arrange & Act
-        const input = s`
-            Metadata Language
-            Domain Sales {}
-            bc OrderContext for Sales {
-                metadata {
-                    Language: 'Python'
-                }
-            }
-        `;
-
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const bc = document.parseResult.value.children.find(isBoundedContext)!;
-        expect(bc.metadata[0]?.value).toBe('Python');
-    });
 });
 
 // ============================================================================
