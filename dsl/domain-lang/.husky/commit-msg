@@ -1,1 +1,3 @@
-npx --no -- commitlint --edit $1
+ROOT="$(git rev-parse --show-toplevel)/dsl/domain-lang"
+GIT_ROOT="$(git rev-parse --show-toplevel)"
+"$ROOT/node_modules/.bin/commitlint" --edit "$GIT_ROOT/$1" --cwd "$ROOT"
