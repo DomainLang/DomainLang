@@ -29,8 +29,8 @@ import { EmptyFileSystem, URI } from 'langium';
 import type { LangiumSharedServices } from 'langium/lsp';
 import type { Model } from '../generated/ast.js';
 import { isModel } from '../generated/ast.js';
-import { createDomainLangServices } from '../domain-lang-module.js';
-import type { DomainLangServices } from '../domain-lang-module.js';
+import { createDomainLangServices } from './bootstrap.js';
+import type { DomainLangServices } from './bootstrap.js';
 import type { LoadOptions, QueryContext } from './types.js';
 import { augmentModel, fromModel } from './query.js';
 

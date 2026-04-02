@@ -55,31 +55,3 @@ export const Divider: React.FC<DividerProps> = ({
         </Box>
     );
 };
-
-/**
- * Spacer component for vertical spacing.
- */
-export interface SpacerProps {
-    /** Number of empty lines (default: 1) */
-    lines?: number;
-}
-
-/**
- * Spacer component.
- * Adds vertical space between elements.
- * 
- * @example
- * ```tsx
- * <Spacer />
- * <Spacer lines={2} />
- * ```
- */
-export const Spacer: React.FC<SpacerProps> = ({ lines = 1 }) => {
-    return (
-        <Box flexDirection="column">
-            {Array.from({ length: lines }).map((_, i) => (
-                <Text key={i}> </Text>
-            ))}
-        </Box>
-    );
-};

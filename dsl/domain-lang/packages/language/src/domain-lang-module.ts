@@ -9,7 +9,7 @@ import type {
 import { createDefaultModule, createDefaultSharedModule } from 'langium/lsp';
 import { DomainLangGeneratedModule, DomainLangGeneratedSharedModule } from './generated/module.js';
 import { registerValidationChecks } from './validation/domain-lang-validator.js';
-import { QualifiedNameProvider } from './lsp/domain-lang-naming.js';
+import { QualifiedNameProvider } from './services/naming.js';
 import { DomainLangScopeComputation } from './lsp/domain-lang-scope.js';
 import { DomainLangScopeProvider } from './lsp/domain-lang-scope-provider.js';
 import { DomainLangFormatter } from './lsp/domain-lang-formatter.js';

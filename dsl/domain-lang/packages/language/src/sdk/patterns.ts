@@ -1,4 +1,4 @@
-import type { SidePattern, SymmetricPattern } from '../generated/ast.js';
+import type { SidePattern } from '../generated/ast.js';
 import {
     isOpenHostService,
     isPublishedLanguage,
@@ -7,9 +7,6 @@ import {
     isSupplier,
     isCustomer,
     isBigBallOfMud,
-    isSharedKernel,
-    isPartnership,
-    isSeparateWays,
 } from '../generated/ast.js';
 
 /**
@@ -33,61 +30,28 @@ export const Pattern = {
 
 /**
  * Mapping from short abbreviation to full $type name.
+ * Derived from the Pattern constant.
  */
-export const PatternFullName: Record<string, string> = {
-    OHS: 'OpenHostService',
-    PL: 'PublishedLanguage',
-    CF: 'Conformist',
-    ACL: 'AntiCorruptionLayer',
-    S: 'Supplier',
-    C: 'Customer',
-    BBoM: 'BigBallOfMud',
-    SK: 'SharedKernel',
-    P: 'Partnership',
-    SW: 'SeparateWays',
-};
+export const PatternFullName: Record<string, string> = { ...Pattern };
 
 /**
  * Mapping from $type name to short abbreviation.
+ * Derived as the inverse of Pattern.
  */
-export const PatternAbbreviation: Record<string, string> = {
-    OpenHostService: 'OHS',
-    PublishedLanguage: 'PL',
-    Conformist: 'CF',
-    AntiCorruptionLayer: 'ACL',
-    Supplier: 'S',
-    Customer: 'C',
-    BigBallOfMud: 'BBoM',
-    SharedKernel: 'SK',
-    Partnership: 'P',
-    SeparateWays: 'SW',
-};
+export const PatternAbbreviation: Record<string, string> = Object.fromEntries(
+    Object.entries(Pattern).map(([abbr, full]) => [full, abbr]),
+);
 
 /**
  * All short+long forms that map to a given canonical $type name.
+ * Derived from the Pattern constant — keyed by both abbreviation and full name.
  */
-export const PatternAliases: Record<string, readonly string[]> = {
-    OHS: ['OHS', 'OpenHostService'],
-    PL: ['PL', 'PublishedLanguage'],
-    CF: ['CF', 'Conformist'],
-    ACL: ['ACL', 'AntiCorruptionLayer'],
-    S: ['S', 'Supplier'],
-    C: ['C', 'Customer'],
-    BBoM: ['BBoM', 'BigBallOfMud'],
-    SK: ['SK', 'SharedKernel'],
-    P: ['P', 'Partnership'],
-    SW: ['SW', 'SeparateWays'],
-    OpenHostService: ['OHS', 'OpenHostService'],
-    PublishedLanguage: ['PL', 'PublishedLanguage'],
-    Conformist: ['CF', 'Conformist'],
-    AntiCorruptionLayer: ['ACL', 'AntiCorruptionLayer'],
-    Supplier: ['S', 'Supplier'],
-    Customer: ['C', 'Customer'],
-    BigBallOfMud: ['BBoM', 'BigBallOfMud'],
-    SharedKernel: ['SK', 'SharedKernel'],
-    Partnership: ['P', 'Partnership'],
-    SeparateWays: ['SW', 'SeparateWays'],
-};
+export const PatternAliases: Record<string, readonly string[]> = Object.fromEntries(
+    Object.entries(Pattern).flatMap(([abbr, full]) => {
+        const pair: readonly string[] = [abbr, full];
+        return [[abbr, pair], [full, pair]];
+    }),
+);
 
 /** Union of all pattern type names */
 export type IntegrationPattern = typeof Pattern[keyof typeof Pattern];
@@ -161,25 +125,4 @@ export function isMutualPattern(pattern: string): boolean {
  */
 export function getPatternAbbreviation(typeName: string): string {
     return PatternAbbreviation[typeName] ?? typeName;
-}
-
-/**
- * Checks if a symmetric pattern is a Shared Kernel.
- */
-export function isSharedKernelPattern(pattern: SymmetricPattern): boolean {
-    return isSharedKernel(pattern);
-}
-
-/**
- * Checks if a symmetric pattern is a Partnership.
- */
-export function isPartnershipPattern(pattern: SymmetricPattern): boolean {
-    return isPartnership(pattern);
-}
-
-/**
- * Checks if a symmetric pattern is Separate Ways.
- */
-export function isSeparateWaysPattern(pattern: SymmetricPattern): boolean {
-    return isSeparateWays(pattern);
 }

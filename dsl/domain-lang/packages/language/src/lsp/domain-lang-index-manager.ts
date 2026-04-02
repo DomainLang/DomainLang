@@ -4,7 +4,7 @@ import { CancellationToken } from 'vscode-jsonrpc';
 import { isModel } from '../generated/ast.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
-import type { ImportInfo } from '../services/types.js';
+import type { ImportInfo, ImportCycleDetector } from '../services/types.js';
 import { createLogger } from '../services/lsp-logger.js';
 
 const log = createLogger('IndexManager');
@@ -36,7 +36,7 @@ const log = createLogger('IndexManager');
  * 3. `DocumentBuilder.shouldRelink()` calls `IndexManager.isAffected()`
  * 4. No need for separate lifecycle service - this IS the central place
  */
-export class DomainLangIndexManager extends DefaultIndexManager {
+export class DomainLangIndexManager extends DefaultIndexManager implements ImportCycleDetector {
     /**
      * Reverse dependency graph: maps a document URI to all documents that import it.
      * Key: imported document URI (string)

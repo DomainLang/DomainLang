@@ -53,22 +53,3 @@ export const HINT_PRESETS = {
     /** For confirmation dialogs */
     confirm: ['y yes', 'n no'],
 } as const;
-
-/**
- * Pre-configured hint components for common scenarios.
- */
-export const SelectHints: React.FC = () => (
-    <KeyboardHints hints={HINT_PRESETS.select} />
-);
-
-export const MultiSelectHints: React.FC = () => (
-    <KeyboardHints hints={HINT_PRESETS.multiSelect} />
-);
-
-export const TextInputHints: React.FC = () => (
-    <KeyboardHints hints={HINT_PRESETS.textInput} />
-);
-
-export const ConfirmHints: React.FC = () => (
-    <KeyboardHints hints={HINT_PRESETS.confirm} />
-);

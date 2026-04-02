@@ -16,9 +16,9 @@ export * from './services/relationship-inference.js';
 export * from './services/performance-optimizer.js';
 export * from './services/lsp-logger.js';
 export * from './services/lsp-runtime-settings.js';
-
-// Export shared utilities
-export * from './utils/manifest-utils.js';
+export * from './services/naming.js';
+export * from './services/import-graph.js';
+export * from './services/manifest-utils.js';
 
 // Note: The following services have been moved to CLI package:
 // - git-url-resolver.ts → @domainlang/cli/services

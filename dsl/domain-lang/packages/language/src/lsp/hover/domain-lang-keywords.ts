@@ -8,17 +8,20 @@
  */
 
 // Documentation links
-const DOMAIN_LINK = '\n\n[Read more](https://domainlang.net/guide/domains)';
-const BC_LINK = '\n\n[Read more](https://domainlang.net/guide/bounded-contexts)';
-const TEAM_LINK = '\n\n[Read more](https://domainlang.net/guide/teams-classifications)';
-const MAP_LINK = '\n\n[Read more](https://domainlang.net/guide/context-maps)';
-const REL_LINK = '\n\n[Read more](https://domainlang.net/guide/context-maps#relationships)';
-const IMPORT_LINK = '\n\n[Read more](https://domainlang.net/guide/imports)';
-const NS_LINK = '\n\n[Read more](https://domainlang.net/guide/namespaces)';
-const TERM_LINK = '\n\n[Read more](https://domainlang.net/reference/language#terminology)';
-const DECISION_LINK = '\n\n[Read more](https://domainlang.net/reference/language#decisions-policies-rules)';
-const METADATA_LINK = '\n\n[Read more](https://domainlang.net/reference/language#metadata)';
-const SYNTAX_LINK = '\n\n[Read more](https://domainlang.net/reference/language)';
+const guideLink = (page: string): string => `\n\n[Read more](https://domainlang.net/guide/${page})`;
+const refLink = (anchor: string): string => `\n\n[Read more](https://domainlang.net/reference/language${anchor})`;
+
+const DOMAIN_LINK = guideLink('domains');
+const BC_LINK = guideLink('bounded-contexts');
+const TEAM_LINK = guideLink('teams-classifications');
+const MAP_LINK = guideLink('context-maps');
+const REL_LINK = guideLink('context-maps#relationships');
+const IMPORT_LINK = guideLink('imports');
+const NS_LINK = guideLink('namespaces');
+const TERM_LINK = refLink('#terminology');
+const DECISION_LINK = refLink('#decisions-policies-rules');
+const METADATA_LINK = refLink('#metadata');
+const SYNTAX_LINK = refLink('');
 
 export const keywordExplanations: Record<string, string> = {
     // ========================================================================

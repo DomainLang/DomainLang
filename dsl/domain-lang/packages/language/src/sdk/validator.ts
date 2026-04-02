@@ -11,8 +11,8 @@
 
 import { NodeFileSystem } from 'langium/node';
 import { AstUtils, URI } from 'langium';
-import { createDomainLangServices } from '../domain-lang-module.js';
-import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
+import { createDomainLangServices } from './bootstrap.js';
+import { ensureImportGraphFromDocument } from '../services/import-graph.js';
 import { isModel } from '../generated/ast.js';
 import { dirname, resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';

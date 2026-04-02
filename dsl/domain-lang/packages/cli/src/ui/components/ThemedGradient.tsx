@@ -49,29 +49,3 @@ export const ThemedGradient: React.FC<ThemedGradientProps> = ({
 
     return <Gradient colors={gradientColors}>{children}</Gradient>;
 };
-
-/**
- * Convenience components with preset gradients.
- */
-
-/**
- * Brand gradient: cyan → magenta → yellow
- */
-export const BrandGradient: React.FC<{ children: string; bold?: boolean }> = ({
-    children,
-    bold = false,
-}) => <ThemedGradient gradient={colors.gradient} bold={bold}>{children}</ThemedGradient>;
-
-/**
- * Success gradient: shades of green
- */
-export const SuccessGradient: React.FC<{ children: string }> = ({ children }) => (
-    <ThemedGradient gradient={['#22C55E', '#16A34A', '#15803D']}>{children}</ThemedGradient>
-);
-
-/**
- * Error gradient: shades of red
- */
-export const ErrorGradient: React.FC<{ children: string }> = ({ children }) => (
-    <ThemedGradient gradient={['#EF4444', '#DC2626', '#B91C1C']}>{children}</ThemedGradient>
-);

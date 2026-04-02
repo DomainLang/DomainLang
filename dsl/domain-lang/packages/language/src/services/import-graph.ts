@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { URI, type LangiumDocument, type LangiumDocuments } from 'langium';
 import { isModel, type Model } from '../generated/ast.js';
-import type { ImportResolver } from '../services/import-resolver.js';
+import type { ImportResolver } from './import-resolver.js';
 
 /**
  * Ensures the import graph is loaded from an entry file.

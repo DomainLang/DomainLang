@@ -23,7 +23,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import * as manifestUtils from '../../src/utils/manifest-utils.js';
+import * as manifestUtils from '../../src/services/manifest-utils.js';
 
 describe('manifest-utils', () => {
     let tmpDir: string;

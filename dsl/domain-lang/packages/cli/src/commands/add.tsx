@@ -28,6 +28,7 @@ import { defaultFileSystem, type FileSystemService } from '../services/filesyste
 import YAML from 'yaml';
 import { PackageUrlParser } from '../services/package-url-parser.js';
 import { InstallService, type InstallProgressEvent } from '../services/install-service.js';
+import { detectRefType } from '../services/semver.js';
 import type { ModelManifest } from '@domainlang/language';
 
 /**
@@ -116,19 +117,6 @@ async function addDependency(
         commit: locked.commit,
         integrity: locked.integrity ?? '',
     };
-}
-
-/**
- * Detect ref type from ref string.
- */
-function detectRefType(ref: string): 'tag' | 'branch' | 'commit' {
-    if (/^[0-9a-f]{40}$/i.test(ref)) {
-        return 'commit';
-    }
-    if (/^v?\d+\.\d+\.\d+/.test(ref)) {
-        return 'tag';
-    }
-    return 'branch';
 }
 
 /**

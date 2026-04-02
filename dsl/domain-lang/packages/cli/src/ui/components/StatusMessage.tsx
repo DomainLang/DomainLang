@@ -63,22 +63,3 @@ export const StatusMessage: React.FC<StatusMessageProps> = ({
         </Box>
     );
 };
-
-/**
- * Convenience components for common status types.
- */
-export const SuccessMessage: React.FC<Omit<StatusMessageProps, 'type'>> = (props) => (
-    <StatusMessage type="success" {...props} />
-);
-
-export const ErrorMessage: React.FC<Omit<StatusMessageProps, 'type'>> = (props) => (
-    <StatusMessage type="error" {...props} />
-);
-
-export const WarningMessage: React.FC<Omit<StatusMessageProps, 'type'>> = (props) => (
-    <StatusMessage type="warning" {...props} />
-);
-
-export const InfoMessage: React.FC<Omit<StatusMessageProps, 'type'>> = (props) => (
-    <StatusMessage type="info" {...props} />
-);

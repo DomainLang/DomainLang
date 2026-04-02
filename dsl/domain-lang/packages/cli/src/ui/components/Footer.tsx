@@ -92,12 +92,3 @@ export const Footer: React.FC<FooterProps> = ({
         </Box>
     );
 };
-
-/**
- * Minimal footer with just version.
- */
-export const MinimalFooter: React.FC<{ version: string }> = ({ version }) => (
-    <Box justifyContent="flex-end" paddingX={1}>
-        <Text color={theme.text.secondary}>dlang v{version}</Text>
-    </Box>
-);

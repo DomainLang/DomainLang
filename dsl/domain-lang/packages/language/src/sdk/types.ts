@@ -16,7 +16,7 @@ import type {
     SidePattern,
     Team,
 } from '../generated/ast.js';
-import type { DomainLangServices } from '../domain-lang-module.js';
+import type { DomainLangServices } from './bootstrap.js';
 
 // Import augmentation module for extended AST types
 // This enables native SDK properties on BoundedContext, Domain, and Relationship

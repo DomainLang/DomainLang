@@ -2,7 +2,7 @@ import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
 import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { createDomainLangServices } from './domain-lang-module.js';
-import { ensureImportGraphFromEntryFile } from './utils/import-utils.js';
+import { ensureImportGraphFromEntryFile } from './services/import-graph.js';
 import { registerDomainLangRefresh } from './lsp/domain-lang-refresh.js';
 import { registerToolHandlers } from './lsp/tool-handlers.js';
 import { URI } from 'langium';
