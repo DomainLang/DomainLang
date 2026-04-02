@@ -93,6 +93,9 @@ BoundedContext:
     ('BoundedContext' | 'bc') name=ID 
     ('for' domain=[Domain:QualifiedName])?
     (
+        // Note: header shorthand requires 'as <classification>' before 'by <team>';
+        // reversed order is rejected by the parser. Body properties (classification:,
+        // team:) have no ordering constraint.
         ('as' classification+=[Classification:QualifiedName])?
         ('by' team+=[Team:QualifiedName])?
     )?
