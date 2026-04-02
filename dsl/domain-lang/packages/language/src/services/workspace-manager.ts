@@ -492,7 +492,7 @@ export class ManifestManager {
             const manifest = YAML.parse(content) as { model?: { entry?: string } };
             const entry = manifest?.model?.entry ?? 'index.dlang';
             // Reject entries with path traversal or absolute paths (R-029)
-            if (typeof entry !== 'string' || entry.includes('..') || path.isAbsolute(entry)) {
+            if (typeof entry !== 'string' || !isRelativeSafePath(entry)) {
                 return 'index.dlang';
             }
             return entry;
@@ -728,15 +728,20 @@ export class ManifestManager {
         const workspaceRoot = this.activeRoot || manifestDir;
 
         // Follow symlinks before comparing to workspace boundary (R-030)
+        // Both sides must be resolved consistently — if target doesn't exist yet,
+        // fall back to plain path normalize on both sides to avoid cross-symlink mismatches.
         let realResolvedPath: string;
+        let realWorkspaceRoot: string;
         try {
             realResolvedPath = realpathSync(resolvedPath);
+            realWorkspaceRoot = realpathSync(workspaceRoot);
         } catch {
-            realResolvedPath = resolvedPath;
+            realResolvedPath = path.normalize(resolvedPath);
+            realWorkspaceRoot = path.normalize(workspaceRoot);
         }
 
         // Check if resolved path is within workspace
-        const relativePath = path.relative(workspaceRoot, realResolvedPath);
+        const relativePath = path.relative(realWorkspaceRoot, realResolvedPath);
         if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
             throw new Error(
                 `Invalid local path '${alias}' in ${manifestPath}:\n` +

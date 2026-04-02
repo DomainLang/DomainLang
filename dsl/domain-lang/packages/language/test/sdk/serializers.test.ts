@@ -371,10 +371,10 @@ describe('normalizeEntityType', () => {
         expect(normalizeEntityType('dmaps')).toBe('domain-maps');
     });
 
-    test('should return undefined for unknown types', () => {
+    test('should throw for unknown types', () => {
         // Arrange & Act & Assert
-        expect(normalizeEntityType('unknown-type')).toBeUndefined();
-        expect(normalizeEntityType('')).toBeUndefined();
+        expect(() => normalizeEntityType('unknown-type')).toThrow('Unknown entity type');
+        expect(() => normalizeEntityType('')).toThrow('Unknown entity type');
     });
 
 });

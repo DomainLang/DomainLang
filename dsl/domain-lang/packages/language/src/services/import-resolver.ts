@@ -223,7 +223,7 @@ export class ImportResolver {
                 if (!resolved.startsWith(workspaceRoot + path.sep) && resolved !== workspaceRoot) {
                     throw new ImportResolutionError({
                         specifier,
-                        reason: 'unresolvable',
+                        reason: 'escapes-workspace',
                         hint: 'Relative imports must stay within the workspace directory.',
                         message: `Import '${specifier}' escapes the workspace boundary.`
                     });

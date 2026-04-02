@@ -204,9 +204,37 @@ export class InstallService {
 
         const lockContent = await this.fs.readFile(lockPath, 'utf-8');
         return {
-            lock: JSON.parse(lockContent) as LockFile,
+            lock: this.parseLockFileContent(lockContent),
             lockExists: true,
         };
+    }
+
+    /**
+     * Parse and structurally validate lock file content.
+     * Silently skips entries with invalid structure or non-hex commit SHAs.
+     */
+    private parseLockFileContent(content: string): LockFile {
+        const parsed = JSON.parse(content) as Partial<LockFile> & {
+            dependencies?: Record<string, Partial<LockedDependency>>;
+        };
+        const version = typeof parsed.version === 'string' ? parsed.version : '1';
+        const dependencies: Record<string, LockedDependency> = {};
+        for (const [key, value] of Object.entries(parsed.dependencies ?? {})) {
+            if (!value || typeof value.ref !== 'string' || typeof value.resolved !== 'string' || typeof value.commit !== 'string') {
+                continue;
+            }
+            if (!/^[0-9a-f]{7,40}$/i.test(value.commit)) {
+                continue;
+            }
+            dependencies[key] = {
+                ref: value.ref,
+                refType: value.refType ?? 'commit',
+                resolved: value.resolved,
+                commit: value.commit,
+                integrity: value.integrity,
+            };
+        }
+        return { version, dependencies };
     }
 
     /**
