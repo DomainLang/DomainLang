@@ -5,6 +5,9 @@ import { ManifestManager } from './workspace-manager.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { LockFile } from './types.js';
 import { getLspRuntimeSettings } from './lsp-runtime-settings.js';
+import { createLogger } from './lsp-logger.js';
+
+const log = createLogger('ImportResolver');
 
 // --- PRS-017 R8: Structured import resolution errors ---
 
@@ -528,7 +531,7 @@ export class ImportResolver {
      */
     private trace(message: string): void {
         if (getLspRuntimeSettings().traceImports) {
-            console.warn(`[ImportResolver] ${message}`);
+            log.warn(message);
         }
     }
 }

@@ -306,7 +306,7 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
             // Assert
             const traceCalls = warnSpy.mock.calls
                 .flat()
-                .filter(arg => typeof arg === 'string' && arg.includes('[ImportResolver]'));
+                .filter(arg => typeof arg === 'string' && arg.includes('ImportResolver'));
             expect(traceCalls.length).toBeGreaterThan(0);
 
             warnSpy.mockRestore();
