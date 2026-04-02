@@ -7,6 +7,7 @@ import { registerDomainLangRefresh } from './lsp/domain-lang-refresh.js';
 import { registerToolHandlers } from './lsp/tool-handlers.js';
 import { URI } from 'langium';
 import { setLspRuntimeSettings } from './services/lsp-runtime-settings.js';
+import path from 'node:path';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -17,7 +18,9 @@ const { shared, DomainLang } = createDomainLangServices({ connection, ...NodeFil
 // Register custom LSP request handlers for VS Code Language Model Tools (PRS-015)
 registerToolHandlers(connection, shared);
 
-// R-014: Single onInitialize handler combining settings application and workspace init
+// Flag set to false in onInitialize if DOMAINLANG_ENTRY escapes the workspace root.
+let entryFileAllowed = true;
+
 shared.lsp.LanguageServer.onInitialize((params) => {
     applyLspSettings(params.initializationOptions);
 
@@ -36,7 +39,22 @@ shared.lsp.LanguageServer.onInitialize((params) => {
             connection.console.warn(`Failed to initialize workspace: ${message}`);
             // Continue without workspace - local imports will still work
         });
-        connection.console.warn(`DomainLang workspace root: ${workspaceRoot}`);
+        connection.console.info(`DomainLang workspace root: ${workspaceRoot}`);
+
+        // R-003: Validate DOMAINLANG_ENTRY is within the workspace root to prevent
+        // loading arbitrary files via a crafted environment variable.
+        const envEntry = process.env.DOMAINLANG_ENTRY;
+        if (envEntry) {
+            const resolvedEntry = path.resolve(envEntry);
+            const resolvedRoot = path.resolve(workspaceRoot);
+            const normalizedRoot = resolvedRoot.endsWith(path.sep) ? resolvedRoot : resolvedRoot + path.sep;
+            if (!resolvedEntry.startsWith(normalizedRoot) && resolvedEntry !== resolvedRoot) {
+                connection.console.error(
+                    `DomainLang: DOMAINLANG_ENTRY (${envEntry}) escapes workspace root. Disabling entry-file reloads.`
+                );
+                entryFileAllowed = false;
+            }
+        }
     }
 });
 
@@ -57,13 +75,14 @@ if (entryFile) {
      * Handles errors gracefully and notifies the LSP client.
      */
     const reloadFromEntry = async (): Promise<void> => {
+        if (!entryFileAllowed) return;
         try {
             currentGraph = await ensureImportGraphFromEntryFile(
                 entryFile, 
                 shared.workspace.LangiumDocuments,
                 DomainLang.imports.ImportResolver
             );
-            connection.console.warn(`Successfully loaded import graph from ${entryFile}`);
+            connection.console.info(`Successfully loaded import graph from ${entryFile}`);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             connection.console.error(
