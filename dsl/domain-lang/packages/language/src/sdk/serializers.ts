@@ -172,9 +172,6 @@ export function serializeNode(node: AstNode, query: Query): Record<string, unkno
                     return item; // primitive
                 }
             });
-        } else if (value instanceof Map) {
-            // Map<K,V> → plain object (JSON.stringify would produce {} otherwise)
-            result[key] = Object.fromEntries(value);
         } else {
             // Primitives pass through
             result[key] = value;

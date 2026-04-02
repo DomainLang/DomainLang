@@ -9,7 +9,7 @@
  * - Import-aware: Provides completions for local paths, aliases, and dependencies
  */
 
-import type { AstNode, AstNodeDescription, LangiumDocument, Reference, ReferenceInfo } from 'langium';
+import type { AstNode, AstNodeDescription, LangiumDocument, ReferenceInfo } from 'langium';
 import { AstUtils, GrammarAST } from 'langium';
 import { CompletionAcceptor, CompletionContext, DefaultCompletionProvider, NextFeature } from 'langium/lsp';
 import { CompletionItemKind, CompletionList, InsertTextFormat, TextEdit } from 'vscode-languageserver';
