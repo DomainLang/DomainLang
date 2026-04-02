@@ -7,6 +7,9 @@ import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
 import { findManifestsInDirectories } from '../utils/manifest-utils.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('WorkspaceManager');
 
 /**
  * Langium WorkspaceManager override implementing manifest-centric import loading per PRS-010.
@@ -144,7 +147,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
                 }
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
-                console.error(`Failed to load import graph from ${manifestInfo.manifestPath}: ${message}`);
+                log.error(`Failed to load import graph from ${manifestInfo.manifestPath}: ${message}`);
                 // Continue with other modules - partial failure is acceptable
             }
         }
@@ -234,7 +237,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            console.warn(`Failed to read directory ${dirPath}: ${message}`);
+            log.warn(`Failed to read directory ${dirPath}: ${message}`);
         }
 
         return docs;
@@ -269,7 +272,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
             return doc;
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            console.warn(`Failed to load standalone file ${filePath}: ${message}`);
+            log.warn(`Failed to load standalone file ${filePath}: ${message}`);
             return undefined;
         }
     }

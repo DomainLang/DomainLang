@@ -20,6 +20,9 @@ import {
     buildBcFields,
     formatHoverContent,
 } from './hover-builders.js';
+import { createLogger } from '../../services/lsp-logger.js';
+
+const log = createLogger('Hover');
 
 /**
  * Type-specific hover content generator.
@@ -98,7 +101,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
             // Then try keyword hover
             return this.tryGetKeywordHover(cstNode);
         } catch (error) {
-            console.error('Error in getHoverContent:', error);
+            log.error('Error in getHoverContent:', { error: String(error) });
             return undefined;
         }
     }
@@ -190,7 +193,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
             // Default fallback for unknown types
             return this.getDefaultHover(node, commentBlock, importAlias);
         } catch (error) {
-            console.error('Error in getAstNodeHoverContent:', error);
+            log.error('Error in getAstNodeHoverContent:', { error: String(error) });
             return undefined;
         }
     }
@@ -222,7 +225,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
 
             return undefined;
         } catch (error) {
-            console.error('Error getting import alias for node:', error);
+            log.error('Error getting import alias for node:', { error: String(error) });
             return undefined;
         }
     }
@@ -493,7 +496,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
                 return `[${linkLabel}](${uri}#L${line},${col})`;
             }
         } catch (error) {
-            console.error('Error creating hover link:', error);
+            log.error('Error creating hover link:', { error: String(error) });
         }
 
         // Fallback to plain text if we can't create a link

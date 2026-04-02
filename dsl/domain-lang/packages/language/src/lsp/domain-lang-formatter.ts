@@ -1,6 +1,9 @@
 import type { AstNode } from "langium";
 import { AbstractFormatter, Formatting } from "langium/lsp";
 import * as ast from '../generated/ast.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('Formatter');
 
 /**
  * Provides formatting for DomainLang documents.
@@ -69,7 +72,7 @@ export class DomainLangFormatter extends AbstractFormatter {
                 formatter.keywords(']').append(Formatting.oneSpace());
             }
         } catch (error) {
-            console.error('Error in format:', error);
+            log.error('Error in format:', { error: String(error) });
             // Continue - don't crash formatting
         }
     }
