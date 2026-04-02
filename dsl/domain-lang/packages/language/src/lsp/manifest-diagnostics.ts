@@ -17,6 +17,9 @@ import { Diagnostic, DiagnosticSeverity, Position, Range } from 'vscode-language
 import YAML, { type Document as YAMLDocument, type Pair, isMap, isPair, isScalar } from 'yaml';
 import { ManifestValidator, type ManifestDiagnostic, type ManifestSeverity } from '../validation/manifest.js';
 import type { ModelManifest } from '../services/types.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('ManifestDiagnostics');
 
 /**
  * Service for validating model.yaml and sending diagnostics via LSP.
@@ -57,7 +60,7 @@ export class ManifestDiagnosticsService {
                 diagnostics
             });
         } catch (error) {
-            console.error('Error in validateAndSendDiagnostics:', error);
+            log.error('Error in validateAndSendDiagnostics:', { error: String(error) });
             // Send minimal error diagnostic instead of crashing
             if (this.connection) {
                 await this.connection.sendDiagnostics({
@@ -122,7 +125,7 @@ export class ManifestDiagnosticsService {
                 this.toVSCodeDiagnostic(diag, yamlDoc)
             );
         } catch (error) {
-            console.error('Error in validate:', error);
+            log.error('Error in validate:', { error: String(error) });
             // Return minimal error diagnostic
             return [{
                 severity: DiagnosticSeverity.Error,
@@ -167,7 +170,7 @@ export class ManifestDiagnosticsService {
                 diagnostics: []
             });
         } catch (error) {
-            console.error('Error in clearDiagnostics:', error);
+            log.error('Error in clearDiagnostics:', { error: String(error) });
             // Ignore - don't crash on cleanup
         }
     }
@@ -195,7 +198,7 @@ export class ManifestDiagnosticsService {
                 code: diag.code
             };
         } catch (error) {
-            console.error('Error converting diagnostic:', error);
+            log.error('Error converting diagnostic:', { error: String(error) });
             // Return minimal diagnostic at file start
             return {
                 severity: DiagnosticSeverity.Error,

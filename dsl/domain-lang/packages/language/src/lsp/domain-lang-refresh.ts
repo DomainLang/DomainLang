@@ -4,6 +4,9 @@ import type { LangiumSharedServices } from 'langium/lsp';
 import { FileChangeType, type DidChangeWatchedFilesParams, type FileEvent } from 'vscode-languageserver-protocol';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import { DomainLangIndexManager } from './domain-lang-index-manager.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('Refresh');
 
 /**
  * Categorized file change events.
@@ -85,7 +88,7 @@ export function registerDomainLangRefresh(
             );
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            console.error(`Error handling watched file changes: ${message}`);
+            log.error(`Error handling watched file changes: ${message}`);
         }
     });
 }

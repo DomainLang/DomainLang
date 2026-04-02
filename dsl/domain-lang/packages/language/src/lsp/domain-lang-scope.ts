@@ -24,6 +24,9 @@ import type { NamespaceDeclaration, Model, Container } from '../generated/ast.js
 import { isType, isNamespaceDeclaration } from '../generated/ast.js';
 import { QualifiedNameProvider } from './domain-lang-naming.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('Scope');
 
 /**
  * Computes the scope for DomainLang elements, supporting nested namespaces, FQN disambiguation, and cross-file references.
@@ -66,7 +69,7 @@ export class DomainLangScopeComputation extends DefaultScopeComputation {
             }
             return descr;
         } catch (error) {
-            console.error('Error in collectExportedSymbols:', error);
+            log.error('Error in collectExportedSymbols:', { error: String(error) });
             // Return empty array on error to prevent crash
             return [];
         }
@@ -85,7 +88,7 @@ export class DomainLangScopeComputation extends DefaultScopeComputation {
             await this.processContainer(model, scopes, document, cancelToken);
             return scopes;
         } catch (error) {
-            console.error('Error in collectLocalSymbols:', error);
+            log.error('Error in collectLocalSymbols:', { error: String(error) });
             // Return empty multimap on error to prevent crash
             return new MultiMap<AstNode, AstNodeDescription>();
         }

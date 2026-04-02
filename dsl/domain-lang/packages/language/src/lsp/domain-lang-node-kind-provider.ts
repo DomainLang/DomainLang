@@ -27,6 +27,9 @@ import {
     isBusinessRule,
     isMetadataEntry,
 } from '../generated/ast.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('NodeKindProvider');
 
 /**
  * AST type to icon kind mapping table.
@@ -85,7 +88,7 @@ export class DomainLangNodeKindProvider extends DefaultNodeKindProvider {
             }
             return super.getSymbolKind(node);
         } catch (error) {
-            console.error('Error in getSymbolKind:', error);
+            log.error('Error in getSymbolKind:', { error: String(error) });
             return super.getSymbolKind(node);
         }
     }
@@ -100,7 +103,7 @@ export class DomainLangNodeKindProvider extends DefaultNodeKindProvider {
             }
             return super.getCompletionItemKind(node);
         } catch (error) {
-            console.error('Error in getCompletionItemKind:', error);
+            log.error('Error in getCompletionItemKind:', { error: String(error) });
             return super.getCompletionItemKind(node);
         }
     }

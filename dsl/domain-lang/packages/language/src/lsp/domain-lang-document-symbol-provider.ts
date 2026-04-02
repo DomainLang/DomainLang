@@ -26,6 +26,9 @@ import {
     isThisRef,
 } from '../generated/ast.js';
 import type { BoundedContext, Relationship, MetadataEntry } from '../generated/ast.js';
+import { createLogger } from '../services/lsp-logger.js';
+
+const log = createLogger('DocumentSymbols');
 
 /**
  * Enriches document symbols with DDD-specific detail text and grouping.
@@ -57,7 +60,7 @@ export class DomainLangDocumentSymbolProvider extends DefaultDocumentSymbolProvi
             }
             return symbols;
         } catch (error) {
-            console.error('Error in DomainLangDocumentSymbolProvider.getSymbol:', error);
+            log.error('Error in DomainLangDocumentSymbolProvider.getSymbol:', { error: String(error) });
             return super.getSymbol(document, astNode);
         }
     }
