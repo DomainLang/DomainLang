@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import YAML from 'yaml';
 import { getGlobalOptimizer } from './performance-optimizer.js';
 import { fileExists as checkFileExists, findWorkspaceRoot as findWorkspaceRootUtil } from '../utils/manifest-utils.js';
+import { createLogger } from './lsp-logger.js';
 import type { 
     LockFile, 
     LockedDependency, 
@@ -14,6 +15,8 @@ import type {
     PathAliases,
     WorkspaceManagerOptions 
 } from './types.js';
+
+const log = createLogger('ManifestManager');
 
 function isRelativeSafePath(entry: string): boolean {
     if (entry.startsWith('/')) return false;
@@ -448,7 +451,11 @@ export class ManifestManager {
                 }
 
                 // Compute cache path
-                const [owner, repo] = normalized.source.split('/');
+                const sourceParts = normalized.source.split('/');
+                if (sourceParts.length !== 2 || !sourceParts[0] || !sourceParts[1]) {
+                    throw new Error(`Invalid dependency source format: '${normalized.source}' (expected owner/repo)`);
+                }
+                const [owner, repo] = sourceParts;
                 const packageDir = path.join(this.getCacheDir(), owner, repo, locked.commit);
 
                 // Handle subpaths
@@ -606,13 +613,13 @@ export class ManifestManager {
         // YAML parse errors should not crash the LSP
         if (error instanceof Error && 
             (error.name === 'YAMLParseError' || error.name === 'YAMLSyntaxError')) {
-            console.error(`Invalid model.yaml at ${manifestPath}: ${error.message}`);
+            log.error(`Invalid model.yaml at ${manifestPath}: ${error.message}`);
             this.clearManifestCache(context);
             return undefined;
         }
         // Validation errors from validateManifest should not crash the LSP
         if (error instanceof Error) {
-            console.error(`Manifest validation error at ${manifestPath}: ${error.message}`);
+            log.error(`Manifest validation error at ${manifestPath}: ${error.message}`);
             this.clearManifestCache(context);
             return undefined;
         }
