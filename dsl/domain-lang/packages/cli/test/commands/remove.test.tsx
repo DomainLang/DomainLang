@@ -25,13 +25,13 @@ async function cleanupWorkspace(dir: string): Promise<void> {
 }
 
 // Create test context
-function createContext(mode: 'rich' | 'json' | 'quiet' = 'quiet'): CommandContext {
+function createContext(mode: 'rich' | 'json' | 'quiet' = 'quiet', cwd?: string): CommandContext {
     return {
         mode,
         version: '0.1.0',
         isFirstRun: false,
         noColor: true,
-        cwd: process.cwd(),
+        cwd: cwd ?? process.cwd(),
     };
 }
 
@@ -48,7 +48,7 @@ describe('Remove command', () => {
 
     test('verifies error when model.yaml does not exist', async () => {
         // Arrange - No model.yaml in workspace
-        const context = createContext('json');
+        const context = createContext('json', workspace);
         const originalCwd = process.cwd();
         const originalStdout = process.stdout.write;
         const originalExit = process.exit;
@@ -90,7 +90,7 @@ describe('Remove command', () => {
             'utf-8'
         );
         
-        const context = createContext('json');
+        const context = createContext('json', workspace);
         const originalCwd = process.cwd();
         const originalStdout = process.stdout.write;
         const originalExit = process.exit;
@@ -159,7 +159,7 @@ describe('Remove command', () => {
             'utf-8'
         );
 
-        const context = createContext('quiet');
+        const context = createContext('quiet', workspace);
         const originalCwd = process.cwd();
         const originalStdout = process.stdout.write;
         const originalExit = process.exit;
@@ -235,7 +235,7 @@ describe('Remove command', () => {
         mkdirSync(cachePath, { recursive: true });
         await fs.writeFile(resolve(cachePath, 'test.dlang'), 'test', 'utf-8');
 
-        const context = createContext('json');
+        const context = createContext('json', workspace);
         const originalCwd = process.cwd();
         const originalStdout = process.stdout.write;
         const originalExit = process.exit;
@@ -278,12 +278,12 @@ describe('Remove command', () => {
             'utf-8'
         );
 
-        const context = createContext('quiet');
+        const context = createContext('quiet', workspace);
         const originalCwd = process.cwd();
         const originalStdout = process.stdout.write;
         const originalExit = process.exit;
         let output = '';
-        
+
         process.chdir(workspace);
         process.stdout.write = vi.fn((chunk: string) => {
             output += chunk;
@@ -303,6 +303,34 @@ describe('Remove command', () => {
             expect(output).toContain('Removed owner/repo');
         } finally {
             process.chdir(originalCwd);
+            process.stdout.write = originalStdout;
+            process.exit = originalExit;
+        }
+    });
+
+    test('rejects malicious package name with path traversal', async () => {
+        // Arrange - no workspace setup needed; validation fires before any file ops
+        const context = createContext('json', workspace);
+        const originalStdout = process.stdout.write;
+        const originalExit = process.exit;
+        let output = '';
+
+        process.stdout.write = vi.fn((chunk: string) => {
+            output += chunk;
+            return true;
+        }) as typeof process.stdout.write;
+        process.exit = vi.fn() as unknown as typeof process.exit;
+
+        try {
+            // Act - Attempt path traversal via malicious package name
+            await runRemove('../../etc', context);
+
+            // Assert - Must fail with validation error before any file operations
+            const result = JSON.parse(output);
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Invalid package name');
+            expect(process.exit).toHaveBeenCalledWith(1);
+        } finally {
             process.stdout.write = originalStdout;
             process.exit = originalExit;
         }

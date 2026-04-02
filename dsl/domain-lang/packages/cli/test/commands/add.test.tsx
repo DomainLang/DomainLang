@@ -25,11 +25,13 @@ async function cleanupWorkspace(dir: string): Promise<void> {
 }
 
 // Create test context
-function createContext(mode: 'rich' | 'json' | 'quiet' = 'quiet'): CommandContext {
+function createContext(mode: 'rich' | 'json' | 'quiet' = 'quiet', cwd?: string): CommandContext {
     return {
         mode,
         version: '0.1.0',
         isFirstRun: false,
+        noColor: true,
+        cwd: cwd ?? process.cwd(),
     };
 }
 
@@ -46,7 +48,7 @@ describe('Add command', () => {
 
     test('verifies error when model.yaml does not exist', async () => {
         // Arrange - No model.yaml in workspace
-        const context = createContext('json');
+        const context = createContext('json', workspace);
         const originalCwd = process.cwd();
         const originalStdout = process.stdout.write;
         const originalExit = process.exit;
@@ -83,7 +85,7 @@ describe('Add command', () => {
             'utf-8'
         );
         
-        const context = createContext('json');
+        const context = createContext('json', workspace);
         const originalCwd = process.cwd();
         const originalStdout = process.stdout.write;
         const originalExit = process.exit;
