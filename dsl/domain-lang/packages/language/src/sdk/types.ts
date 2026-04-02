@@ -116,10 +116,10 @@ export interface Query {
      * @returns The node or undefined if not found
      * @example
      * ```typescript
-     * const bc = query.byFqn<BoundedContext>('Sales.OrderContext');
+     * const bc = query.byFqn('Sales.OrderContext');
      * ```
      */
-    byFqn<T extends AstNode = AstNode>(fqn: string): T | undefined;
+    byFqn(fqn: string): AstNode | undefined;
 
     /**
      * Finds a domain by simple name or FQN.

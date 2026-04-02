@@ -7,7 +7,6 @@
 
 import { describe, test, expect } from 'vitest';
 import { loadModelFromText } from '../../src/sdk/loader.js';
-import type { Domain } from '../../src/generated/ast.js';
 
 describe('SDK Query API', () => {
     
@@ -343,8 +342,8 @@ describe('SDK Query API', () => {
                 Domain Sales { vision: "v" }
             `);
             // Two 'Sales' domains exist; FQN lookup must select the namespaced one
-            const domain = query.byFqn<Domain>('com.example.Sales');
-            const topLevel = query.byFqn<Domain>('Sales');
+            const domain = query.byFqn('com.example.Sales');
+            const topLevel = query.byFqn('Sales');
             expect(domain).not.toBeUndefined();
             expect(topLevel).not.toBeUndefined();
             // They must be distinct objects
