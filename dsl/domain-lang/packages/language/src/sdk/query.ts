@@ -51,6 +51,13 @@ import type {
 } from './types.js';
 
 /**
+ * Shared QualifiedNameProvider instance.
+ * QualifiedNameProvider is stateless (no constructor arguments, pure method),
+ * so a single module-level instance is safe to reuse across all augmentation calls.
+ */
+const fqnProvider = new QualifiedNameProvider();
+
+/**
  * Tracks which models have been augmented to avoid redundant augmentation.
  * Uses WeakSet to allow garbage collection of unused models.
  */
@@ -578,8 +585,6 @@ function escapeRegex(str: string): string {
  * @param bc - BoundedContext to augment
  */
 export function augmentBoundedContext(bc: BoundedContext): void {
-    const fqnProvider = new QualifiedNameProvider();
-    
     // Define computed properties with getters for lazy evaluation
     // Only include properties that add value beyond direct AST access:
     // - effectiveClassification/effectiveTeam: array precedence resolution
@@ -609,7 +614,7 @@ export function augmentBoundedContext(bc: BoundedContext): void {
                 }
                 return bc.name;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true,
         },
         // Helper methods
@@ -664,8 +669,6 @@ export function augmentBoundedContext(bc: BoundedContext): void {
  * @param domain - Domain to augment
  */
 export function augmentDomain(domain: Domain): void {
-    const fqnProvider = new QualifiedNameProvider();
-    
     Object.defineProperties(domain, {
         fqn: {
             get: () => {
@@ -674,7 +677,7 @@ export function augmentDomain(domain: Domain): void {
                 }
                 return domain.name;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true,
         },
         // Helper methods
