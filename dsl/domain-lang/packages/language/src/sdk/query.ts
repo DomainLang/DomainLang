@@ -142,7 +142,7 @@ class QueryImpl implements Query {
 
     constructor(model: Model) {
         this.model = model;
-        this.fqnProvider = new QualifiedNameProvider();
+        this.fqnProvider = fqnProvider;
     }
 
     /**

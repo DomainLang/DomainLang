@@ -11,6 +11,7 @@
 import type { LockFile } from './types.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { parse as parseYaml } from 'yaml';
 
 /**
  * Performance optimizer with in-memory caching.
@@ -66,8 +67,7 @@ export class PerformanceOptimizer {
 
         try {
             const content = await fs.readFile(manifestPath, 'utf-8');
-            const { parse } = await import('yaml');
-            const manifest: unknown = parse(content);
+            const manifest: unknown = parseYaml(content);
 
             this.manifestCache.set(cacheKey, manifest);
 

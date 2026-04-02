@@ -113,6 +113,13 @@ export class ImportResolver {
     private readonly isDocumentCache: boolean;
 
     /**
+     * Cache for sorted alias entries to avoid re-sorting on every findMatchingAlias call.
+     * Keyed by the alias object reference; invalidated when the reference changes.
+     */
+    private cachedAliasSource: Record<string, string> | undefined;
+    private cachedSortedAliases: [string, string][] | undefined;
+
+    /**
      * Creates an ImportResolver.
      * 
      * @param services - DomainLang services. If `services.shared` is present, uses DocumentCache
@@ -306,9 +313,12 @@ export class ImportResolver {
             return undefined;
         }
 
-        // Sort by length descending to match most specific alias first
-        const sortedAliases = Object.entries(aliases)
-            .sort(([a], [b]) => b.length - a.length);
+        // Cache sorted entries keyed by object reference; re-sort only when aliases object changes
+        if (this.cachedAliasSource !== aliases) {
+            this.cachedSortedAliases = Object.entries(aliases).sort(([a], [b]) => b.length - a.length);
+            this.cachedAliasSource = aliases;
+        }
+        const sortedAliases = this.cachedSortedAliases ?? [];
 
         for (const [alias, targetPath] of sortedAliases) {
             // Exact match
