@@ -7,7 +7,15 @@
 import type { CommandModule, Argv } from 'yargs';
 import React, { useEffect } from 'react';
 import { Box, Text, useApp } from 'ink';
-import { loadModel, type Query, type RelationshipView } from '@domainlang/language/sdk';
+import {
+    loadModel,
+    normalizeEntityType,
+    type Query,
+    type RelationshipView,
+    type QueryEntityType,
+    type QueryEntityInput,
+    type QueryFilters,
+} from '@domainlang/language/sdk';
 import type {
     Domain,
     BoundedContext,
@@ -36,70 +44,9 @@ import { statSync, existsSync, readFileSync } from 'node:fs';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Canonical entity types that can be queried.
- */
-export type QueryEntityType = 
-    | 'domains'
-    | 'bcs'
-    | 'teams'
-    | 'classifications'
-    | 'relationships'
-    | 'context-maps'
-    | 'domain-maps';
-
-/**
- * All accepted entity type names, including aliases.
- * Aliases are normalized to canonical types before query execution.
- */
-export type QueryEntityInput = QueryEntityType
-    | 'bounded-contexts' | 'contexts'
-    | 'rels'
-    | 'cmaps'
-    | 'dmaps';
-
-/**
- * Map of entity type aliases to their canonical form.
- */
-const ENTITY_ALIASES: Record<string, QueryEntityType> = {
-    'bounded-contexts': 'bcs',
-    'contexts': 'bcs',
-    'rels': 'relationships',
-    'cmaps': 'context-maps',
-    'dmaps': 'domain-maps',
-};
-
-/**
- * Normalize an entity type input (which may be an alias) to its canonical form.
- */
-export function normalizeEntityType(input: string): QueryEntityType {
-    if (input in ENTITY_ALIASES) {
-        return ENTITY_ALIASES[input];
-    }
-    return input as QueryEntityType;
-}
-
-/**
  * Output format for query results.
  */
 export type QueryOutputFormat = 'table' | 'json' | 'yaml';
-
-/**
- * Query filter options.
- */
-export interface QueryFilters {
-    /** Filter by name (string or regex) */
-    name?: string;
-    /** Filter by fully qualified name */
-    fqn?: string;
-    /** Filter BCs by domain */
-    domain?: string;
-    /** Filter BCs by team */
-    team?: string;
-    /** Filter BCs by classification */
-    classification?: string;
-    /** Filter BCs by metadata key=value */
-    metadata?: string;
-}
 
 /**
  * Query command arguments.

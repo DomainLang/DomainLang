@@ -283,13 +283,10 @@ class QueryImpl implements Query {
     /**
      * Looks up an AST node by its fully-qualified name.
      *
-     * **Caller responsibility:** The map stores heterogeneous `AstNode` values indexed by FQN.
-     * The generic `T` parameter is a convenience cast — the caller MUST verify the actual type
-     * using a type guard (e.g. `isDomain`, `isBoundedContext`) before using the result as `T`.
-     * Passing an incorrect `T` will produce a mistyped value without a runtime error.
+     * Use a type guard (e.g. `isDomain`, `isBoundedContext`) to narrow the result.
      */
-    byFqn<T extends AstNode = AstNode>(fqn: string): T | undefined {
-        return this.getIndexes().byFqn.get(fqn) as T | undefined;
+    byFqn(fqn: string): AstNode | undefined {
+        return this.getIndexes().byFqn.get(fqn);
     }
 
     domain(name: string): Domain | undefined {

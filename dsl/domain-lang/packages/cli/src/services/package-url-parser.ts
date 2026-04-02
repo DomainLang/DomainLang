@@ -44,7 +44,7 @@ export class PackageUrlParser {
      */
     static isGitUrl(importStr: string): boolean {
         // GitHub shorthand: owner/repo or owner/repo@version
-        if (/^[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+(@[^/]+)?$/.test(importStr)) {
+        if (/^[a-zA-Z0-9][a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+(@[^/]+)?$/.test(importStr)) {
             return true;
         }
 
@@ -92,14 +92,14 @@ export class PackageUrlParser {
      * Checks if string is GitHub shorthand format.
      */
     private static isGitHubShorthand(importStr: string): boolean {
-        return /^[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+(@[^/]+)?$/.test(importStr);
+        return /^[a-zA-Z0-9][a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+(@[^/]+)?$/.test(importStr);
     }
 
     /**
      * Parses GitHub shorthand (owner/repo or owner/repo@version).
      */
     private static parseGitHubShorthand(importStr: string): PackageUrlInfo {
-        const match = importStr.match(/^([a-zA-Z0-9-]+)\/([a-zA-Z0-9-_.]+)(?:@([^/]+))?$/);
+        const match = importStr.match(/^([a-zA-Z0-9][a-zA-Z0-9-]+)\/([a-zA-Z0-9-_.]+)(?:@([^/]+))?$/);
         if (!match) {
             throw new Error(
                 `Invalid GitHub shorthand format: '${importStr}'.\n` +

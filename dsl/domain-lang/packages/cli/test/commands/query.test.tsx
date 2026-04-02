@@ -8,7 +8,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { render } from '../../src/test-utils/render.js';
-import { QueryComponent, normalizeEntityType, runQuery } from '../../src/commands/query.js';
+import { QueryComponent, runQuery } from '../../src/commands/query.js';
+import { normalizeEntityType } from '@domainlang/language/sdk';
 import type { CommandContext } from '../../src/commands/types.js';
 
 type RunDirectArgs = {
@@ -45,7 +46,8 @@ vi.mock('../../src/utils/run-direct.js', () => ({
     }),
 }));
 
-vi.mock('@domainlang/language/sdk', () => {
+vi.mock('@domainlang/language/sdk', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@domainlang/language/sdk')>();
     const mockDomain = {
         name: 'Sales',
         vision: 'Handle all sales operations',
@@ -62,6 +64,7 @@ vi.mock('@domainlang/language/sdk', () => {
     };
 
     return {
+        ...actual,
         loadModel: vi.fn(async () => {
             const domainBuilder = {
                 withName: vi.fn().mockReturnThis(),

@@ -1,7 +1,6 @@
 import { modelChecks } from './model.js';
 import { domainChecks } from './domain.js';
 import { boundedContextChecks } from './bounded-context.js';
-import { classificationChecks } from './classification.js';
 import { metadataChecks } from './metadata.js';
 import { contextMapChecks, domainMapChecks } from './maps.js';
 import { relationshipChecks } from './relationships.js';
@@ -21,7 +20,6 @@ export function registerValidationChecks(services: DomainLangServices): void {
         Model: modelChecks,
         Domain: domainChecks,
         BoundedContext: boundedContextChecks,
-        Classification: classificationChecks,
         ContextMap: contextMapChecks,
         DomainMap: domainMapChecks,
         Metadata: metadataChecks.Metadata,
