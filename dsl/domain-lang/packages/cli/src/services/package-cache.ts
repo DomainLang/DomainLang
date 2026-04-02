@@ -199,6 +199,7 @@ export class PackageCache {
      * @param commitSha - Git commit SHA
      */
     async remove(owner: string, repo: string, commitSha: string): Promise<void> {
+        this.validatePackageCoords(owner, repo, commitSha);
         const packagePath = this.getPackagePath(owner, repo, commitSha);
         if (this.fs.existsSync(packagePath)) {
             await this.fs.rm(packagePath, { recursive: true, force: true });

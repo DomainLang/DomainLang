@@ -14,6 +14,7 @@
  */
 
 import type { Connection } from 'vscode-languageserver';
+import { DiagnosticSeverity } from 'vscode-languageserver';
 import type { LangiumDocument } from 'langium';
 import type { LangiumSharedServices } from 'langium/lsp';
 import { URI } from 'langium';
@@ -209,9 +210,9 @@ async function handleValidate(
                 code: diag.code,
             };
 
-            if (diag.severity === 1) {
+            if (diag.severity === DiagnosticSeverity.Error) {
                 errors.push(diagInfo);
-            } else if (diag.severity === 2) {
+            } else if (diag.severity === DiagnosticSeverity.Warning) {
                 warnings.push(diagInfo);
             } else {
                 info.push(diagInfo);
@@ -319,10 +320,10 @@ async function handleExplain(
     params: ExplainParams,
     sharedServices: LangiumSharedServices
 ): Promise<ExplainResponse> {
-    if (!params.fqn) {
-        return { explanation: 'Missing required parameter: fqn' };
-    }
     try {
+        if (!params.fqn) {
+            return { explanation: 'Missing required parameter: fqn' };
+        }
         const langiumDocs = sharedServices.workspace.LangiumDocuments;
         const documents = Array.from(langiumDocs.all);
 

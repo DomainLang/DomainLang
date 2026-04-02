@@ -61,7 +61,7 @@ export function createLogger(component: string): LspLogger {
     return {
         info(message: string, context?: LogContext): void {
             if (getLspRuntimeSettings().infoLogs) {
-                console.warn(`${prefix} ${message}${formatContext(context)}`);
+                console.info(`${prefix} ${message}${formatContext(context)}`);
             }
         },
         warn(message: string, context?: LogContext): void {
@@ -76,7 +76,7 @@ export function createLogger(component: string): LspLogger {
                 const result = await fn();
                 const elapsed = (performance.now() - start).toFixed(1);
                 if (getLspRuntimeSettings().infoLogs) {
-                    console.warn(`${prefix} ${label} completed in ${elapsed}ms`);
+                    console.info(`${prefix} ${label} completed in ${elapsed}ms`);
                 }
                 return result;
             } catch (err) {

@@ -137,7 +137,6 @@ export class InstallService {
 
         // Validate manifest has dependencies
         if (!manifest.dependencies || Object.keys(manifest.dependencies).length === 0) {
-            console.log('No dependencies declared in model.yaml');
             return { installed: 0, cached: 0, lockFileModified: false, warnings: [] };
         }
 
@@ -148,7 +147,6 @@ export class InstallService {
 
         // Force mode: clear cache
         if (force) {
-            console.log('Force mode: clearing cache and re-resolving all dependencies...');
             await this.packageCache.clear();
         }
 
@@ -464,7 +462,6 @@ export class InstallService {
 
         if (!metadata) {
             // Package not cached or metadata missing - will download and verify
-            console.log(`Package ${owner}/${repo}@${locked.commit} not in cache, downloading...`);
             const downloadResult = await this.downloader.download(owner, repo, locked.ref);
 
             // Verify integrity matches

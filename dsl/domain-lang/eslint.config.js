@@ -37,7 +37,7 @@ export default [
             'no-console': [
                 'error',
                 {
-                    allow: ['warn', 'error']
+                    allow: ['info', 'warn', 'error']
                 }
             ],
             '@typescript-eslint/no-non-null-assertion': 'error',

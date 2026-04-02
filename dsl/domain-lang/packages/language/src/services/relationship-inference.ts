@@ -87,9 +87,6 @@ function inferSymmetricKind(rel: SymmetricRelationship): string {
     if (rel.pattern) {
         return rel.pattern.$type;  // 'SharedKernel', 'Partnership', or 'SeparateWays'
     }
-    if (rel.arrow === '><') {
-        return 'SeparateWays';
-    }
     return 'SeparateWays'; // `><` is the only non-pattern symmetric form
 }
 

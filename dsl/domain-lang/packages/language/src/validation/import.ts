@@ -189,8 +189,9 @@ export class ImportValidator {
                 accept('error', `Import '${imp.uri}' resolved to '${path.basename(filePath)}' which is not a DomainLang file (.dlang required).`, {
                     node: imp,
                     property: 'uri',
+                    code: IssueCodes.ImportUnresolved,
                     codeDescription: buildCodeDescription('language.md', 'imports'),
-                    data: { code: IssueCodes.ImportUnresolved, uri: imp.uri }
+                    data: { uri: imp.uri }
                 });
                 return true;
             }

@@ -565,6 +565,10 @@ export class DependencyResolver {
      * Parses a lock file from JSON format.
      */
     static parseLockFile(content: string): LockFile {
-        return JSON.parse(content) as LockFile;
+        try {
+            return JSON.parse(content) as LockFile;
+        } catch (err) {
+            throw new Error(`model.lock contains invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
 }

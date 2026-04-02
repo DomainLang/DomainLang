@@ -30,6 +30,12 @@ import {
 } from '../generated/ast.js';
 import { QualifiedNameProvider } from '../lsp/domain-lang-naming.js';
 import type { ModelIndexes } from './types.js';
+
+/**
+ * Shared QualifiedNameProvider instance.
+ * QualifiedNameProvider is stateless, so a single module-level instance is safe to reuse.
+ */
+const fqnProvider = new QualifiedNameProvider();
 import {
     metadataAsMap,
     effectiveClassification,
@@ -49,8 +55,6 @@ export function buildIndexes(model: Model): ModelIndexes {
     const byTeam = new Map<string, BoundedContext[]>();
     const byClassification = new Map<string, BoundedContext[]>();
     const byMetadataKey = new Map<string, BoundedContext[]>();
-
-    const fqnProvider = new QualifiedNameProvider();
 
     // Stream all AST nodes and index them
     for (const node of AstUtils.streamAllContents(model)) {
