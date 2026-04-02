@@ -15,11 +15,11 @@
 
 import type { Connection } from 'vscode-languageserver';
 import { DiagnosticSeverity } from 'vscode-languageserver';
-import type { LangiumDocument } from 'langium';
+import type { LangiumDocument, AstNode } from 'langium';
 import type { LangiumSharedServices } from 'langium/lsp';
 import { URI } from 'langium';
 import { fromDocument } from '../sdk/query.js';
-import type { Query } from '../sdk/types.js';
+import type { Query, QueryBuilder } from '../sdk/types.js';
 import {
     serializeNode,
     serializeRelationship,
@@ -370,12 +370,22 @@ function executeListQuery(
     return handlers[entityType](query, filters);
 }
 
-function listDomains(query: Query, filters: QueryFilters): Record<string, unknown>[] {
-    let builder = query.domains();
-    if (filters.name) builder = builder.withName(filters.name);
-    if (filters.fqn) builder = builder.withFqn(filters.fqn);
-    return builder.toArray().map((domain) => serializeNode(domain, query));
+function makeListHandler(
+    queryMethod: (q: Query) => QueryBuilder<AstNode>,
+): (query: Query, filters: QueryFilters) => Record<string, unknown>[] {
+    return (query, filters) => {
+        let builder = queryMethod(query);
+        if (filters.name) builder = builder.withName(filters.name);
+        if (filters.fqn) builder = builder.withFqn(filters.fqn);
+        return builder.toArray().map((node) => serializeNode(node, query));
+    };
 }
+
+const listDomains = makeListHandler(q => q.domains());
+const listTeams = makeListHandler(q => q.teams());
+const listClassifications = makeListHandler(q => q.classifications());
+const listContextMaps = makeListHandler(q => q.contextMaps());
+const listDomainMaps = makeListHandler(q => q.domainMaps());
 
 function listBoundedContexts(query: Query, filters: QueryFilters): Record<string, unknown>[] {
     let builder = query.boundedContexts();
@@ -395,32 +405,8 @@ function listBoundedContexts(query: Query, filters: QueryFilters): Record<string
     return builder.toArray().map((boundedContext) => serializeNode(boundedContext, query));
 }
 
-function listTeams(query: Query, filters: QueryFilters): Record<string, unknown>[] {
-    let builder = query.teams();
-    if (filters.name) builder = builder.withName(filters.name);
-    return builder.toArray().map((team) => serializeNode(team, query));
-}
-
-function listClassifications(query: Query, filters: QueryFilters): Record<string, unknown>[] {
-    let builder = query.classifications();
-    if (filters.name) builder = builder.withName(filters.name);
-    return builder.toArray().map((classification) => serializeNode(classification, query));
-}
-
 function listRelationships(query: Query, _filters: QueryFilters): Record<string, unknown>[] {
     return query.relationships().toArray().map((relationship) => serializeRelationship(relationship));
-}
-
-function listContextMaps(query: Query, filters: QueryFilters): Record<string, unknown>[] {
-    let builder = query.contextMaps();
-    if (filters.name) builder = builder.withName(filters.name);
-    return builder.toArray().map((contextMap) => serializeNode(contextMap, query));
-}
-
-function listDomainMaps(query: Query, filters: QueryFilters): Record<string, unknown>[] {
-    let builder = query.domainMaps();
-    if (filters.name) builder = builder.withName(filters.name);
-    return builder.toArray().map((domainMap) => serializeNode(domainMap, query));
 }
 
 /**

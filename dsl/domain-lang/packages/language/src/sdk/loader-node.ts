@@ -22,10 +22,10 @@ import { DocumentState, URI } from 'langium';
 import { NodeFileSystem } from 'langium/node';
 import type { Model } from '../generated/ast.js';
 import { isModel } from '../generated/ast.js';
-import { createDomainLangServices } from '../domain-lang-module.js';
+import { createDomainLangServices } from './bootstrap.js';
 import type { LoadOptions, QueryContext } from './types.js';
 import { fromModel, augmentModel } from './query.js';
-import { ensureImportGraphFromDocument } from '../utils/import-utils.js';
+import { ensureImportGraphFromDocument } from '../services/import-graph.js';
 
 /**
  * Loads a DomainLang model from a file on disk.

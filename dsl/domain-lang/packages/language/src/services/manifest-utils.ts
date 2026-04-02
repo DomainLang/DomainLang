@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import YAML from 'yaml';
-import type { ModelManifest } from '../services/types.js';
+import type { ModelManifest } from './types.js';
 
 const DEFAULT_MANIFEST_FILENAME = 'model.yaml';
 const DEFAULT_ENTRY_FILE = 'index.dlang';

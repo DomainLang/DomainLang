@@ -42,54 +42,39 @@ function validateBoundedContextHasDomain(
 }
 
 /**
- * Validates conflicts between inline and block classification assignment.
- * Warns when both inline ('as') and block ('classification:') are used.
- * Inline values take precedence per PRS-008.
- *
- * FR-9.2: Inline/Block Conflict Validation
+ * Factory for inline/block conflict validators.
+ * Warns when both inline and block assignments exist for a multi-valued reference property.
  */
-function validateBoundedContextClassificationConflict(
-    bc: BoundedContext,
-    accept: ValidationAcceptor
-): void {
-    if (bc.classification.length > 1) {
-        const inlineClassificationName = bc.classification[0].ref?.name;
-        const blockClassificationName = bc.classification[1].ref?.name;
-
-        // Warn if defined multiple times
-        accept('warning', ValidationMessages.BOUNDED_CONTEXT_CLASSIFICATION_CONFLICT(bc.name, inlineClassificationName, blockClassificationName), {
-            node: bc,
-            property: 'classification',
-            index: 1,
-            codeDescription: buildCodeDescription('language.md', 'bounded-contexts')
-        });
-    }
+function makeConflictValidator(
+    property: 'classification' | 'team',
+    message: (name: string, inlineName: string | undefined, blockName: string | undefined) => string,
+): (bc: BoundedContext, accept: ValidationAcceptor) => void {
+    return (bc, accept) => {
+        const refs = bc[property];
+        if (refs.length > 1) {
+            accept('warning', message(bc.name, refs[0].ref?.name, refs[1].ref?.name), {
+                node: bc,
+                property,
+                index: 1,
+                codeDescription: buildCodeDescription('language.md', 'bounded-contexts'),
+            });
+        }
+    };
 }
 
 /**
- * Validates conflicts between inline and block team assignment.
- * Warns when both inline ('by') and block ('team:') are used.
- * Inline values take precedence per PRS-008.
- *
- * FR-2.3: Inline/Block Conflict Validation
+ * FR-9.2: Inline/Block Conflict Validation for classification.
  */
-function validateBoundedContextTeamConflict(
-    bc: BoundedContext,
-    accept: ValidationAcceptor
-): void {
-    if (bc.team.length > 1) {
-        const inlineTeamName = bc.team[0].ref?.name;
-        const blockTeamName = bc.team[1].ref?.name;
+const validateBoundedContextClassificationConflict = makeConflictValidator(
+    'classification', ValidationMessages.BOUNDED_CONTEXT_CLASSIFICATION_CONFLICT,
+);
 
-        // Warn if defined multiple times
-        accept('warning', ValidationMessages.BOUNDED_CONTEXT_TEAM_CONFLICT(bc.name, inlineTeamName, blockTeamName), {
-            node: bc,
-            property: 'team',
-            index: 1,
-            codeDescription: buildCodeDescription('language.md', 'bounded-contexts')
-        });
-    }
-}
+/**
+ * FR-2.3: Inline/Block Conflict Validation for team.
+ */
+const validateBoundedContextTeamConflict = makeConflictValidator(
+    'team', ValidationMessages.BOUNDED_CONTEXT_TEAM_CONFLICT,
+);
 
 export const boundedContextChecks = [
     validateBoundedContextHasDescription,

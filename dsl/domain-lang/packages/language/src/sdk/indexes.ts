@@ -28,7 +28,7 @@ import {
     isNamespaceDeclaration,
     isTeam,
 } from '../generated/ast.js';
-import { QualifiedNameProvider } from '../lsp/domain-lang-naming.js';
+import { QualifiedNameProvider } from '../services/naming.js';
 import type { ModelIndexes } from './types.js';
 
 /**

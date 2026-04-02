@@ -1,7 +1,33 @@
-import type { ValidationAcceptor } from 'langium';
+import type { AstNode, MultiReference, Properties, ValidationAcceptor } from 'langium';
 import type { ContextMap, DomainMap, Relationship, BoundedContextRef } from '../generated/ast.js';
 import { isDirectionalRelationship, isSymmetricRelationship, isThisRef } from '../generated/ast.js';
 import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
+
+/**
+ * Factory for MultiReference resolution validators.
+ * Reports an error for each MultiReference whose $refText is set but resolves no items.
+ */
+function makeMultiRefValidator<T extends AstNode>(
+    getMultiRefs: (node: T) => readonly MultiReference[] | undefined,
+    property: Properties<T>,
+    typeLabel: string,
+): (node: T, accept: ValidationAcceptor) => void {
+    return (node, accept) => {
+        const refs = getMultiRefs(node);
+        if (!refs) return;
+        for (const multiRef of refs) {
+            const refText = multiRef.$refText;
+            if (refText && multiRef.items.length === 0) {
+                accept('error', ValidationMessages.UNRESOLVED_REFERENCE(typeLabel, refText), {
+                    node,
+                    property,
+                    index: refs.indexOf(multiRef),
+                    data: { code: IssueCodes.UnresolvedReference },
+                });
+            }
+        }
+    };
+}
 
 /**
  * Validates that a context map contains at least one bounded context.
@@ -23,35 +49,9 @@ function validateContextMapHasContexts(
     }
 }
 
-/**
- * Validates that MultiReference items in a context map resolve.
- * Langium doesn't report errors for unresolved MultiReference items by default,
- * so we need custom validation to catch these cases.
- * 
- * @param map - The context map to validate
- * @param accept - The validation acceptor for reporting issues
- */
-function validateContextMapReferences(
-    map: ContextMap,
-    accept: ValidationAcceptor
-): void {
-    if (!map.boundedContexts) return;
-    
-    for (const multiRef of map.boundedContexts) {
-        // A MultiReference has a $refText (the source text) and items (resolved refs)
-        // If $refText exists but items is empty, the reference didn't resolve
-        const refText = multiRef.$refText;
-        if (refText && multiRef.items.length === 0) {
-            accept('error', ValidationMessages.UNRESOLVED_REFERENCE('BoundedContext', refText), {
-                node: map,
-                // Find the CST node for this specific reference
-                property: 'boundedContexts',
-                index: map.boundedContexts.indexOf(multiRef),
-                data: { code: IssueCodes.UnresolvedReference }
-            });
-        }
-    }
-}
+const validateContextMapReferences = makeMultiRefValidator<ContextMap>(
+    m => m.boundedContexts, 'boundedContexts', 'BoundedContext',
+);
 
 /**
  * Validates that a context map has at least one relationship if it contains multiple contexts.
@@ -97,30 +97,9 @@ function validateDomainMapHasDomains(
     }
 }
 
-/**
- * Validates that MultiReference items in a domain map resolve.
- * 
- * @param map - The domain map to validate
- * @param accept - The validation acceptor for reporting issues
- */
-function validateDomainMapReferences(
-    map: DomainMap,
-    accept: ValidationAcceptor
-): void {
-    if (!map.domains) return;
-    
-    for (const multiRef of map.domains) {
-        const refText = multiRef.$refText;
-        if (refText && multiRef.items.length === 0) {
-            accept('error', ValidationMessages.UNRESOLVED_REFERENCE('Domain', refText), {
-                node: map,
-                property: 'domains',
-                index: map.domains.indexOf(multiRef),
-                data: { code: IssueCodes.UnresolvedReference }
-            });
-        }
-    }
-}
+const validateDomainMapReferences = makeMultiRefValidator<DomainMap>(
+    m => m.domains, 'domains', 'Domain',
+);
 
 /**
  * Gets a canonical name for a BoundedContextRef for comparison purposes.

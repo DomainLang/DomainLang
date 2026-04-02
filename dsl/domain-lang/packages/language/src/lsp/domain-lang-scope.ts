@@ -22,7 +22,7 @@ import {
 import { CancellationToken } from 'vscode-jsonrpc';
 import type { NamespaceDeclaration, Model, Container } from '../generated/ast.js';
 import { isType, isNamespaceDeclaration } from '../generated/ast.js';
-import { QualifiedNameProvider } from './domain-lang-naming.js';
+import { QualifiedNameProvider } from '../services/naming.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import { createLogger } from '../services/lsp-logger.js';
 

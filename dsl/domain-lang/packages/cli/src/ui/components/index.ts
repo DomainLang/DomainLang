@@ -8,10 +8,6 @@
 // Feedback components
 export {
     StatusMessage,
-    SuccessMessage,
-    ErrorMessage,
-    WarningMessage,
-    InfoMessage,
     type StatusMessageProps,
 } from './StatusMessage.js';
 
@@ -34,18 +30,12 @@ export {
 
 export {
     Divider,
-    Spacer,
     type DividerProps,
-    type SpacerProps,
 } from './Divider.js';
 
 // Input components
 export {
     KeyboardHints,
-    SelectHints,
-    MultiSelectHints,
-    TextInputHints,
-    ConfirmHints,
     HINT_PRESETS,
     type KeyboardHintsProps,
 } from './KeyboardHints.js';
@@ -67,15 +57,10 @@ export {
 // Layout components
 export {
     Banner,
-    InfoBox,
-    SuccessBanner,
-    ErrorBanner,
-    WarningBanner,
     type BannerProps,
 } from './Banner.js';
 
 export {
     Footer,
-    MinimalFooter,
     type FooterProps,
 } from './Footer.js';

@@ -2,30 +2,13 @@ import type { LangiumDocument } from 'langium';
 import type { SGraph, SModelElement, SModelRoot, SEdge, SNode } from 'sprotty-protocol';
 import { LangiumDiagramGenerator, type GeneratorContext } from 'langium-sprotty';
 import { fromDocument } from '../sdk/query.js';
+import { getPatternAbbreviation, isBBoMSidePattern } from '../sdk/patterns.js';
 import type { Query, RelationshipView } from '../sdk/types.js';
-import { isBigBallOfMud } from '../generated/ast.js';
 import type { BoundedContext, ContextMap, Model, Relationship, SidePattern } from '../generated/ast.js';
 
 /** Ellipse sizing for bounded context nodes — sized for long names like "CustomerManagementContext" */
 const NODE_WIDTH = 280;
 const NODE_HEIGHT = 100;
-
-/**
- * Maps long-form DomainLang integration pattern keywords to their standard
- * DDD abbreviations for display in U/D badges.
- */
-const PATTERN_ABBREVIATIONS: Readonly<Record<string, string>> = {
-    OpenHostService: 'OHS',
-    PublishedLanguage: 'PL',
-    AntiCorruptionLayer: 'ACL',
-    Conformist: 'CF',
-    Supplier: 'S',
-    Customer: 'C',
-    BigBallOfMud: 'BBoM',
-    SharedKernel: 'SK',
-    Partnership: 'P',
-    SeparateWays: 'SW',
-};
 
 /**
  * Returns the abbreviated form of a side pattern AST node.
@@ -34,17 +17,7 @@ const PATTERN_ABBREVIATIONS: Readonly<Record<string, string>> = {
  * DDD abbreviation (e.g. `OHS`, `CF`).  Unknown types are returned as-is.
  */
 function normalizePatternNode(pattern: SidePattern): string {
-    return PATTERN_ABBREVIATIONS[pattern.$type] ?? pattern.$type;
-}
-
-/**
- * Returns `true` when the side pattern identifies a Big Ball of Mud participant.
- *
- * BBoM is surfaced as a cloud node shape on the bounded context itself, not as
- * a text annotation in the edge badge, so it should be excluded from badge text.
- */
-function isBBoMSidePattern(pattern: SidePattern): boolean {
-    return isBigBallOfMud(pattern);
+    return getPatternAbbreviation(pattern.$type);
 }
 
 interface DiagramSelection {

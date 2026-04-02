@@ -32,8 +32,8 @@ import {
     isSupplier,
     isCustomer,
 } from '../generated/ast.js';
-import { QualifiedNameProvider } from '../lsp/domain-lang-naming.js';
-import type { DomainLangServices } from '../domain-lang-module.js';
+import { QualifiedNameProvider } from '../services/naming.js';
+import type { DomainLangServices } from './bootstrap.js';
 import { buildIndexes } from './indexes.js';
 import {
     metadataAsMap,

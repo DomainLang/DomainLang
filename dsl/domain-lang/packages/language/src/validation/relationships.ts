@@ -1,5 +1,5 @@
 import type { ValidationAcceptor } from 'langium';
-import type { BoundedContextRef, Relationship } from '../generated/ast.js';
+import type { BoundedContextRef, Relationship, SidePattern } from '../generated/ast.js';
 import { 
     isThisRef, 
     isDirectionalRelationship,
@@ -20,95 +20,62 @@ function getContextName(ref: BoundedContextRef): string {
 }
 
 /**
- * Validates that ACL is on the downstream (consuming) side.
- * ACL on upstream side of -> is a warning. ACL on upstream side of <- is also a warning.
+ * Factory for validating that a pattern appears on the correct side of a relationship.
+ *
+ * @param guard - AST type guard for the pattern (e.g. `isAntiCorruptionLayer`)
+ * @param message - Message factory receiving (contextName, side)
+ * @param wrongSide - Which side triggers the warning:
+ *   - `'upstream'`: warn when the pattern is on the upstream side (ACL, CF — downstream patterns)
+ *   - `'downstream'`: warn when the pattern is on the downstream side (OHS — upstream pattern)
  */
-function validateACLPlacement(
-    relationship: Relationship,
-    accept: ValidationAcceptor
-): void {
-    if (!isDirectionalRelationship(relationship)) return;
+function makePatternPlacementValidator(
+    guard: (p: SidePattern) => boolean,
+    message: (name: string, side: 'left' | 'right') => string,
+    wrongSide: 'upstream' | 'downstream',
+): (relationship: Relationship, accept: ValidationAcceptor) => void {
+    return (relationship, accept) => {
+        if (!isDirectionalRelationship(relationship)) return;
 
-    const hasACLLeft = relationship.leftPatterns.some(isAntiCorruptionLayer);
-    const hasACLRight = relationship.rightPatterns.some(isAntiCorruptionLayer);
-    
-    // For ->, left is upstream. ACL on upstream side is wrong.
-    if (hasACLLeft && relationship.arrow === '->') {
-        const leftName = getContextName(relationship.left);
-        accept('warning',
-            ValidationMessages.ACL_ON_WRONG_SIDE(leftName, 'left'),
-            { node: relationship, property: 'leftPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
-        );
-    }
-    
-    // For <-, right is upstream. ACL on upstream side is wrong.
-    if (hasACLRight && relationship.arrow === '<-') {
-        const rightName = getContextName(relationship.right);
-        accept('warning',
-            ValidationMessages.ACL_ON_WRONG_SIDE(rightName, 'right'),
-            { node: relationship, property: 'rightPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
-        );
-    }
+        const hasLeft = relationship.leftPatterns.some(guard);
+        const hasRight = relationship.rightPatterns.some(guard);
+
+        if (wrongSide === 'upstream') {
+            // Downstream pattern on upstream side is wrong
+            // For ->, left is upstream; for <-, right is upstream
+            if (hasLeft && relationship.arrow === '->') {
+                accept('warning', message(getContextName(relationship.left), 'left'),
+                    { node: relationship, property: 'leftPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') });
+            }
+            if (hasRight && relationship.arrow === '<-') {
+                accept('warning', message(getContextName(relationship.right), 'right'),
+                    { node: relationship, property: 'rightPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') });
+            }
+        } else {
+            // Upstream pattern on downstream side is wrong
+            // For ->, right is downstream; for <-, left is downstream
+            if (hasRight && relationship.arrow === '->') {
+                accept('warning', message(getContextName(relationship.right), 'right'),
+                    { node: relationship, property: 'rightPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') });
+            }
+            if (hasLeft && relationship.arrow === '<-') {
+                accept('warning', message(getContextName(relationship.left), 'left'),
+                    { node: relationship, property: 'leftPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') });
+            }
+        }
+    };
 }
 
-/**
- * Validates that CF is on the downstream (consuming) side.
- */
-function validateConformistPlacement(
-    relationship: Relationship,
-    accept: ValidationAcceptor
-): void {
-    if (!isDirectionalRelationship(relationship)) return;
+const validateACLPlacement = makePatternPlacementValidator(
+    isAntiCorruptionLayer, ValidationMessages.ACL_ON_WRONG_SIDE, 'upstream',
+);
 
-    const hasCFLeft = relationship.leftPatterns.some(isConformist);
-    const hasCFRight = relationship.rightPatterns.some(isConformist);
-    
-    if (hasCFLeft && relationship.arrow === '->') {
-        const leftName = getContextName(relationship.left);
-        accept('warning',
-            ValidationMessages.CONFORMIST_ON_WRONG_SIDE(leftName, 'left'),
-            { node: relationship, property: 'leftPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
-        );
-    }
-    
-    if (hasCFRight && relationship.arrow === '<-') {
-        const rightName = getContextName(relationship.right);
-        accept('warning',
-            ValidationMessages.CONFORMIST_ON_WRONG_SIDE(rightName, 'right'),
-            { node: relationship, property: 'rightPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
-        );
-    }
-}
+const validateConformistPlacement = makePatternPlacementValidator(
+    isConformist, ValidationMessages.CONFORMIST_ON_WRONG_SIDE, 'upstream',
+);
 
-/**
- * Validates that OHS is on the upstream (providing) side.
- */
-function validateOHSPlacement(
-    relationship: Relationship,
-    accept: ValidationAcceptor
-): void {
-    if (!isDirectionalRelationship(relationship)) return;
-
-    // For ->, right is downstream. OHS on downstream side is wrong.
-    const hasOHSRight = relationship.rightPatterns.some(isOpenHostService);
-    if (hasOHSRight && relationship.arrow === '->') {
-        const rightName = getContextName(relationship.right);
-        accept('warning',
-            ValidationMessages.OHS_ON_WRONG_SIDE(rightName, 'right'),
-            { node: relationship, property: 'rightPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
-        );
-    }
-
-    // For <-, left is downstream. OHS on downstream side is wrong.
-    const hasOHSLeft = relationship.leftPatterns.some(isOpenHostService);
-    if (hasOHSLeft && relationship.arrow === '<-') {
-        const leftName = getContextName(relationship.left);
-        accept('warning',
-            ValidationMessages.OHS_ON_WRONG_SIDE(leftName, 'left'),
-            { node: relationship, property: 'leftPatterns', codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
-        );
-    }
-}
+const validateOHSPlacement = makePatternPlacementValidator(
+    isOpenHostService, ValidationMessages.OHS_ON_WRONG_SIDE, 'downstream',
+);
 
 /**
  * Validates that Supplier is on the upstream side and Customer is on the downstream side.

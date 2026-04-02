@@ -4,7 +4,7 @@ import { realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import YAML from 'yaml';
 import { getGlobalOptimizer } from './performance-optimizer.js';
-import { fileExists as checkFileExists, findWorkspaceRoot as findWorkspaceRootUtil } from '../utils/manifest-utils.js';
+import { fileExists as checkFileExists, findWorkspaceRoot as findWorkspaceRootUtil } from './manifest-utils.js';
 import { createLogger } from './lsp-logger.js';
 import type { 
     LockFile, 

@@ -1,6 +1,5 @@
 /**
- * First-run detection hook.
- * Checks if this is the first time the CLI has been run.
+ * First-run detection utilities and elapsed-time hook.
  * 
  * @module ui/hooks/useFirstRun
  */
@@ -37,27 +36,6 @@ export function markFirstRunComplete(fs: FileSystemService = defaultFileSystem):
     } catch {
         // Silently ignore errors (e.g., permission issues)
     }
-}
-
-/**
- * Hook to detect and track first-run status.
- * @returns Object with isFirstRun state and markComplete function
- */
-export function useFirstRun(): {
-    isFirstRun: boolean;
-    markComplete: () => void;
-} {
-    const [firstRun, setFirstRun] = useState(() => isFirstRun());
-
-    const markComplete = (): void => {
-        markFirstRunComplete();
-        setFirstRun(false);
-    };
-
-    return {
-        isFirstRun: firstRun,
-        markComplete,
-    };
 }
 
 /**

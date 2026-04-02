@@ -43,6 +43,14 @@
 // ============================================================================
 
 /**
+ * Interface for components that can detect import cycles.
+ * Decouples validation from concrete IndexManager implementation.
+ */
+export interface ImportCycleDetector {
+    getCycleForDocument(uri: string): string[] | undefined;
+}
+
+/**
  * Information about an import statement tracked during indexing.
  * 
  * Used by IndexManager to track both the import's resolved location

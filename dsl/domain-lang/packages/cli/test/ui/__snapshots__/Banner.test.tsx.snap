@@ -25,32 +25,4 @@ exports[`Banner > renders in warning mode 1`] = `
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;
 
-exports[`Banner > renders success variant 1`] = `
-"╭──────────────────────────────────────────────────────────╮
-│ Success!                                                 │
-╰──────────────────────────────────────────────────────────╯"
-`;
-
-exports[`Banner shorthand components > renders ErrorBanner 1`] = `
-"╭────────────────────────────────────────────────╮
-│ Something went wrong                           │
-╰────────────────────────────────────────────────╯"
-`;
-
-exports[`Banner shorthand components > renders SuccessBanner 1`] = `
-"╭────────────────────────────────────────────────╮
-│ Operation completed                            │
-╰────────────────────────────────────────────────╯"
-`;
-
-exports[`Banner shorthand components > renders WarningBanner 1`] = `
-"╭────────────────────────────────────────────────╮
-│ Proceed with caution                           │
-╰────────────────────────────────────────────────╯"
-`;
-
-exports[`InfoBox > renders children with border 1`] = `
-"╭──────────────────────────────────────╮
-│ Some content here                    │
-╰──────────────────────────────────────╯"
-`;
+exports[`Banner > renders success variant 1`]

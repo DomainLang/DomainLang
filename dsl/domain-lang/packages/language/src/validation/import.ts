@@ -7,8 +7,7 @@ import type { DomainLangServices } from '../domain-lang-module.js';
 import type { ManifestManager } from '../services/workspace-manager.js';
 import type { ImportResolver } from '../services/import-resolver.js';
 import { ImportResolutionError } from '../services/import-resolver.js';
-import type { DomainLangIndexManager } from '../lsp/domain-lang-index-manager.js';
-import type { ExtendedDependencySpec, ModelManifest, LockFile } from '../services/types.js';
+import type { ExtendedDependencySpec, ModelManifest, LockFile, ImportCycleDetector } from '../services/types.js';
 import { ValidationMessages, buildCodeDescription, IssueCodes } from './constants.js';
 
 /**
@@ -27,15 +26,15 @@ import { ValidationMessages, buildCodeDescription, IssueCodes } from './constant
 export class ImportValidator {
     private readonly workspaceManager: ManifestManager;
     private readonly importResolver: ImportResolver;
-    private readonly indexManager: DomainLangIndexManager | undefined;
+    private readonly indexManager: ImportCycleDetector | undefined;
 
     constructor(services: DomainLangServices) {
         this.workspaceManager = services.imports.ManifestManager;
         this.importResolver = services.imports.ImportResolver;
-        // IndexManager is in shared services — cast to DomainLangIndexManager for cycle detection
+        // IndexManager is in shared services — use ImportCycleDetector interface for cycle detection
         const indexMgr = services.shared.workspace.IndexManager;
         this.indexManager = 'getCycleForDocument' in indexMgr
-            ? indexMgr as DomainLangIndexManager
+            ? indexMgr as ImportCycleDetector
             : undefined;
     }
 

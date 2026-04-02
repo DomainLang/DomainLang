@@ -12,7 +12,7 @@ import { AstNodeHoverProvider } from 'langium/lsp';
 import type { Hover, HoverParams } from 'vscode-languageserver';
 import * as ast from '../../generated/ast.js';
 import type { DomainLangServices } from '../../domain-lang-module.js';
-import { QualifiedNameProvider } from '../domain-lang-naming.js';
+import { QualifiedNameProvider } from '../../services/naming.js';
 import type { DomainLangIndexManager } from '../domain-lang-index-manager.js';
 import { keywordExplanations } from './domain-lang-keywords.js';
 import {

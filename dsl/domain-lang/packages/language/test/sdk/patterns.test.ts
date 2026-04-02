@@ -10,7 +10,7 @@ import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
 import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
 import { fromDocument } from '../../src/sdk/query.js';
-import { isSymmetricRelationship } from '../../src/generated/ast.js';
+import { isSymmetricRelationship, isSharedKernel, isPartnership, isSeparateWays } from '../../src/generated/ast.js';
 import {
     matchesPattern,
     isUpstreamPattern,
@@ -20,9 +20,6 @@ import {
     isDownstreamSidePattern,
     isBBoMSidePattern,
     getPatternAbbreviation,
-    isSharedKernelPattern,
-    isPartnershipPattern,
-    isSeparateWaysPattern,
 } from '../../src/sdk/patterns.js';
 
 let testServices: TestServices;
@@ -148,7 +145,7 @@ describe('isUpstreamSidePattern / isDownstreamSidePattern / isBBoMSidePattern', 
     });
 });
 
-describe('isSharedKernelPattern / isPartnershipPattern / isSeparateWaysPattern', () => {
+describe('isSharedKernel / isPartnership / isSeparateWays (generated guards)', () => {
     // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     async function parseSymmetricPattern(pattern: string) {
         const document = await testServices.parse(s`
@@ -176,14 +173,14 @@ describe('isSharedKernelPattern / isPartnershipPattern / isSeparateWaysPattern',
         const sw = (await parseSymmetricPattern('SW'))!;
 
         // Assert — each guard is true for its own type and false for others
-        expect(isSharedKernelPattern(sk)).toBe(true);
-        expect(isPartnershipPattern(sk)).toBe(false);
+        expect(isSharedKernel(sk)).toBe(true);
+        expect(isPartnership(sk)).toBe(false);
 
-        expect(isPartnershipPattern(p)).toBe(true);
-        expect(isSharedKernelPattern(p)).toBe(false);
+        expect(isPartnership(p)).toBe(true);
+        expect(isSharedKernel(p)).toBe(false);
 
-        expect(isSeparateWaysPattern(sw)).toBe(true);
-        expect(isPartnershipPattern(sw)).toBe(false);
+        expect(isSeparateWays(sw)).toBe(true);
+        expect(isPartnership(sw)).toBe(false);
     });
 });
 

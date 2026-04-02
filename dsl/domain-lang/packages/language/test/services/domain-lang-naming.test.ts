@@ -9,7 +9,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { describe, expect, it } from 'vitest';
 import { setupTestSuite } from '../test-helpers.js';
-import { QualifiedNameProvider, toQualifiedName, joinQualifiedName } from '../../src/lsp/domain-lang-naming.js';
+import { QualifiedNameProvider, toQualifiedName, joinQualifiedName } from '../../src/services/naming.js';
 import { isDomain, isNamespaceDeclaration } from '../../src/generated/ast.js';
 
 const qualifiedNames = new QualifiedNameProvider();
