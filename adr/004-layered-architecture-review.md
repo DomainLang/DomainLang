@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (phases 1–4 implemented)
 
 ## Date
 
@@ -229,3 +229,29 @@ Add `eslint-plugin-boundaries` or similar without moving files.
 5. **Phase 3** (V-6) — SDK bootstrap (investigate feasibility) → aspirational
 
 Each phase is independently deployable and testable. No phase depends on another.
+
+## Outcome
+
+Phases 1–4 were implemented in commit `a5fb7a2` (`refactor: enforce layered architecture per ADR-004`). 45 files changed, 454 insertions, 607 deletions. All quality gates passed (lint clean, build clean, 1150 tests pass, coverage thresholds met).
+
+### Phase 1 — done
+
+Moved `lsp/domain-lang-naming.ts` → `services/naming.ts`. Updated 7 consumer imports across SDK, validation, LSP, DI module, and tests. Git detected 100% rename.
+
+### Phase 2 — done
+
+Moved `utils/import-utils.ts` → `services/import-graph.ts` and `utils/manifest-utils.ts` → `services/manifest-utils.ts`. Updated 7 consumer imports. Removed the empty `utils/` directory.
+
+### Phase 3 — done (containment approach)
+
+Created `sdk/bootstrap.ts` that re-exports `createDomainLangServices` and the `DomainLangServices` type from the root DI module. All 5 SDK files (`loader.ts`, `loader-node.ts`, `validator.ts`, `types.ts`, `query.ts`) now import through this single coupling point instead of directly referencing `domain-lang-module.ts`.
+
+The "minimal parser-only module" alternative was not feasible — Langium's DI container does not support partial service initialization, and the SDK loaders need a full environment for import resolution and validation. The containment approach isolates the coupling to one file, making it explicit and auditable.
+
+### Phase 4 — done
+
+Extracted `ImportCycleDetector` interface in `services/types.ts` with a single method: `getCycleForDocument(uri: string): string[] | undefined`. `validation/import.ts` now depends on this interface instead of the concrete `DomainLangIndexManager` class. `DomainLangIndexManager` implements `ImportCycleDetector`.
+
+### Phase 5 — deferred
+
+Relocating CLI-specific types from `services/types.ts` to the CLI package was not addressed in this round. It remains a valid improvement for a future session.
