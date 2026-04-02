@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { ValidationAcceptor, ValidationChecks, LangiumDocument } from 'langium';
-import { Cancellation } from 'langium';
+import { Cancellation, URI } from 'langium';
 import type { DomainLangAstType, ImportStatement } from '../generated/ast.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { ManifestManager } from '../services/workspace-manager.js';
@@ -182,6 +182,18 @@ export class ImportValidator {
                 });
                 return true;
             }
+
+            // R-009: Reject resolved files that are not .dlang — e.g. a .json file placed
+            // at the resolved path would otherwise silently pass validation.
+            if (!filePath.endsWith('.dlang')) {
+                accept('error', `Import '${imp.uri}' resolved to '${path.basename(filePath)}' which is not a DomainLang file (.dlang required).`, {
+                    node: imp,
+                    property: 'uri',
+                    codeDescription: buildCodeDescription('language.md', 'imports'),
+                    data: { code: IssueCodes.ImportUnresolved, uri: imp.uri }
+                });
+                return true;
+            }
             
             return false;
         } catch (error: unknown) {
@@ -354,8 +366,14 @@ export class ImportValidator {
                 });
             }
         } catch {
-            // ManifestManager not initialized - skip workspace boundary check
-            // This can happen for standalone files without model.yaml
+            // If workspace root cannot be determined, fail closed — do not allow
+            // the import to proceed without a successful boundary check (B-001).
+            accept('error', ValidationMessages.IMPORT_ESCAPES_WORKSPACE(alias), {
+                node: imp,
+                property: 'uri',
+                codeDescription: buildCodeDescription('language.md', 'imports'),
+                data: { code: IssueCodes.ImportEscapesWorkspace, alias }
+            });
         }
     }
 
@@ -460,17 +478,23 @@ export class ImportValidator {
         if (!cycle || cycle.length === 0) return;
 
         // Only annotate the import whose URI matches a document in the cycle.
-        // Compare by the last path segment (basename) to avoid needing async URI resolution.
+        // Resolve to an absolute file URI for comparison — prevents false-positive cycle
+        // detection for different files sharing the same basename (R-008).
         if (!imp.uri) return;
-        const impBasename = imp.uri.split('/').at(-1) ?? imp.uri;
-        const isInCycle = cycle.some(uri => (uri.split('/').at(-1) ?? uri) === impBasename);
+        const docDir = path.dirname(document.uri.fsPath);
+        const resolvedAbsPath = path.resolve(docDir, imp.uri);
+        const resolvedImpUri = URI.file(resolvedAbsPath).toString();
+        const isInCycle = cycle.some(uri => uri === resolvedImpUri);
         if (!isInCycle) return;
 
-        // Build human-readable cycle display using basenames
+        // Build human-readable cycle display using absolute paths
         const cycleDisplay = cycle
             .map(uri => {
-                const parts = uri.split('/');
-                return parts.at(-1) ?? uri;
+                try {
+                    return URI.parse(uri).fsPath;
+                } catch {
+                    return uri;
+                }
             })
             .join(' → ');
 
