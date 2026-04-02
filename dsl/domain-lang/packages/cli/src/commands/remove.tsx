@@ -56,6 +56,12 @@ async function removeDependency(
     // Normalize package name (strip @ if present)
     const normalizedName = packageName.includes('@') ? packageName.split('@')[0] : packageName;
 
+    // Validate package name to prevent path traversal (R-002)
+    const nameParts = normalizedName.split('/');
+    if (nameParts.length !== 2 || !/^[a-zA-Z0-9_.-]+$/.test(nameParts[0]) || !/^[a-zA-Z0-9_.-]+$/.test(nameParts[1])) {
+        throw new Error(`Invalid package name '${normalizedName}': must be in owner/repo format with valid characters.`);
+    }
+
     // Check if model.yaml exists
     const manifestPath = resolve(workspaceRoot, 'model.yaml');
     if (!fs.existsSync(manifestPath)) {
@@ -145,8 +151,8 @@ async function removeDependency(
  * Remove command component.
  * Only renders in rich (Ink) mode.
  */
-export const Remove: React.FC<RemoveProps> = ({ packageName, context: _context }) => {
-    const workspaceRoot = process.cwd();
+export const Remove: React.FC<RemoveProps> = ({ packageName, context }) => {
+    const workspaceRoot = context.cwd;
     const { status, result, error, elapsed } = useCommand(
         () => removeDependency(packageName, workspaceRoot),
         [packageName],
@@ -202,7 +208,7 @@ export const Remove: React.FC<RemoveProps> = ({ packageName, context: _context }
  * Run remove without Ink (for --json and --quiet modes).
  */
 export async function runRemove(packageName: string, context: CommandContext): Promise<void> {
-    const workspaceRoot = process.cwd();
+    const workspaceRoot = context.cwd;
     await runDirect(
         () => removeDependency(packageName, workspaceRoot),
         context,

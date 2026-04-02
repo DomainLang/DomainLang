@@ -159,8 +159,8 @@ function updatePackage(
  * Add command component.
  * Only renders in rich (Ink) mode.
  */
-export const Add: React.FC<AddProps> = ({ specifier, context: _context }) => {
-    const workspaceRoot = process.cwd();
+export const Add: React.FC<AddProps> = ({ specifier, context }) => {
+    const workspaceRoot = context.cwd;
     const [state, setState] = useState<AddState>({ status: 'loading' });
     const elapsed = useElapsedTime(100, state.status === 'loading' || state.status === 'downloading');
     const { exit } = useApp();
@@ -265,7 +265,7 @@ export const Add: React.FC<AddProps> = ({ specifier, context: _context }) => {
  * Run add without Ink (for --json and --quiet modes).
  */
 export async function runAdd(specifier: string, context: CommandContext): Promise<void> {
-    const workspaceRoot = process.cwd();
+    const workspaceRoot = context.cwd;
     await runDirect(
         () => addDependency(specifier, workspaceRoot),
         context,
