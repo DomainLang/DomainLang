@@ -1,7 +1,7 @@
 import type { LanguageClientOptions, ServerOptions} from 'vscode-languageclient/node.js';
 import * as vscode from 'vscode';
 import * as path from 'node:path';
-import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
+import { LanguageClient, State, TransportKind } from 'vscode-languageclient/node.js';
 import { registerLanguageModelTools } from './lm-tools.js';
 import {
     DiagramPanel,
@@ -164,7 +164,6 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
         }
     });
     context.subscriptions.push(stateChangeDisposable);
->>>>>>> 82fe31c (fix(extension): fix disposable leak in LSP client state listener)
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration('domainlang.lsp')) {
