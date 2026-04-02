@@ -702,6 +702,10 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
 
     /**
      * Add local path starters.
+     * @remarks
+     * Not implemented: listing local directory entries requires async fs access
+     * which is not available in the synchronous completion context.
+     * TODO: Implement using vscode.workspace.fs or a dedicated async completion path.
      */
     private addLocalPathStarters(acceptor: ItemAcceptor): void {
         // Would need async fs access to list directories

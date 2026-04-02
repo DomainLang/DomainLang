@@ -180,9 +180,16 @@ async function handleValidate(
 ): Promise<ValidateResponse> {
     try {
         const langiumDocs = sharedServices.workspace.LangiumDocuments;
-        const documents = params.file
-            ? [langiumDocs.getDocument(URI.parse(params.file))]
-            : Array.from(langiumDocs.all);
+        let documents;
+        if (params.file) {
+            const uri = URI.parse(params.file);
+            if (uri.scheme !== 'file') {
+                return { count: 0, diagnostics: { errors: [], warnings: [], info: [] } };
+            }
+            documents = [langiumDocs.getDocument(uri)];
+        } else {
+            documents = Array.from(langiumDocs.all);
+        }
 
     const errors: DiagnosticInfo[] = [];
     const warnings: DiagnosticInfo[] = [];
@@ -312,6 +319,9 @@ async function handleExplain(
     params: ExplainParams,
     sharedServices: LangiumSharedServices
 ): Promise<ExplainResponse> {
+    if (!params.fqn) {
+        return { explanation: 'Missing required parameter: fqn' };
+    }
     try {
         const langiumDocs = sharedServices.workspace.LangiumDocuments;
         const documents = Array.from(langiumDocs.all);
@@ -462,6 +472,10 @@ function severityToString(severity: number): 'error' | 'warning' | 'info' {
             return 'error';
         case 2:
             return 'warning';
+        case 3: // DiagnosticSeverity.Information
+            return 'info';
+        case 4: // DiagnosticSeverity.Hint — explicitly mapped, not accidentally caught by default
+            return 'info';
         default:
             return 'info';
     }
