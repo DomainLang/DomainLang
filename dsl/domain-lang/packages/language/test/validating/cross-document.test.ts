@@ -7,7 +7,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 
 let testServices: TestServices;
 
@@ -20,6 +20,7 @@ describe('Cross-document integration', () => {
         test.each([
             {
                 construct: 'domain',
+                duplicateName: 'Sales',
                 input: s`
                     Domain Sales { vision: "Sales" }
                     Domain Sales { vision: "Also Sales" }
@@ -27,6 +28,7 @@ describe('Cross-document integration', () => {
             },
             {
                 construct: 'bounded context',
+                duplicateName: 'OrderContext',
                 input: s`
                     Domain Sales { vision: "Sales" }
                     bc OrderContext for Sales { description: "First" }
@@ -35,19 +37,38 @@ describe('Cross-document integration', () => {
             },
             {
                 construct: 'team',
+                duplicateName: 'AlphaTeam',
                 input: s`
                     Team AlphaTeam
                     Team AlphaTeam
                 `,
             },
-        ])('detects duplicate $construct names in same document', async ({ input }) => {
+            {
+                construct: 'classification',
+                duplicateName: 'Core',
+                input: s`
+                    Classification Core
+                    Classification Core
+                `,
+            },
+            {
+                construct: 'namespace',
+                duplicateName: 'TestNamespace',
+                input: s`
+                    Namespace TestNamespace { Domain Domain1 {} }
+                    Namespace TestNamespace { Domain Domain2 {} }
+                `,
+            },
+        ])('detects duplicate $construct names in same document', async ({ input, duplicateName }) => {
             // Arrange & Act
             const document = await testServices.parse(input);
 
-            // Assert
+            // Assert — exactly one duplicate error naming the specific entity (guards against
+            // "any duplicate message for any symbol" false positives)
             const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
-            expect(errors.length).toBeGreaterThanOrEqual(1);
-            expect(errors.some(e => e.message.includes('already defined') || e.message.includes('Duplicate'))).toBe(true);
+            const duplicateErrors = errors.filter(e => e.message.includes('Duplicate element'));
+            expect(duplicateErrors).toHaveLength(1);
+            expect(duplicateErrors[0].message).toContain(`'${duplicateName}'`);
         });
     });
 
@@ -60,7 +81,7 @@ describe('Cross-document integration', () => {
             `);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
         });
     });
 });

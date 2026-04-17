@@ -11,7 +11,6 @@ import type { TestServices } from '../test-helpers.js';
 import {
     setupTestSuite,
     expectValidationErrors,
-    expectValidationWarnings,
     getDiagnosticsBySeverity,
     s
 } from '../test-helpers.js';
@@ -28,115 +27,38 @@ describe('Validation Tests', () => {
     // ========================================================================
 
     describe('Domain Validation', () => {
-        // "warns when domain lacks vision" covered by enhanced-messages.test.ts
-
-        test('should detect circular domain hierarchy', async () => {
+        test.each([
+            {
+                scenario: 'circular domain hierarchy',
+                input: s`
+                    Domain A in B {}
+                    Domain B in Cx {}
+                    Domain Cx in A {}
+                `,
+                expectedErrorCount: 3,
+                expectedMessageFragment: 'Circular domain hierarchy detected'
+            },
+            {
+                scenario: 'self-referencing domain',
+                input: s`
+                    Domain SelfRef in SelfRef {}
+                `,
+                expectedErrorCount: 1,
+                expectedMessageFragment: 'Circular domain hierarchy detected'
+            }
+        ])('should detect circular domain hierarchy ($scenario)', async ({ input, expectedErrorCount, expectedMessageFragment }) => {
             // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain A in B {}
-                Domain B in Cx {}
-                Domain Cx in A {}
-            `);
+            const document = await testServices.parse(input);
 
             // Assert
-            expectValidationErrors(document, [
-                'Circular domain hierarchy detected',
-                'Circular domain hierarchy detected',
-                'Circular domain hierarchy detected'
-            ]);
-        });
-
-        test('should detect self-referencing domain', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain SelfRef in SelfRef {}
-            `);
-
-            // Assert
-            expectValidationErrors(document, [
-                'Circular domain hierarchy detected'
-            ]);
-        });
-
-        test('warns on multiple domains each missing vision', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Domain A { description: "A" }
-                Domain B { description: "B" }
-            `);
-
-            // Assert
-            expectValidationWarnings(document, [
-                "missing a vision statement",
-                "missing a vision statement"
-            ]);
+            expectValidationErrors(document, Array(expectedErrorCount).fill(expectedMessageFragment));
         });
     });
 
     // ========================================================================
-    // NAMESPACE DECLARATION VALIDATION
+    // NAMESPACE / CLASSIFICATION / TEAM duplicate-name validation is parameterized
+    // in cross-document.test.ts (covers Domain, BC, Team, Namespace, Classification).
     // ========================================================================
-
-    describe('Namespace Declaration Validation', () => {
-        test('should detect duplicate Namespace names', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Namespace TestNamespace {
-                    Domain Domain1 {}
-                }
-
-                Namespace TestNamespace {
-                    Domain Domain2 {}
-                }
-            `);
-
-            // Assert
-            expectValidationErrors(document, [
-                "Duplicate element"
-            ]);
-        });
-
-    });
-
-    // ========================================================================
-    // CLASSIFICATION VALIDATION
-    // ========================================================================
-
-    describe('Classification Validation', () => {
-        test('should detect duplicate classification names', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Classification Core
-                Classification Core
-            `);
-
-            // Assert
-            expectValidationErrors(document, [
-                "Duplicate element"
-            ]);
-        });
-
-    });
-
-    // ========================================================================
-    // TEAM VALIDATION
-    // ========================================================================
-
-    describe('Team Validation', () => {
-        test('should detect duplicate Team names', async () => {
-            // Arrange & Act
-            const document = await testServices.parse(s`
-                Team SalesTeam
-                Team SalesTeam
-            `);
-
-            // Assert
-            expectValidationErrors(document, [
-                "Duplicate element"
-            ]);
-        });
-
-    });
 
     // ========================================================================
     // CONTEXT MAP VALIDATION

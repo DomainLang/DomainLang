@@ -115,11 +115,11 @@ describe('Import Validation (Phase 3)', () => {
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
-            // Assert
+            // Assert — must produce at least one diagnostic naming both source and path
             const errors = (doc.diagnostics ?? []).filter(d => 
                 d.message.toLowerCase().includes('source') && d.message.toLowerCase().includes('path')
             );
-            expect(errors.length).toBeGreaterThan(0);
+            expect(errors).toHaveLength(1);
         });
 
         test('rejects dependency with neither source nor path', async () => {
@@ -142,11 +142,11 @@ describe('Import Validation (Phase 3)', () => {
             const doc = await services.shared.workspace.LangiumDocuments.getOrCreateDocument(uri);
             await services.shared.workspace.DocumentBuilder.build([doc], { validation: true });
 
-            // Assert
+            // Assert — must produce at least one diagnostic mentioning source or path
             const errors = (doc.diagnostics ?? []).filter(d => 
                 d.message.toLowerCase().includes('source') || d.message.toLowerCase().includes('path')
             );
-            expect(errors.length).toBeGreaterThan(0);
+            expect(errors).toHaveLength(1);
         });
 
         // Skipped(PRS-010): Re-enable once manifest validation requires ref for source dependencies.
