@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.13.1](https://github.com/DomainLang/DomainLang/compare/v0.13.0...v0.13.1) (2026-04-17)
+
+
+### Bug Fixes
+
+* address blocking bugs B-006, B-007, B-017, B-018, R-026, R-027, R-028 ([ce67582](https://github.com/DomainLang/DomainLang/commit/ce67582da4e3fda54f4750f2574effe734b0bd27))
+* address PRS-021 issues (R-018, R-024, S-017, S-018, S-026, TST-CLI-001) ([c74eda0](https://github.com/DomainLang/DomainLang/commit/c74eda0a7d90169ac4bb28a9acca3e35a6d0eae0))
+* address PRS-021 required improvements (R-019, R-021, R-025, R-031, R-035, B-014) ([30ca418](https://github.com/DomainLang/DomainLang/commit/30ca418e45c544f19998883943a467b1f12b157f))
+* address PRS-021/022 code review findings ([40b2bc2](https://github.com/DomainLang/DomainLang/commit/40b2bc2a4ffeeade46708782e07e9ef67791fc17))
+* address required improvements from PRS-021 ([9e7fa9c](https://github.com/DomainLang/DomainLang/commit/9e7fa9cad6c47620c7101e9c2649b70397680477))
+* B-008–B-013 blocking bugs in serializers, validator, and services ([eaa372e](https://github.com/DomainLang/DomainLang/commit/eaa372eca8fa69057c325d8553eca4c98b1329f9))
+* **ci:** generate cli/bin/cli.js as build artifact and include in CI upload ([b19a772](https://github.com/DomainLang/DomainLang/commit/b19a77205c52105f5932bcd461d6268b61fe2137))
+* **ci:** resolve commitlint hook path for monorepo layout ([aac3cc3](https://github.com/DomainLang/DomainLang/commit/aac3cc374d287835898424b3fbd95c2a7e039df7))
+* **ci:** track CLI bin/cli.js and fix ESM mock spread in forks pool ([719d62f](https://github.com/DomainLang/DomainLang/commit/719d62f1f2826f4b4a49171dc68cec056d6ed6b3))
+* **cli:** include .tsx test files in vitest configuration ([608a6bb](https://github.com/DomainLang/DomainLang/commit/608a6bbc224de56c8c049fc7332ccd3d22ca376f))
+* **cli:** path traversal guard, encodeURIComponent consistency, and context.cwd ([d2b48a0](https://github.com/DomainLang/DomainLang/commit/d2b48a0fb512ab305026bf3afd872b6a2d6b5d3a))
+* **cli:** security hardening and correctness improvements ([2c29c9d](https://github.com/DomainLang/DomainLang/commit/2c29c9ddc9a1a5e312f2a46c7bec93ac01ac530b))
+* **extension:** fix disposable leak in LSP client state listener ([f0a9990](https://github.com/DomainLang/DomainLang/commit/f0a9990ebeef03118c59c93de191173516a81704))
+* **extension:** replace magic number with named State.Stopped constant ([0373e50](https://github.com/DomainLang/DomainLang/commit/0373e50c036b161671de57f181352a8b717c30ee))
+* **grammar:** document BoundedContext header ordering constraint ([94c324e](https://github.com/DomainLang/DomainLang/commit/94c324e371287902e4c1dffe11cbef5e66098013))
+* implement all code review findings from PRS-021/022 ([e26c2a7](https://github.com/DomainLang/DomainLang/commit/e26c2a7a85d41af53409c3e5ab049030772b599e))
+* **lsp:** completion, tool handlers, indexing, and server initialization ([dd8f9a5](https://github.com/DomainLang/DomainLang/commit/dd8f9a5ad3463a6337295835c7c7907c8fe46d44))
+* **lsp:** harden LSP security and fix critical provider bugs ([257c460](https://github.com/DomainLang/DomainLang/commit/257c4607d87aca1517c0ea15f01a0f0d85573c6d))
+* **lsp:** replace console.* with structured logger to prevent LSP stdio corruption ([1402d49](https://github.com/DomainLang/DomainLang/commit/1402d49b35e5454775282fc215724e4a6f319364))
+* **lsp:** replace console.error with structured logger in LSP layer (R-009) ([c33caa5](https://github.com/DomainLang/DomainLang/commit/c33caa53280d2fc0e231d8d0d6d84333dd7dd4c2))
+* PRS-021 remaining items - R-001 to R-009, R-018, R-024, R-032, IMP-B-006, S-017, S-018, S-026, TST-CLI-001 ([0acca71](https://github.com/DomainLang/DomainLang/commit/0acca717cf1f568c902c412eefaccbe5a76d1f8a))
+* resolve blocking bugs B-015, B-016, B-019, B-020, R-007, R-013, R-014 ([108c0e3](https://github.com/DomainLang/DomainLang/commit/108c0e3667501c392d78b6e9281f5f5e2bbe3095))
+* **sdk:** eliminate duplicate fqn in serialized output and reduce allocations ([cc5d556](https://github.com/DomainLang/DomainLang/commit/cc5d556e98bacf8c489c77927f9f9196714c113a))
+* **sdk:** fix resolution, serialization, and validation ([f29c7bb](https://github.com/DomainLang/DomainLang/commit/f29c7bba38da1f1acecc3b7001e4659cdc4e5b3d))
+* **security:** add workspace boundary check, CI integration tests, and safety cast comments ([cd35cfa](https://github.com/DomainLang/DomainLang/commit/cd35cfaab2b99b38b7349b916f8864886f00f03f))
+* **security:** implement Phase 1 security hardening (PRS-021) ([294d645](https://github.com/DomainLang/DomainLang/commit/294d6456e7901c1c69f2f47aa3d8e0fb773a73f4))
+* **services:** guard against malformed dependency source and logger cleanup ([1bff169](https://github.com/DomainLang/DomainLang/commit/1bff169e687a691be6485b9700eed576c51c320d))
+* **typesafety:** address PRS-021 type safety issues R-001, R-002, R-004, R-006 ([7659216](https://github.com/DomainLang/DomainLang/commit/765921607c2d1da95f9963e14143591adc47c4f0))
+* **validation:** fix diagnostic encoding, import error handling, and map checks ([c74b8f7](https://github.com/DomainLang/DomainLang/commit/c74b8f7c1e304f702083fd3be9d213fcd989e91b))
+* **validation:** harden import security boundary, cycle detection, and extension guard ([2cce948](https://github.com/DomainLang/DomainLang/commit/2cce948ba4eb293703217c71f7a2d4c71c8477ca))
+
+
+### Documentation
+
+* add PRS-022 review session results ([40b2bc2](https://github.com/DomainLang/DomainLang/commit/40b2bc2a4ffeeade46708782e07e9ef67791fc17))
+
+
+### Code Refactoring
+
+* enforce layered architecture per ADR-004 ([2e6c289](https://github.com/DomainLang/DomainLang/commit/2e6c2891edeabedac8d965479a575d3f6844f518))
+* **lsp,sdk,services:** simplify completion, diagrams, and service logic ([a49f9cf](https://github.com/DomainLang/DomainLang/commit/a49f9cfabedc91db3969e80418eee7e647be1331))
+* **sdk,cli:** simplify codebase per code review findings ([02afb7d](https://github.com/DomainLang/DomainLang/commit/02afb7d328eb4cfc58548f5836b3ce518503396a))
+* **validation:** use node identity for cycle detection, simplify checks ([3b25cbc](https://github.com/DomainLang/DomainLang/commit/3b25cbcb30c8ca02ed944dddbae3d42e60d174ab))
+
 ## [0.13.0](https://github.com/DomainLang/DomainLang/compare/v0.12.0...v0.13.0) (2026-02-28)
 
 
