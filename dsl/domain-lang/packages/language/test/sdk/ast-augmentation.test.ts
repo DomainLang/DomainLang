@@ -18,9 +18,9 @@ import { AstUtils } from 'langium';
 // Import the augmentation module to enable TypeScript type extensions
 import '../../src/sdk/ast-augmentation.js';
 
-// ============================================================================
+// ═══════════════════════════════════════════════════════════════════════════════
 // Helpers
-// ============================================================================
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function findFirst<T>(model: unknown, guard: (node: unknown) => node is T): T | undefined {
     for (const node of AstUtils.streamAllContents(model as import('langium').AstNode)) {
@@ -43,471 +43,306 @@ function findFirstRelationship(model: unknown): Relationship | undefined {
     return undefined;
 }
 
-// ============================================================================
+// ═══════════════════════════════════════════════════════════════════════════════
 // BoundedContext Augmentation
-// ============================================================================
+// ═══════════════════════════════════════════════════════════════════════════════
 
-describe('SDK AST Augmentation', () => {
+describe('BoundedContext augmented properties', () => {
 
-    describe('BoundedContext augmented properties', () => {
-
-        // Smoke: one happy-path test covering core augmented properties
-        test('augments BC with description, classification, team, and fqn', async () => {
-            // Arrange & Act
-            const { model } = await loadModelFromText(`
-                Classification Core
-                Team SalesTeam
-                Namespace acme.sales {
-                    Domain Sales { vision: "v" }
-                    bc OrderContext for Sales as Core by SalesTeam {
-                        description: "Handles order processing"
-                    }
-                }
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.description).toBe('Handles order processing');
-            expect(bc!.effectiveClassification?.name).toBe('Core');
-            expect(bc!.effectiveTeam?.name).toBe('SalesTeam');
-            expect(bc!.fqn).toBe('acme.sales.OrderContext');
-        });
-
-        // Edge: BC without namespace gets simple name as fqn
-        test('fqn falls back to simple name when not in namespace', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
+    // ═ Smoke: core behavior with namespace, classification, team, metadata
+    test('augments BC with description, classification, team, FQN, and metadata checks', async () => {
+        // Arrange & Act
+        const { model } = await loadModelFromText(`
+            Classification Core
+            Team SalesTeam
+            Metadata status
+            Namespace acme.sales {
                 Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.fqn).toBe('OrderContext');
-        });
-
-        // Edge: BC with no classification or team set
-        test('effectiveClassification and effectiveTeam return undefined when unset', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.effectiveClassification).toBeUndefined();
-            expect(bc!.effectiveTeam).toBeUndefined();
-        });
-
-        // Edge: BC without description
-        test('description is empty string when not specified', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            // description should be empty/undefined when not set
-            expect(bc!.description ?? '').toBe('');
-        });
-
-        // Edge: hasClassification with various invalid inputs
-        test('hasClassification returns false for undefined, empty string, and wrong name', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Classification Core
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales as Core
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.hasClassification('Core')).toBe(true);
-            expect(bc!.hasClassification('Supporting')).toBe(false);
-            expect(bc!.hasClassification(undefined as any)).toBe(false);
-            expect(bc!.hasClassification('' as any)).toBe(false);
-        });
-
-        // Edge: hasClassification when BC has no classification
-        test('hasClassification returns false when BC has no classification', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.hasClassification('Core')).toBe(false);
-        });
-
-        // Edge: hasTeam with various invalid inputs
-        test('hasTeam returns false for undefined, empty string, and wrong name', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Team SalesTeam
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales by SalesTeam
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.hasTeam('SalesTeam')).toBe(true);
-            expect(bc!.hasTeam('OtherTeam')).toBe(false);
-            expect(bc!.hasTeam(undefined as any)).toBe(false);
-            expect(bc!.hasTeam('' as any)).toBe(false);
-        });
-
-        // Edge: hasTeam when BC has no team
-        test('hasTeam returns false when BC has no team', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.hasTeam('AnyTeam')).toBe(false);
-        });
-
-        // Edge: hasMetadata with various scenarios
-        test('hasMetadata checks key presence, value match, and missing keys', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Metadata status
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    metadata {
-                        status: "active"
-                    }
-                }
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.hasMetadata('status')).toBe(true);
-            expect(bc!.hasMetadata('status', 'active')).toBe(true);
-            expect(bc!.hasMetadata('status', 'inactive')).toBe(false);
-            expect(bc!.hasMetadata('unknown')).toBe(false);
-        });
-
-        // Edge: hasMetadata on BC with empty metadata block
-        test('hasMetadata returns false on BC with no metadata', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.hasMetadata('anything')).toBe(false);
-        });
-
-        // Edge: metadataMap returns empty map for BC without metadata
-        test('metadataMap returns empty map when no metadata block', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = findFirst<BoundedContext>(model, isBoundedContext);
-
-            // Assert
-            expect(bc!.metadataMap.size).toBe(0);
-        });
-    });
-
-    // ========================================================================
-    // Domain Augmentation
-    // ========================================================================
-
-    describe('Domain augmented properties', () => {
-
-        // Smoke: core domain properties
-        test('augments Domain with vision, description, type, and fqn', async () => {
-            // Arrange & Act
-            const { model } = await loadModelFromText(`
-                Classification CoreDomain
-                Namespace enterprise.retail {
-                    Domain Sales {
-                        description: "Sales domain description"
-                        vision: "Drive sales growth"
-                        type: CoreDomain
-                    }
-                }
-            `);
-
-            // Act
-            const domain = findFirst<Domain>(model, isDomain);
-
-            // Assert
-            expect(domain!.vision).toBe('Drive sales growth');
-            expect(domain!.description).toBe('Sales domain description');
-            expect(domain!.hasType('CoreDomain')).toBe(true);
-            expect(domain!.fqn).toBe('enterprise.retail.Sales');
-        });
-
-        // Edge: domain without namespace has simple name fqn
-        test('fqn returns simple name when not in namespace', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-
-            // Act
-            const domain = findFirst<Domain>(model, isDomain);
-
-            // Assert
-            expect(domain!.fqn).toBe('Sales');
-        });
-
-        // Edge: hasType with nonexistent type and undefined
-        test('hasType returns false for wrong name, undefined, and when type is not set', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-            `);
-
-            // Act
-            const domain = findFirst<Domain>(model, isDomain);
-
-            // Assert
-            // No type set
-            expect(domain!.hasType('Core')).toBe(false);
-            expect(domain!.hasType(undefined as any)).toBe(false);
-        });
-
-        // Edge: domain without vision or description
-        test('domain without vision or description has falsy values', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales {}
-            `);
-
-            // Act
-            const domain = findFirst<Domain>(model, isDomain);
-
-            // Assert
-            expect(domain!.vision ?? '').toBe('');
-            expect(domain!.description ?? '').toBe('');
-        });
-    });
-
-    // ========================================================================
-    // Relationship Augmentation
-    // ========================================================================
-
-    describe('Relationship augmented properties', () => {
-
-        // Smoke: core relationship properties including pattern checks
-        test('augments Relationship with pattern checks, context names, and directionality', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    relationships {
-                        this [OHS, PL] -> [CF, ACL] PaymentContext
-                    }
-                }
-                bc PaymentContext for Sales
-            `);
-
-            // Act
-            const rel = findFirstRelationship(model);
-            expect(rel).not.toBeUndefined();
-            expect(isDirectionalRelationship(rel)).toBe(true);
-            const drel = rel as DirectionalRelationship;
-
-            // Assert
-            // Pattern checks
-            expect(drel.hasPattern('OHS')).toBe(true);
-            expect(drel.hasPattern('CF')).toBe(true);
-            expect(drel.hasPattern('ACL')).toBe(true); // ACL is on right, hasPattern checks both sides
-            expect(drel.hasLeftPattern('OHS')).toBe(true);
-            expect(drel.hasLeftPattern('PL')).toBe(true);
-            expect(drel.hasLeftPattern('CF')).toBe(false);
-            expect(drel.hasRightPattern('CF')).toBe(true);
-            expect(drel.hasRightPattern('ACL')).toBe(true);
-            expect(drel.hasRightPattern('OHS')).toBe(false);
-            // Context names
-            expect(drel.leftContextName).toBe('OrderContext');
-            expect(drel.rightContextName).toBe('PaymentContext');
-            // Directionality
-            expect(drel.isBidirectional).toBe(false);
-            expect(drel.isUpstream('left')).toBe(true);
-            expect(drel.isDownstream('right')).toBe(true);
-            expect(drel.isUpstream('right')).toBe(false);
-            expect(drel.isDownstream('left')).toBe(false);
-        });
-
-        // Edge: bidirectional relationship
-        test('isBidirectional is true for <-> arrow', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    relationships {
-                        this <-> PaymentContext
-                    }
-                }
-                bc PaymentContext for Sales
-            `);
-
-            // Act
-            const rel = findFirstRelationship(model);
-            expect(rel).not.toBeUndefined();
-            expect(isDirectionalRelationship(rel)).toBe(true);
-            const drel = rel as DirectionalRelationship;
-
-            // Assert
-            expect(drel.isBidirectional).toBe(true);
-        });
-
-        // Edge: relationship with no patterns
-        test('hasPattern returns false when no patterns on either side', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales {
-                    relationships {
-                        this -> PaymentContext
-                    }
-                }
-                bc PaymentContext for Sales
-            `);
-
-            // Act
-            const rel = findFirstRelationship(model);
-            expect(rel).not.toBeUndefined();
-            expect(isDirectionalRelationship(rel)).toBe(true);
-            const drel = rel as DirectionalRelationship;
-
-            // Assert
-            expect(drel.hasPattern('OHS')).toBe(false);
-            expect(drel.hasPattern('CF')).toBe(false);
-            expect(drel.hasLeftPattern('OHS')).toBe(false);
-            expect(drel.hasRightPattern('CF')).toBe(false);
-            expect(drel.isUpstream('left')).toBe(false);
-            expect(drel.isDownstream('right')).toBe(false);
-        });
-
-        // Edge: ContextMap relationship (not in a BC)
-        test('ContextMap relationships resolve context names', async () => {
-            // Arrange
-            const { model } = await loadModelFromText(`
-                Domain Sales { vision: "v" }
-                bc OrderContext for Sales
-                bc PaymentContext for Sales
-
-                ContextMap ECommerceMap {
-                    contains OrderContext, PaymentContext
-                    OrderContext [OHS] -> [CF] PaymentContext
-                }
-            `);
-
-            // Act
-            // Find rel from ContextMap not BC
-            let rel: DirectionalRelationship | undefined;
-            for (const node of AstUtils.streamAllContents(model as import('langium').AstNode)) {
-                if (isContextMap(node) && node.relationships.length > 0) {
-                    const first = node.relationships[0];
-                    if (isDirectionalRelationship(first)) {
-                        rel = first;
-                    }
-                    break;
+                bc OrderContext for Sales as Core by SalesTeam {
+                    description: "Handles order processing"
+                    metadata { status: "active" }
                 }
             }
+        `);
 
-            // Assert
-            expect(rel).not.toBeUndefined();
-            expect(rel!.hasPattern('OHS')).toBe(true);
-            expect(rel!.hasPattern('CF')).toBe(true);
-        });
+        // Act
+        const bc = findFirst<BoundedContext>(model, isBoundedContext);
+
+        // Assert
+        expect(bc!.description).toBe('Handles order processing');
+        expect(bc!.effectiveClassification?.name).toBe('Core');
+        expect(bc!.effectiveTeam?.name).toBe('SalesTeam');
+        expect(bc!.fqn).toBe('acme.sales.OrderContext');
+        expect(bc!.hasMetadata('status', 'active')).toBe(true);
     });
 
-    // ========================================================================
-    // Pattern Matching Utilities
-    // ========================================================================
+    // ═ Edge: FQN fallback, missing classification/team, metadata edge cases
+    interface BcCase {
+        name: string;
+        dlang: string;
+        assertions: (bc: BoundedContext) => void;
+    }
 
-    describe('Pattern matching utilities', () => {
-
-        // Edge: abbreviation <-> full name bidirectional matching
-        test('matchesPattern resolves abbreviations and full names bidirectionally', () => {
-            // Arrange
-            const cases: [string, string, boolean][] = [
-                ['OHS', 'OHS', true],
-                ['OpenHostService', 'OHS', true],
-                ['OHS', 'OpenHostService', true],
-                ['SK', 'SharedKernel', true],
-                ['SharedKernel', 'SK', true],
-                ['CF', 'Conformist', true],
-                ['ACL', 'AntiCorruptionLayer', true],
-                ['PL', 'PublishedLanguage', true],
-                ['P', 'Partnership', true],
-            ];
-
-            // Act & Assert
-            for (const [actual, expected, result] of cases) {
-                expect(matchesPattern(actual, expected)).toBe(result);
+    test.each<BcCase>([
+        {
+            name: 'FQN falls back to simple name when not in namespace',
+            dlang: 'Domain Sales { vision: "v" }\nbc OrderContext for Sales',
+            assertions: (bc) => {
+                expect(bc.fqn).toBe('OrderContext');
             }
-        });
+        },
+        {
+            name: 'effectiveClassification and effectiveTeam are undefined when unset',
+            dlang: 'Domain Sales { vision: "v" }\nbc OrderContext for Sales',
+            assertions: (bc) => {
+                expect(bc.effectiveClassification).toBeUndefined();
+                expect(bc.effectiveTeam).toBeUndefined();
+            }
+        },
+        {
+            name: 'description is empty when not specified',
+            dlang: 'Domain Sales { vision: "v" }\nbc OrderContext for Sales',
+            assertions: (bc) => {
+                expect(bc.description ?? '').toBe('');
+            }
+        },
+        {
+            name: 'hasClassification returns false for unset, wrong name, undefined',
+            dlang: 'Classification Core\nDomain Sales { vision: "v" }\nbc OrderContext for Sales as Core',
+            assertions: (bc) => {
+                expect(bc.hasClassification('Core')).toBe(true);
+                expect(bc.hasClassification('Supporting')).toBe(false);
+                expect(bc.hasClassification(undefined as any)).toBe(false);
+            }
+        },
+        {
+            name: 'hasTeam returns false for unset, wrong name, undefined',
+            dlang: 'Team SalesTeam\nDomain Sales { vision: "v" }\nbc OrderContext for Sales by SalesTeam',
+            assertions: (bc) => {
+                expect(bc.hasTeam('SalesTeam')).toBe(true);
+                expect(bc.hasTeam('OtherTeam')).toBe(false);
+                expect(bc.hasTeam(undefined as any)).toBe(false);
+            }
+        },
+        {
+            name: 'hasMetadata checks key and value correctly',
+            dlang: 'Metadata tier\nDomain Sales { vision: "v" }\nbc OrderContext for Sales { metadata { tier: "critical" } }',
+            assertions: (bc) => {
+                expect(bc.hasMetadata('tier')).toBe(true);
+                expect(bc.hasMetadata('tier', 'critical')).toBe(true);
+                expect(bc.hasMetadata('tier', 'low')).toBe(false);
+                expect(bc.hasMetadata('unknown')).toBe(false);
+            }
+        },
+        {
+            name: 'hasMetadata and metadataMap on BC with no metadata',
+            dlang: 'Domain Sales { vision: "v" }\nbc OrderContext for Sales',
+            assertions: (bc) => {
+                expect(bc.hasMetadata('anything')).toBe(false);
+                expect(bc.metadataMap.size).toBe(0);
+            }
+        },
+    ])('$name', async ({ dlang, assertions }) => {
+        // Arrange & Act
+        const { model } = await loadModelFromText(dlang);
+        const bc = findFirst<BoundedContext>(model, isBoundedContext);
 
-        // Edge: case-insensitive matching
-        test('matchesPattern is case-insensitive', () => {
-            // Act & Assert
-            expect(matchesPattern('ohs', 'OHS')).toBe(true);
-            expect(matchesPattern('OHS', 'ohs')).toBe(true);
-            expect(matchesPattern('sharedkernel', 'SK')).toBe(true);
-            expect(matchesPattern('OPENHOSTSERVICE', 'OHS')).toBe(true);
-        });
+        // Assert
+        expect(bc).not.toBeUndefined();
+        assertions(bc!);
+    });
+});
 
-        // Edge: non-matching patterns
-        test('matchesPattern returns false for unrelated patterns', () => {
-            // Act & Assert
-            expect(matchesPattern('OHS', 'CF')).toBe(false);
-            expect(matchesPattern('SK', 'ACL')).toBe(false);
-            expect(matchesPattern('Unknown', 'OHS')).toBe(false);
-        });
+// ═══════════════════════════════════════════════════════════════════════════════
+// Domain Augmentation
+// ═══════════════════════════════════════════════════════════════════════════════
 
-        // Edge: whitespace in pattern string
-        test('matchesPattern trims whitespace from actual pattern', () => {
-            // Act & Assert
-            expect(matchesPattern('  OHS  ', 'OHS')).toBe(true);
-        });
+describe('Domain augmented properties', () => {
 
-        // Edge: empty strings
-        test('matchesPattern handles empty strings', () => {
-            // Act & Assert
-            expect(matchesPattern('', 'OHS')).toBe(false);
-            expect(matchesPattern('OHS', '')).toBe(false);
-            expect(matchesPattern('', '')).toBe(true); // trivial: empty matches empty
-        });
+    // ═ Smoke: vision, description, type, FQN
+    test('augments Domain with vision, description, type, and FQN', async () => {
+        // Arrange & Act
+        const { model } = await loadModelFromText(`
+            Classification CoreDomain
+            Namespace enterprise.retail {
+                Domain Sales {
+                    description: "Sales domain description"
+                    vision: "Drive sales growth"
+                    type: CoreDomain
+                }
+            }
+        `);
+
+        // Act
+        const domain = findFirst<Domain>(model, isDomain);
+
+        // Assert
+        expect(domain!.vision).toBe('Drive sales growth');
+        expect(domain!.description).toBe('Sales domain description');
+        expect(domain!.hasType('CoreDomain')).toBe(true);
+        expect(domain!.fqn).toBe('enterprise.retail.Sales');
+    });
+
+    // ═ Edge: FQN fallback, missing fields, hasType failures
+    interface DomainCase {
+        name: string;
+        dlang: string;
+        assertions: (domain: Domain) => void;
+    }
+
+    test.each<DomainCase>([
+        {
+            name: 'FQN returns simple name when not in namespace',
+            dlang: 'Domain Sales { vision: "v" }',
+            assertions: (d) => {
+                expect(d.fqn).toBe('Sales');
+            }
+        },
+        {
+            name: 'hasType returns false for unset, wrong name, undefined',
+            dlang: 'Domain Sales { vision: "v" }',
+            assertions: (d) => {
+                expect(d.hasType('Core')).toBe(false);
+                expect(d.hasType(undefined as any)).toBe(false);
+            }
+        },
+        {
+            name: 'domain without vision or description has falsy values',
+            dlang: 'Domain Sales {}',
+            assertions: (d) => {
+                expect(d.vision ?? '').toBe('');
+                expect(d.description ?? '').toBe('');
+            }
+        },
+    ])('$name', async ({ dlang, assertions }) => {
+        // Arrange & Act
+        const { model } = await loadModelFromText(dlang);
+        const domain = findFirst<Domain>(model, isDomain);
+
+        // Assert
+        expect(domain).not.toBeUndefined();
+        assertions(domain!);
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Relationship Augmentation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('Relationship augmented properties', () => {
+
+    // ═ Smoke: pattern checks, context names, directionality
+    test('augments Relationship with pattern checks, context names, and directionality', async () => {
+        // Arrange & Act
+        const { model } = await loadModelFromText(`
+            Domain Sales { vision: "v" }
+            bc OrderContext for Sales {
+                relationships {
+                    this [OHS, PL] -> [CF, ACL] PaymentContext
+                }
+            }
+            bc PaymentContext for Sales
+        `);
+
+        // Act
+        const rel = findFirstRelationship(model);
+        expect(isDirectionalRelationship(rel)).toBe(true);
+        const drel = rel as DirectionalRelationship;
+
+        // Assert
+        expect(drel.hasPattern('OHS')).toBe(true);
+        expect(drel.hasPattern('CF')).toBe(true);
+        expect(drel.hasLeftPattern('OHS')).toBe(true);
+        expect(drel.hasLeftPattern('PL')).toBe(true);
+        expect(drel.hasLeftPattern('CF')).toBe(false);
+        expect(drel.hasRightPattern('CF')).toBe(true);
+        expect(drel.hasRightPattern('ACL')).toBe(true);
+        expect(drel.hasRightPattern('OHS')).toBe(false);
+        expect(drel.leftContextName).toBe('OrderContext');
+        expect(drel.rightContextName).toBe('PaymentContext');
+        expect(drel.isBidirectional).toBe(false);
+        expect(drel.isUpstream('left')).toBe(true);
+        expect(drel.isDownstream('right')).toBe(true);
+    });
+
+    // ═ Edge: bidirectional, no patterns, ContextMap relationships
+    interface RelCase {
+        name: string;
+        dlang: string;
+        assertions: (rel: DirectionalRelationship) => void;
+    }
+
+    test.each<RelCase>([
+        {
+            name: 'isBidirectional is true for <-> arrow',
+            dlang: 'Domain Sales { vision: "v" }\nbc OrderContext for Sales { relationships { this <-> PaymentContext } }\nbc PaymentContext for Sales',
+            assertions: (drel) => {
+                expect(drel.isBidirectional).toBe(true);
+            }
+        },
+        {
+            name: 'hasPattern returns false when no patterns on either side',
+            dlang: 'Domain Sales { vision: "v" }\nbc OrderContext for Sales { relationships { this -> PaymentContext } }\nbc PaymentContext for Sales',
+            assertions: (drel) => {
+                expect(drel.hasPattern('OHS')).toBe(false);
+                expect(drel.hasPattern('CF')).toBe(false);
+                expect(drel.isUpstream('left')).toBe(false);
+                expect(drel.isDownstream('right')).toBe(false);
+            }
+        },
+        {
+            name: 'ContextMap relationships resolve context names',
+            dlang: 'Domain Sales { vision: "v" }\nbc OrderContext for Sales\nbc PaymentContext for Sales\nContextMap ECommerceMap { contains OrderContext, PaymentContext OrderContext [OHS] -> [CF] PaymentContext }',
+            assertions: (drel) => {
+                expect(drel.hasPattern('OHS')).toBe(true);
+                expect(drel.hasPattern('CF')).toBe(true);
+            }
+        },
+    ])('$name', async ({ dlang, assertions }) => {
+        // Arrange & Act
+        const { model } = await loadModelFromText(dlang);
+        const rel = findFirstRelationship(model);
+        expect(rel).not.toBeUndefined();
+        expect(isDirectionalRelationship(rel)).toBe(true);
+
+        // Assert
+        assertions(rel as DirectionalRelationship);
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Pattern Matching Utilities
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('Pattern matching utilities', () => {
+
+    test.each([
+        // Abbreviation <-> full name bidirectional matching
+        ['OHS', 'OHS', true],
+        ['OpenHostService', 'OHS', true],
+        ['OHS', 'OpenHostService', true],
+        ['SK', 'SharedKernel', true],
+        ['SharedKernel', 'SK', true],
+        ['CF', 'Conformist', true],
+        ['ACL', 'AntiCorruptionLayer', true],
+        ['PL', 'PublishedLanguage', true],
+        ['P', 'Partnership', true],
+        // Case-insensitive
+        ['ohs', 'OHS', true],
+        ['OHS', 'ohs', true],
+        ['sharedkernel', 'SK', true],
+        ['OPENHOSTSERVICE', 'OHS', true],
+        // Non-matching patterns
+        ['OHS', 'CF', false],
+        ['SK', 'ACL', false],
+        ['Unknown', 'OHS', false],
+        // Whitespace
+        ['  OHS  ', 'OHS', true],
+        // Empty strings
+        ['', 'OHS', false],
+        ['OHS', '', false],
+    ] as const)('matchesPattern($actual, $expected) => $matches', (actual, expected, matches) => {
+        // Act & Assert
+        expect(matchesPattern(actual, expected)).toBe(matches);
     });
 });

@@ -4,13 +4,13 @@
  * Verifies the pattern classification helpers, abbreviation mappings,
  * and the matchesPattern() disambiguation function used across the SDK.
  */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-// Test file: Non-null assertions are safe as we verify structure exists before accessing
+
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 import { fromDocument } from '../../src/sdk/query.js';
 import { isSymmetricRelationship, isSharedKernel, isPartnership, isSeparateWays } from '../../src/generated/ast.js';
+import type { SidePattern, SymmetricPattern } from '../../src/generated/ast.js';
 import {
     matchesPattern,
     isUpstreamPattern,
@@ -28,80 +28,82 @@ beforeAll(() => {
     testServices = setupTestSuite();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 // matchesPattern
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 
 describe('matchesPattern', () => {
-    test('matches abbreviation, full name, and case-insensitively', () => {
-        expect(matchesPattern('OHS', 'OHS')).toBe(true);
-        expect(matchesPattern('OpenHostService', 'OHS')).toBe(true);
-        expect(matchesPattern('ohs', 'OHS')).toBe(true);
-    });
 
-    test('trims whitespace before matching', () => {
-        expect(matchesPattern('  OHS  ', 'OHS')).toBe(true);
-    });
+    // ═ Smoke: case handling and whitespace
+    interface MatchesPatternCase {
+        actual: string;
+        expected: string;
+        matches: boolean;
+    }
 
-    test('rejects patterns from different categories', () => {
-        expect(matchesPattern('OHS', 'CF')).toBe(false);
-        expect(matchesPattern('SK', 'P')).toBe(false);
-        expect(matchesPattern('Unknown', 'OHS')).toBe(false);
-    });
-
-    test('falls back to case-insensitive direct compare for unknown expected', () => {
-        expect(matchesPattern('foobar', 'FooBar')).toBe(true);
-        expect(matchesPattern('foobar', 'baz')).toBe(false);
+    test.each<MatchesPatternCase>([
+        // Happy path: abbreviation, full name, case-insensitive
+        { actual: 'OHS', expected: 'OHS', matches: true },
+        { actual: 'OpenHostService', expected: 'OHS', matches: true },
+        { actual: 'ohs', expected: 'OHS', matches: true },
+        { actual: 'OPENHOSTSERVICE', expected: 'OHS', matches: true },
+        // Whitespace handling
+        { actual: '  OHS  ', expected: 'OHS', matches: true },
+        // Cross-category rejection
+        { actual: 'OHS', expected: 'CF', matches: false },
+        { actual: 'SK', expected: 'P', matches: false },
+        { actual: 'Unknown', expected: 'OHS', matches: false },
+        // Fallback: case-insensitive direct compare for unknown types
+        { actual: 'foobar', expected: 'FooBar', matches: true },
+        { actual: 'foobar', expected: 'baz', matches: false },
+    ])('matchesPattern("$actual", "$expected") => $matches', ({ actual, expected, matches }) => {
+        // Act & Assert
+        expect(matchesPattern(actual, expected)).toBe(matches);
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 // String-based classification helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 
-describe('isUpstreamPattern', () => {
-    test('returns true for an upstream abbreviation and full name', () => {
-        expect(isUpstreamPattern('OHS')).toBe(true);
-        expect(isUpstreamPattern('Supplier')).toBe(true);
-    });
+describe('Pattern classification: isUpstreamPattern, isDownstreamPattern, isMutualPattern', () => {
 
-    test('returns false for downstream and symmetric patterns', () => {
-        expect(isUpstreamPattern('CF')).toBe(false);
-        expect(isUpstreamPattern('SK')).toBe(false);
-    });
-});
+    interface ClassificationCase {
+        fn: (pattern: string) => boolean;
+        fnName: string;
+        pattern: string;
+        expected: boolean;
+    }
 
-describe('isDownstreamPattern', () => {
-    test('returns true for a downstream abbreviation and full name', () => {
-        expect(isDownstreamPattern('CF')).toBe(true);
-        expect(isDownstreamPattern('AntiCorruptionLayer')).toBe(true);
-    });
-
-    test('returns false for upstream and symmetric patterns', () => {
-        expect(isDownstreamPattern('OHS')).toBe(false);
-        expect(isDownstreamPattern('P')).toBe(false);
-    });
-});
-
-describe('isMutualPattern', () => {
-    test('returns true for symmetric abbreviations and full names', () => {
-        expect(isMutualPattern('SK')).toBe(true);
-        expect(isMutualPattern('SeparateWays')).toBe(true);
-    });
-
-    test('returns false for directional patterns', () => {
-        expect(isMutualPattern('OHS')).toBe(false);
-        expect(isMutualPattern('C')).toBe(false);
+    test.each<ClassificationCase>([
+        // Upstream patterns
+        { fn: isUpstreamPattern, fnName: 'isUpstreamPattern', pattern: 'OHS', expected: true },
+        { fn: isUpstreamPattern, fnName: 'isUpstreamPattern', pattern: 'Supplier', expected: true },
+        { fn: isUpstreamPattern, fnName: 'isUpstreamPattern', pattern: 'CF', expected: false },
+        { fn: isUpstreamPattern, fnName: 'isUpstreamPattern', pattern: 'SK', expected: false },
+        // Downstream patterns
+        { fn: isDownstreamPattern, fnName: 'isDownstreamPattern', pattern: 'CF', expected: true },
+        { fn: isDownstreamPattern, fnName: 'isDownstreamPattern', pattern: 'AntiCorruptionLayer', expected: true },
+        { fn: isDownstreamPattern, fnName: 'isDownstreamPattern', pattern: 'OHS', expected: false },
+        { fn: isDownstreamPattern, fnName: 'isDownstreamPattern', pattern: 'P', expected: false },
+        // Mutual patterns
+        { fn: isMutualPattern, fnName: 'isMutualPattern', pattern: 'SK', expected: true },
+        { fn: isMutualPattern, fnName: 'isMutualPattern', pattern: 'SeparateWays', expected: true },
+        { fn: isMutualPattern, fnName: 'isMutualPattern', pattern: 'OHS', expected: false },
+        { fn: isMutualPattern, fnName: 'isMutualPattern', pattern: 'C', expected: false },
+    ])('$fnName("$pattern") => $expected', ({ fn, pattern, expected }) => {
+        // Act & Assert
+        expect(fn(pattern)).toBe(expected);
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 // AST node–based classification helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 
-describe('isUpstreamSidePattern / isDownstreamSidePattern / isBBoMSidePattern', () => {
-    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    async function parseSidePatterns(leftPatterns: string, rightPatterns: string) {
+describe('AST-based pattern helpers: isUpstreamSidePattern, isDownstreamSidePattern, isBBoMSidePattern', () => {
+
+    async function parseSidePatterns(leftPatterns: string, rightPatterns: string): Promise<{ left: readonly SidePattern[]; right: readonly SidePattern[] }> {
         const document = await testServices.parse(s`
             Domain Sales { vision: "v" }
             bc Left for Sales {}
@@ -111,43 +113,37 @@ describe('isUpstreamSidePattern / isDownstreamSidePattern / isBBoMSidePattern', 
                 Left ${leftPatterns} -> ${rightPatterns} Right
             }
         `);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const query = fromDocument(document);
-        const rel = query.relationships().first()!;
+        const rel = query.relationships().first();
+        if (!rel) throw new Error('Expected a relationship');
         if (rel.type !== 'directional') throw new Error('Expected directional');
         return { left: rel.left.patterns, right: rel.right.patterns };
     }
 
-    test('upstream side pattern (OHS) is recognised, not downstream, not BBoM', async () => {
-        // Arrange
-        const { left } = await parseSidePatterns('[OHS]', '[ACL]');
-        // Act & Assert
-        expect(isUpstreamSidePattern(left[0])).toBe(true);
-        expect(isDownstreamSidePattern(left[0])).toBe(false);
-        expect(isBBoMSidePattern(left[0])).toBe(false);
-    });
+    test('upstream/downstream/BBoM patterns are uniquely recognised', async () => {
+        // Arrange & Act
+        const upstream = await parseSidePatterns('[OHS]', '');
+        const downstream = await parseSidePatterns('', '[ACL]');
+        const bbom = await parseSidePatterns('[BBoM]', '');
 
-    test('downstream side pattern (ACL) is recognised, not upstream', async () => {
-        // Arrange
-        const { right } = await parseSidePatterns('[OHS]', '[ACL]');
-        // Act & Assert
-        expect(isDownstreamSidePattern(right[0])).toBe(true);
-        expect(isUpstreamSidePattern(right[0])).toBe(false);
-    });
+        // Assert
+        expect(isUpstreamSidePattern(upstream.left[0])).toBe(true);
+        expect(isDownstreamSidePattern(upstream.left[0])).toBe(false);
+        expect(isBBoMSidePattern(upstream.left[0])).toBe(false);
 
-    test('BBoM is neither upstream nor downstream', async () => {
-        // Arrange
-        const { left } = await parseSidePatterns('[BBoM]', '');
-        // Act & Assert
-        expect(isUpstreamSidePattern(left[0])).toBe(false);
-        expect(isDownstreamSidePattern(left[0])).toBe(false);
-        expect(isBBoMSidePattern(left[0])).toBe(true);
+        expect(isDownstreamSidePattern(downstream.right[0])).toBe(true);
+        expect(isUpstreamSidePattern(downstream.right[0])).toBe(false);
+
+        expect(isBBoMSidePattern(bbom.left[0])).toBe(true);
+        expect(isUpstreamSidePattern(bbom.left[0])).toBe(false);
+        expect(isDownstreamSidePattern(bbom.left[0])).toBe(false);
     });
 });
 
-describe('isSharedKernel / isPartnership / isSeparateWays (generated guards)', () => {
-    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    async function parseSymmetricPattern(pattern: string) {
+describe('Generated guards: isSharedKernel, isPartnership, isSeparateWays', () => {
+
+    async function parseSymmetricPattern(pattern: string): Promise<SymmetricPattern> {
         const document = await testServices.parse(s`
             Domain Sales { vision: "v" }
             bc Left for Sales {}
@@ -157,47 +153,63 @@ describe('isSharedKernel / isPartnership / isSeparateWays (generated guards)', (
                 Left [${pattern}] Right
             }
         `);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const query = fromDocument(document);
-        const rel = query.relationships().first()!;
+        const rel = query.relationships().first();
+        if (!rel) throw new Error('Expected a relationship');
         if (rel.type !== 'symmetric') throw new Error('Expected symmetric');
         const astNode = rel.astNode;
         if (!isSymmetricRelationship(astNode)) throw new Error('Expected SymmetricRelationship AST node');
+        if (!astNode.pattern) throw new Error('Expected symmetric pattern to be set');
         return astNode.pattern;
     }
 
     test('each symmetric pattern type is uniquely recognised', async () => {
         // Arrange
-        const sk = (await parseSymmetricPattern('SK'))!;
-        const p = (await parseSymmetricPattern('P'))!;
-        const sw = (await parseSymmetricPattern('SW'))!;
+        const sk = await parseSymmetricPattern('SK');
+        const p = await parseSymmetricPattern('P');
+        const sw = await parseSymmetricPattern('SW');
 
-        // Assert — each guard is true for its own type and false for others
+        // Act & Assert
         expect(isSharedKernel(sk)).toBe(true);
         expect(isPartnership(sk)).toBe(false);
+        expect(isSeparateWays(sk)).toBe(false);
 
         expect(isPartnership(p)).toBe(true);
         expect(isSharedKernel(p)).toBe(false);
+        expect(isSeparateWays(p)).toBe(false);
 
         expect(isSeparateWays(sw)).toBe(true);
+        expect(isSharedKernel(sw)).toBe(false);
         expect(isPartnership(sw)).toBe(false);
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 // getPatternAbbreviation
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 
 describe('getPatternAbbreviation', () => {
-    test('abbreviates representative pattern type names', () => {
-        expect(getPatternAbbreviation('OpenHostService')).toBe('OHS');
-        expect(getPatternAbbreviation('AntiCorruptionLayer')).toBe('ACL');
-        expect(getPatternAbbreviation('SeparateWays')).toBe('SW');
-    });
 
-    test('returns the input unchanged for unknown type names', () => {
-        expect(getPatternAbbreviation('OrphanPattern')).toBe('OrphanPattern');
+    interface AbbreviationCase {
+        fullName: string;
+        expectedAbbr: string;
+    }
+
+    test.each<AbbreviationCase>([
+        { fullName: 'OpenHostService', expectedAbbr: 'OHS' },
+        { fullName: 'AntiCorruptionLayer', expectedAbbr: 'ACL' },
+        { fullName: 'SeparateWays', expectedAbbr: 'SW' },
+        { fullName: 'Supplier', expectedAbbr: 'S' },
+        { fullName: 'Customer', expectedAbbr: 'C' },
+        { fullName: 'Partnership', expectedAbbr: 'P' },
+        { fullName: 'SharedKernel', expectedAbbr: 'SK' },
+        { fullName: 'Conformist', expectedAbbr: 'CF' },
+        { fullName: 'PublishedLanguage', expectedAbbr: 'PL' },
+        // Unknown patterns return as-is
+        { fullName: 'OrphanPattern', expectedAbbr: 'OrphanPattern' },
+    ])('abbreviates $fullName to $expectedAbbr', ({ fullName, expectedAbbr }) => {
+        // Act & Assert
+        expect(getPatternAbbreviation(fullName)).toBe(expectedAbbr);
     });
 });
-
-

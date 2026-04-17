@@ -80,21 +80,8 @@ describe('SDK QueryBuilder', () => {
 
         // 'where() returns empty when predicate matches nothing' subsumed by always-false test below
 
-        test('where() with always-false predicate returns empty', async () => {
-            // Arrange & Act
-            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
-
-            // Assert
-            expect(query.domains().where(() => false).count()).toBe(0);
-        });
-
-        test('where() with always-true predicate returns all', async () => {
-            // Arrange & Act
-            const { query } = await loadModelFromText(MULTI_DOMAIN_MODEL);
-
-            // Assert
-            expect(query.domains().where(() => true).count()).toBe(4);
-        });
+        // Removed: 'where() with always-true/false predicate' — tested Array.filter semantics, not domain logic.
+        // Real where() behaviour is exercised by the predicate test above and the domain-specific tests below.
     });
 
     // ========================================================================
@@ -400,6 +387,50 @@ describe('SDK QueryBuilder', () => {
 
             // Assert
             expect(count).toBe(2);
+        });
+    });
+
+    // ========================================================================
+    // Regression: multiple iteration of the same builder
+    // ========================================================================
+
+    describe('Regression: builder re-iteration', () => {
+
+        test('iterating the same builder twice returns identical results', async () => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain Alpha { vision: "v" }
+                Domain Bravo { vision: "v" }
+                Domain Charlie { vision: "v" }
+            `);
+
+            // Act
+            const builder = query.domains();
+            const first = [...builder];
+            const second = [...builder];
+
+            // Assert
+            expect(first.map(d => d.name)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+            expect(second.map(d => d.name)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+        });
+
+        test('toArray() and count() are consistent across multiple calls', async () => {
+            // Arrange
+            const { query } = await loadModelFromText(`
+                Domain X { vision: "v" }
+                Domain Y { vision: "v" }
+            `);
+
+            // Act
+            const builder = query.domains().where(d => d.name === 'X');
+            const count1 = builder.count();
+            const arr = builder.toArray();
+            const count2 = builder.count();
+
+            // Assert
+            expect(count1).toBe(1);
+            expect(arr).toHaveLength(1);
+            expect(count2).toBe(1);
         });
     });
 });

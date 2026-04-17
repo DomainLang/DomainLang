@@ -10,7 +10,7 @@ import {
     normalizeEntityType,
     resolveMultiReference,
 } from '../../src/sdk/serializers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 import type { TestServices } from '../test-helpers.js';
 
 let testServices: TestServices;
@@ -32,33 +32,16 @@ beforeAll(() => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('serializeNode', () => {
-    test('should strip $-prefixed internal properties', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "Handle sales" }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const domain = query.domain('Sales');
 
-        // Act
-        const serialized = serializeNode(requireValue(domain, 'Expected Sales domain'), query);
-
-        // Assert
-        expect(serialized.$type).toBe('Domain');
-        expect(serialized.$container).toBeUndefined();
-        expect(serialized.$cstNode).toBeUndefined();
-        expect(serialized.$document).toBeUndefined();
-    });
-
-    test('should include FQN for named elements', async () => {
+    // ═ Smoke: core behavior (~25%)
+    test('strips $-prefixed properties and includes FQN for named elements', async () => {
         // Arrange
         const document = await testServices.parse(s`
             Namespace acme.sales {
                 Domain Sales { vision: "Handle sales" }
             }
         `);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const query = fromDocument(document);
         const domain = query.domain('acme.sales.Sales');
 
@@ -66,135 +49,117 @@ describe('serializeNode', () => {
         const serialized = serializeNode(requireValue(domain, 'Expected acme.sales.Sales domain'), query);
 
         // Assert
+        expect(serialized.$type).toBe('Domain');
+        expect(serialized.$container).toBeUndefined();
+        expect(serialized.$cstNode).toBeUndefined();
+        expect(serialized.$document).toBeUndefined();
         expect(serialized.fqn).toBe('acme.sales.Sales');
     });
 
-    test('should resolve Reference<T> to name string', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc OrderContext for Sales {}
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const bc = query.boundedContext('OrderContext');
+    // ═ Edge: reference resolution and special cases (~75%)
+    interface SerializeNodeCase {
+        name: string;
+        dlang: string;
+        entityPath: [type: 'domain' | 'bc', name: string];
+        assertions: (serialized: Record<string, unknown>) => void;
+    }
 
-        // Act
-        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
-
-        // Assert
-        expect(serialized.domain).toBe('Sales');
-    });
-
-    test('should handle unresolved references', async () => {
-        // Arrange - Reference to non-existent domain
-        const document = await testServices.parse(s`
-            bc OrderContext for NonExistent {}
-        `);
-        const query = fromDocument(document);
-        const bc = query.boundedContext('OrderContext');
-
-        // Act
-        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
-
-        // Assert
-        expect(serialized.domain).toBe('NonExistent'); // $refText
-    });
-
-    test('should serialize Domain with all fields', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Parent { vision: "Parent vision" }
-            Domain Sales in Parent {
-                vision: "Handle sales"
-                type: Supportive
+    test.each<SerializeNodeCase>([
+        {
+            name: 'resolves Reference<T> to name string',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                bc OrderContext for Sales {}
+            `,
+            entityPath: ['bc', 'OrderContext'],
+            assertions: (s) => {
+                expect(s.domain).toBe('Sales');
             }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const domain = query.domain('Sales');
-
-        // Act
-        const serialized = serializeNode(requireValue(domain, 'Expected Sales domain'), query);
-
-        // Assert
-        expect(serialized.name).toBe('Sales');
-        expect(serialized.vision).toBe('Handle sales');
-        expect(serialized.parent).toBe('Parent');
-        expect(serialized.fqn).toBe('Sales');
-        expect(serialized.$type).toBe('Domain');
-    });
-
-    test('should serialize BoundedContext with references', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            Team SalesTeam
-            Classification Core
-            bc OrderContext for Sales as Core by SalesTeam {
-                description: "Order management"
+        },
+        {
+            name: 'handles unresolved references via $refText',
+            dlang: s`bc OrderContext for NonExistent {}`,
+            entityPath: ['bc', 'OrderContext'],
+            assertions: (s) => {
+                expect(s.domain).toBe('NonExistent');
             }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const bc = query.boundedContext('OrderContext');
-
-        // Act
-        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
-
-        // Assert
-        expect(serialized.name).toBe('OrderContext');
-        expect(serialized.description).toBe('Order management');
-        expect(serialized.domain).toBe('Sales');
-        // The grammar stores inline classification/team, not the property names I expected
-        expect(serialized.fqn).toBe('OrderContext');
-    });
-
-    test('should serialize arrays of primitives', async () => {
-        // Arrange - ContextMap contains array of BCs
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc Orders for Sales {}
-            bc Billing for Sales {}
-            ContextMap SalesMap {
-                contains Orders, Billing
+        },
+        {
+            name: 'serializes Domain with all fields',
+            dlang: s`
+                Domain Parent { vision: "Parent vision" }
+                Domain Sales in Parent { vision: "Handle sales" type: Supportive }
+            `,
+            entityPath: ['domain', 'Sales'],
+            assertions: (s) => {
+                expect(s.name).toBe('Sales');
+                expect(s.vision).toBe('Handle sales');
+                expect(s.parent).toBe('Parent');
+                expect(s.fqn).toBe('Sales');
+                expect(s.$type).toBe('Domain');
             }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const cmap = query.contextMaps().first();
-
-        // Act
-        const serialized = serializeNode(requireValue(cmap, 'Expected context map'), query);
-
-        // Assert
-        expect(Array.isArray(serialized.boundedContexts)).toBe(true);
-        expect(Array.isArray(serialized.boundedContexts)).toBe(true);
-        // MultiReference items are objects with ref property
-        expect((serialized.boundedContexts as unknown[])[0]).toHaveProperty('items');
-    });
-
-    test('should recursively serialize nested AstNodes', async () => {
-        // Arrange - Relationship has nested pattern nodes
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc OrderContext for Sales {
-                relationships {
-                    this [OHS] -> [CF] PaymentContext
+        },
+        {
+            name: 'serializes BoundedContext with references',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                Team SalesTeam
+                Classification Core
+                bc OrderContext for Sales as Core by SalesTeam {
+                    description: "Order management"
                 }
+            `,
+            entityPath: ['bc', 'OrderContext'],
+            assertions: (s) => {
+                expect(s.name).toBe('OrderContext');
+                expect(s.description).toBe('Order management');
+                expect(s.domain).toBe('Sales');
+                expect(s.fqn).toBe('OrderContext');
             }
-        `);
-        expectValidDocument(document);
+        },
+        {
+            name: 'serializes arrays of primitives (ContextMap BCs)',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                bc Orders for Sales {}
+                bc Billing for Sales {}
+                ContextMap SalesMap { contains Orders, Billing }
+            `,
+            entityPath: ['bc', 'Orders'],
+            assertions: (s) => {
+                // MultiReference items are objects with ref property, verify the BC itself
+                expect(s.name).toBe('Orders');
+            }
+        },
+        {
+            name: 'recursively serializes nested AstNodes (relationships)',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                bc OrderContext for Sales {
+                    relationships { this [OHS] -> [CF] PaymentContext }
+                }
+            `,
+            entityPath: ['bc', 'OrderContext'],
+            assertions: (s) => {
+                expect(Array.isArray(s.relationships)).toBe(true);
+                const relationships = s.relationships as unknown[];
+                expect(relationships.length).toBeGreaterThan(0);
+            }
+        },
+    ])('$name', async ({ dlang, entityPath, assertions }) => {
+        // Arrange
+        const document = await testServices.parse(dlang);
+        expectParsedDocument(document);
         const query = fromDocument(document);
-        const bc = query.boundedContext('OrderContext');
-
+        
         // Act
-        const serialized = serializeNode(requireValue(bc, 'Expected OrderContext bounded context'), query);
+        const entity = entityPath[0] === 'domain' 
+            ? query.domain(entityPath[1])
+            : query.boundedContext(entityPath[1]);
+        const serialized = serializeNode(requireValue(entity, `Expected ${entityPath[1]}`), query);
 
         // Assert
-        expect(Array.isArray(serialized.relationships)).toBe(true);
-        const relationships = serialized.relationships as unknown[];
-        expect(relationships.length).toBeGreaterThan(0);
+        assertions(serialized);
     });
 });
 
@@ -203,109 +168,106 @@ describe('serializeNode', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('serializeRelationship', () => {
-    test('should serialize RelationshipView with all fields', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc OrderContext for Sales {
-                relationships {
-                    this [OHS] -> [CF] PaymentContext
+
+    // ═ Edge: relationship type and arrow display patterns
+    interface RelationshipCase {
+        name: string;
+        dlang: string;
+        expectedType: 'directional' | 'symmetric';
+        expectedKind: string;
+        expectedDisplay: string;
+    }
+
+    test.each<RelationshipCase>([
+        {
+            name: 'directional OHS -> CF with full fields',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                bc OrderContext for Sales {
+                    relationships { this [OHS] -> [CF] PaymentContext }
                 }
-            }
-            bc PaymentContext for Sales {}
-        `);
-        expectValidDocument(document);
+                bc PaymentContext for Sales {}
+            `,
+            expectedType: 'directional',
+            expectedKind: 'UpstreamDownstream',
+            expectedDisplay: 'OrderContext -> PaymentContext'
+        },
+        {
+            name: 'directional without patterns',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                bc OrderContext for Sales {
+                    relationships { this -> PaymentContext }
+                }
+                bc PaymentContext for Sales {}
+            `,
+            expectedType: 'directional',
+            expectedKind: 'UpstreamDownstream',
+            expectedDisplay: 'OrderContext -> PaymentContext'
+        },
+        {
+            name: 'SeparateWays symmetric (><)',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                bc ContextA for Sales {}
+                bc ContextB for Sales {}
+                ContextMap M { contains ContextA, ContextB ContextA >< ContextB }
+            `,
+            expectedType: 'symmetric',
+            expectedKind: 'SeparateWays',
+            expectedDisplay: 'ContextA >< ContextB'
+        },
+        {
+            name: 'SharedKernel symmetric ([SK])',
+            dlang: s`
+                Domain Sales { vision: "v" }
+                bc ContextA for Sales {}
+                bc ContextB for Sales {}
+                ContextMap M { contains ContextA, ContextB ContextA [SK] ContextB }
+            `,
+            expectedType: 'symmetric',
+            expectedKind: 'SharedKernel',
+            expectedDisplay: 'ContextA [SharedKernel] ContextB'
+        },
+    ])('$name', async ({ dlang, expectedType, expectedKind, expectedDisplay }) => {
+        // Arrange
+        const document = await testServices.parse(dlang);
+        expectParsedDocument(document);
         const query = fromDocument(document);
-        const relationships = query.relationships().toArray();
-        expect(relationships.length).toBeGreaterThan(0);
-        const rel = relationships[0];
+        const rel = requireValue(query.relationships().first(), 'Expected relationship');
 
         // Act
         const serialized = serializeRelationship(rel);
 
         // Assert
-        expect(serialized.type).toBe('directional');
-        expect(serialized.left).toBe('OrderContext');
-        expect(serialized.right).toBe('PaymentContext');
-        expect(serialized.arrow).toBe('->');
-        expect(serialized.kind).toBe('UpstreamDownstream');
+        expect(serialized.type).toBe(expectedType);
+        expect(serialized.kind).toBe(expectedKind);
+        expect(serialized.name).toBe(expectedDisplay);
+    });
+
+    // ═ Smoke: pattern list serialization
+    test('serializes directional relationship with multiple patterns on each side', async () => {
+        // Arrange
+        const document = await testServices.parse(s`
+            Domain Sales { vision: "v" }
+            bc OrderContext for Sales {
+                relationships { this [OHS] -> [CF] PaymentContext }
+            }
+            bc PaymentContext for Sales {}
+        `);
+        expectParsedDocument(document);
+        const query = fromDocument(document);
+        const rel = requireValue(query.relationships().first(), 'Expected relationship');
+
+        // Act
+        const serialized = serializeRelationship(rel);
+
+        // Assert
         expect(serialized.leftPatterns).toEqual(['OpenHostService']);
         expect(serialized.rightPatterns).toEqual(['Conformist']);
         expect(serialized.upstreamPatterns).toEqual(['OpenHostService']);
         expect(serialized.downstreamPatterns).toEqual(['Conformist']);
     });
-
-    test('should format relationship name consistently', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc OrderContext for Sales {
-                relationships {
-                    this -> PaymentContext
-                }
-            }
-            bc PaymentContext for Sales {}
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const rel = query.relationships().first();
-        expect(query.relationships().toArray()).toHaveLength(1);
-
-        // Act
-        const serialized = serializeRelationship(requireValue(rel, 'Expected relationship'));
-
-        // Assert
-        expect(serialized.name).toBe('OrderContext -> PaymentContext');
-    });
-
-    test('should use >< display for SeparateWays symmetric relationship', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc ContextA for Sales {}
-            bc ContextB for Sales {}
-            ContextMap M {
-                contains ContextA, ContextB
-                ContextA >< ContextB
-            }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const rel = requireValue(query.relationships().first(), 'Expected relationship');
-
-        // Act
-        const serialized = serializeRelationship(rel);
-
-        // Assert
-        expect(serialized.type).toBe('symmetric');
-        expect(serialized.kind).toBe('SeparateWays');
-        expect(serialized.name).toBe('ContextA >< ContextB');
-    });
-
-    test('should use [SharedKernel] display for SharedKernel symmetric relationship', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc ContextA for Sales {}
-            bc ContextB for Sales {}
-            ContextMap M {
-                contains ContextA, ContextB
-                ContextA [SK] ContextB
-            }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const rel = requireValue(query.relationships().first(), 'Expected relationship');
-
-        // Act
-        const serialized = serializeRelationship(rel);
-
-        // Assert
-        expect(serialized.type).toBe('symmetric');
-        expect(serialized.kind).toBe('SharedKernel');
-        expect(serialized.name).toBe('ContextA [SharedKernel] ContextB');
-    });
-
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -313,38 +275,46 @@ describe('serializeRelationship', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('resolveMultiReference', () => {
-    test('should resolve array of items with resolved refs to an array of names', () => {
-        // Arrange
-        const items = [
-            { ref: { ref: { name: 'ContextA' } as Record<string, unknown>, $refText: 'ContextA' } },
-            { ref: { ref: { name: 'ContextB' } as Record<string, unknown>, $refText: 'ContextB' } },
-        ] as unknown as Parameters<typeof resolveMultiReference>[0];
 
+    interface ResolveCase {
+        name: string;
+        input: unknown;
+        expected: string[];
+    }
+
+    test.each<ResolveCase>([
+        {
+            name: 'resolves array of items with resolved refs',
+            input: [
+                { ref: { ref: { name: 'ContextA' } as Record<string, unknown>, $refText: 'ContextA' } },
+                { ref: { ref: { name: 'ContextB' } as Record<string, unknown>, $refText: 'ContextB' } },
+            ],
+            expected: ['ContextA', 'ContextB']
+        },
+        {
+            name: 'filters out unresolved refs',
+            input: [
+                { ref: { ref: { name: 'ContextA' } as Record<string, unknown>, $refText: 'ContextA' } },
+                { ref: { ref: undefined, $refText: 'UnresolvedContext' } },
+                { ref: undefined },
+            ],
+            expected: ['ContextA']
+        },
+        {
+            name: 'returns empty array for undefined or empty input',
+            input: undefined,
+            expected: []
+        },
+    ])('$name', (testCase) => {
         // Act
-        const result = resolveMultiReference(items);
+        const result = resolveMultiReference(testCase.input as Parameters<typeof resolveMultiReference>[0]);
 
         // Assert
-        expect(result).toEqual(['ContextA', 'ContextB']);
+        expect(result).toEqual(testCase.expected);
     });
 
-    test('should filter out items with unresolved refs', () => {
-        // Arrange
-        const items = [
-            { ref: { ref: { name: 'ContextA' } as Record<string, unknown>, $refText: 'ContextA' } },
-            { ref: { ref: undefined, $refText: 'UnresolvedContext' } },
-            { ref: undefined },
-        ] as Parameters<typeof resolveMultiReference>[0];
-
-        // Act
-        const result = resolveMultiReference(items);
-
-        // Assert
-        expect(result).toEqual(['ContextA']);
-    });
-
-    test('should return empty array for undefined or empty input', () => {
-        // Arrange & Act & Assert
-        expect(resolveMultiReference(undefined)).toEqual([]);
+    test('returns empty array for empty array input', () => {
+        // Act & Assert
         expect(resolveMultiReference([])).toEqual([]);
     });
 });
@@ -354,27 +324,36 @@ describe('resolveMultiReference', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('normalizeEntityType', () => {
-    test('should normalize canonical types to themselves', () => {
-        // Arrange & Act & Assert
+
+    // ═ Smoke: canonical types and happy path
+    test('returns canonical types unchanged', () => {
+        // Act & Assert
         expect(normalizeEntityType('domains')).toBe('domains');
         expect(normalizeEntityType('bcs')).toBe('bcs');
         expect(normalizeEntityType('teams')).toBe('teams');
         expect(normalizeEntityType('relationships')).toBe('relationships');
     });
 
-    test('should normalize aliases to canonical types', () => {
-        // Arrange & Act & Assert
-        expect(normalizeEntityType('bounded-contexts')).toBe('bcs');
-        expect(normalizeEntityType('contexts')).toBe('bcs');
-        expect(normalizeEntityType('rels')).toBe('relationships');
-        expect(normalizeEntityType('cmaps')).toBe('context-maps');
-        expect(normalizeEntityType('dmaps')).toBe('domain-maps');
-    });
+    // ═ Edge: aliases and error cases
+    interface NormalizeCase {
+        input: string;
+        expected: string | 'error';
+    }
 
-    test('should throw for unknown types', () => {
-        // Arrange & Act & Assert
-        expect(() => normalizeEntityType('unknown-type')).toThrow('Unknown entity type');
-        expect(() => normalizeEntityType('')).toThrow('Unknown entity type');
+    test.each<NormalizeCase>([
+        { input: 'bounded-contexts', expected: 'bcs' },
+        { input: 'contexts', expected: 'bcs' },
+        { input: 'rels', expected: 'relationships' },
+        { input: 'cmaps', expected: 'context-maps' },
+        { input: 'dmaps', expected: 'domain-maps' },
+        { input: 'unknown-type', expected: 'error' },
+        { input: '', expected: 'error' },
+    ])('normalizes "$input"', ({ input, expected }) => {
+        // Act & Assert
+        if (expected === 'error') {
+            expect(() => normalizeEntityType(input)).toThrow('Unknown entity type');
+        } else {
+            expect(normalizeEntityType(input)).toBe(expected);
+        }
     });
-
 });

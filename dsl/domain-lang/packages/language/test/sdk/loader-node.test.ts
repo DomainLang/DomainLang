@@ -12,6 +12,29 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Temp File Utility
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function createTestProject(
+    files: Record<string, string>,
+    tempDir: string
+): Promise<Record<string, string>> {
+    const created: Record<string, string> = {};
+    for (const [filePath, content] of Object.entries(files)) {
+        const fullPath = path.join(tempDir, filePath);
+        const dirPath = path.dirname(fullPath);
+        await fs.mkdir(dirPath, { recursive: true });
+        await fs.writeFile(fullPath, content);
+        created[filePath] = fullPath;
+    }
+    return created;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Smoke and Error Handling
+// ═══════════════════════════════════════════════════════════════════════════════
+
 describe('SDK loadModel (Node.js)', () => {
     let tempDir: string;
 
@@ -23,279 +46,187 @@ describe('SDK loadModel (Node.js)', () => {
         await fs.rm(tempDir, { recursive: true, force: true });
     });
 
-    // ========================================================================
-    // Smoke: single file loading (~20%)
-    // ========================================================================
+    // ═ Smoke: single file loading and error cases
+    test('loads a domain model from disk with correct query results', async () => {
+        // Arrange
+        const projectDir = path.join(tempDir, 'single-file');
+        await fs.mkdir(projectDir, { recursive: true });
+        await createTestProject({
+            'domains.dlang': 'Domain Sales { vision: "Sales operations" }'
+        }, projectDir);
 
-    describe('Smoke: single file loading', () => {
-        test('loads a domain model from disk with correct query results', async () => {
-            // Arrange
-            const projectDir = path.join(tempDir, 'single-file');
-            await fs.mkdir(projectDir, { recursive: true });
-            await fs.writeFile(path.join(projectDir, 'domains.dlang'), `
-                Domain Sales {
-                    vision: "Sales operations"
-                }
-            `);
+        // Act
+        const { query, documents } = await loadModel('domains.dlang', { workspaceDir: projectDir });
 
-            // Act
-            const { query, documents } = await loadModel(
-                'domains.dlang',
-                { workspaceDir: projectDir }
-            );
-
-            // Assert
-            expect(documents.length).toBe(1);
-            expect(query.domain('Sales')?.name).toBe('Sales');
-            expect(query.domain('Sales')?.vision).toBe('Sales operations');
-            expect(query.domains().count()).toBe(1);
-        });
+        // Assert
+        expect(documents.length).toBe(1);
+        expect(query.domain('Sales')?.name).toBe('Sales');
+        expect(query.domain('Sales')?.vision).toBe('Sales operations');
+        expect(query.domains().count()).toBe(1);
     });
 
-    // ========================================================================
-    // Edge: error handling
-    // ========================================================================
+    // ═ Edge: error handling (missing file, invalid syntax, empty/whitespace)
+    interface ErrorCase {
+        name: string;
+        setup: (projectDir: string) => Promise<string>;
+        expectedError: RegExp;
+    }
 
-    describe('Edge: error handling', () => {
-        test('throws on non-existent file', async () => {
-            // Arrange
-            const projectDir = path.join(tempDir, 'missing-file');
-            await fs.mkdir(projectDir, { recursive: true });
+    test.each<ErrorCase>([
+        {
+            name: 'throws on non-existent file',
+            setup: async (projectDir) => {
+                await fs.mkdir(projectDir, { recursive: true });
+                return 'does-not-exist.dlang';
+            },
+            expectedError: /does.not.exist|not.*found/i
+        },
+        {
+            name: 'throws on invalid syntax',
+            setup: async (projectDir) => {
+                await createTestProject({
+                    'invalid.dlang': 'This is not valid DomainLang syntax !!!'
+                }, projectDir);
+                return 'invalid.dlang';
+            },
+            expectedError: /error/i
+        },
+    ])('$name', async ({ setup, expectedError }) => {
+        // Arrange
+        const projectDir = path.join(tempDir, `error-${Math.random()}`);
+        const entryFile = await setup(projectDir);
 
-            // Act & Assert
-            await expect(
-                loadModel('does-not-exist.dlang', { workspaceDir: projectDir })
-            ).rejects.toThrow();
-        });
-
-        test('throws on invalid syntax with error details', async () => {
-            // Arrange
-            const projectDir = path.join(tempDir, 'invalid-syntax');
-            await fs.mkdir(projectDir, { recursive: true });
-            await fs.writeFile(path.join(projectDir, 'invalid.dlang'), `
-                This is not valid DomainLang syntax !!!
-            `);
-
-            // Act & Assert
-            await expect(
-                loadModel('invalid.dlang', { workspaceDir: projectDir })
-            ).rejects.toThrow(/errors/i);
-        });
-
-        test.each([
-            { label: 'empty', content: '', fileName: 'empty.dlang' },
-            { label: 'whitespace-only', content: '   \n  \n  ', fileName: 'whitespace.dlang' },
-        ])('loads $label file as a model with no entities', async ({ content, fileName }) => {
-            // Arrange
-            const projectDir = path.join(tempDir, `${fileName}-dir`);
-            await fs.mkdir(projectDir, { recursive: true });
-            await fs.writeFile(path.join(projectDir, fileName), content);
-
-            // Act
-            const { query } = await loadModel(
-                fileName,
-                { workspaceDir: projectDir }
-            );
-
-            // Assert
-            expect(query.domains().count()).toBe(0);
-            expect(query.boundedContexts().count()).toBe(0);
-        });
+        // Act & Assert
+        await expect(() => loadModel(entryFile, { workspaceDir: projectDir })).rejects.toThrow(expectedError);
     });
 
-    // ========================================================================
-    // Edge: multi-file import graph traversal
-    // ========================================================================
+    test.each([
+        { label: 'empty', content: '' },
+        { label: 'whitespace-only', content: '   \n  \n  ' },
+    ])('loads $label file as a model with no entities', async ({ content }) => {
+        // Arrange
+        const projectDir = path.join(tempDir, `empty-${Math.random()}`);
+        await createTestProject({
+            'empty.dlang': content
+        }, projectDir);
 
-    describe('Edge: multi-file import graph traversal', () => {
-        test('loads imported files and resolves cross-file references', async () => {
+        // Act
+        const { query } = await loadModel('empty.dlang', { workspaceDir: projectDir });
+
+        // Assert
+        expect(query.domains().count()).toBe(0);
+        expect(query.boundedContexts().count()).toBe(0);
+    });
+
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // Multi-File Import Graph Traversal
+    // ═════════════════════════════════════════════════════════════════════════════════
+
+    describe('Multi-file import graph traversal', () => {
+
+        interface ImportGraphCase {
+            name: string;
+            files: Record<string, string>;
+            expectedDocCount: number;
+            expectedDomainCount: number;
+            expectedBcCount: number;
+        }
+
+        test.each<ImportGraphCase>([
+            {
+                name: 'single-level imports (main -> types)',
+                files: {
+                    'main.dlang': 'import "./types.dlang"\nDomain Sales { vision: "Sales operations" }\nBoundedContext OrderContext for Sales { description: "Order processing" }',
+                    'types.dlang': 'Domain SharedTypes { vision: "Shared type definitions" }'
+                },
+                expectedDocCount: 2,
+                expectedDomainCount: 1,
+                expectedBcCount: 1
+            },
+            {
+                name: 'transitive imports (main -> domains -> teams)',
+                files: {
+                    'main.dlang': 'import "./domains.dlang"\nBoundedContext App for Sales { description: "Main app" }',
+                    'domains.dlang': 'import "./teams.dlang"\nDomain Sales { vision: "Sales operations" }',
+                    'teams.dlang': 'Team SalesTeam\nTeam SupportTeam'
+                },
+                expectedDocCount: 3,
+                expectedDomainCount: 0,
+                expectedBcCount: 1
+            },
+            {
+                name: 'diamond imports (shared dep loaded once)',
+                files: {
+                    'main.dlang': 'import "./contexts.dlang"\nimport "./teams.dlang"\nDomain Sales { vision: "Sales operations" }',
+                    'contexts.dlang': 'import "./shared.dlang"\nBoundedContext OrderContext for Sales { description: "Orders" }',
+                    'teams.dlang': 'import "./shared.dlang"\nTeam SalesTeam',
+                    'shared.dlang': 'Metadata Priority'
+                },
+                expectedDocCount: 4,
+                expectedDomainCount: 1,
+                expectedBcCount: 0
+            },
+            {
+                name: 'nested directory imports',
+                files: {
+                    'main.dlang': 'import "./domains/sales.dlang"\nBoundedContext App for Sales { description: "Main app" }',
+                    'domains/sales.dlang': 'Domain Sales { vision: "Sales operations" }'
+                },
+                expectedDocCount: 2,
+                expectedDomainCount: 0,
+                expectedBcCount: 1
+            },
+        ])('$name', async ({ files, expectedDocCount, expectedDomainCount, expectedBcCount }) => {
             // Arrange
-            const projectDir = path.join(tempDir, 'multi-file-local');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            await fs.writeFile(path.join(projectDir, 'main.dlang'), `
-                import "./types.dlang"
-
-                Domain Sales {
-                    vision: "Sales operations"
-                }
-
-                BoundedContext OrderContext for Sales {
-                    description: "Order processing"
-                }
-            `);
-
-            await fs.writeFile(path.join(projectDir, 'types.dlang'), `
-                Domain SharedTypes {
-                    vision: "Shared type definitions"
-                }
-            `);
+            const projectDir = path.join(tempDir, `graph-${Math.random()}`);
+            await createTestProject(files, projectDir);
 
             // Act
-            const { query, documents } = await loadModel(
-                'main.dlang',
-                { workspaceDir: projectDir }
-            );
+            const { query, documents } = await loadModel('main.dlang', { workspaceDir: projectDir });
 
             // Assert
-            expect(documents.length).toBe(2);
-            // Query spans entry model content
-            const domains = query.domains().toArray();
-            expect(domains.length).toBe(1);
-            expect(domains[0].name).toBe('Sales');
-        });
-
-        test('handles transitive imports (A->B->C)', async () => {
-            // Arrange
-            const projectDir = path.join(tempDir, 'transitive-imports');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            await fs.writeFile(path.join(projectDir, 'main.dlang'), `
-                import "./domains.dlang"
-                BoundedContext App for Sales { description: "Main app" }
-            `);
-
-            await fs.writeFile(path.join(projectDir, 'domains.dlang'), `
-                import "./teams.dlang"
-                Domain Sales { vision: "Sales operations" }
-            `);
-
-            await fs.writeFile(path.join(projectDir, 'teams.dlang'), `
-                Team SalesTeam
-                Team SupportTeam
-            `);
-
-            // Act
-            const { query, documents } = await loadModel(
-                'main.dlang',
-                { workspaceDir: projectDir }
-            );
-
-            // Assert
-            expect(documents.length).toBe(3);
-            expect(query.bc('App')?.name).toBe('App');
-        });
-
-        test('handles diamond imports (shared dep loaded once)', async () => {
-            // Arrange
-            const projectDir = path.join(tempDir, 'diamond-imports');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            await fs.writeFile(path.join(projectDir, 'main.dlang'), `
-                import "./contexts.dlang"
-                import "./teams.dlang"
-                Domain Sales { vision: "Sales operations" }
-            `);
-
-            await fs.writeFile(path.join(projectDir, 'contexts.dlang'), `
-                import "./shared.dlang"
-                BoundedContext OrderContext for Sales { description: "Orders" }
-            `);
-
-            await fs.writeFile(path.join(projectDir, 'teams.dlang'), `
-                import "./shared.dlang"
-                Team SalesTeam
-            `);
-
-            await fs.writeFile(path.join(projectDir, 'shared.dlang'), `
-                Metadata Priority
-            `);
-
-            // Act
-            const { documents } = await loadModel(
-                'main.dlang',
-                { workspaceDir: projectDir }
-            );
-
-            // Assert
-            // All four files loaded, shared.dlang only once
-            expect(documents.length).toBe(4);
-        });
-
-        test('loads imports from subdirectories', async () => {
-            // Arrange
-            const projectDir = path.join(tempDir, 'nested-imports');
-            await fs.mkdir(path.join(projectDir, 'domains'), { recursive: true });
-
-            await fs.writeFile(path.join(projectDir, 'main.dlang'), `
-                import "./domains/sales.dlang"
-                BoundedContext App for Sales { description: "Main app" }
-            `);
-
-            await fs.writeFile(path.join(projectDir, 'domains', 'sales.dlang'), `
-                Domain Sales { vision: "Sales operations" }
-            `);
-
-            // Act
-            const { query, documents } = await loadModel(
-                'main.dlang',
-                { workspaceDir: projectDir }
-            );
-
-            // Assert
-            expect(documents.length).toBe(2);
-            expect(query.bc('App')?.name).toBe('App');
+            expect(documents.length).toBe(expectedDocCount);
+            expect(query.domains().toArray()).toHaveLength(expectedDomainCount);
+            expect(query.boundedContexts().count()).toBe(expectedBcCount);
         });
 
         test('throws when imported file does not exist', async () => {
             // Arrange
-            const projectDir = path.join(tempDir, 'broken-import');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            await fs.writeFile(path.join(projectDir, 'main.dlang'), `
-                import "./nonexistent.dlang"
-                Domain Sales { vision: "v" }
-            `);
+            const projectDir = path.join(tempDir, `broken-import-${Math.random()}`);
+            await createTestProject({
+                'main.dlang': 'import "./nonexistent.dlang"\nDomain Sales { vision: "v" }'
+            }, projectDir);
 
             // Act & Assert
-            // Should still load entry but may have link errors
-            // or throw - depends on implementation
             try {
-                const { documents } = await loadModel(
-                    'main.dlang',
-                    { workspaceDir: projectDir }
-                );
+                const { documents } = await loadModel('main.dlang', { workspaceDir: projectDir });
                 // If it loads, should have fewer documents than expected
                 expect(documents.length).toBeLessThanOrEqual(1);
-            } catch (error: unknown) {
+            } catch (error) {
                 // Throwing is also acceptable behavior for broken imports
                 expect(error).toBeInstanceOf(Error);
             }
         });
     });
 
-    // ========================================================================
-    // Edge: model augmentation
-    // ========================================================================
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // Model Augmentation
+    // ═════════════════════════════════════════════════════════════════════════════════
 
-    describe('Edge: model augmentation', () => {
-        test('augments entry model with effectiveClassification and effectiveTeam', async () => {
-            // Arrange
-            const projectDir = path.join(tempDir, 'augmentation-test');
-            await fs.mkdir(projectDir, { recursive: true });
+    test('augments entry model with effectiveClassification and effectiveTeam', async () => {
+        // Arrange
+        const projectDir = path.join(tempDir, 'augmentation-test');
+        await createTestProject({
+            'main.dlang': 'Classification Core\nDomain Sales { vision: "Sales operations" }\nTeam SalesTeam\nBoundedContext OrderContext for Sales as Core by SalesTeam { description: "Order processing" }'
+        }, projectDir);
 
-            await fs.writeFile(path.join(projectDir, 'main.dlang'), `
-                Classification Core
-                Domain Sales { vision: "Sales operations" }
-                Team SalesTeam
-                BoundedContext OrderContext for Sales as Core by SalesTeam {
-                    description: "Order processing"
-                }
-            `);
+        // Act
+        const { query } = await loadModel('main.dlang', { workspaceDir: projectDir });
 
-            // Act
-            const { query } = await loadModel(
-                'main.dlang',
-                { workspaceDir: projectDir }
-            );
-
-            // Assert
-            const bc = query.bc('OrderContext');
-            expect(bc?.name).toBe('OrderContext');
-            expect(bc?.effectiveClassification?.name).toBe('Core');
-            expect(bc?.effectiveTeam?.name).toBe('SalesTeam');
-        });
-
-        // "undefined for unset classification/team" covered by ast-augmentation.test.ts
+        // Assert
+        const bc = query.bc('OrderContext');
+        expect(bc?.name).toBe('OrderContext');
+        expect(bc?.effectiveClassification?.name).toBe('Core');
+        expect(bc?.effectiveTeam?.name).toBe('SalesTeam');
     });
 });
