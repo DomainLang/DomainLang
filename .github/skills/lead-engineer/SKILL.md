@@ -58,15 +58,30 @@ Every feature flows through three layers:
 
 1. **Review inputs:** ADR/PRS requirements, grammar sketch
 2. **Implement grammar:** Edit `.langium` file
-3. **🚨 Run `npm run build` after EVERY edit** - Fix all TypeScript errors immediately; never leave the build broken
-   - A task is NOT complete until `npm run build` exits with code 0
-   - TypeScript errors in any file (including test files) are real failures that block progress
 3. **Regenerate:** `npm run langium:generate`
 4. **Implement services:** Validation, scoping, LSP features
 5. **Write tests:** Ask "design test strategy" for test collaboration
-6. **Run linting:** `npm run lint` - must pass (0 errors/warnings)
-7. **Verify:** `npm run build && npm test`
-8. **Commit:** Use conventional format for proper versioning
+6. **🚨 Run `npm run build` after EVERY edit** — Fix all TypeScript errors immediately; never leave the build broken
+   - A task is NOT complete until `npm run build` exits with code 0
+   - TypeScript errors in any file (including test files) are real failures that block progress
+7. **Run linting:** `npm run lint` — must pass (0 errors/warnings)
+8. **Run full test suite:** `npm run test:coverage` — ALL tests must pass in ALL packages (language, cli, extension)
+   - Do not assume mocks or re-exports work — run the tests and confirm exit code 0
+   - Do not trust partial runs — run the full suite
+9. **Commit:** Use conventional format for proper versioning — but ONLY after steps 6–8 all pass
+
+### 🛑 Pre-Commit Gate (No Exceptions)
+
+**Before ANY `git commit` or `git push`, this exact sequence must succeed:**
+
+```bash
+cd dsl/domain-lang && npm run lint && npm run build && npm run test:coverage
+```
+
+- If ANY command fails, do NOT commit. Fix the issue and rerun ALL three from the start.
+- Confirm all three passed (exit code 0) to the user before committing.
+- Never commit broken code with the intent to fix later.
+- Never assume a CI run verified the code — always verify locally.
 
 ## LSP Feature Development
 
@@ -168,11 +183,9 @@ BREAKING CHANGE: Imports now require version specifier.
 - Use `npm run lint:fix` for auto-fixes
 - Suppress only if truly necessary (document reason)
 
-**Before commit:**
+**Before commit (see also: Pre-Commit Gate above):**
 ```bash
-npm run lint            # 0 errors, 0 warnings required
-npm run build           # Must succeed
-npm run test:coverage   # Must pass and coverage above thresholds
+cd dsl/domain-lang && npm run lint && npm run build && npm run test:coverage
 ```
 
 ## Critical Rules
@@ -180,12 +193,13 @@ npm run test:coverage   # Must pass and coverage above thresholds
 1. **NEVER** edit `src/generated/**` files
 2. **ALWAYS** run `langium:generate` after `.langium` changes
 3. **ALWAYS** add tests for new behavior
-4. **ALWAYS** pass linting before committing
+4. **ALWAYS** pass lint, build, AND test:coverage before committing
 5. **ALWAYS** centralize shared types in `services/types.ts`
 6. **ALWAYS** update `/site/` docs for user-facing changes
 7. Use TypeScript strict mode
 8. Use type guards over assertions
 9. **ALWAYS** use conventional commit messages
+10. **NEVER** commit code that doesn't compile or has failing tests — this is the single most damaging thing an agent can do
 
 ## Type Organization
 

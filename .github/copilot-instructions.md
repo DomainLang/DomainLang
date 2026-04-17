@@ -21,6 +21,26 @@ If any check fails:
 3. Only commit when everything passes
 4. Never lower quality standards without explicit user approval
 
+### 🛑 MANDATORY VERIFICATION PROTOCOL (No Exceptions)
+
+**Before proposing or executing ANY `git commit` or `git push`:**
+
+1. Run `npm run lint` in `dsl/domain-lang/` — must exit 0 with **zero** errors and **zero** warnings
+2. Run `npm run build` in `dsl/domain-lang/` — must exit 0
+3. Run `npm run test:coverage` in `dsl/domain-lang/` — must exit 0 with all tests passing
+4. **Confirm all three passed** to the user with the actual exit codes before committing
+
+**If ANY step fails:** Do NOT commit. Fix the issue, re-run ALL three checks from step 1, and repeat until all pass.
+
+**There are NO acceptable shortcuts:**
+- Do not commit with "I'll fix it in the next commit"
+- Do not commit test files without verifying they compile (`npm run build`)
+- Do not commit refactors without running the full test suite
+- Do not assume `...actual` spread mocks or re-exports work — run the tests
+- Do not trust a green CI run that skipped jobs — verify locally
+
+**Violation of this protocol is the single most damaging thing an agent can do to this project.**
+
 ## Project Essentials
 
 **What:** Compilable DSL for DDD specification with LSP tooling  
@@ -94,7 +114,7 @@ See `.github/instructions/` for language-specific rules (TypeScript, Langium, te
 
 ```bash
 # Run this exact sequence before EVERY commit:
-npm run lint && npm run build && npm run test:coverage
+cd dsl/domain-lang && npm run lint && npm run build && npm run test:coverage
 ```
 
 **NON-NEGOTIABLE COMMIT RULES:**
@@ -102,13 +122,15 @@ npm run lint && npm run build && npm run test:coverage
 - **NEVER** commit without explicit user approval
 - **NEVER** commit if lint has ANY errors or warnings (0 required)
 - **NEVER** commit if build fails for ANY reason
-- **NEVER** commit if ANY tests fail
+- **NEVER** commit if ANY tests fail — this includes ALL workspace packages (language, cli, extension)
 - **NEVER** commit if test coverage is below configured thresholds
 - **NEVER** commit code that breaks the workspace build
 - **ALWAYS** commit package.json + package-lock.json together atomically
 - **NEVER** lower coverage thresholds without explicit user approval - if coverage is below thresholds:
   1. Add tests to meet the threshold, OR
   2. Ask user for approval to lower the threshold with justification
+- **NEVER** assume tests pass — you MUST run them and see exit code 0
+- **NEVER** commit with the intent to "fix it later" — fix it NOW or don't commit
 
 **Commit types:**
 - `feat:` → minor version bump (new features)

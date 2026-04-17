@@ -403,6 +403,19 @@ fix(validation): handle missing domain vision
 feat(lsp): add hover support for domain vision
 ```
 
+### 🛑 Pre-Commit Verification (No Exceptions)
+
+**Before committing ANY test changes, ALL three must pass:**
+
+```bash
+cd dsl/domain-lang && npm run lint && npm run build && npm run test:coverage
+```
+
+- Never commit test files that don't compile (`npm run build` must exit 0)
+- Never commit if any test fails in any package (language, cli, extension)
+- Never assume mocks work — run the full suite and confirm exit code 0
+- Never commit with "I'll fix it later" — fix it NOW or don't commit
+
 ## Working with Lead Engineer
 
 **When collaborating:**

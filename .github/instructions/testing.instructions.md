@@ -38,10 +38,12 @@ If no → don't write it.
    - If coverage is below configured thresholds in `vitest.config.ts`, **STOP**
    - Either add tests to meet the threshold OR ask user for approval to lower it
    - Never automatically lower thresholds without explicit user approval
-1. **🚨 BUILD MUST PASS AFTER EVERY TEST FILE CHANGE** - Run `npm run build` after writing or editing ANY test file:
+1. **🚨 BUILD AND TESTS MUST PASS BEFORE EVERY COMMIT** - Run `cd dsl/domain-lang && npm run lint && npm run build && npm run test:coverage` before ANY commit:
    - TypeScript errors in test files are real build failures — tests that pass at runtime but fail `tsc` are unacceptable
    - Fix ALL TypeScript errors before reporting the task as complete
-   - Never consider a task done until `npm run build` exits with code 0
+   - Never consider a task done until ALL three commands exit with code 0
+   - Never assume mocks work correctly (especially `...actual` spreads or re-exports) — run the tests and verify
+   - Never commit with the intent to "fix tests later" — fix them NOW or don't commit
 
 ## 🚨 MANDATORY: Test-Driven Development (TDD)
 

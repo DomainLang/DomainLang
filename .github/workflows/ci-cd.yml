@@ -75,7 +75,8 @@ jobs:
   lint:
     name: 🧹 Lint
     needs: detect-changes
-    if: needs.detect-changes.outputs.has-code == 'true'
+    # Always run on main (never skip tests on the default branch); on PRs, skip if no code changed
+    if: github.ref == 'refs/heads/main' || needs.detect-changes.outputs.has-code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
