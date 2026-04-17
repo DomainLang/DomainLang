@@ -99,9 +99,13 @@ export function getDocumentErrors(document: LangiumDocument): string | undefined
 }
 
 /**
- * Asserts that a document parsed successfully.
+ * Asserts that a document parsed and built into a Model successfully.
+ *
+ * NOTE: This only checks lexer/parser errors and that the AST root is a Model.
+ * It does NOT check validation diagnostics. For validation assertions use
+ * {@link expectValidationErrors} or {@link expectValidationWarnings}.
  */
-export function expectValidDocument(document: LangiumDocument): void {
+export function expectParsedDocument(document: LangiumDocument): void {
     const errors = getDocumentErrors(document);
     if (errors) {
         throw new Error(errors);
@@ -156,7 +160,7 @@ export function expectValidationWarnings(
  * Safely extracts the first domain from a model.
  */
 export function getFirstDomain(document: LangiumDocument<Model>): Domain {
-    expectValidDocument(document);
+    expectParsedDocument(document);
     const domain = document.parseResult.value.children.find(child => isDomain(child)) as Domain;
     expect(domain).toBeDefined();
     return domain;
@@ -166,7 +170,7 @@ export function getFirstDomain(document: LangiumDocument<Model>): Domain {
  * Safely extracts the first bounded context from a model.
  */
 export function getFirstBoundedContext(document: LangiumDocument<Model>): BoundedContext {
-    expectValidDocument(document);
+    expectParsedDocument(document);
     const bc = document.parseResult.value.children.find(child => isBoundedContext(child)) as BoundedContext;
     expect(bc).toBeDefined();
     return bc;
@@ -176,7 +180,7 @@ export function getFirstBoundedContext(document: LangiumDocument<Model>): Bounde
  * Extracts all domains from a model.
  */
 export function getAllDomains(document: LangiumDocument<Model>): Domain[] {
-    expectValidDocument(document);
+    expectParsedDocument(document);
     return document.parseResult.value.children.filter(child => isDomain(child)) as Domain[];
 }
 
@@ -184,7 +188,7 @@ export function getAllDomains(document: LangiumDocument<Model>): Domain[] {
  * Extracts all bounded contexts from a model.
  */
 export function getAllBoundedContexts(document: LangiumDocument<Model>): BoundedContext[] {
-    expectValidDocument(document);
+    expectParsedDocument(document);
     return document.parseResult.value.children.filter(child => isBoundedContext(child)) as BoundedContext[];
 }
 

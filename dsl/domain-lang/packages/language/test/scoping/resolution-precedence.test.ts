@@ -17,147 +17,156 @@ import type { BoundedContext } from '../../src/generated/ast.js';
 
 describe('Resolution Precedence', () => {
 
-    describe('effectiveClassification() precedence', () => {
-
-        test('header-only classification resolves correctly', async () => {
+    describe('Header vs body precedence', () => {
+        test.each([
+            {
+                type: 'classification',
+                headerDecl: 'as Core',
+                bodyDecl: 'classification: Core',
+                alternateDecl: 'classification: Supporting',
+                input: `
+                    Classification Core
+                    Classification Supporting
+                    Domain Sales {}
+                    bc OrderContext for Sales as Core {
+                        classification: Supporting
+                    }
+                `,
+                bcName: 'OrderContext',
+                checkExpected: (bc: BoundedContext) => {
+                    const result = effectiveClassification(bc);
+                    expect(result?.name).toBe('Core');
+                },
+                checkAlternate: (bc: BoundedContext) => {
+                    const result = effectiveClassification(bc);
+                    expect(result?.name).not.toBe('Supporting');
+                },
+            },
+            {
+                type: 'team',
+                headerDecl: 'by TeamA',
+                bodyDecl: 'team: TeamA',
+                alternateDecl: 'team: TeamB',
+                input: `
+                    Team TeamA
+                    Team TeamB
+                    Domain Sales {}
+                    bc OrderContext for Sales by TeamA {
+                        team: TeamB
+                    }
+                `,
+                bcName: 'OrderContext',
+                checkExpected: (bc: BoundedContext) => {
+                    const result = effectiveTeam(bc);
+                    expect(result?.name).toBe('TeamA');
+                },
+                checkAlternate: (bc: BoundedContext) => {
+                    const result = effectiveTeam(bc);
+                    expect(result?.name).not.toBe('TeamB');
+                },
+            },
+        ])('$type: header wins over body when both specified', async ({ input, bcName, checkExpected, checkAlternate }) => {
             // Arrange
-            const { query } = await loadModelFromText(`
-                Classification Core
-                Domain Sales {}
-                bc OrderContext for Sales as Core
-            `);
+            const { query } = await loadModelFromText(input);
 
             // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const classification = effectiveClassification(bc);
-
-            // Assert
-            expect(classification?.name).toBe('Core');
-        });
-
-        test('body-only classification resolves correctly', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Classification Core
-                Domain Sales {}
-                bc OrderContext for Sales {
-                    classification: Core
-                }
-            `);
-
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const classification = effectiveClassification(bc);
-
-            // Assert
-            expect(classification?.name).toBe('Core');
-        });
-
-        test('header wins over body when both specified', async () => {
-            // Arrange - inline 'as Core' should take precedence over body 'classification: Supporting'
-            const { query } = await loadModelFromText(`
-                Classification Core
-                Classification Supporting
-                Domain Sales {}
-                bc OrderContext for Sales as Core {
-                    classification: Supporting
-                }
-            `);
-
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const classification = effectiveClassification(bc);
+            const bc = query.bc(bcName) as BoundedContext;
 
             // Assert - header (inline) wins
-            expect(classification).not.toBeUndefined();
-            expect(classification?.name).toBe('Core');
+            checkExpected(bc);
+            checkAlternate(bc);
         });
 
-        test('returns undefined when no classification specified', async () => {
+        test.each([
+            {
+                type: 'classification',
+                decl: 'as Core',
+                input: `
+                    Classification Core
+                    Domain Sales {}
+                    bc OrderContext for Sales as Core
+                `,
+                check: (bc: BoundedContext) => {
+                    const result = effectiveClassification(bc);
+                    expect(result?.name).toBe('Core');
+                },
+            },
+            {
+                type: 'team',
+                decl: 'by TeamA',
+                input: `
+                    Team TeamA
+                    Domain Sales {}
+                    bc OrderContext for Sales by TeamA
+                `,
+                check: (bc: BoundedContext) => {
+                    const result = effectiveTeam(bc);
+                    expect(result?.name).toBe('TeamA');
+                },
+            },
+            {
+                type: 'classification (body)',
+                decl: 'classification: Core',
+                input: `
+                    Classification Core
+                    Domain Sales {}
+                    bc OrderContext for Sales {
+                        classification: Core
+                    }
+                `,
+                check: (bc: BoundedContext) => {
+                    const result = effectiveClassification(bc);
+                    expect(result?.name).toBe('Core');
+                },
+            },
+            {
+                type: 'team (body)',
+                decl: 'team: TeamA',
+                input: `
+                    Team TeamA
+                    Domain Sales {}
+                    bc OrderContext for Sales {
+                        team: TeamA
+                    }
+                `,
+                check: (bc: BoundedContext) => {
+                    const result = effectiveTeam(bc);
+                    expect(result?.name).toBe('TeamA');
+                },
+            },
+            {
+                type: 'classification (none)',
+                decl: 'neither header nor body',
+                input: `
+                    Domain Sales {}
+                    bc OrderContext for Sales
+                `,
+                check: (bc: BoundedContext) => {
+                    const result = effectiveClassification(bc);
+                    expect(result).toBeUndefined();
+                },
+            },
+            {
+                type: 'team (none)',
+                decl: 'neither header nor body',
+                input: `
+                    Domain Sales {}
+                    bc OrderContext for Sales
+                `,
+                check: (bc: BoundedContext) => {
+                    const result = effectiveTeam(bc);
+                    expect(result).toBeUndefined();
+                },
+            },
+        ])('$type resolves correctly for $decl', async ({ input, check }) => {
             // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales {}
-                bc OrderContext for Sales
-            `);
+            const { query } = await loadModelFromText(input);
 
             // Act
             const bc = query.bc('OrderContext') as BoundedContext;
-            const classification = effectiveClassification(bc);
 
             // Assert
-            expect(classification).toBeUndefined();
-        });
-    });
-
-    describe('effectiveTeam() precedence', () => {
-
-        test('header-only team resolves correctly', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Team TeamA
-                Domain Sales {}
-                bc OrderContext for Sales by TeamA
-            `);
-
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const team = effectiveTeam(bc);
-
-            // Assert
-            expect(team?.name).toBe('TeamA');
-        });
-
-        test('body-only team resolves correctly', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Team TeamA
-                Domain Sales {}
-                bc OrderContext for Sales {
-                    team: TeamA
-                }
-            `);
-
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const team = effectiveTeam(bc);
-
-            // Assert
-            expect(team?.name).toBe('TeamA');
-        });
-
-        test('header wins over body when both specified', async () => {
-            // Arrange - inline 'by TeamA' should take precedence over body 'team: TeamB'
-            const { query } = await loadModelFromText(`
-                Team TeamA
-                Team TeamB
-                Domain Sales {}
-                bc OrderContext for Sales by TeamA {
-                    team: TeamB
-                }
-            `);
-
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const team = effectiveTeam(bc);
-
-            // Assert - header (inline) wins
-            expect(team).not.toBeUndefined();
-            expect(team?.name).toBe('TeamA');
-        });
-
-        test('returns undefined when no team specified', async () => {
-            // Arrange
-            const { query } = await loadModelFromText(`
-                Domain Sales {}
-                bc OrderContext for Sales
-            `);
-
-            // Act
-            const bc = query.bc('OrderContext') as BoundedContext;
-            const team = effectiveTeam(bc);
-
-            // Assert
-            expect(team).toBeUndefined();
+            check(bc);
         });
     });
 
@@ -188,7 +197,7 @@ describe('Resolution Precedence', () => {
         });
 
         test('last value wins for duplicate metadata keys', async () => {
-            // Arrange - same key declared twice; Map.set overwrites so last value wins
+            // Arrange
             const { query } = await loadModelFromText(`
                 Metadata tier
                 Domain Sales {}
@@ -204,8 +213,7 @@ describe('Resolution Precedence', () => {
             const bc = query.bc('OrderContext') as BoundedContext;
             const metadata = metadataAsMap(bc);
 
-            // Assert - the metadataAsMap iterates the array and sets into a Map,
-            // so the last entry for a given key wins
+            // Assert
             expect(metadata.has('tier')).toBe(true);
             expect(metadata.get('tier')).toBe('high');
         });

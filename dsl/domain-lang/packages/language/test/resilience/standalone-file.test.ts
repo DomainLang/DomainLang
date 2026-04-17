@@ -17,7 +17,7 @@
 
 import { beforeAll, describe, test, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { expectValidDocument, s, setupTestSuite } from '../test-helpers.js';
+import { expectParsedDocument, s, setupTestSuite } from '../test-helpers.js';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs/promises';
@@ -41,7 +41,7 @@ describe('Standalone .dlang files (no model.yaml)', () => {
             }
         `);
         // Assert
-        expectValidDocument(doc);
+        expectParsedDocument(doc);
         const model = doc.parseResult.value;
         expect(model.children).toHaveLength(1);
         expect(model.children[0].name).toBe('Sales');
@@ -56,21 +56,21 @@ describe('Standalone .dlang files (no model.yaml)', () => {
             import "./other"
             Domain Sales { vision: "Sales" }
         `);
-        expectValidDocument(docLocal);
+        expectParsedDocument(docLocal);
 
         // Arrange, Act & Assert - External import
         const docExternal = await testServices.parse(s`
             import "owner/package"
             Domain Sales { vision: "Sales" }
         `);
-        expectValidDocument(docExternal);
+        expectParsedDocument(docExternal);
 
         // Arrange, Act & Assert - Path alias import
         const docAlias = await testServices.parse(s`
             import "@shared/types"
             Domain Sales { vision: "Sales" }
         `);
-        expectValidDocument(docAlias);
+        expectParsedDocument(docAlias);
     });
 
     // ==========================================
@@ -96,7 +96,7 @@ describe('Standalone .dlang files (no model.yaml)', () => {
             }
         `);
         // Assert
-        expectValidDocument(doc);
+        expectParsedDocument(doc);
         // Should have zero or only linking warnings (not parse errors)
         // Standalone files may have some warnings but parser should succeed
         expect(doc.parseResult.parserErrors).toHaveLength(0);

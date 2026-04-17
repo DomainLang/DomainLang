@@ -12,7 +12,7 @@
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { ImportStatement } from '../../src/generated/ast.js';
 import type { TestServices } from '../test-helpers.js';
-import { expectValidDocument, expectGrammarRuleRejectsInput, s, setupTestSuite } from '../test-helpers.js';
+import { expectParsedDocument, expectGrammarRuleRejectsInput, s, setupTestSuite } from '../test-helpers.js';
 
 let testServices: TestServices;
 
@@ -48,7 +48,7 @@ describe('Local File Imports', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
         expect(imports[0].uri).toBe(uri);
@@ -67,7 +67,7 @@ describe('Local File Imports', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
         expect(imports[0].uri).toBe('core');
@@ -92,7 +92,7 @@ describe('Manifest Dependency Imports', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
         expect(imports[0].uri).toBe('core');
@@ -119,7 +119,7 @@ describe('Multiple Imports', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const imports = getImports(document);
 
         expect(imports).toHaveLength(3);
@@ -149,7 +149,7 @@ describe('Import Edge Cases', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const imports = getImports(document);
         expect(imports).toHaveLength(1);
         expect(imports[0].uri).toBe('./my folder/types.dlang');

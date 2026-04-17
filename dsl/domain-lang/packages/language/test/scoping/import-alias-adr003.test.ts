@@ -28,19 +28,14 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
     let services: ReturnType<typeof createDomainLangServices>;
 
     beforeAll(async () => {
-        // Create temp workspace for multi-file tests
         tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dlang-adr003-'));
         services = createDomainLangServices(NodeFileSystem);
     });
 
     afterAll(async () => {
-        // Clean up temp directory
         await fs.rm(tempDir, { recursive: true, force: true });
     });
 
-    /**
-     * Helper to create a file and load it as a document
-     */
     async function createAndLoadDocument(filePath: string, content: string): Promise<LangiumDocument<Model>> {
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, content);
@@ -50,9 +45,6 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
         return doc as LangiumDocument<Model>;
     }
 
-    /**
-     * Helper to clear all documents between tests
-     */
     async function clearAllDocuments(): Promise<void> {
         const docs = services.shared.workspace.LangiumDocuments.all.toArray();
         for (const doc of docs) {
@@ -61,13 +53,34 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
     }
 
     describe('Import Alias Prefix Resolution', () => {
-        test('With alias: types ONLY visible via alias prefix', async () => {
+        test.each([
+            {
+                scenario: 'With alias: types ONLY visible via alias prefix',
+                importDecl: `import "./domains.dlang" as mydomains`,
+                referenceCode: `bc OrderContext for mydomains.Sales { description: "Uses alias prefix" }`,
+                shouldResolve: true,
+                expectedName: 'Sales',
+            },
+            {
+                scenario: 'With alias: direct reference WITHOUT alias should NOT resolve',
+                importDecl: `import "./domains.dlang" as mydomains`,
+                referenceCode: `bc OrderContext for Sales { description: "Should NOT resolve without alias" }`,
+                shouldResolve: false,
+                expectedName: undefined,
+            },
+            {
+                scenario: 'Without alias: types visible by their direct qualified names',
+                importDecl: `import "./domains.dlang"`,
+                referenceCode: `bc OrderContext for Sales { description: "Direct access without alias" }`,
+                shouldResolve: true,
+                expectedName: 'Sales',
+            },
+        ])('$scenario', async ({ importDecl, referenceCode, shouldResolve, expectedName }) => {
             // Arrange
             await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'with-alias');
+            const projectDir = path.join(tempDir, `alias-${Date.now()}`);
             await fs.mkdir(projectDir, { recursive: true });
 
-            // File A: defines a Domain
             const fileA = path.join(projectDir, 'domains.dlang');
             await createAndLoadDocument(fileA, `
                 Domain Sales {
@@ -76,83 +89,22 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             `);
 
             // Act
-            // File B: imports A with alias "mydomains"
             const fileB = path.join(projectDir, 'contexts.dlang');
             const docB = await createAndLoadDocument(fileB, `
-                import "./domains.dlang" as mydomains
+                ${importDecl}
                 
-                bc OrderContext for mydomains.Sales {
-                    description: "Uses alias prefix"
-                }
+                ${referenceCode}
             `);
 
             // Assert
             const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
             expect(bc.name).toBe('OrderContext');
-            expect(bc.domain?.ref?.name).toBe('Sales');
-        });
-
-        test('With alias: direct reference WITHOUT alias should NOT resolve', async () => {
-            // Arrange
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'alias-required');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            // File A: defines a Domain
-            const fileA = path.join(projectDir, 'domains.dlang');
-            await createAndLoadDocument(fileA, `
-                Domain Sales {
-                    vision: "Sales operations"
-                }
-            `);
-
-            // Act
-            // File B: imports A with alias, tries to use without alias
-            const fileB = path.join(projectDir, 'contexts.dlang');
-            const docB = await createAndLoadDocument(fileB, `
-                import "./domains.dlang" as mydomains
-                
-                bc OrderContext for Sales {
-                    description: "Should NOT resolve without alias"
-                }
-            `);
-
-            // Assert
-            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc.name).toBe('OrderContext');
-            expect(bc.domain?.ref).toBeUndefined();
-            expect(bc.domain?.error?.message).toContain('Sales');
-        });
-
-        test('Without alias: types visible by their direct qualified names', async () => {
-            // Arrange
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'no-alias');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            // File A: defines a Domain
-            const fileA = path.join(projectDir, 'domains.dlang');
-            await createAndLoadDocument(fileA, `
-                Domain Sales {
-                    vision: "Sales operations"
-                }
-            `);
-
-            // Act
-            // File B: imports A without alias
-            const fileB = path.join(projectDir, 'contexts.dlang');
-            const docB = await createAndLoadDocument(fileB, `
-                import "./domains.dlang"
-                
-                bc OrderContext for Sales {
-                    description: "Direct access without alias"
-                }
-            `);
-
-            // Assert
-            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc.name).toBe('OrderContext');
-            expect(bc.domain?.ref?.name).toBe('Sales');
+            if (shouldResolve) {
+                expect(bc.domain?.ref?.name).toBe(expectedName);
+            } else {
+                expect(bc.domain?.ref).toBeUndefined();
+                expect(bc.domain?.error?.message).toContain('Sales');
+            }
         });
 
         test('Multiple imports with different aliases work independently', async () => {
@@ -161,7 +113,6 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             const projectDir = path.join(tempDir, 'multi-alias');
             await fs.mkdir(projectDir, { recursive: true });
 
-            // File A: Sales domain
             const fileA = path.join(projectDir, 'sales.dlang');
             await createAndLoadDocument(fileA, `
                 Domain Sales {
@@ -169,7 +120,6 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
                 }
             `);
 
-            // File B: Shipping domain
             const fileB = path.join(projectDir, 'shipping.dlang');
             await createAndLoadDocument(fileB, `
                 Domain Shipping {
@@ -178,7 +128,6 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             `);
 
             // Act
-            // File C: imports both with different aliases
             const fileC = path.join(projectDir, 'main.dlang');
             const docC = await createAndLoadDocument(fileC, `
                 import "./sales.dlang" as sales
@@ -192,11 +141,40 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             const bcs = docC.parseResult.value.children.filter(isBoundedContext);
             expect(bcs).toHaveLength(2);
             
-            const orderContext = bcs.find(bc => bc.name === 'OrderContext');
-            expect(orderContext?.domain?.ref?.name).toBe('Sales');
+            const orderContext = bcs.find(bc => bc.name === 'OrderContext') as BoundedContext;
+            expect(orderContext.domain?.ref?.name).toBe('Sales');
             
-            const shipmentContext = bcs.find(bc => bc.name === 'ShipmentContext');
-            expect(shipmentContext?.domain?.ref?.name).toBe('Shipping');
+            const shipmentContext = bcs.find(bc => bc.name === 'ShipmentContext') as BoundedContext;
+            expect(shipmentContext.domain?.ref?.name).toBe('Shipping');
+        });
+
+        test('Alias prefix works with namespaced types', async () => {
+            // Arrange
+            await clearAllDocuments();
+            const projectDir = path.join(tempDir, 'alias-namespace');
+            await fs.mkdir(projectDir, { recursive: true });
+
+            const fileA = path.join(projectDir, 'types.dlang');
+            await createAndLoadDocument(fileA, `
+                Namespace myns {
+                    Domain Sales {
+                        vision: "Sales operations"
+                    }
+                }
+            `);
+
+            // Act
+            const fileB = path.join(projectDir, 'main.dlang');
+            const docB = await createAndLoadDocument(fileB, `
+                import "./types.dlang" as pkg
+                
+                bc OrderContext for pkg.myns.Sales {}
+            `);
+
+            // Assert
+            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
+            expect(bc.name).toBe('OrderContext');
+            expect(bc.domain?.ref?.name).toBe('Sales');
         });
     });
 
@@ -207,7 +185,6 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             const packageDir = path.join(tempDir, '.dlang', 'packages', 'test-owner', 'test-pkg', 'abc123');
             await fs.mkdir(packageDir, { recursive: true });
 
-            // Package internal file
             const internal = path.join(packageDir, 'internal.dlang');
             await createAndLoadDocument(internal, `
                 namespace std.strategic {
@@ -216,18 +193,15 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
                 }
             `);
 
-            // Package index (re-exports internal)
             const index = path.join(packageDir, 'index.dlang');
             await createAndLoadDocument(index, `
                 import "./internal.dlang"
             `);
 
-            // Package manifest
             const manifest = path.join(packageDir, 'model.yaml');
             await fs.writeFile(manifest, 'model:\n  name: test-owner/test-pkg\n');
 
             // Act
-            // Consumer project imports package
             const projectDir = path.join(tempDir, 'consumer');
             const consumer = path.join(projectDir, 'main.dlang');
             const docConsumer = await createAndLoadDocument(consumer, `
@@ -250,13 +224,9 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             const projectDir = path.join(tempDir, 'local-non-transitive');
             await fs.mkdir(projectDir, { recursive: true });
 
-            // File A: defines a Team
             const fileA = path.join(projectDir, 'teams.dlang');
-            await createAndLoadDocument(fileA, `
-                Team SalesTeam
-            `);
+            await createAndLoadDocument(fileA, `Team SalesTeam`);
 
-            // File B: imports A
             const fileB = path.join(projectDir, 'domains.dlang');
             await createAndLoadDocument(fileB, `
                 import "./teams.dlang"
@@ -267,7 +237,6 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             `);
 
             // Act
-            // File C: imports B (but NOT A)
             const fileC = path.join(projectDir, 'contexts.dlang');
             const docC = await createAndLoadDocument(fileC, `
                 import "./domains.dlang"
@@ -286,38 +255,6 @@ describe('ADR-003: Import Aliases and Package Scope', () => {
             const teamRef = bc.team?.[0];
             expect(teamRef?.ref).toBeUndefined();
             expect(teamRef?.error?.message).toContain('SalesTeam');
-        });
-    });
-
-    describe('Alias with Namespaces', () => {
-        test('Alias prefix works with namespaced types', async () => {
-            // Arrange
-            await clearAllDocuments();
-            const projectDir = path.join(tempDir, 'alias-namespace');
-            await fs.mkdir(projectDir, { recursive: true });
-
-            // File A: defines namespaced types
-            const fileA = path.join(projectDir, 'types.dlang');
-            await createAndLoadDocument(fileA, 
-`Namespace myns {
-    Domain Sales {
-        vision: "Sales operations"
-    }
-}`);
-
-            // Act
-            // File B: imports with alias
-            const fileB = path.join(projectDir, 'main.dlang');
-            const docB = await createAndLoadDocument(fileB, 
-`import "./types.dlang" as pkg
-
-bc OrderContext for pkg.myns.Sales {}`
-            );
-
-            // Assert
-            const bc = docB.parseResult.value.children.find(isBoundedContext) as BoundedContext;
-            expect(bc.name).toBe('OrderContext');
-            expect(bc.domain?.ref?.name).toBe('Sales');
         });
     });
 });

@@ -9,7 +9,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, getAllBoundedContexts, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, getAllBoundedContexts, s } from '../test-helpers.js';
 import { isContextMap } from '../../src/generated/ast.js';
 
 let testServices: TestServices;
@@ -43,7 +43,7 @@ describe('Scoping: Performance', () => {
         const elapsed = performance.now() - start;
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         // Generous upper bound to avoid flaky CI failures
         expect(elapsed).toBeLessThan(30000);
@@ -75,7 +75,7 @@ describe('Scoping: Performance', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const bcs = getAllBoundedContexts(document);
         expect(bcs).toHaveLength(50);
@@ -116,7 +116,7 @@ describe('Scoping: Performance', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const contextMap = document.parseResult.value.children.find(isContextMap);
         expect(contextMap?.name).toBe('BigMap');
@@ -153,7 +153,7 @@ describe('Scoping: Performance', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const bcs = getAllBoundedContexts(document);
         expect(bcs).toHaveLength(25);

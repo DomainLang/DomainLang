@@ -9,7 +9,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 import type { ContextMap } from '../../src/generated/ast.js';
 import { isContextMap } from '../../src/generated/ast.js';
 
@@ -49,7 +49,7 @@ describe('Scoping: Multi-Target References', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const contextMap = getFirstContextMap(document);
         expect(contextMap.relationships).toHaveLength(1);

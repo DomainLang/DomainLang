@@ -12,7 +12,7 @@
 
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
 import {
     isBoundedContext,
 } from '../../src/generated/ast.js';
@@ -54,7 +54,7 @@ describe('Metadata Block in BoundedContext', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
         expect(bc.description).toBe('Order management');
@@ -84,7 +84,7 @@ describe('Metadata Block in BoundedContext', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         const entries = bc.metadata;
 
@@ -117,7 +117,7 @@ describe('Metadata Value Formats', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
         expect(bc.metadata[0]?.value).toBe('github.com/company/payment-service');
@@ -158,7 +158,7 @@ describe('Metadata with Other Documentation Blocks', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
         expect(bc.description).toBe('Complex bounded context');
@@ -223,7 +223,7 @@ describe('Metadata Validation', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         const entries = bc.metadata;
 

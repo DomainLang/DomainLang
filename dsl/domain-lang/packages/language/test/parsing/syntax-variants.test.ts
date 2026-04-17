@@ -7,7 +7,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getFirstBoundedContext, getAllBoundedContexts, getFirstDomain, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, expectGrammarRuleRejectsInput, getFirstBoundedContext, getAllBoundedContexts, getFirstDomain, s } from '../test-helpers.js';
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 // Test file: Non-null assertions are safe as we verify structure exists before accessing
@@ -38,7 +38,7 @@ describe('Domain Keyword Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const domain = getFirstDomain(document);
         expect(domain.name).toBe('Sales');
         expect(domain.vision).toBe('Sales vision');
@@ -64,7 +64,7 @@ describe('BoundedContext Keyword Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         expect(getFirstBoundedContext(document).name).toBe('OrderContext');
     });
 });
@@ -94,7 +94,7 @@ describe('ContextMap Keyword Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const contextMaps = document.parseResult.value.children.filter(c => c.$type === 'ContextMap');
         expect(contextMaps).toHaveLength(1);
         expect(contextMaps[0].name).toBe('SalesMap');
@@ -125,7 +125,7 @@ describe('DomainMap Keyword Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const domainMaps = document.parseResult.value.children.filter(c => c.$type === 'DomainMap');
         expect(domainMaps).toHaveLength(1);
         expect(domainMaps[0].name).toBe('BusinessMap');
@@ -154,7 +154,7 @@ describe('Namespace Keyword Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const namespaces = document.parseResult.value.children.filter(c => c.$type === 'NamespaceDeclaration');
         expect(namespaces).toHaveLength(1);
         expect(namespaces[0].name).toBe('sales');
@@ -179,7 +179,7 @@ describe('bc Inline Assignment Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.classification?.[0]?.ref?.name).toBe('Core');
     });
@@ -195,7 +195,7 @@ describe('bc Inline Assignment Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.team?.[0]?.ref?.name).toBe('SalesTeam');
     });
@@ -219,7 +219,7 @@ describe('bc Documentation Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.team).toHaveLength(1);
         expect(bc.team[0]?.ref?.name).toBe('SalesTeam');
@@ -238,7 +238,7 @@ describe('bc Documentation Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.classification).toHaveLength(1);
         expect(bc.classification[0]?.ref?.name).toBe('Core');
@@ -257,7 +257,7 @@ describe('bc Documentation Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.businessModel?.ref?.name).toBe('SaaS');
     });
@@ -275,7 +275,7 @@ describe('bc Documentation Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.evolution?.ref?.name).toBe('Mature');
     });
@@ -294,7 +294,7 @@ describe('bc Documentation Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.archetype?.ref?.name).toBe('Gateway');
     });
@@ -323,7 +323,7 @@ describe('Relationships Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bcs = getAllBoundedContexts(document);
         const inventoryBC = bcs.find(bc => bc.name === 'InventoryContext')!;
         expect(inventoryBC.relationships).toHaveLength(1);
@@ -353,7 +353,7 @@ describe('Decisions Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.decisions).toHaveLength(1);
         expect(bc.decisions[0].name).toBe('EventSourcing');
@@ -376,7 +376,7 @@ describe('Decisions Block Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.decisions).toHaveLength(2);
         expect(bc.decisions[0].name).toBe('RefundPolicy');
@@ -410,7 +410,7 @@ describe('Decision Type Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.decisions).toHaveLength(1);
         expect(bc.decisions[0].$type).toBe(expectedType);
@@ -438,7 +438,7 @@ describe('Assignment Operator Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const domain = getFirstDomain(document);
         expect(domain.vision).toBe('Sales vision');
     });

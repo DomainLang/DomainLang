@@ -7,7 +7,7 @@
 
 import { beforeAll, describe, expect, test } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, expectGrammarRuleRejectsInput, getDiagnosticsBySeverity, s } from '../test-helpers.js';
 import { isBoundedContext } from '../../src/generated/ast.js';
 
 describe('Decision Classification', () => {
@@ -36,7 +36,7 @@ describe('Decision Classification', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
         expect(bc.decisions).toHaveLength(2);
@@ -67,7 +67,7 @@ describe('Decision Classification', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
 
         expect(bc.decisions).toHaveLength(1);
@@ -93,7 +93,7 @@ describe('Decision Classification', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = document.parseResult.value.children.find(isBoundedContext)!;
         expect(bc.decisions).toHaveLength(1);
         expect(bc.decisions[0].name).toBe('UsePostgres');

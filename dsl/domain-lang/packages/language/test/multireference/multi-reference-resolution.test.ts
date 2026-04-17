@@ -19,7 +19,7 @@
 
 import { describe, test, expect, beforeAll } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 import type { BoundedContext, ContextMap, DomainMap } from '../../src/generated/ast.js';
 import { isBoundedContext, isContextMap, isDomainMap } from '../../src/generated/ast.js';
 
@@ -43,7 +43,7 @@ describe('Multi-Target References', () => {
 
         // Act
         const document = await testServices.parse(input);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const model = document.parseResult.value;
         const bc = model.children.find(c => isBoundedContext(c) && c.name === 'CustomerExperience') as BoundedContext;
 
@@ -71,7 +71,7 @@ describe('Multi-Target References', () => {
 
         // Act
         const document = await testServices.parse(input);
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const model = document.parseResult.value;
         const contextMap = model.children.find(c => isContextMap(c) && c.name === 'AllOrders') as ContextMap;
@@ -105,7 +105,7 @@ describe('Multi-Target References', () => {
 
         // Act
         const document = await testServices.parse(input);
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const model = document.parseResult.value;
         const domainMap = model.children.find(c => isDomainMap(c) && c.name === 'CorporatePortfolio') as DomainMap;
@@ -140,7 +140,7 @@ describe('Multi-Target References', () => {
 
         // Act
         const document = await testServices.parse(input);
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const model = document.parseResult.value;
         const contextMap = model.children.find(c => isContextMap(c) && c.name === 'CoreSystems') as ContextMap;
@@ -254,7 +254,7 @@ describe('Multi-Target References', () => {
         `;
 
         const document = await testServices.parse(input);
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const model = document.parseResult.value;
         const contextMap = model.children.find(c => isContextMap(c) && c.name === 'Corporate') as ContextMap;

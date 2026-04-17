@@ -16,7 +16,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, expectGrammarRuleRejectsInput, s } from '../test-helpers.js';
 import type { BoundedContext } from '../../src/generated/ast.js';
 import { isBoundedContext, isDomain, isNamespaceDeclaration } from '../../src/generated/ast.js';
 
@@ -43,7 +43,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
             expect(model.imports[0].uri).toBe('./types.dlang');
@@ -72,7 +72,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const model = document.parseResult.value;
 
             // 8 top-level children: Domain, BC, Team, Classification, ContextMap, DomainMap, 2 Namespaces
@@ -101,7 +101,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const domains = document.parseResult.value.children.filter(isDomain);
 
             expect(domains).toHaveLength(2);
@@ -123,7 +123,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const domains = document.parseResult.value.children.filter(isDomain);
             const child = domains.find(d => d.name === 'Child')!;
             expect(child.parent?.ref?.name).toBe('Parent');
@@ -141,7 +141,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const domains = document.parseResult.value.children.filter(isDomain);
             expect(domains).toHaveLength(3);
             expect(domains[0].name).toBe('Enterprise');
@@ -167,7 +167,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const domain = document.parseResult.value.children.find(isDomain)!;
 
             expect(domain.name).toBe('Test');
@@ -186,7 +186,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const bc = document.parseResult.value.children.find(isBoundedContext)!;
             expect(bc.name).toBe('TestBC');
             expect(bc.domain?.ref?.name).toBe('Test');
@@ -233,7 +233,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const bc = document.parseResult.value.children.find(isBoundedContext) as BoundedContext;
 
             expect(bc.description).toBe('Test context');
@@ -277,7 +277,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const ns = document.parseResult.value.children.find(isNamespaceDeclaration)!;
 
             expect(ns.name).toBe('com.example.sales');
@@ -303,7 +303,7 @@ describe('Grammar Completeness Tests', () => {
             const document = await testServices.parse(input);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
             const bc = document.parseResult.value.children.find(isBoundedContext)!;
             const rootNamespace = document.parseResult.value.children.find(isNamespaceDeclaration)!;
             const targetDomain = rootNamespace.children.find(isDomain)!;

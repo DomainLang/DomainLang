@@ -9,7 +9,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 import type { ContextMap } from '../../src/generated/ast.js';
 import { isContextMap, isDomain } from '../../src/generated/ast.js';
 
@@ -44,7 +44,7 @@ describe('Scoping: References', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         // Verify domain hierarchy
         const salesDomain = document.parseResult.value.children
@@ -120,7 +120,7 @@ describe('Scoping: References', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const domain = document.parseResult.value.children.find(isDomain);
         expect(domain?.name).toBe('Sales');
@@ -156,7 +156,7 @@ describe('Scoping: References', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const contextMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
         expect(contextMap.relationships).toHaveLength(1);
@@ -182,7 +182,7 @@ describe('Scoping: References', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const contextMap = document.parseResult.value.children.find(isContextMap) as ContextMap;
         expect(contextMap.relationships).toHaveLength(2);

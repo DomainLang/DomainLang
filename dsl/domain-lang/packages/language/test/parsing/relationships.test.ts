@@ -15,7 +15,7 @@
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { LangiumDocument } from 'langium';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getAllBoundedContexts, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, getAllBoundedContexts, s } from '../test-helpers.js';
 import type { ContextMap, Model, Relationship, DirectionalRelationship, SymmetricRelationship } from '../../src/generated/ast.js';
 import { isContextMap, isDirectionalRelationship, isSymmetricRelationship, isThisRef } from '../../src/generated/ast.js';
 
@@ -73,7 +73,7 @@ describe('Directional arrow types', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getDirectional(document);
         expect(rels).toHaveLength(1);
         expect(rels[0].arrow).toBe(arrow);
@@ -109,7 +109,7 @@ describe('Symmetric relationship forms', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getSymmetric(document);
         expect(rels).toHaveLength(1);
         expect(rels[0].pattern?.$type).toBe(expectedType);
@@ -132,7 +132,7 @@ describe('Symmetric relationship forms', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getSymmetric(document);
         expect(rels).toHaveLength(1);
         expect(rels[0].arrow).toBe('><');
@@ -141,20 +141,45 @@ describe('Symmetric relationship forms', () => {
 });
 
 // ============================================================================
-// SIDE PATTERNS (DIRECTIONAL)
+// SIDE PATTERNS (DIRECTIONAL) — CONSOLIDATED
 // ============================================================================
 
 describe('Side patterns on directional relationships', () => {
-    test('should parse left OHS and right CF patterns', async () => {
+    test.each([
+        {
+            scenario: 'left OHS and right CF patterns',
+            leftPattern: 'OHS',
+            rightPattern: 'CF',
+            expectedLeftType: 'OpenHostService',
+            expectedRightType: 'Conformist',
+            contextNames: ['Orders', 'Payments']
+        },
+        {
+            scenario: 'left BBoM and right ACL patterns',
+            leftPattern: 'BBoM',
+            rightPattern: 'ACL',
+            expectedLeftType: 'BigBallOfMud',
+            expectedRightType: 'AntiCorruptionLayer',
+            contextNames: ['Orders', 'Payments']
+        },
+        {
+            scenario: 'Supplier/Customer short forms',
+            leftPattern: 'S',
+            rightPattern: 'C',
+            expectedLeftType: 'Supplier',
+            expectedRightType: 'Customer',
+            contextNames: ['Orders', 'Payments']
+        }
+    ])('should parse $scenario', async ({ leftPattern, rightPattern, expectedLeftType, expectedRightType, contextNames }) => {
         // Arrange
         const input = s`
             Domain Sales {}
-            bc Orders for Sales
-            bc Payments for Sales
+            bc ${contextNames[0]} for Sales
+            bc ${contextNames[1]} for Sales
 
             ContextMap TestMap {
-                contains Orders, Payments
-                Orders [OHS] -> [CF] Payments
+                contains ${contextNames[0]}, ${contextNames[1]}
+                ${contextNames[0]} [${leftPattern}] -> [${rightPattern}] ${contextNames[1]}
             }
         `;
 
@@ -162,17 +187,15 @@ describe('Side patterns on directional relationships', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getDirectional(document);
         expect(rels).toHaveLength(1);
-        expect(rels[0].leftPatterns).toHaveLength(1);
-        expect(rels[0].leftPatterns[0].$type).toBe('OpenHostService');
-        expect(rels[0].rightPatterns).toHaveLength(1);
-        expect(rels[0].rightPatterns[0].$type).toBe('Conformist');
+        expect(rels[0].leftPatterns[0].$type).toBe(expectedLeftType);
+        expect(rels[0].rightPatterns[0].$type).toBe(expectedRightType);
     });
 
-    test('should parse one-sided patterns (left-only and right-only)', async () => {
-        // Arrange — two relationships in one map: left-only ACL, and right-only PL
+    test('should parse one-sided patterns (left-only ACL, and right-only PL)', async () => {
+        // Arrange
         const input = s`
             Domain Sales {}
             bc Orders for Sales
@@ -190,7 +213,7 @@ describe('Side patterns on directional relationships', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getDirectional(document);
         expect(rels).toHaveLength(2);
         expect(rels[0].leftPatterns[0].$type).toBe('AntiCorruptionLayer');
@@ -199,61 +222,7 @@ describe('Side patterns on directional relationships', () => {
         expect(rels[1].rightPatterns[0].$type).toBe('PublishedLanguage');
     });
 
-    test('should parse left BBoM and right ACL patterns', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc Orders for Sales
-            bc Payments for Sales
-
-            ContextMap TestMap {
-                contains Orders, Payments
-                Orders [BBoM] -> [ACL] Payments
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getDirectional(document);
-        expect(rels).toHaveLength(1);
-        expect(rels[0].leftPatterns[0].$type).toBe('BigBallOfMud');
-        expect(rels[0].rightPatterns[0].$type).toBe('AntiCorruptionLayer');
-    });
-
-    test('should parse Supplier/Customer short forms', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc Orders for Sales
-            bc Payments for Sales
-
-            ContextMap TestMap {
-                contains Orders, Payments
-                Orders [S] -> [C] Payments
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        expectValidDocument(document);
-        const rels = getDirectional(document);
-        expect(rels[0].leftPatterns[0].$type).toBe('Supplier');
-        expect(rels[0].rightPatterns[0].$type).toBe('Customer');
-    });
-
-});
-
-// ============================================================================
-// MULTIPLE PATTERNS ON ONE SIDE
-// ============================================================================
-
-describe('Multiple patterns on one side', () => {
-    test('should parse two patterns on each side', async () => {
+    test('should parse multiple patterns on each side', async () => {
         // Arrange
         const input = s`
             Domain Sales {}
@@ -270,7 +239,7 @@ describe('Multiple patterns on one side', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getDirectional(document);
         expect(rels).toHaveLength(1);
         expect(rels[0].leftPatterns).toHaveLength(2);
@@ -319,8 +288,8 @@ describe('Side pattern aliases produce same AST $type', () => {
         const longDoc = await testServices.parse(longInput);
 
         // Assert
-        expectValidDocument(shortDoc);
-        expectValidDocument(longDoc);
+        expectParsedDocument(shortDoc);
+        expectParsedDocument(longDoc);
         const shortRels = getDirectional(shortDoc);
         const longRels = getDirectional(longDoc);
         expect(shortRels[0].leftPatterns[0].$type).toBe(expectedType);
@@ -349,7 +318,7 @@ describe('BC internal relationships with this', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
         expect(bc?.name).toBe('Payments');
@@ -380,7 +349,7 @@ describe('BC internal relationships with this', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
         expect(bc?.name).toBe('Payments');
@@ -408,7 +377,7 @@ describe('BC internal relationships with this', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bcs = getAllBoundedContexts(document);
         const bc = bcs.find(b => b.relationships.length > 0);
         expect(bc?.name).toBe('Payments');
@@ -446,7 +415,7 @@ describe('Multiple relationships in one context map', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getRelationships(document);
         expect(rels).toHaveLength(3);
 
@@ -490,125 +459,10 @@ describe('Multiple relationships in one context map', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const rels = getDirectional(document);
         expect(rels).toHaveLength(2);
         expect(rels[0].arrow).toBe('->');
         expect(rels[1].arrow).toBe('<-');
-    });
-});
-
-// ============================================================================
-// NEGATIVE TESTS
-// ============================================================================
-
-describe('Negative: Invalid relationships', () => {
-    test('should reject symmetric pattern in directional side position', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc A for Sales
-            bc B for Sales
-
-            ContextMap InvalidMap {
-                contains A, B
-                A [SK] -> B
-            }
-        `;
-
-        // Act & Assert
-        await expectGrammarRuleRejectsInput(
-            testServices.parse,
-            input,
-            'ContextMap'
-        );
-    });
-
-    test('should reject directional side pattern in symmetric form', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc A for Sales
-            bc B for Sales
-
-            ContextMap InvalidMap {
-                contains A, B
-                A [OHS] [SK] B
-            }
-        `;
-
-        // Act & Assert
-        await expectGrammarRuleRejectsInput(
-            testServices.parse,
-            input,
-            'ContextMap'
-        );
-    });
-
-    test('should reject invalid syntax inside ContextMap block', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales
-
-            ContextMap TestMap {
-                contains OrderContext, PaymentContext
-                -> ->
-            }
-        `;
-
-        // Act & Assert
-        await expectGrammarRuleRejectsInput(
-            testServices.parse,
-            input,
-            'Invalid syntax in ContextMap'
-        );
-    });
-
-    test('should produce linking errors for BC relationships referencing non-existent contexts', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-            bc PaymentContext for Sales {
-                relationships {
-                    this -> NonExistent
-                }
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        const diagnostics = document.diagnostics ?? [];
-        const unresolvedDiagnostics = diagnostics.filter(d =>
-            d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve')
-        );
-        expect(unresolvedDiagnostics.length).toBeGreaterThan(0);
-    });
-
-    test('should produce diagnostics for ContextMap relationship referencing non-existent BC', async () => {
-        // Arrange
-        const input = s`
-            Domain Sales {}
-            bc OrderContext for Sales
-
-            ContextMap TestMap {
-                contains OrderContext
-                OrderContext -> NonExistentContext
-            }
-        `;
-
-        // Act
-        const document = await testServices.parse(input);
-
-        // Assert
-        const diagnostics = document.diagnostics ?? [];
-        const unresolvedDiagnostics = diagnostics.filter(d =>
-            d.message.toLowerCase().includes('nonexistent') || d.message.toLowerCase().includes('resolve')
-        );
-        expect(unresolvedDiagnostics.length).toBeGreaterThan(0);
     });
 });

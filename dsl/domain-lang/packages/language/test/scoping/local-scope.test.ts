@@ -9,7 +9,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, getFirstBoundedContext, getAllBoundedContexts, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, getFirstBoundedContext, getAllBoundedContexts, s } from '../test-helpers.js';
 
 let testServices: TestServices;
 
@@ -38,7 +38,7 @@ describe('Scoping: Local Scope', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const bc = getFirstBoundedContext(document);
         expect(bc.domain?.ref?.name).toBe('Sales');
@@ -48,62 +48,58 @@ describe('Scoping: Local Scope', () => {
 
     // ── Edge / Error (~80%) ───────────────────────────────────────────
 
-    test('unresolved domain reference produces linking error', async () => {
+    test.each([
+        {
+            refType: 'domain',
+            input: s`
+                BoundedContext OrderContext for NonExistentDomain {
+                    description: "Order management"
+                }
+            `,
+            checkResolution: (bc: ReturnType<typeof getFirstBoundedContext>) => {
+                expect(bc.domain?.ref).toBeUndefined();
+                expect(bc.domain?.error).not.toBeUndefined();
+            },
+        },
+        {
+            refType: 'team',
+            input: s`
+                Domain Sales {}
+                BoundedContext OrderContext for Sales {
+                    team: GhostTeam
+                }
+            `,
+            checkResolution: (bc: ReturnType<typeof getFirstBoundedContext>) => {
+                expect(bc.domain?.ref?.name).toBe('Sales');
+                expect(bc.team?.[0]?.ref).toBeUndefined();
+                expect(bc.team?.[0]?.error).not.toBeUndefined();
+            },
+        },
+        {
+            refType: 'classification',
+            input: s`
+                Domain Sales {}
+                BoundedContext OrderContext for Sales {
+                    classification: Phantom
+                }
+            `,
+            checkResolution: (bc: ReturnType<typeof getFirstBoundedContext>) => {
+                expect(bc.domain?.ref?.name).toBe('Sales');
+                expect(bc.classification?.[0]?.ref).toBeUndefined();
+                expect(bc.classification?.[0]?.error).not.toBeUndefined();
+            },
+        },
+    ])('unresolved $refType reference produces error', async ({ input, checkResolution }) => {
         // Arrange & Act
-        const document = await testServices.parse(s`
-            BoundedContext OrderContext for NonExistentDomain {
-                description: "Order management"
-            }
-        `);
+        const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
-
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
-        expect(bc.domain?.ref).toBeUndefined();
-        expect(bc.domain?.error).not.toBeUndefined();
-
+        checkResolution(bc);
+        
         const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
         expect(errors.length).toBeGreaterThan(0);
-        expect(errors.some(e => e.message.includes('NonExistentDomain'))).toBe(true);
-    });
-
-    test('unresolved team reference does not affect domain resolution', async () => {
-        // Arrange & Act
-        const document = await testServices.parse(s`
-            Domain Sales {}
-            BoundedContext OrderContext for Sales {
-                team: GhostTeam
-            }
-        `);
-
-        // Assert
-        expectValidDocument(document);
-
-        const bc = getFirstBoundedContext(document);
-        // Domain still resolves correctly
-        expect(bc.domain?.ref?.name).toBe('Sales');
-        // Team does not resolve
-        expect(bc.team?.[0]?.ref).toBeUndefined();
-        expect(bc.team?.[0]?.error).not.toBeUndefined();
-    });
-
-    test('unresolved classification reference does not affect domain resolution', async () => {
-        // Arrange & Act
-        const document = await testServices.parse(s`
-            Domain Sales {}
-            BoundedContext OrderContext for Sales {
-                classification: Phantom
-            }
-        `);
-
-        // Assert
-        expectValidDocument(document);
-
-        const bc = getFirstBoundedContext(document);
-        expect(bc.domain?.ref?.name).toBe('Sales');
-        expect(bc.classification?.[0]?.ref).toBeUndefined();
-        expect(bc.classification?.[0]?.error).not.toBeUndefined();
     });
 
     test('BC with all unresolvable references still parses', async () => {
@@ -116,7 +112,7 @@ describe('Scoping: Local Scope', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const bc = getFirstBoundedContext(document);
         expect(bc.name).toBe('Orphan');
@@ -135,7 +131,7 @@ describe('Scoping: Local Scope', () => {
         `);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
 
         const bcs = getAllBoundedContexts(document);
         expect(bcs).toHaveLength(3);

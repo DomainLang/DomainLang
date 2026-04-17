@@ -7,7 +7,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, expectGrammarRuleRejectsInput, getFirstBoundedContext, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, expectGrammarRuleRejectsInput, getFirstBoundedContext, s } from '../test-helpers.js';
 
 let testServices: TestServices;
 
@@ -41,7 +41,7 @@ describe('Term and Block Keyword Variants', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.terminology).toHaveLength(1);
         expect(bc.terminology[0].name).toBe('Order');
@@ -69,7 +69,7 @@ describe('Term Synonyms', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         const term = bc.terminology[0];
 
@@ -93,7 +93,7 @@ describe('Term Synonyms', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
         expect(term.synonyms).toEqual(['Client', 'Purchaser', 'Patron']);
@@ -114,7 +114,7 @@ describe('Term Synonyms', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
         expect(term.synonyms).toEqual(['Item', 'Good', 'Merchandise']);
@@ -141,7 +141,7 @@ describe('Term Examples', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
         expect(term.examples).toEqual(['Laptop', 'Mouse']);
@@ -168,7 +168,7 @@ describe('Complex Term Definitions', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
 
         expect(term.name).toBe('Buyer');
@@ -194,7 +194,7 @@ describe('Complex Term Definitions', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const terms = getFirstBoundedContext(document).terminology;
 
         expect(terms).toHaveLength(3);
@@ -234,7 +234,7 @@ describe('Term Assignment Operator Variants', () => {
 
         const document = await testServices.parse(input);
 
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.terminology).toHaveLength(1);
         expect(bc.terminology[0].name).toBe('Order');
@@ -260,7 +260,7 @@ describe('Terminology Edge Cases', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const bc = getFirstBoundedContext(document);
         expect(bc.terminology).toHaveLength(0);
     });
@@ -283,7 +283,7 @@ describe('Terminology Edge Cases', () => {
         const document = await testServices.parse(input);
 
         // Assert
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const term = getFirstBoundedContext(document).terminology[0];
         expect(term.name).toBe(name);
         expect(term.meaning).toBe(meaning);

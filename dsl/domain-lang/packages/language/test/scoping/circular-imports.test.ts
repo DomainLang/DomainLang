@@ -7,7 +7,7 @@
 
 import { describe, test, beforeAll, expect } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 import { isDomain } from '../../src/generated/ast.js';
 
 let testServices: TestServices;
@@ -36,7 +36,7 @@ describe('Circular Reference Handling', () => {
         },
     ])('does not crash on $label', async ({ input, expectedPairs }) => {
         const document = await testServices.parse(input);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const domains = document.parseResult.value.children.filter(isDomain);
         expect(domains).toHaveLength(expectedPairs.length);
 
@@ -56,7 +56,7 @@ describe('Circular Reference Handling', () => {
         const document = await testServices.parse(input);
 
         // Assert - should parse without crashing
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const domains = document.parseResult.value.children.filter(isDomain);
         expect(domains).toHaveLength(1);
         expect(domains[0].name).toBe('Self');

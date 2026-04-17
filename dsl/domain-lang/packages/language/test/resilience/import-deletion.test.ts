@@ -13,7 +13,7 @@
  */
 import { describe, test, expect, beforeAll } from 'vitest';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, expectValidDocument } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument } from '../test-helpers.js';
 
 describe('Import Resilience', () => {
     let testServices: TestServices;
@@ -39,7 +39,7 @@ describe('Import Resilience', () => {
             `);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(2);
@@ -60,7 +60,7 @@ describe('Import Resilience', () => {
 
             // Assert
             // Empty URI is syntactically valid (a STRING token), even if semantically meaningless
-            expectValidDocument(document);
+            expectParsedDocument(document);
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
@@ -76,7 +76,7 @@ describe('Import Resilience', () => {
             `);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
@@ -96,7 +96,7 @@ describe('Import Resilience', () => {
             `);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
@@ -113,7 +113,7 @@ describe('Import Resilience', () => {
             `);
 
             // Assert
-            expectValidDocument(document);
+            expectParsedDocument(document);
 
             const model = document.parseResult.value;
             expect(model.imports).toHaveLength(1);
