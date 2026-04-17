@@ -127,4 +127,29 @@ describe('DomainLangCodeLensProvider', () => {
         expect(lenses).toHaveLength(1);
         expect(lenses?.[0].command?.title).toBe('Open diagram');
     });
+
+    test('creates a lens for ContextMaps inside namespace blocks', async () => {
+        // Arrange
+        const document = await testServices.parse(
+            s`
+                namespace acme.sales {
+                    Domain Sales { vision: "v" }
+                    bc Orders for Sales {}
+                    ContextMap SalesSystem {
+                        contains Orders
+                    }
+                }
+            `
+        );
+
+        // Act
+        const lenses = await provider.provideCodeLens(document, {
+            textDocument: { uri: document.uri.toString() },
+        });
+
+        // Assert \u2014 namespaced ContextMaps must still be discovered (regression guard for nested traversal)
+        expect(lenses).toHaveLength(1);
+        expect(lenses?.[0].command?.title).toBe('Open diagram');
+        expect(lenses?.[0].command?.command).toBe('domainlang.diagram.open');
+    });
 });

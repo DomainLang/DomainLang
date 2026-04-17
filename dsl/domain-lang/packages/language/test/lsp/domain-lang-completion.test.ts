@@ -81,22 +81,25 @@ describe('DomainLangCompletionProvider', () => {
     // ==========================================
     // SMOKE: BC completions differ from top-level
     // ==========================================
-    test('BoundedContext body completions differ from top-level completions', async () => {
+    test('BoundedContext body offers BC-body snippets, not top-level declarations', async () => {
         // Arrange & Act
-        const topLevel = await completionsAt(s`█`);
         const bcBody = await completionsAt(s`
             Domain Sales { vision: "Sales" }
             BoundedContext Test for Sales {
                 █
             }
         `);
+        const labels = labelsOf(bcBody);
 
-        // Assert — BC body should provide different completions than top level
-        const topLabels = new Set(labelsOf(topLevel));
-        const bcLabels = new Set(labelsOf(bcBody));
-        const bcOnly = [...bcLabels].filter(l => !topLabels.has(l));
-        const topOnly = [...topLabels].filter(l => !bcLabels.has(l));
-        expect(bcOnly.length + topOnly.length).toBeGreaterThan(0);
+        // Assert — BC body must offer real BC snippets (catches provider returning [] or wrong scope)
+        expect(labels).toContain('⚡ description');
+        expect(labels).toContain('⚡ team');
+        expect(labels).toContain('⚡ classification');
+        expect(labels).toContain('⚡ relationships');
+        expect(labels).toContain('⚡ terminology');
+        // Assert — BC body must NOT offer top-level declaration snippets
+        expect(labels).not.toContain('⚡ Domain (simple)');
+        expect(labels).not.toContain('⚡ BoundedContext (simple)');
     });
 
     // ==========================================
@@ -131,6 +134,8 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
+        // Assert — baseline: BC-body completions are being produced (guards against empty-result false pass)
+        expect(labels).toContain('⚡ team');
         // Assert — no top-level snippets inside a BC body
         expect(labels).not.toContain('⚡ Domain (simple)');
         expect(labels).not.toContain('⚡ Domain (detailed)');
@@ -153,7 +158,9 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
-        // Assert
+        // Assert — baseline: Domain-body completions are being produced (guards against empty-result false pass)
+        expect(labels).toContain('⚡ description');
+        // Assert — no top-level snippets inside a Domain body
         expect(labels).not.toContain('⚡ Domain (simple)');
         expect(labels).not.toContain('⚡ BoundedContext (simple)');
         expect(labels).not.toContain('⚡ Team');
@@ -175,6 +182,8 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
+        // Assert — baseline: other BC-body completions still offered (so empty result cannot silently pass)
+        expect(labels).toContain('⚡ classification');
         // Assert — description and team already present, should not be suggested again
         expect(labels).not.toContain('⚡ description');
         expect(labels).not.toContain('⚡ team');
@@ -194,6 +203,8 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
+        // Assert — baseline: other Domain-body completions still offered (so empty result cannot silently pass)
+        expect(labels).toContain('⚡ type');
         // Assert
         expect(labels).not.toContain('⚡ vision');
         expect(labels).not.toContain('⚡ description');
@@ -213,7 +224,10 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
-        // Assert
+        // Assert — baseline: non-suppressed BC-body completions still offered
+        expect(labels).toContain('⚡ description');
+        expect(labels).toContain('⚡ classification');
+        // Assert — team suppressed because header already supplies it
         expect(labels).not.toContain('⚡ team');
     });
 
@@ -231,7 +245,10 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
-        // Assert
+        // Assert — baseline: non-suppressed BC-body completions still offered
+        expect(labels).toContain('⚡ description');
+        expect(labels).toContain('⚡ team');
+        // Assert — classification suppressed because header already supplies it
         expect(labels).not.toContain('⚡ classification');
     });
 
@@ -247,6 +264,9 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
+        // Assert — baseline: Domain-specific snippets are present (guards against empty result)
+        expect(labels).toContain('⚡ vision');
+        expect(labels).toContain('⚡ description');
         // Assert — Domain body should not offer BC-only blocks
         expect(labels).not.toContain('⚡ team');
         expect(labels).not.toContain('⚡ terminology');
@@ -266,6 +286,9 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
+        // Assert — baseline: BC-specific snippets are present (guards against empty result)
+        expect(labels).toContain('⚡ team');
+        expect(labels).toContain('⚡ terminology');
         // Assert — BC body should not offer Domain-only blocks
         expect(labels).not.toContain('⚡ vision');
     });
@@ -285,6 +308,9 @@ describe('DomainLangCompletionProvider', () => {
         `);
         const labels = labelsOf(items);
 
+        // Assert — relationship snippets are actually present (previously only exclusions were checked)
+        expect(labels).toContain('relationship (simple)');
+        expect(labels).toContain('relationship (with patterns)');
         // Assert — ContextMap should not offer Domain-specific blocks
         expect(labels).not.toContain('⚡ vision');
         expect(labels).not.toContain('⚡ description');
@@ -339,5 +365,26 @@ describe('DomainLangCompletionProvider', () => {
             expect(labels).toContain('./');
             expect(labels).toContain('../');
         });
+    });
+
+    // ==========================================
+    // EDGE: Namespace body completions
+    // ==========================================
+    test('Namespace body offers structural declarations, not body-level blocks', async () => {
+        // Arrange & Act
+        const items = await completionsAt(s`
+            Namespace acme {
+                █
+            }
+        `);
+        const labels = labelsOf(items);
+
+        // Assert — baseline: namespace body must offer structural declarations (guards against empty result)
+        expect(labels.some(l => l.includes('Domain'))).toBe(true);
+        expect(labels.some(l => l.includes('BoundedContext'))).toBe(true);
+        // Assert — Namespace body should not include BC/Domain body blocks
+        expect(labels).not.toContain('⚡ description');
+        expect(labels).not.toContain('⚡ team');
+        expect(labels).not.toContain('⚡ vision');
     });
 });

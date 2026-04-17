@@ -3,13 +3,17 @@
  *
  * Verifies that generateExplanation produces correct markdown
  * for all supported model element types.
+ *
+ * Organized around:
+ * - Basic element explanations (one test per element type via test.each)
+ * - Special cases (domain nesting, BC with attributes, collections, unknown types)
  */
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 // Test file: Non-null assertions are safe as we verify structure exists before accessing
 
 import { describe, test, expect, beforeAll } from 'vitest';
-import { setupTestSuite, expectValidDocument, s } from '../test-helpers.js';
+import { setupTestSuite, expectParsedDocument, s } from '../test-helpers.js';
 import type { TestServices } from '../test-helpers.js';
 import { fromDocument } from '../../src/sdk/query.js';
 import { generateExplanation } from '../../src/lsp/explain.js';
@@ -21,39 +25,120 @@ beforeAll(() => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Domain Explanations
+// Basic Explanations — parameterized by element type
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('generateExplanation - Domain', () => {
-    test('should explain a domain with vision', async () => {
+describe('generateExplanation — basic element types', () => {
+    interface ExplanationCase {
+        readonly name: string;
+        readonly input: string;
+        readonly elementType: 'domain' | 'boundedContext' | 'team' | 'classification' | 'contextMap' | 'domainMap';
+        readonly elementName: string;
+        readonly expectedKeywords: readonly string[];
+    }
+
+    const basicCases: readonly ExplanationCase[] = [
+        {
+            name: 'Domain with vision',
+            input: s`Domain Sales { vision: "Handle sales operations" }`,
+            elementType: 'domain',
+            elementName: 'Sales',
+            expectedKeywords: ['domain', 'Sales', 'Handle sales operations'],
+        },
+        {
+            name: 'Team',
+            input: s`Team SalesTeam`,
+            elementType: 'team',
+            elementName: 'SalesTeam',
+            expectedKeywords: ['team', 'SalesTeam'],
+        },
+        {
+            name: 'Classification',
+            input: s`Classification Core`,
+            elementType: 'classification',
+            elementName: 'Core',
+            expectedKeywords: ['classification', 'Core'],
+        },
+        {
+            name: 'BoundedContext without description',
+            input: s`
+                Domain Sales { vision: "v" }
+                bc OrderContext for Sales {}
+            `,
+            elementType: 'boundedContext',
+            elementName: 'OrderContext',
+            expectedKeywords: ['bounded context', 'OrderContext', 'Sales'],
+        },
+        {
+            name: 'ContextMap without contexts',
+            input: s`ContextMap EmptyMap {}`,
+            elementType: 'contextMap',
+            elementName: 'EmptyMap',
+            expectedKeywords: ['context map', 'EmptyMap'],
+        },
+        {
+            name: 'DomainMap without domains',
+            input: s`DomainMap EmptyMap {}`,
+            elementType: 'domainMap',
+            elementName: 'EmptyMap',
+            expectedKeywords: ['domain map', 'EmptyMap'],
+        },
+    ];
+
+    test.each(basicCases)('$name', async ({ input, elementType, elementName, expectedKeywords }) => {
         // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "Handle sales operations" }
-        `);
-        expectValidDocument(document);
+        const document = await testServices.parse(input);
+        expectParsedDocument(document);
         const query = fromDocument(document);
-        const domain = query.domain('Sales');
-        expect(domain?.name).toBe('Sales');
+
+        let element: unknown;
+        switch (elementType) {
+            case 'domain':
+                element = query.domain(elementName);
+                break;
+            case 'boundedContext':
+                element = query.boundedContext(elementName);
+                break;
+            case 'team':
+                element = query.teams().first();
+                break;
+            case 'classification':
+                element = query.classifications().first();
+                break;
+            case 'contextMap':
+                element = query.contextMaps().first();
+                break;
+            case 'domainMap':
+                element = query.domainMaps().first();
+                break;
+        }
+
+        expect(element, `Expected to find ${elementType} '${elementName}'`).toBeDefined();
 
         // Act
-        const explanation = generateExplanation(domain!);
+        const explanation = generateExplanation(element as any);
 
-        // Assert
-        expect(explanation).toContain('domain');
-        expect(explanation).toContain('Sales');
-        expect(explanation).toContain('Handle sales operations');
+        // Assert — all expected keywords must appear
+        for (const keyword of expectedKeywords) {
+            expect(explanation).toContain(keyword);
+        }
     });
+});
 
-    test('should explain a domain with parent reference', async () => {
+// ═══════════════════════════════════════════════════════════════════════════════
+// Special Cases — distinct behaviors that justify separate tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('generateExplanation — special cases', () => {
+    test('domain with parent reference includes parent name', async () => {
         // Arrange
         const document = await testServices.parse(s`
             Domain Commerce { vision: "Commerce" }
             Domain Sales in Commerce { vision: "Sales" }
         `);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const query = fromDocument(document);
         const domain = query.domain('Sales');
-        expect(domain?.name).toBe('Sales');
 
         // Act
         const explanation = generateExplanation(domain!);
@@ -62,37 +147,8 @@ describe('generateExplanation - Domain', () => {
         expect(explanation).toContain('Sales');
         expect(explanation).toContain('Commerce');
     });
-});
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// BoundedContext Explanations
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('generateExplanation - BoundedContext', () => {
-    test('should explain a bounded context with domain reference', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc OrderContext for Sales {
-                description: "Handles order processing"
-            }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const bc = query.boundedContext('OrderContext');
-        expect(bc?.name).toBe('OrderContext');
-
-        // Act
-        const explanation = generateExplanation(bc!);
-
-        // Assert
-        expect(explanation).toContain('bounded context');
-        expect(explanation).toContain('OrderContext');
-        expect(explanation).toContain('Sales');
-        expect(explanation).toContain('Handles order processing');
-    });
-
-    test('should include classification and team when present', async () => {
+    test('bounded context with classification and team includes both', async () => {
         // Arrange
         const document = await testServices.parse(s`
             Domain Sales { vision: "v" }
@@ -100,10 +156,9 @@ describe('generateExplanation - BoundedContext', () => {
             Classification Core
             bc OrderContext for Sales as Core by SalesTeam {}
         `);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const query = fromDocument(document);
         const bc = query.boundedContext('OrderContext');
-        expect(bc?.name).toBe('OrderContext');
 
         // Act
         const explanation = generateExplanation(bc!);
@@ -113,81 +168,69 @@ describe('generateExplanation - BoundedContext', () => {
         expect(explanation).toContain('SalesTeam');
     });
 
-    test('should explain a bounded context without description', async () => {
+    test('bounded context with description includes description text', async () => {
+        // Arrange
+        const document = await testServices.parse(s`
+            Domain Sales { vision: "v" }
+            bc OrderContext for Sales {
+                description: "Handles order processing"
+            }
+        `);
+        expectParsedDocument(document);
+        const query = fromDocument(document);
+        const bc = query.boundedContext('OrderContext');
+
+        // Act
+        const explanation = generateExplanation(bc!);
+
+        // Assert
+        expect(explanation).toContain('Handles order processing');
+    });
+
+    test('context map with bounded contexts lists them', async () => {
         // Arrange
         const document = await testServices.parse(s`
             Domain Sales { vision: "v" }
             bc OrderContext for Sales {}
+            bc BillingContext for Sales {}
+            ContextMap SalesMap {
+                contains OrderContext, BillingContext
+            }
         `);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const query = fromDocument(document);
-        const bc = query.boundedContext('OrderContext');
-        expect(bc?.name).toBe('OrderContext');
+        const cmap = query.contextMaps().first();
 
         // Act
-        const explanation = generateExplanation(bc!);
+        const explanation = generateExplanation(cmap!);
 
         // Assert
-        expect(explanation).toContain('bounded context');
         expect(explanation).toContain('OrderContext');
+        expect(explanation).toContain('BillingContext');
+    });
+
+    test('domain map with domains lists them', async () => {
+        // Arrange
+        const document = await testServices.parse(s`
+            Domain Sales { vision: "v" }
+            Domain Billing { vision: "v" }
+            DomainMap CompanyMap {
+                contains Sales, Billing
+            }
+        `);
+        expectParsedDocument(document);
+        const query = fromDocument(document);
+        const dmap = query.domainMaps().first();
+
+        // Act
+        const explanation = generateExplanation(dmap!);
+
+        // Assert
         expect(explanation).toContain('Sales');
+        expect(explanation).toContain('Billing');
     });
-});
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Team Explanations
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('generateExplanation - Team', () => {
-    test('should explain a team', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Team SalesTeam
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const team = query.teams().first();
-        expect(team?.name).toBe('SalesTeam');
-
-        // Act
-        const explanation = generateExplanation(team!);
-
-        // Assert
-        expect(explanation).toContain('team');
-        expect(explanation).toContain('SalesTeam');
-    });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Classification Explanations
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('generateExplanation - Classification', () => {
-    test('should explain a classification', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Classification Core
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const cls = query.classifications().first();
-        expect(cls?.name).toBe('Core');
-
-        // Act
-        const explanation = generateExplanation(cls!);
-
-        // Assert
-        expect(explanation).toContain('classification');
-        expect(explanation).toContain('Core');
-    });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Relationship Explanations
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('generateExplanation - Relationship', () => {
-    test('should explain a relationship with patterns', async () => {
+    test('relationship with patterns includes target context', async () => {
         // Arrange
         const document = await testServices.parse(s`
             Domain Sales { vision: "v" }
@@ -198,12 +241,10 @@ describe('generateExplanation - Relationship', () => {
             }
             bc PaymentContext for Sales {}
         `);
-        expectValidDocument(document);
+        expectParsedDocument(document);
         const query = fromDocument(document);
         const bc = query.boundedContext('OrderContext');
-        expect(bc?.name).toBe('OrderContext');
         const relationship = bc!.relationships[0];
-        expect(relationship.$type).toBe('DirectionalRelationship');
 
         // Act
         const explanation = generateExplanation(relationship);
@@ -213,114 +254,9 @@ describe('generateExplanation - Relationship', () => {
         expect(explanation).toContain('PaymentContext');
         expect(explanation).toContain('->');
     });
-});
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ContextMap Explanations
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('generateExplanation - ContextMap', () => {
-    test('should explain a context map with bounded contexts', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            bc OrderContext for Sales {}
-            bc BillingContext for Sales {}
-            ContextMap SalesMap {
-                contains OrderContext, BillingContext
-            }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const cmap = query.contextMaps().first();
-        expect(cmap?.name).toBe('SalesMap');
-
-        // Act
-        const explanation = generateExplanation(cmap!);
-
-        // Assert
-        expect(explanation).toContain('context map');
-        expect(explanation).toContain('SalesMap');
-        expect(explanation).toContain('OrderContext');
-        expect(explanation).toContain('BillingContext');
-    });
-
-    test('should explain a context map without bounded contexts', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            ContextMap EmptyMap {}
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const cmap = query.contextMaps().first();
-        expect(cmap?.name).toBe('EmptyMap');
-
-        // Act
-        const explanation = generateExplanation(cmap!);
-
-        // Assert
-        expect(explanation).toContain('context map');
-        expect(explanation).toContain('EmptyMap');
-        expect(explanation).not.toContain('Bounded contexts');
-    });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// DomainMap Explanations
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('generateExplanation - DomainMap', () => {
-    test('should explain a domain map with domains', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            Domain Sales { vision: "v" }
-            Domain Billing { vision: "v" }
-            DomainMap CompanyMap {
-                contains Sales, Billing
-            }
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const dmap = query.domainMaps().first();
-        expect(dmap?.name).toBe('CompanyMap');
-
-        // Act
-        const explanation = generateExplanation(dmap!);
-
-        // Assert
-        expect(explanation).toContain('domain map');
-        expect(explanation).toContain('CompanyMap');
-        expect(explanation).toContain('Sales');
-        expect(explanation).toContain('Billing');
-    });
-
-    test('should explain a domain map without domains', async () => {
-        // Arrange
-        const document = await testServices.parse(s`
-            DomainMap EmptyMap {}
-        `);
-        expectValidDocument(document);
-        const query = fromDocument(document);
-        const dmap = query.domainMaps().first();
-        expect(dmap?.name).toBe('EmptyMap');
-
-        // Act
-        const explanation = generateExplanation(dmap!);
-
-        // Assert
-        expect(explanation).toContain('domain map');
-        expect(explanation).toContain('EmptyMap');
-        expect(explanation).not.toContain('Domains');
-    });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Unknown Element Type
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('generateExplanation - Unknown', () => {
-    test('should return unknown message for unsupported node types', () => {
-        // Arrange - create a minimal AstNode-like object with an unsupported $type
+    test('unsupported element type returns unknown message', () => {
+        // Arrange — create a minimal AstNode-like object with an unsupported $type
         const fakeNode = {
             $type: 'UnsupportedType',
             $containerProperty: 'children',

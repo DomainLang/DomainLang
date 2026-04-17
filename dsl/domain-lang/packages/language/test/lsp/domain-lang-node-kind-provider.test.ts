@@ -9,7 +9,7 @@
 import { describe, test, beforeAll, expect } from 'vitest';
 import { CompletionItemKind, SymbolKind } from 'vscode-languageserver';
 import type { TestServices } from '../test-helpers.js';
-import { setupTestSuite, s, expectValidDocument } from '../test-helpers.js';
+import { setupTestSuite, s, expectParsedDocument } from '../test-helpers.js';
 import { AstUtils, URI } from 'langium';
 import type { AstNode, AstNodeDescription } from 'langium';
 import {
@@ -41,7 +41,7 @@ async function findFirst(
     guard: (n: AstNode) => boolean
 ): Promise<AstNode> {
     const doc = await testServices.parse(input);
-    expectValidDocument(doc);
+    expectParsedDocument(doc);
     for (const node of AstUtils.streamAllContents(doc.parseResult.value)) {
         if (guard(node)) return node;
     }

@@ -1,17 +1,10 @@
 /**
  * Tests for DomainLangCodeActionProvider.
  *
- * Smoke (~20%):
- * - ImportNotInManifest generates correct "Add to model.yaml" action
- *
- * Edge/error (~80%):
- * - ImportRequiresManifest generates "Create model.yaml" action
- * - ImportNotInstalled generates "Run dlang install" action
- * - ImportMissingRef generates "Add ref" action (non-preferred)
- * - Unknown diagnostic code returns zero actions
- * - Diagnostic without data returns zero actions
- * - Missing alias returns zero actions
- * - Multiple diagnostics in context only produce actions for known codes
+ * Organized around three behavioural concepts:
+ *  - Dispatch: each known diagnostic code produces exactly one correctly-shaped action.
+ *  - No-op guards: malformed or unknown diagnostics produce zero actions.
+ *  - Source independence: dispatch is driven by diagnostic.code, not diagnostic.source.
  */
 
 import { describe, test, expect, beforeAll } from 'vitest';
@@ -28,192 +21,149 @@ describe('DomainLangCodeActionProvider', () => {
         testServices = setupTestSuite();
     });
 
-    /**
-     * Helper to get code actions for a given diagnostic.
-     */
-    const getCodeActions = async (
-        diagnostic: Diagnostic
-    ): Promise<Array<CodeAction>> => {
-        const codeActionProvider = testServices.services.DomainLang.lsp.CodeActionProvider;
-        expect(codeActionProvider).not.toBeUndefined();
-        if (!codeActionProvider) throw new Error('CodeActionProvider not available');
+    const getCodeActions = async (diagnostic: Diagnostic): Promise<CodeAction[]> => {
+        const provider = testServices.services.DomainLang.lsp.CodeActionProvider;
+        if (!provider) throw new Error('CodeActionProvider not available');
 
-        // Create a minimal document for testing
         const document = await testServices.parse(`Domain Test {}`);
-
         const params: CodeActionParams = {
             textDocument: { uri: document.textDocument.uri },
             range: diagnostic.range,
-            context: {
-                diagnostics: [diagnostic],
-                triggerKind: 1 // Explicitly triggered
-            }
+            context: { diagnostics: [diagnostic], triggerKind: 1 }
         };
-
-        const result = await codeActionProvider.getCodeActions(document, params);
+        const result = await provider.getCodeActions(document, params);
         return (result ?? []).filter((item): item is CodeAction => 'title' in item);
     };
 
-    /**
-     * Creates a mock diagnostic with the given code and alias.
-     */
-    const createDiagnostic = (
-        code: string,
-        alias?: string,
-        specifier?: string
+    const makeDiagnostic = (
+        code: string | undefined,
+        data?: Record<string, unknown>,
+        source = 'domain-lang'
     ): Diagnostic => ({
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
         message: 'Test diagnostic',
         severity: DiagnosticSeverity.Error,
-        source: 'domain-lang',
-        code,
-        data: { alias, specifier }
+        source,
+        ...(code !== undefined ? { code } : {}),
+        ...(data !== undefined ? { data } : {})
     });
 
     // ==========================================
-    // SMOKE: ImportNotInManifest action (merged preferred check)
+    // Dispatch: known code -> exactly one action with correct shape.
     // ==========================================
-    test('ImportNotInManifest produces preferred "Add to model.yaml" action with correct command and alias', async () => {
+    interface DispatchCase {
+        readonly name: string;
+        readonly code: string;
+        readonly data: Record<string, unknown>;
+        readonly titleFragments: readonly string[];
+        readonly command: string;
+        readonly args: readonly unknown[];
+        readonly isPreferred: boolean;
+    }
+
+    const dispatchCases: readonly DispatchCase[] = [
+        {
+            name: 'ImportNotInManifest -> addDependency (preferred)',
+            code: IssueCodes.ImportNotInManifest,
+            data: { alias: 'mypackage' },
+            titleFragments: ['Add', 'mypackage', 'model.yaml'],
+            command: 'domainlang.addDependency',
+            args: ['mypackage'],
+            isPreferred: true
+        },
+        {
+            name: 'ImportRequiresManifest -> createManifest (preferred)',
+            code: IssueCodes.ImportRequiresManifest,
+            data: { specifier: 'owner/package' },
+            titleFragments: ['Create', 'model.yaml', 'owner'],
+            command: 'domainlang.createManifest',
+            args: ['owner', 'owner/package'],
+            isPreferred: true
+        },
+        {
+            name: 'ImportNotInstalled -> install (preferred)',
+            code: IssueCodes.ImportNotInstalled,
+            data: { alias: 'uninstalled' },
+            titleFragments: ['install', 'uninstalled'],
+            command: 'domainlang.install',
+            args: [],
+            isPreferred: true
+        },
+        {
+            name: 'ImportMissingRef -> addRef (not preferred)',
+            code: IssueCodes.ImportMissingRef,
+            data: { alias: 'noref' },
+            titleFragments: ['ref', 'noref'],
+            command: 'domainlang.addRef',
+            args: ['noref'],
+            isPreferred: false
+        }
+    ];
+
+    test.each(dispatchCases)('dispatch: $name', async ({ code, data, titleFragments, command, args, isPreferred }) => {
         // Arrange
-        const diagnostic = createDiagnostic(IssueCodes.ImportNotInManifest, 'mypackage');
+        const diagnostic = makeDiagnostic(code, data);
 
         // Act
         const actions = await getCodeActions(diagnostic);
 
         // Assert
-
-        expect(actions.length).toBeGreaterThan(0);
-        const addAction = actions.find(a => a.title.includes('Add'));
-        expect(addAction?.title).toContain('Add');
-        expect(addAction?.title).toContain('mypackage');
-        expect(addAction?.title).toContain('model.yaml');
-        expect(addAction?.command?.command).toBe('domainlang.addDependency');
-        expect(addAction?.command?.arguments).toContain('mypackage');
-        // Preferred flag should be true for this quick-fix
-        expect(addAction?.isPreferred).toBe(true);
+        expect(actions).toHaveLength(1);
+        const [action] = actions;
+        for (const fragment of titleFragments) {
+            expect(action.title).toContain(fragment);
+        }
+        expect(action.command?.command).toBe(command);
+        expect(action.command?.arguments ?? []).toEqual(args);
+        expect(action.isPreferred).toBe(isPreferred);
     });
 
     // ==========================================
-    // EDGE: ImportRequiresManifest action
+    // No-op guards: malformed / unknown diagnostics produce no actions.
     // ==========================================
-    test('ImportRequiresManifest produces "Create model.yaml" action with correct command', async () => {
-        // Arrange
-        const diagnostic = createDiagnostic(
-            IssueCodes.ImportRequiresManifest,
-            undefined,
-            'owner/package'
+    const noOpCases: ReadonlyArray<{ name: string; diagnostic: Diagnostic }> = [
+        {
+            name: 'unknown diagnostic code',
+            diagnostic: makeDiagnostic('unknown-code', { alias: 'x' })
+        },
+        {
+            name: 'diagnostic without data property',
+            diagnostic: makeDiagnostic(IssueCodes.ImportNotInManifest)
+        },
+        {
+            name: 'alias-based code with missing alias',
+            diagnostic: makeDiagnostic(IssueCodes.ImportNotInManifest, {})
+        },
+        {
+            name: 'diagnostic without code',
+            diagnostic: makeDiagnostic(undefined, { alias: 'x' })
+        }
+    ];
+
+    test.each(noOpCases)('no-op: $name produces zero actions', async ({ diagnostic }) => {
+        // Act
+        const actions = await getCodeActions(diagnostic);
+
+        // Assert
+        expect(actions).toHaveLength(0);
+    });
+
+    // ==========================================
+    // Source independence: dispatch keyed on code, not source.
+    // ==========================================
+    test('dispatch ignores diagnostic.source when code matches', async () => {
+        // Arrange - same payload as ImportNotInManifest dispatch but foreign source
+        const diagnostic = makeDiagnostic(
+            IssueCodes.ImportNotInManifest,
+            { alias: 'something' },
+            'eslint'
         );
 
         // Act
         const actions = await getCodeActions(diagnostic);
 
         // Assert
-
-        expect(actions.length).toBeGreaterThan(0);
-        const createAction = actions.find(a => a.title.includes('Create'));
-        expect(createAction?.title).toContain('Create');
-        expect(createAction?.command?.command).toBe('domainlang.createManifest');
-    });
-
-    // ==========================================
-    // EDGE: ImportNotInstalled action
-    // ==========================================
-    test('ImportNotInstalled produces "Run dlang install" action with correct command', async () => {
-        // Arrange
-        const diagnostic = createDiagnostic(IssueCodes.ImportNotInstalled, 'uninstalled');
-
-        // Act
-        const actions = await getCodeActions(diagnostic);
-
-        // Assert
-
-        expect(actions.length).toBeGreaterThan(0);
-        const installAction = actions.find(a => a.title.includes('install'));
-        expect(installAction?.title?.toLowerCase()).toContain('install');
-        expect(installAction?.command?.command).toBe('domainlang.install');
-    });
-
-    // ==========================================
-    // EDGE: ImportMissingRef action (merged non-preferred check)
-    // ==========================================
-    test('ImportMissingRef produces non-preferred "Add ref" action with correct command', async () => {
-        // Arrange
-        const diagnostic = createDiagnostic(IssueCodes.ImportMissingRef, 'noref');
-
-        // Act
-        const actions = await getCodeActions(diagnostic);
-
-        // Assert
-
-        expect(actions.length).toBeGreaterThan(0);
-        const refAction = actions.find(a => a.title.includes('ref'));
-        expect(refAction?.title?.toLowerCase()).toContain('ref');
-        expect(refAction?.command?.command).toBe('domainlang.addRef');
-        // Add ref should NOT be preferred (user might want to set ref manually)
-        expect(refAction?.isPreferred).toBe(false);
-    });
-
-    // ==========================================
-    // EDGE: unknown diagnostic code
-    // ==========================================
-    test('returns no actions for unknown diagnostic codes', async () => {
-        // Arrange
-        const diagnostic = createDiagnostic('unknown-code');
-
-        // Act
-        const actions = await getCodeActions(diagnostic);
-
-        // Assert
-        expect(actions).toHaveLength(0);
-    });
-
-    // ==========================================
-    // EDGE: diagnostic without data
-    // ==========================================
-    test('returns no actions for diagnostic without data property', async () => {
-        // Arrange
-        const diagnostic: Diagnostic = {
-            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
-            message: 'Test diagnostic',
-            severity: DiagnosticSeverity.Error,
-            source: 'domain-lang'
-        };
-
-        // Act
-        const actions = await getCodeActions(diagnostic);
-
-        // Assert
-        expect(actions).toHaveLength(0);
-    });
-
-    // ==========================================
-    // EDGE: missing alias
-    // ==========================================
-    test('returns no actions for ImportNotInManifest when alias is missing', async () => {
-        // Arrange
-        const diagnostic = createDiagnostic(IssueCodes.ImportNotInManifest);
-
-        // Act
-        const actions = await getCodeActions(diagnostic);
-
-        // Assert
-        expect(actions).toHaveLength(0);
-    });
-
-    // ==========================================
-    // EDGE: non-domain-lang source diagnostic
-    // ==========================================
-    test('returns no actions for diagnostic from non-domain-lang source', async () => {
-        const diagnostic: Diagnostic = {
-            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
-            message: 'External issue',
-            severity: DiagnosticSeverity.Warning,
-            source: 'eslint',
-            code: IssueCodes.ImportNotInManifest,
-            data: { alias: 'something' }
-        };
-        const actions = await getCodeActions(diagnostic);
-        // Provider processes based on diagnostic.code regardless of source
         expect(actions).toHaveLength(1);
+        expect(actions[0].command?.command).toBe('domainlang.addDependency');
     });
 });

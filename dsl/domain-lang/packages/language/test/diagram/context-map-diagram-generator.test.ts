@@ -447,4 +447,46 @@ describe('DomainLangContextMapDiagramGenerator – relationship edges', () => {
         expect(badges).toContain('U|');
         expect(badges).toContain('D|');
     });
+
+    // ── Error/edge cases ──────────────────────────────────────────────────────
+
+    test('falls back to first context map when selectedContextMapFqn does not match', async () => {
+        // Arrange & Act
+        const model = await generateDiagram(
+            s`
+                Domain Sales { vision: "v" }
+                bc Orders for Sales {}
+                ContextMap M {
+                    contains Orders
+                }
+            `,
+            'file:///diagram-nonexistent-fqn.dlang',
+            'NonExistentMap'
+        );
+
+        // Assert – generator falls back to the first available context map
+        const nodes = (model.children ?? []).filter(c => c.type === 'node' || c.type === 'node:bbom');
+        expect(nodes).toHaveLength(1);
+    });
+
+    test('generates graph for context map with contains but no relationships', async () => {
+        // Arrange & Act
+        const model = await generateDiagram(
+            s`
+                Domain Sales { vision: "v" }
+                bc Orders for Sales {}
+                bc Billing for Sales {}
+                ContextMap M {
+                    contains Orders, Billing
+                }
+            `,
+            'file:///diagram-no-relationships.dlang'
+        );
+
+        // Assert — nodes for the contained contexts, but no edges
+        const nodes = (model.children ?? []).filter(c => c.type === 'node' || c.type === 'node:bbom');
+        const edges = getEdges(model);
+        expect(nodes).toHaveLength(2);
+        expect(edges).toHaveLength(0);
+    });
 });

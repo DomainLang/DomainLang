@@ -396,6 +396,9 @@ function createDomainLangServices(): DomainLangServices {
             ImportResolver: {
                 clearCache: vi.fn(),
             },
+            PackageBoundaryDetector: {
+                clearCache: vi.fn(),
+            },
         },
     } as unknown as DomainLangServices;
 }
