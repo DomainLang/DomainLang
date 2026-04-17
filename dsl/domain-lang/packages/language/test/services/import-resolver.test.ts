@@ -40,7 +40,7 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
     // Smoke: basic relative resolve (~20%)
     // ========================================================================
 
-    test('resolves relative local imports without manifest', async () => {
+    test('smoke: resolves relative local imports without manifest', async () => {
         // Arrange
         const base = path.join(tempDir, 'proj');
         const types = path.join(base, 'types.dlang');
@@ -57,69 +57,65 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
     // Edge: error handling
     // ========================================================================
 
-    describe('Edge: error handling', () => {
+    interface ErrorHandlingCase {
+        readonly scenario: string;
+        readonly setup: (base: string) => Promise<void>;
+        readonly specifier: string;
+        readonly expectedErrorPattern: RegExp;
+    }
 
-        test('external import without manifest produces error', async () => {
-            // Arrange
-            const base = path.join(tempDir, 'no-manifest');
-            await fs.mkdir(base, { recursive: true });
+    const errorCases: readonly ErrorHandlingCase[] = [
+        {
+            scenario: 'external import without manifest produces error',
+            setup: async base => {
+                await fs.mkdir(base, { recursive: true });
+            },
+            specifier: 'acme/core',
+            expectedErrorPattern: /requires model\.yaml/i,
+        },
+        {
+            scenario: 'unknown path alias produces helpful error',
+            setup: async base => {
+                await writeFile(path.join(base, 'model.yaml'), 'model:\n  name: sample\n');
+            },
+            specifier: '@unknown/stuff',
+            expectedErrorPattern: /unknown path alias.*@unknown/i,
+        },
+        {
+            scenario: 'relative import to non-existent file throws',
+            setup: async base => {
+                await fs.mkdir(base, { recursive: true });
+            },
+            specifier: './nonexistent.dlang',
+            expectedErrorPattern: /Cannot resolve|not found|does not exist/i,
+        },
+        {
+            scenario: 'invalid file extension produces helpful error',
+            setup: async base => {
+                await writeFile(path.join(base, 'types.txt'), 'not a dlang file');
+            },
+            specifier: './types.txt',
+            expectedErrorPattern: /invalid file extension/i,
+        },
+        {
+            scenario: 'external dependency not installed produces error',
+            setup: async base => {
+                const manifest = 'model:\n  name: sample\n  version: 1.0.0\ndependencies:\n  acme/core: "v1.0.0"\n';
+                await writeFile(path.join(base, 'model.yaml'), manifest);
+            },
+            specifier: 'acme/core',
+            expectedErrorPattern: /not installed/i,
+        },
+    ];
 
-            // Act & Assert
-            await expect(resolver.resolveFrom(base, 'acme/core'))
-                .rejects.toThrow(/requires model\.yaml/i);
-        });
+    test.each(errorCases)('$scenario', async ({ setup, specifier, expectedErrorPattern }) => {
+        // Arrange
+        const base = path.join(tempDir, `error-test-${Math.random()}`);
+        await setup(base);
 
-        test('unknown path alias produces helpful error', async () => {
-            // Arrange
-            const base = path.join(tempDir, 'proj');
-            const manifest = `model:\n  name: sample\n`;
-            await writeFile(path.join(base, 'model.yaml'), manifest);
-
-            // Act & Assert
-            await expect(resolver.resolveFrom(base, '@unknown/stuff'))
-                .rejects.toThrow(/unknown path alias.*@unknown/i);
-        });
-
-        test('relative import to non-existent file throws', async () => {
-            // Arrange
-            const base = path.join(tempDir, 'proj');
-            await fs.mkdir(base, { recursive: true });
-
-            // Act & Assert
-            await expect(resolver.resolveFrom(base, './nonexistent.dlang'))
-                .rejects.toThrow();
-        });
-
-        test('invalid file extension produces helpful error', async () => {
-            // Arrange - imports.md: "Invalid file extension '.txt' in import './types.txt'"
-            const base = path.join(tempDir, 'bad-ext');
-            await writeFile(path.join(base, 'types.txt'), 'not a dlang file');
-
-            // Act & Assert
-            await expect(resolver.resolveFrom(base, './types.txt'))
-                .rejects.toThrow(/Invalid file extension/i);
-        });
-
-        test('relative import to non-existent file produces file-not-found error', async () => {
-            // Arrange - imports.md: "Import file not found: './types.dlang'"
-            const base = path.join(tempDir, 'missing-file');
-            await fs.mkdir(base, { recursive: true });
-
-            // Act & Assert
-            await expect(resolver.resolveFrom(base, './types.dlang'))
-                .rejects.toThrow();
-        });
-
-        test('external dependency not in model.yaml or not installed produces error', async () => {
-            // Arrange - imports.md: "Dependency 'patterns' not found in model.yaml"
-            const base = path.join(tempDir, 'dep-not-found');
-            const manifest = `model:\n  name: sample\n  version: 1.0.0\ndependencies:\n  acme/core: "v1.0.0"\n`;
-            await writeFile(path.join(base, 'model.yaml'), manifest);
-
-            // Act & Assert - try to resolve a dep that's declared but not installed
-            await expect(resolver.resolveFrom(base, 'acme/core'))
-                .rejects.toThrow(/not installed/i);
-        });
+        // Act & Assert
+        await expect(resolver.resolveFrom(base, specifier))
+            .rejects.toThrow(expectedErrorPattern);
     });
 
     // ========================================================================
@@ -147,34 +143,43 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
             expect(typesUri.fsPath).toBe(sharedTypes);
         });
 
-        test('resolves implicit @/ alias to workspace root (PRS-010)', async () => {
+        interface ImplicitAliasCase {
+            readonly scenario: string;
+            readonly specifier: string;
+            readonly files: Array<{ path: string; content: string }>;
+            readonly expectedPath: string;
+        }
+
+        const implicitAliasCases: readonly ImplicitAliasCase[] = [
+            {
+                scenario: 'resolves implicit @/ alias to workspace root',
+                specifier: '@/lib/utils.dlang',
+                files: [{ path: 'lib/utils.dlang', content: 'Domain Utils {}' }],
+                expectedPath: 'lib/utils.dlang',
+            },
+            {
+                scenario: 'resolves to subdirectory index.dlang',
+                specifier: '@/shared',
+                files: [{ path: 'shared/index.dlang', content: 'Domain Shared {}' }],
+                expectedPath: 'shared/index.dlang',
+            },
+        ];
+
+        test.each(implicitAliasCases)('$scenario', async ({ specifier, files, expectedPath }) => {
             // Arrange
-            const base = path.join(tempDir, 'proj');
-            const manifest = `model:\n  name: sample\n`;  // No paths section
-            await writeFile(path.join(base, 'model.yaml'), manifest);
-            const libUtils = path.join(base, 'lib', 'utils.dlang');
-            await writeFile(libUtils, 'Domain Utils {}');
-
-            // Act
-            const uri = await resolver.resolveFrom(base, '@/lib/utils.dlang');
-
-            // Assert
-            expect(uri.fsPath).toBe(libUtils);
-        });
-
-        test('implicit @/ alias resolves to subdirectory index.dlang', async () => {
-            // Arrange
-            const base = path.join(tempDir, 'proj');
+            const base = path.join(tempDir, `implicit-alias-${Math.random()}`);
             const manifest = `model:\n  name: sample\n`;
             await writeFile(path.join(base, 'model.yaml'), manifest);
-            const indexFile = path.join(base, 'shared', 'index.dlang');
-            await writeFile(indexFile, 'Domain Shared {}');
+
+            for (const file of files) {
+                await writeFile(path.join(base, file.path), file.content);
+            }
 
             // Act
-            const uri = await resolver.resolveFrom(base, '@/shared');
+            const uri = await resolver.resolveFrom(base, specifier);
 
             // Assert
-            expect(uri.fsPath).toBe(indexFile);
+            expect(uri.fsPath).toBe(path.join(base, expectedPath));
         });
     });
 
@@ -184,49 +189,52 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
 
     describe('Edge: directory-first resolution', () => {
 
-        test('file fallback when no directory exists', async () => {
+        interface DirectoryFirstCase {
+            readonly scenario: string;
+            readonly files: Array<{ path: string; content: string }>;
+            readonly specifier: string;
+            readonly expectedFile: string;
+        }
+
+        const directoryFirstCases: readonly DirectoryFirstCase[] = [
+            {
+                scenario: 'file fallback when no directory exists',
+                files: [{ path: 'types.dlang', content: 'Domain Types {}' }],
+                specifier: './types',
+                expectedFile: 'types.dlang',
+            },
+            {
+                scenario: 'directory-first prefers index.dlang over .dlang file',
+                files: [
+                    { path: 'types/index.dlang', content: 'Domain TypesIndex {}' },
+                    { path: 'types.dlang', content: 'Domain TypesFile {}' },
+                ],
+                specifier: './types',
+                expectedFile: 'types/index.dlang',
+            },
+            {
+                scenario: 'explicit .dlang extension resolves directly',
+                files: [
+                    { path: 'types.dlang', content: 'Domain Types {}' },
+                    { path: 'types/index.dlang', content: 'Domain TypesIndex {}' },
+                ],
+                specifier: './types.dlang',
+                expectedFile: 'types.dlang',
+            },
+        ];
+
+        test.each(directoryFirstCases)('$scenario', async ({ files, specifier, expectedFile }) => {
             // Arrange
-            const base = path.join(tempDir, 'proj');
-            const typesFile = path.join(base, 'types.dlang');
-            await writeFile(typesFile, 'Domain Types {}');
-            // NOT creating types/ directory
+            const base = path.join(tempDir, `dir-first-${Math.random()}`);
+            for (const file of files) {
+                await writeFile(path.join(base, file.path), file.content);
+            }
 
             // Act
-            const uri = await resolver.resolveFrom(base, './types');
+            const uri = await resolver.resolveFrom(base, specifier);
 
             // Assert
-            expect(uri.fsPath).toBe(typesFile);
-        });
-
-        test('directory-first prefers index.dlang over .dlang file', async () => {
-            // Arrange
-            const base = path.join(tempDir, 'proj');
-            const typesIndex = path.join(base, 'types', 'index.dlang');
-            const typesFile = path.join(base, 'types.dlang');
-            await writeFile(typesIndex, 'Domain TypesIndex {}');
-            await writeFile(typesFile, 'Domain TypesFile {}');
-
-            // Act
-            const uri = await resolver.resolveFrom(base, './types');
-
-            // Assert
-            expect(uri.fsPath).toBe(typesIndex);
-        });
-
-        test('explicit .dlang extension resolves directly', async () => {
-            // Arrange
-            const base = path.join(tempDir, 'proj');
-            const typesFile = path.join(base, 'types.dlang');
-            await writeFile(typesFile, 'Domain Types {}');
-            // Also create directory
-            const typesIndex = path.join(base, 'types', 'index.dlang');
-            await writeFile(typesIndex, 'Domain TypesIndex {}');
-
-            // Act
-            const uri = await resolver.resolveFrom(base, './types.dlang');
-
-            // Assert
-            expect(uri.fsPath).toBe(typesFile);
+            expect(uri.fsPath).toBe(path.join(base, expectedFile));
         });
     });
 
@@ -324,7 +332,7 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
             await writeFile(path.join(proj, 'model.yaml'), 'model:\n  name: secured\n');
             await writeFile(path.join(proj, 'main.dlang'), '');
 
-            // Act & Assert - trying to traverse outside proj root via ../../
+            // Act & Assert
             await expect(
                 resolver.resolveFrom(proj, '../../outside.dlang')
             ).rejects.toMatchObject({
@@ -339,7 +347,7 @@ describe('ImportResolver (PRS-010 Phase 3)', () => {
             await writeFile(parentFile, 'Domain Shared {}');
             await fs.mkdir(base, { recursive: true });
 
-            // Act - ../shared.dlang should resolve fine in standalone mode
+            // Act
             const uri = await resolver.resolveFrom(base, '../shared.dlang');
 
             // Assert

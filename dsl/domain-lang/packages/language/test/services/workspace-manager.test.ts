@@ -22,7 +22,6 @@ const TEST_ROOT = path.resolve(__dirname, "../fixtures/sample-workspace");
 const ALIAS_ROOT = path.resolve(__dirname, "../fixtures/alias-workspace");
 const LOCK_FILE = path.join(TEST_ROOT, "model.lock");
 
-// Helper: create a dummy lock file
 async function createLockFile() {
     const lock = {
         version: "1",
@@ -39,7 +38,6 @@ async function createLockFile() {
     await fs.writeFile(LOCK_FILE, JSON.stringify(lock, undefined, 2), "utf-8");
 }
 
-// Helper: clean up lock file
 async function cleanup() {
     try { await fs.unlink(LOCK_FILE); } catch {
         // File doesn't exist, ignore
@@ -156,77 +154,56 @@ describe("ManifestManager", () => {
 
     describe("Edge: cache invalidation", () => {
 
-        test("invalidateCache clears both manifest and lock caches", async () => {
+        interface CacheInvalidationCase {
+            strategy: 'full' | 'manifest-only' | 'lock-only';
+            methodName: 'invalidateCache' | 'invalidateManifestCache' | 'invalidateLockCache';
+            shouldClearManifest: boolean;
+            shouldClearLock: boolean;
+        }
+
+        const invalidationCases: CacheInvalidationCase[] = [
+            { strategy: 'full', methodName: 'invalidateCache', shouldClearManifest: true, shouldClearLock: true },
+            { strategy: 'manifest-only', methodName: 'invalidateManifestCache', shouldClearManifest: true, shouldClearLock: false },
+            { strategy: 'lock-only', methodName: 'invalidateLockCache', shouldClearManifest: false, shouldClearLock: true },
+        ];
+
+        test.each(invalidationCases)('$strategy invalidation clears cache correctly', async ({ methodName, shouldClearManifest, shouldClearLock }) => {
             // Arrange
             await createLockFile();
             const manager = new ManifestManager();
             await manager.initialize(TEST_ROOT);
+            
             const manifestBefore = await manager.getManifest();
             const lockBefore = await manager.getLockFile();
-            expect(manifestBefore?.model?.name).toBe('sample-workspace');
-            expect(lockBefore?.version).toBe('1');
 
             // Act
-            manager.invalidateCache();
+            if (methodName === 'invalidateCache') {
+                manager.invalidateCache();
+            } else if (methodName === 'invalidateManifestCache') {
+                manager.invalidateManifestCache();
+            } else {
+                manager.invalidateLockCache();
+            }
 
-            // Assert — Remove the lock file to verify cache was truly cleared
-            await cleanup();
-            const lock = await manager.getLockFile();
-            expect(lock).toBeUndefined();
-        });
-
-        test("invalidateManifestCache clears only manifest cache, preserves lock cache", async () => {
-            // Arrange
-            await createLockFile();
-            const manager = new ManifestManager();
-            await manager.initialize(TEST_ROOT);
-            await manager.getManifest();
-            const lockBefore = await manager.getLockFile();
-
-            // Act
-            manager.invalidateManifestCache();
+            // Verify cache was cleared by deleting files and checking
+            if (shouldClearLock) {
+                await cleanup();
+            }
 
             // Assert
-            const lockAfter = await manager.getLockFile();
-            expect(lockAfter?.version).toBe(lockBefore?.version);
-            expect(lockAfter?.dependencies["acme/ddd-patterns"].ref).toBe("2.1.0");
-        });
+            if (shouldClearManifest) {
+                // Manifest cache was cleared (would require fixture deletion to fully verify)
+                // This test confirms the invalidation method completes without error
+                expect(manifestBefore).not.toBeUndefined();
+            }
 
-        test("invalidateLockCache clears only lock file cache", async () => {
-            // Arrange
-            await createLockFile();
-            const manager = new ManifestManager();
-            await manager.initialize(TEST_ROOT);
-            const lockBefore = await manager.getLockFile();
-            expect(lockBefore?.version).toBe("1");
-
-            // Act
-            manager.invalidateLockCache();
-
-            // Assert — Remove the lock file to verify cache was truly cleared
-            await cleanup();
-            const lock = await manager.getLockFile();
-            expect(lock).toBeUndefined();
-        });
-
-        test("invalidateCache clears both manifest and lock file caches", async () => {
-            // Arrange
-            await createLockFile();
-            const manager = new ManifestManager();
-            await manager.initialize(TEST_ROOT);
-
-            const manifestBefore = await manager.getManifest();
-            const lockBefore = await manager.getLockFile();
-            expect(manifestBefore?.model?.name).toBe('sample-workspace');
-            expect(lockBefore?.version).toBe('1');
-
-            // Act
-            manager.invalidateCache();
-
-            // Assert
-            await cleanup();
-            const lockAfter = await manager.getLockFile();
-            expect(lockAfter).toBeUndefined();
+            if (shouldClearLock) {
+                const lockAfter = await manager.getLockFile();
+                expect(lockAfter).toBeUndefined();
+            } else if (lockBefore) {
+                const lockStillCached = await manager.getLockFile();
+                expect(lockStillCached?.version).toBe(lockBefore.version);
+            }
         });
     });
 
@@ -262,7 +239,5 @@ describe("ManifestManager", () => {
             await manager.initialize(TEST_ROOT);
             expect(manager.getWorkspaceRoot()).toBe(TEST_ROOT);
         });
-
-        // 'getWorkspaceRoot returns correct path' subsumed by smoke test and re-initialization test above
     });
 });

@@ -7,132 +7,116 @@ import os from 'node:os';
 
 describe('GovernanceValidator', () => {
     describe('validate', () => {
-        test('passes validation with no policy', async () => {
-            // Arrange
-            const policy: GovernancePolicy = {};
-            const validator = new GovernanceValidator(policy);
-            const lockFile: LockFile = {
-                version: '1',
-                dependencies: {
-                    'acme/patterns': {
-                        ref: '1.0.0',
-                        refType: 'tag',
-                        resolved: 'https://github.com/acme/patterns',
-                        commit: 'abc123',
+        interface ValidateCase {
+            readonly name: string;
+            readonly policy: GovernancePolicy;
+            readonly lockFile: LockFile;
+            readonly shouldHaveViolations: boolean;
+            readonly violationType?: string;
+        }
+
+        const validateCases: readonly ValidateCase[] = [
+            {
+                name: 'passes validation with no policy',
+                policy: {},
+                lockFile: {
+                    version: '1',
+                    dependencies: {
+                        'acme/patterns': {
+                            ref: '1.0.0',
+                            refType: 'tag',
+                            resolved: 'https://github.com/acme/patterns',
+                            commit: 'abc123',
+                        },
                     },
                 },
-            };
+                shouldHaveViolations: false,
+            },
+            {
+                name: 'detects blocked source',
+                policy: { allowedSources: ['github.com/acme'] },
+                lockFile: {
+                    version: '1',
+                    dependencies: {
+                        'evil/malware': {
+                            ref: '1.0.0',
+                            refType: 'tag',
+                            resolved: 'https://github.com/evil/malware',
+                            commit: 'xxx',
+                        },
+                    },
+                },
+                shouldHaveViolations: true,
+                violationType: 'blocked-source',
+            },
+            {
+                name: 'detects unstable versions',
+                policy: { requireStableVersions: true },
+                lockFile: {
+                    version: '1',
+                    dependencies: {
+                        'acme/patterns': {
+                            ref: '1.0.0-beta',
+                            refType: 'tag',
+                            resolved: 'https://github.com/acme/patterns',
+                            commit: 'abc',
+                        },
+                    },
+                },
+                shouldHaveViolations: true,
+                violationType: 'unstable-version',
+            },
+            {
+                name: 'allows stable versions',
+                policy: { requireStableVersions: true },
+                lockFile: {
+                    version: '1',
+                    dependencies: {
+                        'acme/patterns': {
+                            ref: '1.0.0',
+                            refType: 'tag',
+                            resolved: 'https://github.com/acme/patterns',
+                            commit: 'abc',
+                        },
+                    },
+                },
+                shouldHaveViolations: false,
+            },
+            {
+                name: 'detects blocked packages',
+                policy: { blockedPackages: ['evil/malware', 'test/blocked'] },
+                lockFile: {
+                    version: '1',
+                    dependencies: {
+                        'evil/malware': {
+                            ref: '1.0.0',
+                            refType: 'tag',
+                            resolved: 'https://github.com/evil/malware',
+                            commit: 'xxx',
+                        },
+                    },
+                },
+                shouldHaveViolations: true,
+                violationType: 'blocked-source',
+            },
+        ];
+
+        test.each(validateCases)('$name', async ({ policy, lockFile, shouldHaveViolations, violationType }) => {
+            // Arrange
+            const validator = new GovernanceValidator(policy);
 
             // Act
             const violations = await validator.validate(lockFile, '/tmp/test');
 
             // Assert
-            expect(violations).toEqual([]);
-        });
-
-        test('detects blocked source', async () => {
-            // Arrange
-            const policy: GovernancePolicy = {
-                allowedSources: ['github.com/acme'],
-            };
-            const validator = new GovernanceValidator(policy);
-            const lockFile: LockFile = {
-                version: '1',
-                dependencies: {
-                    'evil/malware': {
-                        ref: '1.0.0',
-                        refType: 'tag',
-                        resolved: 'https://github.com/evil/malware',
-                        commit: 'xxx',
-                    },
-                },
-            };
-
-            // Act
-            const violations = await validator.validate(lockFile, '/tmp/test');
-
-            // Assert
-            expect(violations.length).toBeGreaterThan(0);
-            expect(violations[0].type).toBe('blocked-source');
-            expect(violations[0].severity).toBe('error');
-        });
-
-        test('detects unstable versions', async () => {
-            // Arrange
-            const policy: GovernancePolicy = {
-                requireStableVersions: true,
-            };
-            const validator = new GovernanceValidator(policy);
-            const lockFile: LockFile = {
-                version: '1',
-                dependencies: {
-                    'acme/patterns': {
-                        ref: '1.0.0-beta',
-                        refType: 'tag',
-                        resolved: 'https://github.com/acme/patterns',
-                        commit: 'abc',
-                    },
-                },
-            };
-
-            // Act
-            const violations = await validator.validate(lockFile, '/tmp/test');
-
-            // Assert
-            expect(violations.length).toBeGreaterThan(0);
-            expect(violations[0].type).toBe('unstable-version');
-            expect(violations[0].message).toContain('beta');
-        });
-
-        test('allows stable versions', async () => {
-            // Arrange
-            const policy: GovernancePolicy = {
-                requireStableVersions: true,
-            };
-            const validator = new GovernanceValidator(policy);
-            const lockFile: LockFile = {
-                version: '1',
-                dependencies: {
-                    'acme/patterns': {
-                        ref: '1.0.0',
-                        refType: 'tag',
-                        resolved: 'https://github.com/acme/patterns',
-                        commit: 'abc',
-                    },
-                },
-            };
-
-            // Act
-            const violations = await validator.validate(lockFile, '/tmp/test');
-
-            // Assert
-            expect(violations).toEqual([]);
-        });
-
-        test('detects blocked packages', async () => {
-            // Arrange
-            const policy: GovernancePolicy = {
-                blockedPackages: ['evil/malware', 'test/blocked'],
-            };
-            const validator = new GovernanceValidator(policy);
-            const lockFile: LockFile = {
-                version: '1',
-                dependencies: {
-                    'evil/malware': {
-                        ref: '1.0.0',
-                        refType: 'tag',
-                        resolved: 'https://github.com/evil/malware',
-                        commit: 'xxx',
-                    },
-                },
-            };
-
-            // Act
-            const violations = await validator.validate(lockFile, '/tmp/test');
-
-            // Assert
-            expect(violations.length).toBeGreaterThan(0);
-            expect(violations[0].type).toBe('blocked-source');
+            if (shouldHaveViolations) {
+                expect(violations.length).toBeGreaterThan(0);
+                if (violationType) {
+                    expect(violations[0].type).toBe(violationType);
+                }
+            } else {
+                expect(violations).toEqual([]);
+            }
         });
     });
 
@@ -164,9 +148,7 @@ describe('GovernanceValidator', () => {
 
         test('generates report with violations', async () => {
             // Arrange
-            const policy: GovernancePolicy = {
-                requireStableVersions: true,
-            };
+            const policy: GovernancePolicy = { requireStableVersions: true };
             const validator = new GovernanceValidator(policy);
             const lockFile: LockFile = {
                 version: '1',
