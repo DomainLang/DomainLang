@@ -173,7 +173,29 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-output
-          path: dsl/domain-lang/
+          # IMPORTANT: artifact's least-common-ancestor is `packages/` (all upload
+          # paths in the build job are under dsl/domain-lang/packages/), so files
+          # inside the artifact are stored as cli/out/..., language/out/...,
+          # extension/out/..., NOT packages/cli/out/.... Therefore the download
+          # target must be packages/ to restore the correct workspace layout.
+          path: dsl/domain-lang/packages/
+      
+      - name: Verify build artifacts restored
+        run: |
+          echo "Verifying critical build outputs are in place..."
+          for f in \
+            packages/cli/out/main.js \
+            packages/language/out/sdk/index.js \
+            packages/language/out/index.js \
+            packages/language/src/generated/ast.ts \
+            packages/cli/bin/cli.js; do
+            if [ ! -e "$f" ]; then
+              echo "❌ MISSING: $f"
+              exit 1
+            else
+              echo "✅ $f"
+            fi
+          done
       
       - name: Run tests with coverage
         run: |
