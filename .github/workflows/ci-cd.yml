@@ -451,6 +451,8 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.releases-created == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     defaults:
       run:
         working-directory: dsl/domain-lang
@@ -479,11 +481,7 @@ jobs:
       
       - name: Publish ${{ matrix.package }}
         run: npm publish --workspace packages/${{ matrix.package }} --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
-
-
   publish-vscode-extension:
     name: 🧩 Publish VS Code extension
     needs: release-please
