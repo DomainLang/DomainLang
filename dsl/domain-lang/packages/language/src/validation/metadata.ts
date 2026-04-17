@@ -1,18 +1,20 @@
-import type { ValidationChecks } from 'langium';
-import type { Metadata, DomainLangAstType } from '../generated/ast.js';
+import type { ValidationAcceptor } from 'langium';
+import type { Metadata } from '../generated/ast.js';
 import { ValidationMessages, buildCodeDescription } from './constants.js';
 
 /**
- * Validation checks for Metadata elements.
- * - Ensures metadata keys are defined before use
+ * Validates that a Metadata element has a defined key name.
  */
-export const metadataChecks: ValidationChecks<DomainLangAstType> = {
-    Metadata(metadata: Metadata, accept) {
-        if (!metadata.name) {
-            accept('error', ValidationMessages.METADATA_MISSING_NAME(), { 
-                node: metadata,
-                codeDescription: buildCodeDescription('language.md', 'metadata')
-            });
-        }
-    },
-};
+function validateMetadataName(metadata: Metadata, accept: ValidationAcceptor): void {
+    if (!metadata.name) {
+        accept('error', ValidationMessages.METADATA_MISSING_NAME(), { 
+            node: metadata,
+            codeDescription: buildCodeDescription('language.md', 'metadata')
+        });
+    }
+}
+
+/**
+ * Validation checks for Metadata elements.
+ */
+export const metadataChecks = [validateMetadataName];

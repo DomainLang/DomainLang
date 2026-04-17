@@ -22,7 +22,7 @@ export function registerValidationChecks(services: DomainLangServices): void {
         BoundedContext: boundedContextChecks,
         ContextMap: contextMapChecks,
         DomainMap: domainMapChecks,
-        Metadata: metadataChecks.Metadata,
+        Metadata: metadataChecks,
         ImportStatement: importChecks.ImportStatement,
         Relationship: relationshipChecks,
     };

@@ -40,25 +40,16 @@ function validateNoCyclicDomainHierarchy(
         return;
     }
     
-    const visited = new Set<string>();
+    // Use node identity (Set<Domain>) instead of name strings to avoid
+    // false-positive cycle detection when different domains in different
+    // namespaces share the same short name.
+    const visited = new Set<Domain>();
     const cyclePath: string[] = [domain.name];
     let current: Domain | undefined = domain.parent.ref;
 
     while (current) {
-        // Check if we've encountered this domain name before (cycle detected within traversal)
-        if (visited.has(current.name)) {
-            // We found a cycle - report it
-            cyclePath.push(current.name);
-            accept('error', ValidationMessages.DOMAIN_CIRCULAR_HIERARCHY(cyclePath), {
-                node: domain,
-                property: 'parent',
-                codeDescription: buildCodeDescription('language.md', 'domain-hierarchy')
-            });
-            return;
-        }
-
-        // Check if we've looped back to the starting domain (by name, not object identity)
-        if (current.name === domain.name) {
+        // Check if we've looped back to the starting domain (by identity)
+        if (current === domain) {
             cyclePath.push(domain.name);
             accept('error', ValidationMessages.DOMAIN_CIRCULAR_HIERARCHY(cyclePath), {
                 node: domain,
@@ -68,7 +59,18 @@ function validateNoCyclicDomainHierarchy(
             return;
         }
 
-        visited.add(current.name);
+        // Check if we've encountered this domain node before (cycle in ancestors)
+        if (visited.has(current)) {
+            cyclePath.push(current.name);
+            accept('error', ValidationMessages.DOMAIN_CIRCULAR_HIERARCHY(cyclePath), {
+                node: domain,
+                property: 'parent',
+                codeDescription: buildCodeDescription('language.md', 'domain-hierarchy')
+            });
+            return;
+        }
+
+        visited.add(current);
         cyclePath.push(current.name);
         current = current.parent?.ref;
     }

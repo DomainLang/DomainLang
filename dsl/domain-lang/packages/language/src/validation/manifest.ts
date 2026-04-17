@@ -82,8 +82,6 @@ export const ManifestIssueCodes = {
     PathAliasAbsolutePath: 'manifest-path-alias-absolute-path'
 } as const;
 
-type ManifestIssueCode = typeof ManifestIssueCodes[keyof typeof ManifestIssueCodes] | typeof IssueCodes[keyof typeof IssueCodes];
-
 // ============================================================================
 // Manifest Validator
 // ============================================================================
@@ -155,7 +153,7 @@ export class ManifestValidator {
         if (requirePublishable) {
             if (!model?.name) {
                 diagnostics.push({
-                    code: ManifestIssueCodes.ModelMissingName as ManifestIssueCode,
+                    code: ManifestIssueCodes.ModelMissingName,
                     severity: 'error',
                     message: 'Publishable packages require a model.name field.',
                     path: 'model.name',
@@ -165,7 +163,7 @@ export class ManifestValidator {
             
             if (!model?.version) {
                 diagnostics.push({
-                    code: ManifestIssueCodes.ModelMissingVersion as ManifestIssueCode,
+                    code: ManifestIssueCodes.ModelMissingVersion,
                     severity: 'error',
                     message: 'Publishable packages require a model.version field.',
                     path: 'model.version',
@@ -177,7 +175,7 @@ export class ManifestValidator {
         // Validate version format if present
         if (model?.version && !this.isValidSemVer(model.version)) {
             diagnostics.push({
-                code: ManifestIssueCodes.ModelInvalidVersion as ManifestIssueCode,
+                code: ManifestIssueCodes.ModelInvalidVersion,
                 severity: 'warning',
                 message: `Version '${model.version}' is not valid SemVer format.`,
                 path: 'model.version',
@@ -272,7 +270,7 @@ export class ManifestValidator {
         // Validate ref format
         if (dep.ref && !this.isValidRefSpec(dep.ref)) {
             diagnostics.push({
-                code: ManifestIssueCodes.DependencyInvalidRef as ManifestIssueCode,
+                code: ManifestIssueCodes.DependencyInvalidRef,
                 severity: 'warning',
                 message: `Ref '${dep.ref}' for '${key}' may be invalid.`,
                 path: `${basePath}.ref`,
@@ -283,7 +281,7 @@ export class ManifestValidator {
         // Validate source format (should be owner/repo)
         if (dep.source && !this.isValidSourceFormat(dep.source)) {
             diagnostics.push({
-                code: ManifestIssueCodes.DependencyInvalidSource as ManifestIssueCode,
+                code: ManifestIssueCodes.DependencyInvalidSource,
                 severity: 'error',
                 message: `Source '${dep.source}' is not valid owner/repo format.`,
                 path: `${basePath}.source`,
@@ -329,7 +327,7 @@ export class ManifestValidator {
             // Path aliases should start with @
             if (!alias.startsWith('@')) {
                 diagnostics.push({
-                    code: ManifestIssueCodes.PathAliasMissingAtPrefix as ManifestIssueCode,
+                    code: ManifestIssueCodes.PathAliasMissingAtPrefix,
                     severity: 'warning',
                     message: `Path alias '${alias}' should start with '@'.`,
                     path: `paths.${alias}`,
@@ -340,7 +338,7 @@ export class ManifestValidator {
             // Target paths should be relative
             if (this.isAbsolutePath(targetPath)) {
                 diagnostics.push({
-                    code: ManifestIssueCodes.PathAliasAbsolutePath as ManifestIssueCode,
+                    code: ManifestIssueCodes.PathAliasAbsolutePath,
                     severity: 'error',
                     message: `Path alias '${alias}' cannot map to absolute path '${targetPath}'.`,
                     path: `paths.${alias}`,

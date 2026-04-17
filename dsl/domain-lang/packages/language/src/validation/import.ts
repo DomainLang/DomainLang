@@ -24,12 +24,12 @@ import { ValidationMessages, buildCodeDescription, IssueCodes } from './constant
  * - Import cycles are detected and reported (PRS-017 R3)
  */
 export class ImportValidator {
-    private readonly workspaceManager: ManifestManager;
+    private readonly manifestManager: ManifestManager;
     private readonly importResolver: ImportResolver;
     private readonly indexManager: ImportCycleDetector | undefined;
 
     constructor(services: DomainLangServices) {
-        this.workspaceManager = services.imports.ManifestManager;
+        this.manifestManager = services.imports.ManifestManager;
         this.importResolver = services.imports.ImportResolver;
         // IndexManager is in shared services — use ImportCycleDetector interface for cycle detection
         const indexMgr = services.shared.workspace.IndexManager;
@@ -72,17 +72,17 @@ export class ImportValidator {
             return; // Don't continue with other validations if can't resolve
         }
 
-        if (!this.isExternalImport(imp.uri)) {
+        if (imp.uri.startsWith('./') || imp.uri.startsWith('../') || imp.uri.startsWith('@')) {
             return;
         }
 
         if (cancelToken.isCancellationRequested) return;
 
-        // Initialize workspace manager from document location
+        // Initialize manifest manager from document location
         const docDir = path.dirname(document.uri.fsPath);
-        await this.workspaceManager.initialize(docDir);
+        await this.manifestManager.initialize(docDir);
 
-        const manifest = await this.workspaceManager.getManifest();
+        const manifest = await this.manifestManager.getManifest();
         if (!manifest) {
             accept('error', ValidationMessages.IMPORT_REQUIRES_MANIFEST(imp.uri), {
                 node: imp,
@@ -115,7 +115,7 @@ export class ImportValidator {
         if (dependency.source) {
             if (cancelToken.isCancellationRequested) return;
 
-            const lockFile = await this.workspaceManager.getLockFile();
+            const lockFile = await this.manifestManager.getLockFile();
             if (!lockFile) {
                 accept('error', ValidationMessages.IMPORT_NOT_INSTALLED(key), {
                     node: imp,
@@ -129,24 +129,6 @@ export class ImportValidator {
 
             await this.validateCachedPackage(dependency, key, lockFile, accept, imp);
         }
-    }
-
-    /**
-     * Determines if an import URI is external (requires manifest).
-     *
-     * Per PRS-010:
-     * - Local relative: ./path, ../path
-     * - Path aliases: @/path, @alias/path (resolved via manifest paths section)
-     * - External: owner/package (requires manifest dependencies)
-     */
-    private isExternalImport(uri: string): boolean {
-        if (uri.startsWith('./') || uri.startsWith('../')) {
-            return false;
-        }
-        if (uri.startsWith('@')) {
-            return false;
-        }
-        return true;
     }
 
     /**
@@ -352,7 +334,7 @@ export class ImportValidator {
         }
 
         try {
-            const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
+            const workspaceRoot = this.manifestManager.getWorkspaceRoot();
             const resolvedPath = path.resolve(workspaceRoot, dependencyPath);
             const relativeToWorkspace = path.relative(workspaceRoot, resolvedPath);
 
@@ -403,7 +385,7 @@ export class ImportValidator {
         }
 
         try {
-            const workspaceRoot = this.workspaceManager.getWorkspaceRoot();
+            const workspaceRoot = this.manifestManager.getWorkspaceRoot();
             const cacheDir = this.getCacheDirectory(workspaceRoot, packageKey, lockedDep.commit);
 
             const cacheExists = await this.directoryExists(cacheDir);
