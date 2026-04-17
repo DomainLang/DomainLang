@@ -13,7 +13,7 @@
  */
 
 import type { AstNode, LangiumDocument } from 'langium';
-import { DocumentSymbol, SymbolKind } from 'vscode-languageserver';
+import { DocumentSymbol, Range, SymbolKind } from 'vscode-languageserver';
 import { CstUtils } from 'langium';
 import { DefaultDocumentSymbolProvider } from 'langium/lsp';
 import {
@@ -130,14 +130,19 @@ export class DomainLangDocumentSymbolProvider extends DefaultDocumentSymbolProvi
      * Creates a synthetic folder DocumentSymbol for grouping children.
      */
     private createFolderSymbol(name: string, children: DocumentSymbol[]): DocumentSymbol {
-        // Use the first child's range for the folder
+        // Compute encompassing range from first to last child
         const firstChild = children[0];
+        const lastChild = children[children.length - 1];
+        const encompassingRange: Range = {
+            start: firstChild.range.start,
+            end: lastChild.range.end
+        };
         
         return DocumentSymbol.create(
             name,
             `${children.length} items`,
             SymbolKind.Object,
-            firstChild.range,
+            encompassingRange,
             firstChild.selectionRange,
             children
         );

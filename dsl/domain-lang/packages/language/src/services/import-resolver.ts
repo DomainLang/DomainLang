@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DocumentCache, SimpleCache, URI, type LangiumDocument, type LangiumSharedCoreServices } from 'langium';
 import { ManifestManager } from './workspace-manager.js';
+import { fileExists } from './manifest-utils.js';
 import type { DomainLangServices } from '../domain-lang-module.js';
 import type { LockFile } from './types.js';
 import { getLspRuntimeSettings } from './lsp-runtime-settings.js';
@@ -459,7 +460,7 @@ export class ImportResolver {
                 });
             }
 
-            if (await this.fileExists(entryFile)) {
+            if (await fileExists(entryFile)) {
                 return URI.file(entryFile);
             }
 
@@ -474,7 +475,7 @@ export class ImportResolver {
 
         // Step 2: Try .dlang file fallback
         const fileWithExt = `${resolved}.dlang`;
-        if (await this.fileExists(fileWithExt)) {
+        if (await fileExists(fileWithExt)) {
             return URI.file(fileWithExt);
         }
 
@@ -497,7 +498,12 @@ export class ImportResolver {
             const YAML = await import('yaml');
             const manifest = YAML.parse(content) as { model?: { entry?: string } };
             return manifest?.model?.entry ?? 'index.dlang';
-        } catch {
+        } catch (error: unknown) {
+            // Non-ENOENT errors (e.g. YAML parse failures) should be surfaced
+            const isFileNotFound = error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT';
+            if (!isFileNotFound) {
+                console.warn(`Failed to read module manifest at ${manifestPath}:`, error instanceof Error ? error.message : error);
+            }
             return 'index.dlang';
         }
     }
@@ -509,18 +515,6 @@ export class ImportResolver {
         try {
             const stat = await fs.stat(targetPath);
             return stat.isDirectory();
-        } catch {
-            return false;
-        }
-    }
-
-    /**
-     * Checks if a file exists.
-     */
-    private async fileExists(filePath: string): Promise<boolean> {
-        try {
-            await fs.access(filePath);
-            return true;
         } catch {
             return false;
         }

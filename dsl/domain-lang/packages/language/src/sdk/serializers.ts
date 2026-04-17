@@ -229,18 +229,6 @@ export function serializeRelationship(view: RelationshipView): Record<string, un
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolve a Reference<T> to its name string.
- * Returns undefined if reference is unresolved.
- * 
- * @param ref - Reference to resolve
- * @returns Referenced name or undefined
- */
-export function resolveName<T extends AstNode & { name?: string }>(ref: Reference<T> | undefined): string | undefined {
-    if (!ref) return undefined;
-    return ref.ref?.name ?? ref.$refText;
-}
-
-/**
  * Resolve a MultiReference (array of items with refs) to an array of names.
  * Filters out unresolved references.
  * 

@@ -366,6 +366,14 @@ export class ManifestManager {
         const normalized = path.resolve(manifestDir);
         if (created) {
             this.knownManifestDirs.add(normalized);
+            // Invalidate path-to-root cache entries for paths at or under the new
+            // manifest dir — they may now resolve to this closer workspace root.
+            for (const [startPath, root] of this.pathToRootCache) {
+                if (root !== normalized &&
+                    (startPath === normalized || startPath.startsWith(normalized + path.sep))) {
+                    this.pathToRootCache.delete(startPath);
+                }
+            }
         } else {
             this.knownManifestDirs.delete(normalized);
             // Invalidate path-to-root cache entries that pointed to this dir

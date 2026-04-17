@@ -156,7 +156,6 @@ export type {
 export {
     serializeNode,
     serializeRelationship,
-    resolveName,
     resolveMultiReference,
     normalizeEntityType,
     ENTITY_ALIASES,

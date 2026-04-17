@@ -32,10 +32,11 @@ import {
     DefaultScopeProvider,
     EMPTY_SCOPE,
     MapScope,
-    stream
+    stream,
+    WorkspaceCache
 } from 'langium';
 import type { DomainLangServices } from '../domain-lang-module.js';
-import type { DomainLangIndexManager } from './domain-lang-index-manager.js';
+import { DomainLangIndexManager } from './domain-lang-index-manager.js';
 import type { PackageBoundaryDetector } from '../services/package-boundary-detector.js';
 import type { ImportInfo } from '../services/types.js';
 import { createLogger } from '../services/lsp-logger.js';
@@ -58,10 +59,21 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
      */
     private readonly packageBoundaryDetector: PackageBoundaryDetector;
 
+    /**
+     * Caches the element description index by reference type.
+     * Invalidated automatically when any document in the workspace changes.
+     */
+    private readonly descByUriCache: WorkspaceCache<string, Map<string, AstNodeDescription[]>>;
+
     constructor(services: DomainLangServices) {
         super(services);
-        this.domainLangIndexManager = services.shared.workspace.IndexManager as DomainLangIndexManager;
+        const indexManager = services.shared.workspace.IndexManager;
+        if (!(indexManager instanceof DomainLangIndexManager)) {
+            throw new Error('IndexManager is not a DomainLangIndexManager — check DI configuration');
+        }
+        this.domainLangIndexManager = indexManager;
         this.packageBoundaryDetector = services.imports.PackageBoundaryDetector;
+        this.descByUriCache = new WorkspaceCache(services.shared);
     }
 
     /**
@@ -80,10 +92,6 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
     protected override getGlobalScope(referenceType: string, context: ReferenceInfo): Scope {
         try {
             const document = AstUtils.getDocument(context.container);
-            if (!document) {
-                return EMPTY_SCOPE;
-            }
-
             const descriptions = this.computeVisibleDescriptions(referenceType, document);
             return new MapScope(descriptions);
         } catch (error) {
@@ -108,18 +116,21 @@ export class DomainLangScopeProvider extends DefaultScopeProvider {
     ): Stream<AstNodeDescription> {
         const docUri = document.uri.toString();
 
-        // Pre-compute a single index: URI → descriptions for this type.
-        // A single allElements() call is O(M); repeated calls below would be O((1+N)×M).
-        const descByUri = new Map<string, AstNodeDescription[]>();
-        for (const desc of this.indexManager.allElements(referenceType)) {
-            const uriStr = desc.documentUri.toString();
-            let bucket = descByUri.get(uriStr);
-            if (!bucket) {
-                bucket = [];
-                descByUri.set(uriStr, bucket);
+        // Cache the expensive allElements() iteration per reference type.
+        // WorkspaceCache auto-invalidates when any document changes.
+        const descByUri = this.descByUriCache.get(referenceType, () => {
+            const map = new Map<string, AstNodeDescription[]>();
+            for (const desc of this.indexManager.allElements(referenceType)) {
+                const uriStr = desc.documentUri.toString();
+                let bucket = map.get(uriStr);
+                if (!bucket) {
+                    bucket = [];
+                    map.set(uriStr, bucket);
+                }
+                bucket.push(desc);
             }
-            bucket.push(desc);
-        }
+            return map;
+        });
 
         const allVisibleDescriptions: AstNodeDescription[] = [];
 

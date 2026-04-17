@@ -13,7 +13,7 @@ import type { Hover, HoverParams } from 'vscode-languageserver';
 import * as ast from '../../generated/ast.js';
 import type { DomainLangServices } from '../../domain-lang-module.js';
 import { QualifiedNameProvider } from '../../services/naming.js';
-import type { DomainLangIndexManager } from '../domain-lang-index-manager.js';
+import { DomainLangIndexManager } from '../domain-lang-index-manager.js';
 import { keywordExplanations } from './domain-lang-keywords.js';
 import {
     buildDomainFields,
@@ -57,7 +57,11 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
         this.commentProvider = services.documentation.CommentProvider;
         const domainServices = services as DomainLangServices;
         this.qualifiedNameProvider = domainServices.references.QualifiedNameProvider;
-        this.indexManager = services.shared.workspace.IndexManager as DomainLangIndexManager;
+        const indexManager = services.shared.workspace.IndexManager;
+        if (!(indexManager instanceof DomainLangIndexManager)) {
+            throw new Error('IndexManager is not a DomainLangIndexManager — check DI configuration');
+        }
+        this.indexManager = indexManager;
 
         // Register type-specific generators
         this.hoverGenerators = [

@@ -166,24 +166,7 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
         }
 
         // Center label: relationship kind
-        const centerLabel = this.formatRelationshipKind(kind);
-        if (centerLabel) {
-            children.push({
-                type: 'label:edge',
-                id: args.idCache.uniqueId(`${edgeId}:type`),
-                text: centerLabel,
-                edgePlacement: {
-                    side: 'on',
-                    position: 0.5,
-                    rotate: false,
-                    offset: 10,
-                },
-                // SAFETY: sprotty-protocol's SModelElement lacks `text` and `edgePlacement`,
-                // but the sprotty runtime resolves label elements by `type` and accepts these
-                // extra fields. The double cast is required because the object literal has
-                // properties beyond what the compile-time type declares.
-            } as unknown as SModelElement);
-        }
+        this.addCenterLabel(children, kind, edgeId, args);
 
         let edgeCssClasses: string[] | undefined;
         if (arrow === '<->') {
@@ -223,24 +206,7 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
 
         const children: SModelElement[] = [];
 
-        const centerLabel = this.formatRelationshipKind(kind);
-        if (centerLabel) {
-            children.push({
-                type: 'label:edge',
-                id: args.idCache.uniqueId(`${edgeId}:type`),
-                text: centerLabel,
-                edgePlacement: {
-                    side: 'on',
-                    position: 0.5,
-                    rotate: false,
-                    offset: 10,
-                },
-                // SAFETY: sprotty-protocol's SModelElement lacks `text` and `edgePlacement`,
-                // but the sprotty runtime resolves label elements by `type` and accepts these
-                // extra fields. The double cast is required because the object literal has
-                // properties beyond what the compile-time type declares.
-            } as unknown as SModelElement);
-        }
+        this.addCenterLabel(children, kind, edgeId, args);
 
         let edgeCssClasses: string[] | undefined;
         if (kind === 'SeparateWays') {
@@ -318,33 +284,37 @@ export class DomainLangContextMapDiagramGenerator extends LangiumDiagramGenerato
     }
 
     /**
-     * Formats the relationship type for the center edge label.
+     * Adds a center label to an edge showing the relationship kind.
      *
      * Maps DomainLang keywords to DDD community notation display names:
-     *   CustomerSupplier → Customer/Supplier
-     *   SharedKernel → Shared Kernel
-     *   UpstreamDownstream → Upstream/Downstream
-     *   Partnership → Partnership
-     *
-     * For `<->` without explicit type, defaults to "Partnership".
-     * For `><`, defaults to "Separate Ways".
+     *   SharedKernel → Shared Kernel, SeparateWays → Separate Ways, Partnership → Partnership.
+     * Directional kinds (CustomerSupplier, UpstreamDownstream) are omitted — conveyed by U/D and C/S role badges.
      */
-    private formatRelationshipKind(kind: string | undefined): string | undefined {
-        if (!kind) return undefined;
-        return this.displayRelationshipKind(kind);
-    }
-
-    private displayRelationshipKind(kind: string): string | undefined {
+    private addCenterLabel(
+        children: SModelElement[],
+        kind: string | undefined,
+        edgeId: string,
+        args: GeneratorContext
+    ): void {
+        let label: string | undefined;
         switch (kind) {
-            // Directional kinds are already conveyed by U/D and C/S role badges — no center label needed
-            case 'CustomerSupplier': return undefined;
-            case 'UpstreamDownstream': return undefined;
-            // Symmetric and bidirectional kinds have no role badges, so label them explicitly
-            case 'SharedKernel': return 'Shared Kernel';
-            case 'SeparateWays': return 'Separate Ways';
-            case 'Partnership': return 'Partnership';
-            default: return kind;
+            case undefined: label = undefined; break;
+            case 'CustomerSupplier': label = undefined; break;
+            case 'UpstreamDownstream': label = undefined; break;
+            case 'SharedKernel': label = 'Shared Kernel'; break;
+            case 'SeparateWays': label = 'Separate Ways'; break;
+            case 'Partnership': label = 'Partnership'; break;
+            default: label = kind; break;
         }
+        if (!label) return;
+        children.push({
+            type: 'label:edge',
+            id: args.idCache.uniqueId(`${edgeId}:type`),
+            text: label,
+            edgePlacement: { side: 'on', position: 0.5, rotate: false, offset: 10 },
+            // SAFETY: sprotty-protocol's SModelElement type lacks `text` and `edgePlacement`
+            // but the sprotty runtime accepts them. Double cast required.
+        } as unknown as SModelElement);
     }
 
     // ── Node generation ──

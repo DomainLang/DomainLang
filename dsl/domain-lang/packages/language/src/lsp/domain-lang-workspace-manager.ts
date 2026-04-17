@@ -106,7 +106,9 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
         const progress = await this.createProgress('DomainLang: Indexing workspace');
 
         // Find ALL model.yaml files in workspace (supports mixed mode)
-        const manifestInfos = await this.findAllManifestsInFolders(folders);
+        const manifestInfos = await findManifestsInDirectories(
+            folders.map(f => URI.parse(f.uri).fsPath)
+        );
         
         // Track directories covered by manifests to avoid loading their files as standalone
         const moduleDirectories = new Set(
@@ -130,7 +132,11 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
                     validation: true
                 });
 
-                const uris = await this.loadImportGraph(entryDoc);
+                const uris = this.importResolver
+                    ? await ensureImportGraphFromDocument(
+                        entryDoc, this.langiumDocuments, this.importResolver
+                    )
+                    : [];
                 const importedDocs: LangiumDocument[] = [];
                 for (const uriString of uris) {
                     const uri = URI.parse(uriString);
@@ -228,7 +234,7 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
                     // Recurse into subdirectories
                     const subDocs = await this.loadDlangFilesRecursively(entryPath, moduleDirectories, collector);
                     docs.push(...subDocs);
-                } else if (this.isDlangFile(entry)) {
+                } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.dlang')) {
                     const doc = await this.tryLoadDocument(dirPath, entry.name, collector);
                     if (doc) {
                         docs.push(doc);
@@ -241,13 +247,6 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
         }
 
         return docs;
-    }
-
-    /**
-     * Checks if a directory entry is a .dlang file.
-     */
-    private isDlangFile(entry: { isFile(): boolean; name: string }): boolean {
-        return entry.isFile() && entry.name.toLowerCase().endsWith('.dlang');
     }
 
     /**
@@ -275,33 +274,6 @@ export class DomainLangWorkspaceManager extends DefaultWorkspaceManager {
             log.warn(`Failed to load standalone file ${filePath}: ${message}`);
             return undefined;
         }
-    }
-
-    /**
-     * Finds ALL model.yaml files in the workspace.
-     * Delegates to shared manifest utilities.
-     * 
-     * @param folders - Workspace folders to search
-     * @returns Array of manifest info (one per model.yaml found)
-     */
-    private async findAllManifestsInFolders(folders: WorkspaceFolder[]): Promise<Array<{ manifestPath: string; entryPath: string }>> {
-        const directories = folders.map(f => URI.parse(f.uri).fsPath);
-        return findManifestsInDirectories(directories);
-    }
-
-    /**
-     * Recursively builds the import graph from a document.
-     * Uses the DI-injected ImportResolver when available,
-     * falling back to the standalone utility.
-     *
-     * @param document - The starting document
-     * @returns Set of URIs (as strings) for all documents in the import graph
-     */
-    private async loadImportGraph(document: LangiumDocument): Promise<Set<string>> {
-        if (!this.importResolver) {
-            throw new Error('ImportResolver not initialised — ensure setLanguageServices() was called');
-        }
-        return ensureImportGraphFromDocument(document, this.langiumDocuments, this.importResolver);
     }
 
     // --- PRS-017 R7: Progress reporting ---

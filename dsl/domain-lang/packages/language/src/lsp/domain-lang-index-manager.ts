@@ -139,6 +139,12 @@ export class DomainLangIndexManager extends DefaultIndexManager implements Impor
      */
     override async updateContent(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
         const uri = document.uri.toString();
+
+        // Clear import-loaded flag so ensureImportsLoaded() re-evaluates imports.
+        // The document's imports may have changed (e.g., user added a new import).
+        // The flag is re-set inside ensureImportsLoaded() before recursive loads,
+        // so import cycles are still detected within the same build.
+        this.importsLoaded.delete(uri);
         
         // R2: Capture export snapshot BEFORE re-indexing
         const oldExports = this.exportSnapshots.get(uri);

@@ -18,7 +18,7 @@
  * @module sdk/loader-node
  */
 
-import { DocumentState, URI } from 'langium';
+import { DocumentState, URI, type LangiumDocument } from 'langium';
 import { NodeFileSystem } from 'langium/node';
 import type { Model } from '../generated/ast.js';
 import { isModel } from '../generated/ast.js';
@@ -86,14 +86,21 @@ export async function loadModel(
     const fileContent = await fs.readFile(absolutePath, 'utf-8');
     const uri = URI.file(absolutePath);
     
-    // Use proper Langium document creation
-    const document = shared.workspace.LangiumDocumentFactory.fromString<Model>(
-        fileContent, 
-        uri
-    );
+    // Use getOrCreateDocument if already registered (e.g. reused services),
+    // otherwise create from file content to avoid duplicate document errors.
+    const langiumDocuments = shared.workspace.LangiumDocuments;
+    const document = langiumDocuments.hasDocument(uri)
+        ? await langiumDocuments.getOrCreateDocument(uri) as LangiumDocument<Model>
+        : (() => {
+            const doc = shared.workspace.LangiumDocumentFactory.fromString<Model>(
+                fileContent, 
+                uri
+            );
+            langiumDocuments.addDocument(doc);
+            return doc;
+        })();
     
     // Register document and build it
-    shared.workspace.LangiumDocuments.addDocument(document);
     await shared.workspace.DocumentBuilder.build([document], { validation: false });
     
     // Traverse import graph to load all imported files
@@ -103,9 +110,17 @@ export async function loadModel(
         services.imports.ImportResolver
     );
     
-    // Build all imported documents with validation
-    const allDocuments = Array.from(shared.workspace.LangiumDocuments.all);
-    await shared.workspace.DocumentBuilder.build(allDocuments, { validation: true });
+    // Build all imported documents with validation.
+    // Only build documents from this import graph (not unrelated documents
+    // that may exist when services are reused across multiple loadModel calls).
+    const importGraphDocuments = Array.from(importedUris)
+        .map(uriStr => URI.parse(uriStr))
+        .map(u => langiumDocuments.getDocument(u))
+        .filter((d): d is LangiumDocument => d !== undefined)
+        .concat(document);
+    // Deduplicate (entry document is already in importedUris)
+    const uniqueDocs = [...new Map(importGraphDocuments.map(d => [d.uri.toString(), d])).values()];
+    await shared.workspace.DocumentBuilder.build(uniqueDocs, { validation: true });
     
     // Wait for entry document to be fully processed
     if (document.state < DocumentState.Validated) {
@@ -128,8 +143,8 @@ export async function loadModel(
         throw new Error(`Document root is not a Model: ${entryFile}`);
     }
     
-    // Augment AST nodes with SDK properties for all loaded models
-    for (const doc of allDocuments) {
+    // Augment AST nodes with SDK properties for this import graph's models
+    for (const doc of uniqueDocs) {
         const docModel = doc.parseResult.value;
         if (isModel(docModel)) {
             augmentModel(docModel);

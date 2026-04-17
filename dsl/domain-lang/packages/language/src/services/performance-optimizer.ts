@@ -32,25 +32,9 @@ export class PerformanceOptimizer {
      */
     async getCachedLockFile(workspaceRoot: string): Promise<LockFile | undefined> {
         const cacheKey = this.normalizePath(workspaceRoot);
-        const cached = this.lockFileCache.get(cacheKey);
-
-        if (cached) {
-            return cached;
-        }
-
-        // Load from disk
-        const lockPath = path.join(workspaceRoot, 'model.lock');
-        try {
-            const content = await fs.readFile(lockPath, 'utf-8');
-            const lockFile = JSON.parse(content) as LockFile;
-
-            // Cache it
-            this.lockFileCache.set(cacheKey, lockFile);
-
-            return lockFile;
-        } catch {
-            return undefined;
-        }
+        return this.getCached(this.lockFileCache, cacheKey,
+            path.join(workspaceRoot, 'model.lock'),
+            content => JSON.parse(content) as LockFile);
     }
 
     /**
@@ -59,19 +43,22 @@ export class PerformanceOptimizer {
     async getCachedManifest(manifestPath: string): Promise<unknown> {
         // Key by workspaceRoot (parent dir) so invalidateCache(workspaceRoot) hits the right entry
         const cacheKey = this.normalizePath(path.dirname(manifestPath));
-        const cached = this.manifestCache.get(cacheKey);
+        return this.getCached(this.manifestCache, cacheKey, manifestPath, parseYaml);
+    }
 
-        if (cached) {
-            return cached;
-        }
-
+    private async getCached<T>(
+        cache: Map<string, T>,
+        cacheKey: string,
+        filePath: string,
+        parser: (content: string) => T
+    ): Promise<T | undefined> {
+        const cached = cache.get(cacheKey);
+        if (cached) return cached;
         try {
-            const content = await fs.readFile(manifestPath, 'utf-8');
-            const manifest: unknown = parseYaml(content);
-
-            this.manifestCache.set(cacheKey, manifest);
-
-            return manifest;
+            const content = await fs.readFile(filePath, 'utf-8');
+            const result = parser(content);
+            cache.set(cacheKey, result);
+            return result;
         } catch {
             return undefined;
         }

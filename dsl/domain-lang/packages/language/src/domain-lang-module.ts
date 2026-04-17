@@ -1,4 +1,4 @@
-import { type Module, inject } from 'langium';
+import { type Module, inject, DocumentState } from 'langium';
 import type { 
     DefaultSharedModuleContext, 
     LangiumServices, 
@@ -9,6 +9,8 @@ import type {
 import { createDefaultModule, createDefaultSharedModule } from 'langium/lsp';
 import { DomainLangGeneratedModule, DomainLangGeneratedSharedModule } from './generated/module.js';
 import { registerValidationChecks } from './validation/domain-lang-validator.js';
+import { setInferredRelationshipTypes } from './services/relationship-inference.js';
+import { isModel } from './generated/ast.js';
 import { QualifiedNameProvider } from './services/naming.js';
 import { DomainLangScopeComputation } from './lsp/domain-lang-scope.js';
 import { DomainLangScopeProvider } from './lsp/domain-lang-scope-provider.js';
@@ -143,6 +145,17 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
     );
     shared.ServiceRegistry.register(DomainLang);
     registerValidationChecks(DomainLang);
+
+    // Run relationship inference after linking (so cross-references are resolved)
+    // but before validation. This keeps validators as pure observers.
+    shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Linked, async (documents) => {
+        for (const doc of documents) {
+            const model = doc.parseResult?.value;
+            if (isModel(model)) {
+                setInferredRelationshipTypes(model);
+            }
+        }
+    });
 
     // Late-bind language services into shared module services.
     // IndexManager and WorkspaceManager are in the shared module (created first),

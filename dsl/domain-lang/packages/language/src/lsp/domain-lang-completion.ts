@@ -43,7 +43,7 @@ const TOP_LEVEL_SNIPPETS = [
             'Domain ${1:Name} {',
             '\tdescription: "${2:Description}"',
             '\tvision: "${3:Vision}"',
-            '\tclassification: ${4:CoreDomain}',
+            '\ttype: ${4:CoreDomain}',
             '}'
         ].join('\n'),
         documentation: '📝 Snippet: Create a domain with description and vision',
@@ -63,7 +63,7 @@ const TOP_LEVEL_SNIPPETS = [
             'BoundedContext ${1:Name} for ${2:Domain} {',
             '\tdescription: "${3:Description}"',
             '\tteam: ${4:Team}',
-            '\trole: ${5:Core}',
+            '\tclassification: ${5:Core}',
             '\t',
             '\tterminology {',
             '\t\tterm ${6:Term}: "${7:Definition}"',
@@ -130,7 +130,7 @@ const TOP_LEVEL_SNIPPETS = [
 ] as const;
 
 export class DomainLangCompletionProvider extends DefaultCompletionProvider {
-    private readonly workspaceManager: ManifestManager;
+    private readonly manifestManager: ManifestManager;
 
     override readonly completionOptions = {
         triggerCharacters: ['.']
@@ -138,7 +138,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
 
     constructor(services: DomainLangServices) {
         super(services);
-        this.workspaceManager = services.imports.ManifestManager;
+        this.manifestManager = services.imports.ManifestManager;
     }
 
     /**
@@ -194,7 +194,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         result: CompletionList | undefined,
         text: string,
         offset: number,
-        _document: LangiumDocument
+        document: LangiumDocument
     ): CompletionList | undefined {
         if (!result?.items?.length) return result;
 
@@ -208,74 +208,27 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         const partial = fullTyped.substring(lastDotIndex + 1);
 
         // If completionForCrossReference already produced segmented items, just clean up
-        if (this.hasSegmentedItems(result.items, prefix)) {
-            return this.removeLeakedFqnItems(result, prefix);
+        if (result.items.some(item => !item.label.includes('.') && item.filterText?.startsWith(prefix))) {
+            const prefixRoot = prefix.substring(0, prefix.length - 1);
+            result.items = result.items.filter(item =>
+                !item.label.includes('.') || !item.label.startsWith(prefixRoot)
+            );
+            return result;
         }
 
         // No segmented items — transform FQN items into segmented items
-        const positions = this.calculateTextPositions(text, offset, fullStart);
-        const newItems = this.transformToSegmentedItems(
-            result.items, prefix, partial, fullTyped, positions
-        );
-        return CompletionList.create(newItems, true);
-    }
-
-    /** Check if any items are already segmented by our completionForCrossReference. */
-    private hasSegmentedItems(items: CompletionItem[], prefix: string): boolean {
-        return items.some(item =>
-            !item.label.includes('.') && item.filterText?.startsWith(prefix)
-        );
-    }
-
-    /** Remove full-FQN items that leaked alongside segmented items. */
-    private removeLeakedFqnItems(
-        result: CompletionList,
-        prefix: string
-    ): CompletionList {
-        const prefixRoot = prefix.substring(0, prefix.length - 1);
-        result.items = result.items.filter(item =>
-            !item.label.includes('.') || !item.label.startsWith(prefixRoot)
-        );
-        return result;
-    }
-
-    /** Calculate line/character positions from text offsets. */
-    private calculateTextPositions(
-        text: string,
-        offset: number,
-        fullStart: number
-    ): { startPos: { line: number; character: number }; endPos: { line: number; character: number } } {
-        const startPos = { line: 0, character: 0 };
-        const endPos = { line: 0, character: 0 };
-        let line = 0;
-        let col = 0;
-        for (let i = 0; i < text.length && i <= offset; i++) {
-            if (i === fullStart) { startPos.line = line; startPos.character = col; }
-            if (i === offset) { endPos.line = line; endPos.character = col; }
-            if (text[i] === '\n') { line++; col = 0; } else { col++; }
-        }
-        if (offset === text.length) { endPos.line = line; endPos.character = col; }
-        return { startPos, endPos };
-    }
-
-    /** Transform FQN completion items into segmented (next-segment-only) items. */
-    private transformToSegmentedItems(
-        items: CompletionItem[],
-        prefix: string,
-        partial: string,
-        fullTyped: string,
-        positions: { startPos: { line: number; character: number }; endPos: { line: number; character: number } }
-    ): CompletionItem[] {
+        const startPos = document.textDocument.positionAt(fullStart);
+        const endPos = document.textDocument.positionAt(offset);
+        const positions = { startPos, endPos };
         const seenSegments = new Set<string>();
         const newItems: CompletionItem[] = [];
-
-        for (const item of items) {
+        for (const item of result.items) {
             const segmented = this.segmentSingleItem(
                 item, prefix, partial, fullTyped, positions, seenSegments
             );
             if (segmented) newItems.push(segmented);
         }
-        return newItems;
+        return CompletionList.create(newItems, true);
     }
 
     /** Transform a single FQN item into a segmented item, or keep non-matching items. */
@@ -291,7 +244,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
 
         // Keep non-matching items (keywords, snippets, etc.)
         if (!itemName.startsWith(prefix)) {
-            if (!itemName.includes('.') || !this.sharesDottedPrefix(itemName, fullTyped)) {
+            if (!itemName.includes('.') || itemName.split('.')[0] !== fullTyped.split('.')[0]) {
                 return item;
             }
             return undefined;
@@ -319,15 +272,6 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
                 fullInsertText
             ),
         };
-    }
-
-    /**
-     * Check if two dotted names share a common prefix up to the first differing segment.
-     */
-    private sharesDottedPrefix(a: string, b: string): boolean {
-        const aParts = a.split('.');
-        const bParts = b.split('.');
-        return aParts.length > 0 && bParts.length > 0 && aParts[0] === bParts[0];
     }
 
     /**
@@ -378,7 +322,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
     private async collectImportItems(currentInput: string): Promise<CompletionItem[]> {
         let manifest: ModelManifest | undefined;
         try {
-            manifest = await this.workspaceManager.ensureManifestLoaded();
+            manifest = await this.manifestManager.ensureManifestLoaded();
         } catch {
             // Continue with undefined manifest – will show basic starters
         }
@@ -433,7 +377,7 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         acceptor: CompletionAcceptor
     ): void | Promise<void> {
         const text = context.textDocument.getText();
-        const fullStart = this.findDottedPathStart(text, context.tokenOffset);
+        const fullStart = this.walkBackThroughDotIdPairs(text, context.tokenOffset - 1) + 1;
         const fullTyped = text.substring(fullStart, context.offset);
 
         // Without dots, use Langium's default FQN-based completion
@@ -465,28 +409,6 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
 
         const candidates = this.getReferenceCandidates(refInfo, context);
         this.acceptSegmentedCandidates(context, candidates, fullTyped, fullStart, acceptor);
-    }
-
-    /**
-     * Walk backwards from `tokenOffset` through preceding `.ID` pairs
-     * to find the start of the full dotted path.
-     * QualifiedName = ID ('.' ID)* — Langium tokenises each ID separately.
-     */
-    private findDottedPathStart(text: string, tokenOffset: number): number {
-        let fullStart = tokenOffset;
-        while (fullStart > 0) {
-            let pos = fullStart - 1;
-            while (pos >= 0 && text[pos] === ' ') pos--;
-            if (pos < 0 || text[pos] !== '.') break;
-            const idEnd = pos;
-            pos--;
-            while (pos >= 0 && text[pos] === ' ') pos--;
-            while (pos >= 0 && /\w/.test(text[pos])) pos--;
-            pos++;
-            if (pos >= idEnd) break;
-            fullStart = pos;
-        }
-        return fullStart;
     }
 
     /**
@@ -614,33 +536,15 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         }
         
         // Check 3: Any ancestor (including self) is ImportStatement
-        if (this.isInImportStatementHierarchy(node)) {
-            return true;
-        }
-        
-        // Check 4: Text-based pattern matching (fallback for edge cases)
-        return this.isImportTextPattern(context);
-    }
-
-    /** Check if the node or any ancestor is an ImportStatement. */
-    private isInImportStatementHierarchy(node: AstNode): boolean {
         let current: AstNode | undefined = node;
         while (current) {
             if (ast.isImportStatement(current)) return true;
             current = current.$container;
         }
-        return false;
-    }
-
-    /** Check if text before cursor matches an import string pattern. */
-    private isImportTextPattern(context: CompletionContext): boolean {
-        if (typeof context.textDocument?.getText !== 'function') return false;
-        try {
-            const textBefore = context.textDocument.getText().substring(0, context.offset);
-            return /\bimport\s+"[^"]*$/i.test(textBefore);
-        } catch {
-            return false;
-        }
+        
+        // Check 4: Text-based pattern matching (fallback for edge cases)
+        const textBefore = context.textDocument.getText().substring(0, context.offset);
+        return /\bimport\s+"[^"]*$/i.test(textBefore);
     }
 
     /**
@@ -653,12 +557,14 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         _node: AstNode
     ): Promise<void> {
         // Extract what user has typed inside the import string
-        const currentInput = this.extractImportInput(context);
+        const importTextBefore = context.textDocument.getText().substring(0, context.offset);
+        const importMatch = /\bimport\s+"([^"]*)$/i.exec(importTextBefore);
+        const currentInput = importMatch ? importMatch[1] : '';
 
         // Ensure manifest is loaded (async)
         let manifest: ModelManifest | undefined;
         try {
-            manifest = await this.workspaceManager.ensureManifestLoaded();
+            manifest = await this.manifestManager.ensureManifestLoaded();
         } catch {
             // Continue with undefined manifest – will show basic starters
         }
@@ -680,23 +586,6 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         } else {
             // Show all options for partial input (e.g., typing 'l' should show matching items)
             this.addFilteredOptions(ia, currentInput, manifest);
-        }
-    }
-
-    /**
-     * Extract the current input inside the import string.
-     */
-    private extractImportInput(context: CompletionContext): string {
-        try {
-            const text = context.textDocument.getText();
-            const offset = context.offset;
-            const textBefore = text.substring(0, offset);
-            
-            const importPattern = /\bimport\s+"([^"]*)$/i;
-            const match = importPattern.exec(textBefore);
-            return match ? match[1] : '';
-        } catch {
-            return '';
         }
     }
 
@@ -904,26 +793,19 @@ export class DomainLangCompletionProvider extends DefaultCompletionProvider {
         // If we're AT the Model or NamespaceDeclaration level: all top-level constructs
         if (ast.isModel(node) || ast.isNamespaceDeclaration(node)) {
             this.addTopLevelSnippets(acceptor, context);
-            this.addImportSnippet(acceptor, context);
+            acceptor(context, {
+                label: '⚡ import',
+                kind: CompletionItemKind.Snippet,
+                insertText: 'import "${1:./path}"',
+                insertTextFormat: InsertTextFormat.Snippet,
+                documentation: '📝 Snippet: Import another DomainLang file',
+                sortText: '0_snippet_import'
+            });
             await super.completionFor(context, next, acceptor);
             return true;
         }
 
         return false;
-    }
-
-    /**
-     * Add import statement snippet at top level.
-     */
-    private addImportSnippet(acceptor: CompletionAcceptor, context: CompletionContext): void {
-        acceptor(context, {
-            label: '⚡ import',
-            kind: CompletionItemKind.Snippet,
-            insertText: 'import "${1:./path}"',
-            insertTextFormat: InsertTextFormat.Snippet,
-            documentation: '📝 Snippet: Import another DomainLang file',
-            sortText: '0_snippet_import'
-        });
     }
 
     private async handleContainerCompletions(

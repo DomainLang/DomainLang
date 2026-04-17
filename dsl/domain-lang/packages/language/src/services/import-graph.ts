@@ -2,6 +2,9 @@ import path from 'node:path';
 import { URI, type LangiumDocument, type LangiumDocuments } from 'langium';
 import { isModel, type Model } from '../generated/ast.js';
 import type { ImportResolver } from './import-resolver.js';
+import { createLogger } from './lsp-logger.js';
+
+const log = createLogger('ImportGraph');
 
 /**
  * Ensures the import graph is loaded from an entry file.
@@ -54,7 +57,7 @@ export async function ensureImportGraphFromDocument(
         await visit(childDoc);
       } catch (error) {
         // Import resolution failed — validation will report the error
-        console.error('Import resolution failed for', imp.uri, ':', error);
+        log.warn('Import resolution failed', { uri: imp.uri, detail: String(error) });
       }
     }
   }

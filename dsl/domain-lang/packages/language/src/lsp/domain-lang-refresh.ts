@@ -133,6 +133,7 @@ export async function processWatchedFileChanges(
         await processManifestChanges(categorized.manifestChanges, domainLang, hooks);
         await processLockFileChanges(categorized.lockFileChanges, domainLang);
         domainLang.imports.ImportResolver.clearCache();
+        domainLang.imports.PackageBoundaryDetector.clearCache();
         indexManager.clearImportDependencies();
 
         // 2. Rebuild ALL loaded documents — config changes affect all imports

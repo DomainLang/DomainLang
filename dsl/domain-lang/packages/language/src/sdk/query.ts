@@ -407,7 +407,7 @@ class QueryImpl implements Query {
  * Predicates are chained and only evaluated during iteration.
  */
 class QueryBuilderImpl<T> implements QueryBuilder<T> {
-    protected readonly sourceItems: Iterable<T>;
+    protected readonly sourceItems: T[];
     protected readonly predicateList: Array<(item: T) => boolean>;
     
     constructor(
@@ -415,7 +415,9 @@ class QueryBuilderImpl<T> implements QueryBuilder<T> {
         protected readonly fqnProvider: QualifiedNameProvider,
         predicates: Array<(item: T) => boolean> = []
     ) {
-        this.sourceItems = items;
+        // Materialize generators/iterators into arrays to prevent single-use exhaustion.
+        // Arrays are already re-iterable; this is a no-op for array inputs.
+        this.sourceItems = Array.isArray(items) ? items : [...items];
         this.predicateList = predicates;
     }
 
