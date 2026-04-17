@@ -47,7 +47,13 @@ vi.mock('../../src/utils/run-direct.js', () => ({
 }));
 
 vi.mock('@domainlang/language/sdk', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@domainlang/language/sdk')>();
+    const mod = await importOriginal<typeof import('@domainlang/language/sdk')>();
+    // ESM module namespace objects may not spread correctly in forked workers.
+    // Use getOwnPropertyNames to copy all exports including re-exports.
+    const actual: Record<string, unknown> = {};
+    for (const key of Object.getOwnPropertyNames(mod)) {
+        actual[key] = (mod as Record<string, unknown>)[key];
+    }
     const mockDomain = {
         name: 'Sales',
         vision: 'Handle all sales operations',

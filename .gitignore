@@ -30,6 +30,7 @@ hs_err_pid*
 ### Eclipse ###
 .metadata
 bin/
+!dsl/domain-lang/packages/cli/bin/
 tmp/
 *.tmp
 *.bak
