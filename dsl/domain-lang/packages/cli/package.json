@@ -42,8 +42,8 @@
         "domain-lang-cli": "./bin/cli.js"
     },
     "scripts": {
-        "clean": "shx rm -fr *.tsbuildinfo out",
-        "build": "tsc -b tsconfig.json && shx cp -r src/templates out/templates",
+        "clean": "shx rm -fr *.tsbuildinfo out bin",
+        "build": "tsc -b tsconfig.json && shx cp -r src/templates out/templates && node -e \"const fs=require('fs');fs.mkdirSync('bin',{recursive:true});fs.writeFileSync('bin/cli.js','#!/usr/bin/env node\\nimport \\'../out/main.js\\';\\n');fs.chmodSync('bin/cli.js',0o755);\"",
         "build:clean": "npm run clean && npm run build",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage"
