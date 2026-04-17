@@ -83,7 +83,7 @@ async function validate(path?: string): Promise<ValidationResult> {
         isDirectory = stats.isDirectory();
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Path not found: ${path ?? process.cwd()}\n${message}`);
+        throw new Error(`Path not found: ${path ?? process.cwd()}\n${message}`, { cause: error });
     }
     
     // Validate workspace (directory) or single file

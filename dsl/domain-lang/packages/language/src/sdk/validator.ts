@@ -288,7 +288,7 @@ export async function validateWorkspace(
         await manifestManager.initialize(absolutePath);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to initialize workspace at ${workspaceDir}: ${message}`);
+        throw new Error(`Failed to initialize workspace at ${workspaceDir}: ${message}`, { cause: error });
     }
 
     // Get the manifest to find the entry file

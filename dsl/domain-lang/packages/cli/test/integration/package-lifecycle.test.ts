@@ -76,6 +76,7 @@ function dlang(
             `stdout: ${execError.stdout ?? ''}\n` +
             `stderr: ${execError.stderr ?? ''}\n` +
             `error: ${execError.message ?? ''}`,
+            { cause: error },
         );
     }
 }

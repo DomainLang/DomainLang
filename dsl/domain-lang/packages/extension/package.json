@@ -248,13 +248,13 @@
         "vscode-languageserver": "~9.0.1"
     },
     "devDependencies": {
-        "@types/node": "~20.19.33",
+        "@types/node": "~25.6.0",
         "@types/vscode": "^1.109.0",
         "@vscode/vsce": "^3.7.1",
         "concurrently": "^9.2.1",
-        "esbuild": "^0.27.3",
+        "esbuild": "^0.28.0",
         "shx": "~0.4.0",
-        "typescript": "^5.9.3"
+        "typescript": "^6.0.3"
     },
     "vsce": {
         "dependencies": false

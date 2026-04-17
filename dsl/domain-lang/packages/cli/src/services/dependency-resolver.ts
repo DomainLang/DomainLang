@@ -568,7 +568,7 @@ export class DependencyResolver {
         try {
             return JSON.parse(content) as LockFile;
         } catch (err) {
-            throw new Error(`model.lock contains invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
+            throw new Error(`model.lock contains invalid JSON: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
         }
     }
 }

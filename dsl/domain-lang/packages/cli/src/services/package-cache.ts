@@ -186,7 +186,8 @@ export class PackageCache {
             // Clean up temp directory on any error
             await this.cleanupTempDir(tempDir);
             throw new Error(
-                `Failed to cache package ${owner}/${repo}@${commitSha}: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to cache package ${owner}/${repo}@${commitSha}: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error }
             );
         }
     }

@@ -85,7 +85,7 @@
         "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
-        "elkjs": "^0.8.2",
+        "elkjs": "^0.11.1",
         "langium": "~4.2.0",
         "langium-sprotty": "~4.2.0",
         "monaco-editor": "0.55.1",
@@ -94,11 +94,11 @@
         "yaml": "^2.5.0"
     },
     "devDependencies": {
-        "@types/node": "~20.19.33",
+        "@types/node": "~25.6.0",
         "@vitest/coverage-v8": "^4.0.18",
         "langium-cli": "~4.2.0",
         "shx": "~0.4.0",
-        "typescript": "^5.9.3",
+        "typescript": "^6.0.3",
         "vitest": "^4.0.18"
     },
     "volta": {
