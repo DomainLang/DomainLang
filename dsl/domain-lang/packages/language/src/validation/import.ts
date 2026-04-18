@@ -466,7 +466,7 @@ export class ImportValidator {
         const docDir = path.dirname(document.uri.fsPath);
         const resolvedAbsPath = path.resolve(docDir, imp.uri);
         const resolvedImpUri = URI.file(resolvedAbsPath).toString();
-        const isInCycle = cycle.some(uri => uri === resolvedImpUri);
+        const isInCycle = cycle.includes(resolvedImpUri);
         if (!isInCycle) return;
 
         // Build human-readable cycle display using absolute paths

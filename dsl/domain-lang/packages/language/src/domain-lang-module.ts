@@ -164,7 +164,7 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
     if (indexManager instanceof DomainLangIndexManager) {
         indexManager.setLanguageServices(DomainLang);
     } else {
-        throw new Error(
+        throw new TypeError(
             `Expected DomainLangIndexManager but got ${indexManager?.constructor.name ?? 'undefined'}. ` +
             `Cannot initialize language services.`
         );
@@ -173,7 +173,7 @@ export function createDomainLangServices(context: DefaultSharedModuleContext): {
     if (workspaceManager instanceof DomainLangWorkspaceManager) {
         workspaceManager.setLanguageServices(DomainLang);
     } else {
-        throw new Error(
+        throw new TypeError(
             `Expected DomainLangWorkspaceManager but got ${workspaceManager?.constructor.name ?? 'undefined'}. ` +
             `Cannot initialize language services.`
         );

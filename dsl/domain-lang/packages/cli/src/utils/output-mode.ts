@@ -89,11 +89,11 @@ export function shouldUseEmoji(config: OutputConfig): boolean {
  * @returns Args with output flags removed
  */
 export function stripOutputFlags(args: string[]): string[] {
-    const outputFlags = [
+    const outputFlags = new Set([
         '--json',
         '--quiet',
         '-q',
         '--no-color',
-    ];
-    return args.filter(arg => !outputFlags.includes(arg));
+    ]);
+    return args.filter(arg => !outputFlags.has(arg));
 }

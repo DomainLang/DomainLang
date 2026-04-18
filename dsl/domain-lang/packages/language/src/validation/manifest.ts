@@ -382,7 +382,7 @@ export class ManifestValidator {
             return true;
         }
         // Branch names (allow word chars, dots, hyphens, and forward slashes for feature branches)
-        if (/^[\w][\w./-]*$/.test(ref)) {
+        if (/^\w[\w./-]*$/.test(ref)) {
             return true;
         }
         // Commit SHAs (40 hex chars)

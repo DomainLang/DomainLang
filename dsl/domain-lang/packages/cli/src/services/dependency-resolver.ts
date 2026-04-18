@@ -34,9 +34,9 @@ import type { SemVer, ResolvingPackage, LockFile, LockedDependency, DependencyGr
 import { defaultFileSystem, type FileSystemService } from './filesystem.js';
 
 export class DependencyResolver {
-    private packageDownloader: PackageDownloader;
-    private packageCache: PackageCache;
-    private workspaceRoot: string;
+    private readonly packageDownloader: PackageDownloader;
+    private readonly packageCache: PackageCache;
+    private readonly workspaceRoot: string;
     private readonly fs: FileSystemService;
 
     constructor(
@@ -51,14 +51,14 @@ export class DependencyResolver {
         // Initialize HTTP-based services
         this.packageCache = packageCache || new PackageCache(workspaceRoot, fs);
         
-        if (!packageDownloader) {
+        if (packageDownloader) {
+            this.packageDownloader = packageDownloader;
+        } else {
             const credentialProvider = new CredentialProvider();
             this.packageDownloader = new PackageDownloader(
                 credentialProvider,
                 this.packageCache
             );
-        } else {
-            this.packageDownloader = packageDownloader;
         }
     }
 
@@ -176,7 +176,7 @@ export class DependencyResolver {
                 if (!existing.dependents.includes(parent)) {
                     existing.dependents.push(parent);
                 }
-                if (!existing.constraints) existing.constraints = new Set<string>();
+                existing.constraints ??= new Set<string>();
                 existing.constraints.add(refConstraint);
                 continue;
             }
@@ -451,12 +451,12 @@ export class DependencyResolver {
             // Check major version compatibility
             const majors = new Set(semvers.map(s => s.major));
             if (majors.size > 1) {
-                const majorList = Array.from(majors).sort().join(' vs ');
+                const majorList = Array.from(majors).sort((a, b) => a - b).join(' vs ');
                 this.throwConflictError(pkg, refs, node.dependents,
                     `Major version mismatch (v${majorList}). This may indicate breaking changes.\n` +
                     'Add an override in model.yaml if you want to force a version:\n\n' +
                     '  overrides:\n' +
-                    `    ${pkg}: ${refs[refs.length - 1]}`
+                    `    ${pkg}: ${refs.at(-1)}`
                 );
             }
             

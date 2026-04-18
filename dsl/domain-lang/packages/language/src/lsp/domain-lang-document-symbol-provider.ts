@@ -132,7 +132,7 @@ export class DomainLangDocumentSymbolProvider extends DefaultDocumentSymbolProvi
     private createFolderSymbol(name: string, children: DocumentSymbol[]): DocumentSymbol {
         // Compute encompassing range from first to last child
         const firstChild = children[0];
-        const lastChild = children[children.length - 1];
+        const lastChild = children.at(-1) ?? firstChild;
         const encompassingRange: Range = {
             start: firstChild.range.start,
             end: lastChild.range.end

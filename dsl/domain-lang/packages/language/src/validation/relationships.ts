@@ -123,16 +123,16 @@ function validateCustomerSupplierPlacement(
     // <-> is bidirectional — Customer/Supplier is inherently directional and must not appear on a <-> arrow
     if (relationship.arrow === '<->') {
         const allPatterns = [...relationship.leftPatterns, ...relationship.rightPatterns];
-        if (allPatterns.some(isSupplier)) {
+        if (allPatterns.some(p => isSupplier(p))) {
             accept('error',
                 ValidationMessages.SUPPLIER_ON_BIDIRECTIONAL(),
-                { node: relationship, property: relationship.leftPatterns.some(isSupplier) ? 'leftPatterns' : 'rightPatterns', code: IssueCodes.SupplierOnBidirectional, codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
+                { node: relationship, property: relationship.leftPatterns.some(p => isSupplier(p)) ? 'leftPatterns' : 'rightPatterns', code: IssueCodes.SupplierOnBidirectional, codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
             );
         }
-        if (allPatterns.some(isCustomer)) {
+        if (allPatterns.some(p => isCustomer(p))) {
             accept('error',
                 ValidationMessages.CUSTOMER_ON_BIDIRECTIONAL(),
-                { node: relationship, property: relationship.leftPatterns.some(isCustomer) ? 'leftPatterns' : 'rightPatterns', code: IssueCodes.CustomerOnBidirectional, codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
+                { node: relationship, property: relationship.leftPatterns.some(p => isCustomer(p)) ? 'leftPatterns' : 'rightPatterns', code: IssueCodes.CustomerOnBidirectional, codeDescription: buildCodeDescription('language.md', 'integration-patterns') }
             );
         }
     }

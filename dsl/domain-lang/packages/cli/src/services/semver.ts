@@ -31,13 +31,13 @@ export function parseSemVer(version: string): SemVer | undefined {
     const normalized = version.startsWith('v') ? version.slice(1) : version;
     
     // Match semver pattern: major.minor.patch[-prerelease]
-    const match = normalized.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
+    const match = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/.exec(normalized);
     if (!match) return undefined;
     
     return {
-        major: parseInt(match[1], 10),
-        minor: parseInt(match[2], 10),
-        patch: parseInt(match[3], 10),
+        major: Number.parseInt(match[1], 10),
+        minor: Number.parseInt(match[2], 10),
+        patch: Number.parseInt(match[3], 10),
         preRelease: match[4],
         original: version,
     };

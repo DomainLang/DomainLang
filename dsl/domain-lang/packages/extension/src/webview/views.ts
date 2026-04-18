@@ -439,7 +439,7 @@ export class SmoothBezierEdgeView extends PolylineEdgeView {
         const waypoints = this.pendingWaypoints;
         if (waypoints.length > 0 && segments.length >= 2) {
             const first = segments[0];
-            const last = segments[segments.length - 1];
+            const last = segments.at(-1) ?? first;
             return svg('path', { d: buildSmoothPath([first, ...waypoints, last]) });
         }
         return svg('path', { d: buildSmoothPath(segments) });

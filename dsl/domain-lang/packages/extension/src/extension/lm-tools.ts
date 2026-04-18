@@ -89,9 +89,10 @@ export function registerLanguageModelTools(
         prepareInvocation: async (options, _token: vscode.CancellationToken) => {
             const raw = options.input;
             const obj = typeof raw === 'object' && raw !== null ? (raw as { fqn?: unknown; summary?: unknown }) : {};
+            const target = typeof obj.fqn === 'string' ? obj.fqn : 'entity';
             const message = obj.summary === true
                 ? 'Getting model summary...'
-                : `Retrieving ${typeof obj.fqn === 'string' ? obj.fqn : 'entity'}...`;
+                : `Retrieving ${target}...`;
             return {
                 invocationMessage: message
             };

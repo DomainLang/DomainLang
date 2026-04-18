@@ -76,7 +76,7 @@ export const Table: React.FC<TableProps> = ({
             {/* Header row */}
             <Box>
                 {headers.map((header, i) => (
-                    <Box key={i} width={widths[i]} paddingRight={padding}>
+                    <Box key={header} width={widths[i]} paddingRight={padding}>
                         <Text bold color={colors.primary}>
                             {header}
                         </Text>
@@ -92,10 +92,10 @@ export const Table: React.FC<TableProps> = ({
             </Box>
 
             {/* Data rows */}
-            {rows.map((row, rowIndex) => (
-                <Box key={rowIndex}>
+            {rows.map((row) => (
+                <Box key={row.join('\0')}>
                     {row.map((cell, cellIndex) => (
-                        <Box key={cellIndex} width={widths[cellIndex]} paddingRight={padding}>
+                        <Box key={`col${cellIndex}:${cell}`} width={widths[cellIndex]} paddingRight={padding}>
                             <Text color={colors.secondary}>
                                 {cell}
                             </Text>
@@ -171,7 +171,7 @@ export const List: React.FC<ListProps> = ({
     return (
         <Box flexDirection="column" marginLeft={tokens.indent.item}>
             {items.map((item, index) => (
-                <Box key={index}>
+                <Box key={item}>
                     <Text color={colors.muted}>
                         {ordered ? `${index + 1}.` : bullet}
                     </Text>

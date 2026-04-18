@@ -163,9 +163,7 @@ async function startLanguageClient(context: vscode.ExtensionContext): Promise<La
             });
         }
     });
-    context.subscriptions.push(stateChangeDisposable);
-
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+    context.subscriptions.push(stateChangeDisposable, vscode.workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration('domainlang.lsp')) {
             return;
         }

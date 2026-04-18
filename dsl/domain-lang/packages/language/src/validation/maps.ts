@@ -132,7 +132,7 @@ function buildRelationshipKey(rel: Relationship): string | null {
 
     // Symmetric relationship — sort endpoints so A [SK] B and B [SK] A share the same key
     const pattern = isSymmetricRelationship(rel) && rel.pattern ? rel.pattern.$type : '';
-    const [a, b] = [left, right].sort();
+    const [a, b] = [left, right].sort((x, y) => x.localeCompare(y));
     return `[${pattern}]${a}${arrow}${b}`;
 }
 

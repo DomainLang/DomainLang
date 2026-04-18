@@ -31,14 +31,14 @@ function getFormattedBannerContent(
     return lines.map((line, index) => {
         if (index === 0) {
             return (
-                <ThemedGradient key={index}>
+                <ThemedGradient key="first-line">
                     {line}
                 </ThemedGradient>
             );
         }
 
         return (
-            <Text key={index} color={theme.text.secondary}>
+            <Text key={`line-${index}-${line}`} color={theme.text.secondary}>
                 {line}
             </Text>
         );

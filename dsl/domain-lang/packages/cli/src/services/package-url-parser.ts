@@ -99,7 +99,7 @@ export class PackageUrlParser {
      * Parses GitHub shorthand (owner/repo or owner/repo@version).
      */
     private static parseGitHubShorthand(importStr: string): PackageUrlInfo {
-        const match = importStr.match(/^([a-zA-Z0-9][a-zA-Z0-9-]+)\/([a-zA-Z0-9-_.]+)(?:@([^/]+))?$/);
+        const match = /^([a-zA-Z0-9][a-zA-Z0-9-]+)\/([a-zA-Z0-9-_.]+)(?:@([^/]+))?$/.exec(importStr);
         if (!match) {
             throw new Error(
                 `Invalid GitHub shorthand format: '${importStr}'.\n` +
@@ -131,9 +131,7 @@ export class PackageUrlParser {
      */
     private static parseFullUrl(importStr: string): PackageUrlInfo {
         // GitHub
-        const ghMatch = importStr.match(
-            /^https:\/\/github\.com\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/
-        );
+        const ghMatch = /^https:\/\/github\.com\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/.exec(importStr);
         if (ghMatch) {
             const [, owner, repo, ref] = ghMatch;
             return {
@@ -147,9 +145,7 @@ export class PackageUrlParser {
         }
 
         // GitLab
-        const glMatch = importStr.match(
-            /^https:\/\/gitlab\.com\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/
-        );
+        const glMatch = /^https:\/\/gitlab\.com\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/.exec(importStr);
         if (glMatch) {
             const [, owner, repo, ref] = glMatch;
             return {
@@ -163,9 +159,7 @@ export class PackageUrlParser {
         }
 
         // Bitbucket
-        const bbMatch = importStr.match(
-            /^https:\/\/bitbucket\.org\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/
-        );
+        const bbMatch = /^https:\/\/bitbucket\.org\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/.exec(importStr);
         if (bbMatch) {
             const [, owner, repo, ref] = bbMatch;
             return {
@@ -179,9 +173,7 @@ export class PackageUrlParser {
         }
 
         // Generic git URL
-        const genericMatch = importStr.match(
-            /^(?:https|git):\/\/([^/]+)\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/
-        );
+        const genericMatch = /^(?:https|git):\/\/([^/]+)\/([^/]+)\/([^/@]+)(?:@([^/]+))?$/.exec(importStr);
         if (genericMatch) {
             const [, host, owner, repo, ref] = genericMatch;
             return {

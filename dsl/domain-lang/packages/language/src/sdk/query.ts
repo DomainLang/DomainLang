@@ -368,11 +368,23 @@ class QueryImpl implements Query {
         const rightSide = { context: right, patterns: rel.rightPatterns };
         const hasSupplier = rel.leftPatterns.some(isSupplier) || rel.rightPatterns.some(isSupplier);
         const hasCustomer = rel.leftPatterns.some(isCustomer) || rel.rightPatterns.some(isCustomer);
-        const kind: DirectionalKind = arrow === '<->'
-            ? 'Bidirectional'
-            : (hasSupplier || hasCustomer) ? 'CustomerSupplier' : 'UpstreamDownstream';
-        const upstreamSide = arrow === '->' ? leftSide : arrow === '<-' ? rightSide : undefined;
-        const downstreamSide = arrow === '->' ? rightSide : arrow === '<-' ? leftSide : undefined;
+        let kind: DirectionalKind;
+        if (arrow === '<->') {
+            kind = 'Bidirectional';
+        } else if (hasSupplier || hasCustomer) {
+            kind = 'CustomerSupplier';
+        } else {
+            kind = 'UpstreamDownstream';
+        }
+        let upstreamSide: typeof leftSide | undefined;
+        let downstreamSide: typeof leftSide | undefined;
+        if (arrow === '->') {
+            upstreamSide = leftSide;
+            downstreamSide = rightSide;
+        } else if (arrow === '<-') {
+            upstreamSide = rightSide;
+            downstreamSide = leftSide;
+        }
         return {
             type: 'directional' as const,
             kind,

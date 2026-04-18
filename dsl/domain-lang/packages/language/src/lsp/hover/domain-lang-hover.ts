@@ -59,7 +59,7 @@ export class DomainLangHoverProvider extends AstNodeHoverProvider {
         this.qualifiedNameProvider = domainServices.references.QualifiedNameProvider;
         const indexManager = services.shared.workspace.IndexManager;
         if (!(indexManager instanceof DomainLangIndexManager)) {
-            throw new Error('IndexManager is not a DomainLangIndexManager — check DI configuration');
+            throw new TypeError('IndexManager is not a DomainLangIndexManager — check DI configuration');
         }
         this.indexManager = indexManager;
 
