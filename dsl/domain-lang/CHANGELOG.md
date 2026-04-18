@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/DomainLang/DomainLang/compare/v0.13.1...v0.14.0) (2026-04-18)
+
+
+### Features
+
+* upgrade major dependencies across workspace ([3eeabf7](https://github.com/DomainLang/DomainLang/commit/3eeabf7039ef15bc868c52acb2453f2cfd0c5090))
+
 ## [0.13.1](https://github.com/DomainLang/DomainLang/compare/v0.13.0...v0.13.1) (2026-04-17)
 
 
