@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.3](https://github.com/DomainLang/DomainLang/compare/v0.14.2...v0.14.3) (2026-04-18)
+
+
+### Bug Fixes
+
+* resolve sonar bugs and code smells ([4440916](https://github.com/DomainLang/DomainLang/commit/4440916edb8727b856e9736aabcbb5a66a01c19b))
+
 ## [0.14.2](https://github.com/DomainLang/DomainLang/compare/v0.14.1...v0.14.2) (2026-04-18)
 
 
