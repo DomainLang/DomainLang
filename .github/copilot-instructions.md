@@ -12,6 +12,12 @@ npm run lint && npm run build && npm run test:coverage
 
 Lint: 0 errors, 0 warnings. Tests: pass in every workspace package. Never `--no-verify`. Never lower coverage thresholds without explicit user approval. Never commit without user approval. Commit `package.json` + `package-lock.json` together.
 
+## SonarQube gate
+
+- When changing any code file (`*.ts`, `*.tsx`, `*.js`, `*.jsx`), run a SonarQube scan and require a passing result.
+- Treat SonarQube as a blocking quality gate: do not consider the task done if the scan fails.
+- In this repository, the authoritative scan is the CI job `📊 SonarQube Analysis` in `.github/workflows/ci-cd.yml`; ensure it passes for code-file changes.
+
 ## Architecture
 
 Layered: Generated → Services → Validation/Diagram → LSP → Entry. SDK couples to services only via `sdk/bootstrap.ts`. Validation uses `ImportCycleDetector` (in `services/types.ts`) — never depend on LSP.
