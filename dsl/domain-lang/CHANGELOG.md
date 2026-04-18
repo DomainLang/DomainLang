@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/DomainLang/DomainLang/compare/v0.14.1...v0.14.2) (2026-04-18)
+
+
+### Miscellaneous Chores
+
+* release 0.14.2 ([9f68b6e](https://github.com/DomainLang/DomainLang/commit/9f68b6e7a738a54db26f462c17697da821a5a4bd))
+
 ## [0.14.1](https://github.com/DomainLang/DomainLang/compare/v0.14.0...v0.14.1) (2026-04-18)
 
 
