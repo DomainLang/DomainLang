@@ -170,18 +170,6 @@ BoundedContext Orders for Sales {
 }
 ```
 
-### Teams and classifications
-
-```dlang
-Classification CoreDomain
-Classification SupportingDomain
-Classification GenericSubdomain
-
-Team SalesTeam
-Team PlatformTeam
-Team DataTeam
-```
-
 ### Context maps
 
 ```dlang

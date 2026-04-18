@@ -1,243 +1,173 @@
 ---
 name: site-maintainer
-description: Use for documentation website tasks including VitePress pages, site configuration, deployment, and user-facing documentation at domainlang.net. Activate when creating or updating pages in /site/, configuring the VitePress site, or publishing documentation.
+description: Use for documentation website tasks — VitePress pages, navigation, deployment, and user-facing docs at domainlang.net (source in /site/).
 ---
 
-# Site Maintainer
+# Site maintainer
 
-You maintain the public documentation website at **domainlang.net** (`/site/` source).
+You maintain the public documentation website at **https://domainlang.net** (source: `/site/`).
 
-## Non-Negotiables
+> Markdown rules, sentence casing, and writing voice live in `.github/instructions/documentation.instructions.md` and `.github/skills/technical-writer/SKILL.md`. This skill owns information architecture, VitePress, and deploy.
 
-- **Public-facing:** Everything in `/site/` published at https://domainlang.net
-- **Documentation accompanies code:** Grammar/SDK/CLI changes MUST include `/site/` updates
-- **Sentence casing:** All headings use sentence casing (`## Getting started`, not `## Getting Started`)
-- **Single source of truth:** All user docs in `/site/` only
+## Non-negotiables
 
-## Your Role
+- Everything in `/site/` is published — no internal notes, TODOs, or repo paths.
+- Grammar / SDK / CLI changes **must** include `/site/` updates in the same PR.
+- Sentence casing for all headings.
+- Single source of truth: user-facing docs live only in `/site/`.
 
-- Create/maintain user documentation pages
-- Configure VitePress site and navigation
-- Ensure consistent style and formatting
-- Add code examples with syntax highlighting
-- Maintain site deployment
+## Skill pairing
 
-**Related skill:** `.github/skills/technical-writer/SKILL.md` (writing style)
+1. **This skill first** — IA, navigation, page placement, public quality.
+2. **technical-writer second** — voice, clarity, factual accuracy.
 
-## Skill Pairing
+## Site architecture
 
-- **This skill first:** Information architecture, navigation, public quality
-- **Technical-writer second:** Writing style, clarity, technical correctness
+| Path | Purpose | Content style |
+|---|---|---|
+| `/site/guide/` | Teach and onboard | Narrative, progressive examples, best practices |
+| `/site/reference/` | Authoritative syntax | Complete, canonical, stable |
+| `/site/examples/` | Realistic models | Working `.dlang` with explanation |
+| `/site/roadmap.md` | Future plans | Speculative — mark clearly |
 
-## Site Architecture
+**Rule:** Guide *teaches*, Reference *defines*, Examples *prove*.
 
-| Path | Purpose | Content |
-|------|---------|---------|
-| `/site/guide/` | Teach and onboard | Narrative explanations, best practices, progressive examples |
-| `/site/reference/` | Authoritative syntax | Complete details, keywords, canonical examples |
-| `/site/examples/` | Realistic models | Working examples with explanations |
-| `/site/roadmap.md` | Future plans | Speculative content |
-
-**Rule:** Guide teaches, Reference defines, Examples prove.
-
-## Page Structure Template
+## Page template
 
 ```markdown
-# Page Title
+# Page title
 
 One-sentence description of what this page covers.
 
-## Basic Syntax
-
-Show simplest example first.
+## Basic syntax
 
 \`\`\`dlang
 // Minimal working example
 \`\`\`
 
-## Properties / Options
+## Properties / options
 
-Table or list of available options.
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | Yes | Unique identifier |
 
 ## Examples
 
 Real-world examples with context.
 
-## Best Practices
+## Best practices
 
 ::: tip
-Actionable advice
+Actionable advice.
 :::
 
-## See Also
+## See also
 
-Links to related pages.
+- [Related page](/guide/related)
 ```
 
-## VitePress Configuration
-
-### Key Settings (`/site/.vitepress/config.mts`)
+## VitePress essentials
 
 ```typescript
+// /site/.vitepress/config.mts
 export default defineConfig({
-  title: 'DomainLang',
-  base: '/',           // CRITICAL: Use '/' for domainlang.net
-  cleanUrls: true,     // No .html extensions
-  lastUpdated: true,
-})
+    title: 'DomainLang',
+    base: '/',           // CRITICAL for domainlang.net
+    cleanUrls: true,     // no .html extensions
+    lastUpdated: true,
+    themeConfig: {
+        nav: [
+            { text: 'Guide', link: '/guide/getting-started' },
+            { text: 'Reference', link: '/reference/language' },
+        ],
+        sidebar: { '/guide/': [ /* ... */ ] },
+    },
+});
 ```
 
-### Syntax Highlighting
+Always use ` ```dlang ` for DSL code blocks (custom TextMate grammar registered in `config.mts`).
 
-**Always use `dlang` for code blocks:**
-
-````markdown
-```dlang
-Domain Sales { vision: "Sell products" }
-```
-````
-
-Custom TextMate grammar registered in `config.mts`.
-
-### Navigation
-
-```typescript
-themeConfig: {
-  nav: [
-    { text: 'Guide', link: '/guide/getting-started' },
-    { text: 'Reference', link: '/reference/language' },
-  ],
-  sidebar: {
-    '/guide/': [
-      { text: 'Introduction', items: [...] },
-      { text: 'Core Concepts', items: [...] },
-    ]
-  }
-}
-```
-
-## VitePress Containers
+## VitePress containers
 
 ```markdown
-::: info
-Neutral information
-:::
-
-::: tip
-Helpful advice
-:::
-
-::: warning
-Be careful about this
-:::
-
-::: danger
-Critical warning
+::: info / tip / warning / danger
+Single-line callout body.
 :::
 
 ::: details Click to expand
-Hidden content
+Hidden content.
 :::
 ```
 
-## Writing Style
+## Links
 
-### Voice
-- **User-focused:** DDD practitioners learning DSL
-- **Action-oriented:** Use imperatives ("Create a domain", "Add a context")
-- **Concise:** Short sentences, scannable
-- **Welcoming:** Assume readers new to DomainLang
-
-### Links
 ```markdown
-<!-- Internal (relative, no .md) -->
-See [Bounded Contexts](/guide/bounded-contexts) for details.
+<!-- internal: relative, no .md, no anchors unless needed -->
+See [Bounded contexts](/guide/bounded-contexts).
 
-<!-- External (full URL) -->
+<!-- external: full URL -->
 [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=...)
 ```
 
-## Feature Documentation Sync
-
-**When implementing grammar/SDK/CLI changes:**
-
-- [ ] Guide page updated or created
-- [ ] Reference page updated (syntax changes)
-- [ ] Quick reference updated (common patterns)
-- [ ] Getting started updated (onboarding affected)
-- [ ] Examples updated (new patterns)
-- [ ] Sidebar navigation wired
-- [ ] Agent skill updated (`skills/domainlang/SKILL.md` and `references/SYNTAX.md`) if syntax, keywords, patterns, or tooling changed
-
 ## Deployment
 
-**GitHub Actions workflow:**
-- **Trigger:** Push to `main` with `site/` changes
-- **Fast Path:** Site-only changes skip quality gates, require manual approval
-- **Deploy:** GitHub Pages → domainlang.net
+- GitHub Actions, triggered on push to `main` with `/site/` changes.
+- Site-only changes skip the language quality gate but require manual approval.
+- Deploys to GitHub Pages → domainlang.net.
 
-**Local development:**
 ```bash
 cd site
-npm run dev      # localhost:5173
+npm run dev      # http://localhost:5173
 npm run build    # Production build
-npm run preview  # Preview build
+npm run preview  # Preview build locally
 ```
 
-## Adding New Pages
+## Adding a new page
 
-1. Create markdown file: `site/guide/new-feature.md`
-2. Add frontmatter (optional):
-   ```markdown
-   ---
-   title: Custom Title
-   description: SEO description
-   ---
-   ```
-3. Update navigation in `config.mts`
-4. Cross-link from related pages
+1. Create `site/guide/new-feature.md` (or `reference/`, `examples/`).
+2. Optional frontmatter for SEO / custom title.
+3. Wire into the sidebar in `config.mts`.
+4. Cross-link from related pages (prerequisites + follow-ons).
+5. Verify with `npm run dev`.
 
-## Quality Checklist
+## Feature documentation sync checklist
 
-- [ ] Content accurate vs current grammar/CLI
-- [ ] Sentence casing on all headings
-- [ ] Page in correct area (guide/reference/examples)
-- [ ] Navigation updated in `config.mts`
-- [ ] Code blocks use `dlang`
-- [ ] Links correct (relative internal)
-- [ ] Cross-references to prerequisite/related pages
-- [ ] No internal notes or TODOs
-- [ ] Agent skill in sync with site content (`skills/domainlang/`)
-- [ ] Tested locally
+When grammar / SDK / CLI changes ship:
 
-## Commit Messages
+- [ ] Guide page updated or added.
+- [ ] Reference page updated for syntax changes.
+- [ ] `/site/reference/quick-reference.md` updated for common patterns.
+- [ ] `/site/guide/getting-started.md` updated if onboarding changed.
+- [ ] Examples updated for new patterns.
+- [ ] Sidebar wired in `config.mts`.
+- [ ] Public agent skill (`skills/domainlang/SKILL.md` + `references/SYNTAX.md`) in sync.
 
-```bash
-# Site changes (no version bump)
-docs(site): add migration guide for v2.0.0
-docs(site): improve getting started tutorial
-docs(site): fix broken links in context map guide
+## Public quality checklist
 
-# Configuration
-chore(site): update VitePress to v1.5.0
-```
+- [ ] Content matches current grammar / CLI behavior.
+- [ ] Sentence casing on all headings.
+- [ ] Page in correct area (guide vs reference vs examples).
+- [ ] All code blocks use `dlang`.
+- [ ] All links work; internal links use relative paths.
+- [ ] Cross-references to prerequisites + related pages.
+- [ ] No internal notes, TODOs, or repo paths.
+- [ ] Tested locally with `npm run dev`.
 
-## Microsoft TechDocs Standards
+## Microsoft TechDocs principles applied
 
-- **Lead with value:** Answer "what will reader learn?"
-- **Progressive disclosure:** Simple → complex, link for depth
-- **Cross-reference liberally:** Link prerequisites and related
-- **Consistent terminology:** Same term for same concept
-- **Introduce new concepts clearly:** Define terms on first use. Link to reference for details.
-- **Scannable:** Tables, lists, callouts
-- **Code before prose:** Show example, then explain
-- **One idea per paragraph:** Split if multiple ideas
+- **Lead with value** — answer "what will the reader learn?" in the first sentence.
+- **Progressive disclosure** — simple → complex; link to depth.
+- **Cross-reference liberally** — link prerequisites and related concepts.
+- **Consistent terminology** — same term for the same concept everywhere.
+- **Define on first use** — link to reference for full detail.
+- **Scannable** — tables, lists, callouts; one idea per paragraph.
+- **Code before prose** — show the example, then explain.
 
-## Brand Colors
+## Brand colors
 
 | Color | Hex | Usage |
-|-------|-----|-------|
+|---|---|---|
 | Blue | `#027fff` | Primary, links, buttons |
 | Cyan | `#00e5fc` | Accent, highlights |
 
-Custom variables in `/site/.vitepress/theme/style.css`
+Custom variables in `/site/.vitepress/theme/style.css`.

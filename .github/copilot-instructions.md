@@ -1,246 +1,77 @@
-# DomainLang Instructions
+# DomainLang
 
-> Repository-wide guidance for DomainLang: Langium-based DSL for Domain-Driven Design modeling.
+Langium 4.x DSL for DDD. Workdir `dsl/domain-lang/`. Site `domainlang.net` (source `/site/`). Pure ESM; imports use `.js`.
 
-## 🚨 CRITICAL: Pre-Commit Quality Gate 🚨
+## Pre-commit gate
 
-**ABSOLUTE REQUIREMENT:** Code that does not pass ALL quality checks must NEVER be committed.
-
-```bash
-# These commands MUST ALL succeed with zero errors/warnings:
-npm run lint              # 0 errors, 0 warnings
-npm run build             # Must complete successfully
-npm run test:coverage     # All tests pass, coverage meets thresholds
-```
-
-**Committing broken code is UNACCEPTABLE and blocks the entire team.**
-
-If any check fails:
-1. Fix the issues immediately
-2. Rerun all checks
-3. Only commit when everything passes
-4. Never lower quality standards without explicit user approval
-
-### 🛑 MANDATORY VERIFICATION PROTOCOL (No Exceptions)
-
-**Before proposing or executing ANY `git commit` or `git push`:**
-
-1. Run `npm run lint` in `dsl/domain-lang/` — must exit 0 with **zero** errors and **zero** warnings
-2. Run `npm run build` in `dsl/domain-lang/` — must exit 0
-3. Run `npm run test:coverage` in `dsl/domain-lang/` — must exit 0 with all tests passing
-4. **Confirm all three passed** to the user with the actual exit codes before committing
-
-**If ANY step fails:** Do NOT commit. Fix the issue, re-run ALL three checks from step 1, and repeat until all pass.
-
-**There are NO acceptable shortcuts:**
-- Do not commit with "I'll fix it in the next commit"
-- Do not commit test files without verifying they compile (`npm run build`)
-- Do not commit refactors without running the full test suite
-- Do not assume `...actual` spread mocks or re-exports work — run the tests
-- Do not trust a green CI run that skipped jobs — verify locally
-
-**Violation of this protocol is the single most damaging thing an agent can do to this project.**
-
-## Project Essentials
-
-**What:** Compilable DSL for DDD specification with LSP tooling  
-**Stack:** TypeScript 5.x, Langium 4.x, Node.js 20+, Vite, Vitest  
-**Working Directory:** `dsl/domain-lang/`  
-**Website:** https://domainlang.net (source: `/site/`)
-
-## Core Principles
-
-- Extend existing patterns before inventing new
-- Align DSL with DDD terminology
-- Write readable, self-documenting code
-- Every change requires tests
-- Documentation accompanies code (grammar/SDK/CLI → site updates)
-
-## Writing Style
-
-- **Sentence casing:** Use sentence casing for all headings (`## Getting started`, not `## Getting Started`)
-- **Never use title casing** in documentation headings
-- Use perplexity tools to research unfamiliar topics and search the web
-
-## Quick Reference
+From `dsl/domain-lang/`, all three must exit 0 before any commit/push:
 
 ```bash
-npm run langium:generate  # After .langium changes
-npm run build             # Full build
-npm run lint              # Check quality (must pass with 0 errors, 0 warnings)
-npm run test              # Run tests
-npm run test:coverage     # Run tests with coverage validation
+npm run lint && npm run build && npm run test:coverage
 ```
 
-**See "🚨 CRITICAL: Pre-Commit Quality Gate" section above for mandatory pre-commit requirements.**
+Lint: 0 errors, 0 warnings. Tests: pass in every workspace package. Never `--no-verify`. Never lower coverage thresholds without explicit user approval. Never commit without user approval. Commit `package.json` + `package-lock.json` together.
 
-## Skill Selection (Mandatory)
+## Architecture
 
-Load the appropriate skill file FIRST using read_file before proceeding:
+Layered: Generated → Services → Validation/Diagram → LSP → Entry. SDK couples to services only via `sdk/bootstrap.ts`. Validation uses `ImportCycleDetector` (in `services/types.ts`) — never depend on LSP.
 
-| Task Type | Load Skill File |
-|-----------|-----------------|
-| Website/domainlang.net pages | `.github/skills/site-maintainer/SKILL.md` |
-| Documentation (READMEs, ADRs, JSDoc) | `.github/skills/technical-writer/SKILL.md` |
-| Syntax/semantics design | `.github/skills/language-expert/SKILL.md` |
-| TypeScript/Langium implementation | `.github/skills/lead-engineer/SKILL.md` |
-| Test strategy/Vitest tests | `.github/skills/tester/SKILL.md` |
-| Architecture/ADRs/requirements | `.github/skills/software-architect/SKILL.md` |
+| Component | Path |
+| --- | --- |
+| Grammar | `packages/language/src/domain-lang.langium` |
+| Generated AST (never edit) | `packages/language/src/generated/**` |
+| LSP | `packages/language/src/lsp/` |
+| Validation | `packages/language/src/validation/` |
+| Services | `packages/language/src/services/` |
+| Shared types (single source) | `packages/language/src/services/types.ts` |
+| Model Query SDK | `packages/language/src/sdk/` |
+| Tests | `packages/language/test/` |
+| Public agent skill | `skills/domainlang/` |
 
-**Rule:** User says "documentation" but target is domainlang.net → Use site-maintainer (then technical-writer for style).
+## Skill selection
 
-See `.github/instructions/` for language-specific rules (TypeScript, Langium, testing, documentation).
+Read the matching skill via `read_file` before working:
 
+| Task | Skill |
+| --- | --- |
+| Site / domainlang.net | `.github/skills/site-maintainer/SKILL.md` |
+| READMEs, ADRs, JSDoc | `.github/skills/technical-writer/SKILL.md` |
+| Syntax / semantics design | `.github/skills/language-expert/SKILL.md` |
+| TS / Langium impl | `.github/skills/lead-engineer/SKILL.md` |
+| Vitest tests | `.github/skills/tester/SKILL.md` |
+| ADRs / PRSs / architecture | `.github/skills/software-architect/SKILL.md` |
+| Critical code review | `.github/skills/critical-code-reviewer/SKILL.md` |
 
-## Project Architecture
+"Documentation" targeting domainlang.net → site-maintainer first, then technical-writer.
 
-| Component | Path | Purpose |
-|-----------|------|---------|
-| Agent Skill | `skills/domainlang/` | Public skill for AI agents |
-| Grammar | `packages/language/src/domain-lang.langium` | DSL syntax |
-| Generated AST | `packages/language/src/generated/**` | **🔴 NEVER EDIT** |
-| LSP Features | `packages/language/src/lsp/` | Hover, completion, formatting |
-| Validation | `packages/language/src/validation/` | Domain rules, BC checks |
-| Services | `packages/language/src/services/` | Import resolution, workspace |
-| Shared Types | `packages/language/src/services/types.ts` | **Single source** for types |
-| Model Query SDK | `packages/language/src/sdk/` | Programmatic queries |
-| Tests | `packages/language/test/` | All tests |
+Per-language rules in `.github/instructions/{typescript,langium,testing,documentation}.instructions.md` apply via `applyTo` globs.
 
-## Critical Rules
+## Hard rules
 
-### Git & Commits
+- Never edit `src/generated/**`. After `.langium` edits run `npm run langium:generate` then `npm run build`.
+- New behavior requires tests. User-visible grammar/SDK/CLI changes require `/site/` updates.
+- All shared types in `services/types.ts`. Search before adding interfaces; consolidate >80% overlaps.
+- TS strict, no `any` (use `unknown` + guards), explicit return types on public APIs, prefix unused params `_`, no `console.log` in libraries (`warn`/`error` only), no unsafe `!`.
+- Wrap LSP entry points in `try/catch`; return safe defaults (`undefined`, `[]`).
+- Sentence casing for all headings (`## Getting started`, never `Getting Started`).
+- Use perplexity tools to research unfamiliar topics.
 
-**🛑 STOP: Before ANY commit, ALL quality checks MUST pass:**
+## New SDK feature checklist
 
-```bash
-# Run this exact sequence before EVERY commit:
-cd dsl/domain-lang && npm run lint && npm run build && npm run test:coverage
-```
+1. Tests first in `packages/language/test/sdk/` (use `setupTestSuite()`, AAA).
+2. JSDoc all new exports; update `sdk/index.ts` module doc and `/site/guide/sdk.md`.
+3. Export from `sdk/index.ts` (browser-safe) or `sdk/loader-node.ts` (Node-only). Update `package.json` exports for new subpaths.
 
-**NON-NEGOTIABLE COMMIT RULES:**
+## Conventional commits
 
-- **NEVER** commit without explicit user approval
-- **NEVER** commit if lint has ANY errors or warnings (0 required)
-- **NEVER** commit if build fails for ANY reason
-- **NEVER** commit if ANY tests fail — this includes ALL workspace packages (language, cli, extension)
-- **NEVER** commit if test coverage is below configured thresholds
-- **NEVER** commit code that breaks the workspace build
-- **ALWAYS** commit package.json + package-lock.json together atomically
-- **NEVER** lower coverage thresholds without explicit user approval - if coverage is below thresholds:
-  1. Add tests to meet the threshold, OR
-  2. Ask user for approval to lower the threshold with justification
-- **NEVER** assume tests pass — you MUST run them and see exit code 0
-- **NEVER** commit with the intent to "fix it later" — fix it NOW or don't commit
+`feat:` minor · `fix:` patch · `feat!:` / `BREAKING CHANGE:` major · `docs|test|refactor|chore:` no bump.
 
-**Commit types:**
-- `feat:` → minor version bump (new features)
-- `fix:` → patch version bump (bug fixes)
-- `feat!:` or `BREAKING CHANGE:` → major version bump
-- `docs:`, `test:`, `refactor:`, `chore:` → no version bump
+Scopes: `grammar`, `validation`, `lsp`, `sdk`, `cli`, `extension`, `site`, `ci`. Example: `feat(grammar): add deprecated modifier`.
 
-**Scopes (recommended):** `grammar`, `validation`, `lsp`, `sdk`, `cli`, `extension`, `site`, `ci`
-
-**Example:** `feat(grammar): add deprecated modifier`
-
-### Grammar Changes
-
-- **NEVER** edit `packages/language/src/generated/**`
-- Run `npm run langium:generate` after editing `.langium` files
-- Add test cases for parsing changes
-- Update LSP features (hover, completion, validation) when grammar changes
-- Update `/site/` documentation for new keywords
-
-### New SDK Features (Mandatory Checklist)
-
-When adding new SDK functionality (functions, classes, or exports):
-
-1. **✅ Write tests FIRST** in `packages/language/test/sdk/`
-   - Use `setupTestSuite()` for test environment
-   - Follow AAA pattern (Arrange/Act/Assert)
-   - Test happy path + error cases + edge cases
-   - Ensure tests pass before proceeding
-
-2. **✅ Update SDK documentation**
-   - Add JSDoc comments to all new functions/classes
-   - Update `packages/language/src/sdk/index.ts` module documentation
-   - Add usage examples in JSDoc
-   - Update entry point table if adding new module
-
-3. **✅ Update site documentation**
-   - Add examples to `/site/guide/sdk.md`
-   - Update API reference if needed
-   - Add to changelog/release notes
-
-4. **✅ Export from correct module**
-   - Browser-safe → export from `sdk/index.ts`
-   - Node.js only → export from `sdk/loader-node.ts`
-   - Update `package.json` exports if adding new subpath
-
-**Example commit sequence:**
-```bash
-# 1. Tests
-git add packages/language/test/sdk/new-feature.test.ts
-# 2. Implementation
-git add packages/language/src/sdk/new-feature.ts
-# 3. Documentation
-git add packages/language/src/sdk/index.ts site/guide/sdk.md
-```
-
-### Type Organization
-
-- **All** shared types go in `packages/language/src/services/types.ts`
-- Search types.ts before creating new interfaces
-- Consolidate similar types (avoid `PackageInfo`, `PackageMetadata`, `PackageSpec` separately)
-
-### Documentation
-
-**Grammar/syntax changes:**
-- Update `/site/guide/` and `/site/reference/`
-- Add `.dlang` examples in `dsl/domain-lang/examples/`
-- Add JSDoc on grammar rules
-- Update agent skill (`skills/domainlang/`) if syntax or keywords changed
-
-**model.yaml changes:**
-- Update `/site/public/schema/model.schema.json`
-- Update `/site/guide/imports.md` if user-facing
-- Update agent skill references if import/manifest syntax changed
-
-### Code Quality
-
-- Lint MUST pass with 0 errors, 0 warnings
-- Use `npm run lint:fix` for auto-fixes
-- TypeScript strict mode, no exceptions
-- Prefer `unknown` over `any` with type guards
-- Explicit return types on public functions
-- Prefix unused params with `_`
-- No unsafe `!` assertions in production code
-- No `console.log()` in libraries (only `warn`/`error`)
-
-### PRS Implementation
-
-When implementing a PRS from `requirements/`:
-- Ask questions if requirements are unclear or ambiguous
-- Use the plan feature to structure multi-step implementation
-- Ensure all acceptance criteria are covered by tests
-- Track progress in the PRS document
-
-## Release Process
-
-**CI/CD Pipeline:**
-- Quality Gate: Lint → Build → Test+Coverage (fail-fast)
-- Analysis Gate: SonarQube (blocking) + CodeQL (parallel)
-- Production Gate: Manual approval required for all deployments
-- Publishing: NPM packages, VS Code extension, site deploy in parallel
-
-**Workflow:**
-1. Conventional commits on `main` → release-please creates/updates Release PR
-2. Merge Release PR → GitHub release + git tag + publish all artifacts
-3. All packages versioned together using semver
-
-## Language Quick Reference
+## DDD quick reference
 
 | Construct | Example |
-|-----------|---------|
+| --- | --- |
 | Domain | `Domain Sales { vision: "..." }` |
 | Subdomain | `Domain Orders in Sales {}` |
 | BoundedContext | `bc OrderContext for Sales as Core by SalesTeam` |
@@ -249,55 +80,26 @@ When implementing a PRS from `requirements/`:
 | Namespace | `namespace acme.sales { ... }` |
 | Import | `import "owner/repo@v1.0.0"` |
 
-**DDD Patterns:** `[OHS]` Open Host Service · `[CF]` Conformist · `[ACL]` Anti-Corruption Layer · `[PL]` Published Language · `[P]` Partnership · `[SK]` Shared Kernel · `[S]` Supplier · `[C]` Customer · `[SW]` Separate Ways
+Patterns: `[OHS]` Open Host Service · `[CF]` Conformist · `[ACL]` Anti-Corruption Layer · `[PL]` Published Language · `[P]` Partnership · `[SK]` Shared Kernel · `[S]` Supplier · `[C]` Customer · `[SW]` Separate Ways.
+Arrows: `->` upstream/downstream · `<-` reverse · `<->` bidirectional · `><` Separate Ways.
 
-**Arrows:** `->` upstream/downstream · `<-` reverse · `<->` bidirectional · `><` Separate Ways
+## SDK entry points
 
-## Model Query SDK
+- `loadModelFromText(text)` — browser-safe parse
+- `loadModel(file)` — Node loader
+- `fromDocument(document)` — zero-copy LSP integration
+- `fromModel(model)` — direct AST wrapping
 
-**Entry points:**
-- `loadModelFromText(text)` - Browser-safe parsing
-- `loadModel(file)` - Node.js file loader
-- `fromDocument(document)` - Zero-copy LSP integration
-- `fromModel(model)` - Direct AST wrapping
+`bc.effectiveRole` / `effectiveTeam`: header (`as`/`by`) wins over body. `bc.metadataMap`: metadata as `Map`. Fluent: `query.boundedContexts().withRole('Core').toArray()`.
 
-**Access patterns:**
-```typescript
-// Direct AST access
-const desc = bc.description;
+## Validation rules
 
-// SDK augmented (precedence resolution)
-const role = bc.effectiveRole;    // Header 'as' wins over body 'role:'
-const team = bc.effectiveTeam;    // Header 'by' wins over body 'team:'
-const meta = bc.metadataMap;      // Metadata as Map
+| Rule | Severity |
+| --- | --- |
+| Missing domain `vision` | warning |
+| Missing BC `description` | warning |
+| Duplicate FQN | error |
 
-// Fluent queries
-query.boundedContexts().withRole('Core').withTeam('SalesTeam').toArray();
-```
+## Release
 
-## Testing Requirements
-
-- Use AAA pattern (Arrange/Act/Assert) with explicit comments
-- Test behavior, not implementation (assertion should not be tautological with implementation)
-- Happy path + edge cases + error scenarios
-- See `.github/instructions/testing.instructions.md` for patterns
-
-```typescript
-test('should validate domain vision', async () => {
-    // Arrange
-    const doc = await testServices.parse(s`Domain Sales {}`);
-    
-    // Act
-    const diagnostics = await testServices.validate(doc);
-    
-    // Assert
-    expect(diagnostics).toHaveLength(1);
-    expect(diagnostics[0].message).toContain('missing vision');
-});
-```
-
-## Validation Rules
-
-- Missing domain vision → warning
-- Missing BC description → warning
-- Duplicate FQN names → error
+Conventional commits on `main` → release-please opens Release PR → merging tags + publishes (NPM, VS Code extension, site). Pipeline: Quality Gate (lint/build/test, fail-fast) → Analysis (SonarQube blocking + CodeQL) → manual approval → parallel publish.

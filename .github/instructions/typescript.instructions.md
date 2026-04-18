@@ -1,159 +1,73 @@
 ---
-description: 'TypeScript coding standards for DomainLang DSL development with Langium 4.x'
+description: 'TypeScript 5.x rules for DomainLang (Langium 4.x)'
 applyTo: "**/*.ts,**/*.tsx,**/*.mts,**/*.cts"
 ---
 
-# TypeScript Development
+# TypeScript rules
 
-> Target TypeScript 5.x with strict mode for Langium 4.x DSL development.
-
-## Core Principles
-
-- Respect existing architecture and Langium conventions
-- **ALWAYS** use DI when possible for testability
-- Readable, explicit solutions over clever shortcuts
-- Extend abstractions before inventing new
-- Maintainability and clarity first
-- Avoid duplicating logic if it can be abstracted and reused 
-
-## Scope
-
-**Full rules apply:** Language services, CLI, core utilities  
-**Relaxed for:** Test files (can use `any` for mocks), generated code (never edit), config files
+> Stack and pre-commit gate are in `.github/copilot-instructions.md`.
 
 ## Standards
 
-- TypeScript 5.x strict mode, no exceptions
-- Pure ES modules with `.js` extensions in imports
-- Functional patterns except Langium services
-- Avoid `any`; prefer `unknown` with type guards
-- Explicit return types on public functions
+- TS 5.x **strict**, no exceptions. Pure ESM, `.js` extensions in imports.
+- No `any` (use `unknown` + guards). Explicit return types on public APIs. Prefix unused params with `_`.
+- Functional patterns except Langium services (which use classes for DI).
+- Test files may use `any` for mocks. Generated code is never edited. Config files are exempt.
 
-## Error Handling - LSP Features
-
-**LSP provider methods SHOULD wrap operations in try-catch for graceful degradation:**
+## LSP error handling
 
 ```typescript
-// ✅ Recommended: Graceful degradation with logging
 async provideSomething(doc: LangiumDocument): Promise<Result | undefined> {
-    try {
-        return computeResult();
-    } catch (error) {
-        console.error('Error in provideSomething:', error);
-        return undefined; // Safe default - feature unavailable
-    }
+    try { return computeResult(); }
+    catch (error) { console.error('Error in provideSomething:', error); return undefined; }
 }
 ```
 
-**Return safe defaults:**
-- Arrays → `[]`
-- Optional values → `undefined`
-- Objects → minimal valid object or `undefined`
+Safe defaults: arrays → `[]`, optionals → `undefined`, objects → minimal valid shape or `undefined`.
 
-### VS Code Extension Requirements
+## VS Code extension
 
-**Use OutputChannel for debugging:**
+Use `OutputChannel` for diagnostics, never `console.log`. Catch language-server start failures and surface via `vscode.window.showErrorMessage`. Listen to `client.onDidChangeState` and warn the user when state becomes `Stopped` (3).
 
-```typescript
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    outputChannel = vscode.window.createOutputChannel('DomainLang');
-    
-    try {
-        client = await startLanguageClient(context);
-        outputChannel.appendLine('Language server started');
-    } catch (error) {
-        outputChannel.appendLine(`Failed: ${error}`);
-        vscode.window.showErrorMessage('DomainLang: Failed to start');
-        throw error;
-    }
-}
-```
+## Naming
 
-**Detect server crashes:**
+| Element | Convention |
+|---|---|
+| Classes/Interfaces/Types | `PascalCase` |
+| Variables/Functions | `camelCase` |
+| Files/Directories | `kebab-case` |
+| Constants | `UPPERCASE` |
+
+## Type system
+
+Prefer generated Langium type guards (`isDomain`, `isBoundedContext`) over `as` casts.
 
 ```typescript
-client.onDidChangeState((event) => {
-    if (event.newState === 3) { // State.Stopped
-        vscode.window.showWarningMessage(
-            'DomainLang server stopped. Reload window to restart.'
-        );
-    }
-});
-```
-
-## Naming Conventions
-
-| Element | Convention | Example |
-|---------|-----------|---------|
-| Classes/Interfaces/Types | PascalCase | `DomainLangValidator` |
-| Variables/Functions | camelCase | `parseDocument` |
-| Files/Directories | kebab-case | `domain-lang-validator.ts` |
-| Constants | UPPERCASE | `MAX_DEPTH` |
-
-## Type System
-
-### Use Type Guards
-
-```typescript
-// ✅ Generated Langium guards
-import { isDomain, isBoundedContext } from '../generated/ast.js';
-if (isDomain(element)) console.log(element.name);
-
-// ❌ Type assertions
-const domain = element as Domain; // Avoid
-```
-
-### Interfaces vs Types
-
-```typescript
-// ✅ Interface for object shapes
-interface ValidationResult {
-    readonly isValid: boolean;
-    readonly errors: string[];
-}
-
-// ✅ Type for unions
+interface ValidationResult { readonly isValid: boolean; readonly errors: string[]; }
 type Status = 'pending' | 'success' | 'error';
-```
 
-### Avoid Enums - Use Const Objects
-
-```typescript
-// ✅ Const object with type
-const RelationshipType = {
-    Partnership: 'Partnership',
-    SharedKernel: 'SharedKernel',
-} as const;
+// No enums — use const objects
+const RelationshipType = { Partnership: 'Partnership', SharedKernel: 'SharedKernel' } as const;
 type RelationshipType = typeof RelationshipType[keyof typeof RelationshipType];
 ```
 
-## Type Organization
+## Type organization
 
-**All shared types go in `packages/language/src/services/types.ts`**
-
-**Rules:**
-- Search `types.ts` before creating new interfaces
-- Consolidate similar types (avoid `PackageInfo`, `PackageMetadata`, `PackageSpec`)
-- Re-export from services for backwards compatibility
-
-**Before adding a type:**
-1. Search `types.ts` for similar types
-2. Consolidate if overlap >80%
-3. Add JSDoc
-4. Export from `types.ts`
+All shared types live in `packages/language/src/services/types.ts`. Before adding an interface: search `types.ts`, consolidate when overlap is >80%, add JSDoc, re-export from services for backward compat.
 
 ## Imports
 
 ```typescript
-// ✅ Separate type imports, use .js extensions
 import type { AstNode, LangiumDocument } from 'langium';
 import { AstUtils } from 'langium';
 import { parse } from './parser.js';
 ```
 
-## Functions
+Separate type imports. Always `.js` extensions.
 
-### Document Public APIs
+## Functions and APIs
+
+JSDoc on every public export:
 
 ```typescript
 /**
@@ -162,147 +76,52 @@ import { parse } from './parser.js';
  * @returns Parsed AST
  * @throws {ParseError} On syntax errors
  */
-export function parseDocument(content: string): Model { }
+export function parseDocument(content: string): Model { /* ... */ }
 ```
 
-### Arrow vs Named
+Arrow for simple ops (`domains.map(d => d.name)`), named for complex logic.
+
+## Errors
 
 ```typescript
-// ✅ Arrow for simple operations
-const names = domains.map(d => d.name);
+type Result<T, E = Error> = { success: true; value: T } | { success: false; error: E };
 
-// ✅ Named for complex logic
-function validateCircularReferences(domain: Domain): boolean { }
-```
-
-## Error Handling
-
-### Typed Results
-
-```typescript
-type Result<T, E = Error> =
-    | { success: true; value: T }
-    | { success: false; error: E };
-
-function parseModel(content: string): Result<Model, ParseError> {
-    try {
-        return { success: true, value: parse(content) };
-    } catch (error) {
-        return { success: false, error: new ParseError(error) };
-    }
-}
-```
-
-### Never Suppress
-
-```typescript
-// ✅ Log or rethrow
-try {
-    await processFile(path);
-} catch (error) {
+try { await processFile(path); }
+catch (error) {
     console.error('Failed:', path, error);
     throw new ProcessingError(`Cannot process ${path}`, { cause: error });
 }
-
-// ❌ Silent catch
-try { await processFile(path); } catch { } // Never do this
 ```
 
-## Common Patterns
+ESLint 10 `preserve-caught-error` requires `{ cause: err }` on every `throw new Error(...)` inside `catch (err)`. Never silently swallow.
 
-### Immutability
+## Patterns
 
-```typescript
-// ✅ Return new object
-const updated = { ...domain, description: 'New' };
+- **Immutability:** return new objects (`{ ...domain, description: 'new' }`).
+- **Guard clauses:** early returns over deep nesting.
+- **Optional chaining:** `document?.model?.contexts?.[0]?.name`. Use `??` not `||`.
+- **Parallel async:** `await Promise.all(docs.map(process))` — never sequential `for` over independent ops.
+- **Discriminated unions** for variant types; switch on `.kind`.
+- **Composition over inheritance:** prefer interface intersections over deep class hierarchies.
 
-// ❌ Mutation
-domain.description = 'New'; // Avoid
-```
+## Anti-patterns
 
-### Guard Clauses
+| Avoid | Prefer |
+|---|---|
+| `any` | `unknown` + guards |
+| `as` assertions | type guards |
+| enums | const objects |
+| utility classes | functions |
+| mutating params | new objects |
+| magic numbers | named constants |
+| silent catches | log or rethrow with `{ cause }` |
+| deep nesting | guard clauses |
+| implicit deps | DI |
 
-```typescript
-// ✅ Early returns reduce nesting
-function validate(domain: Domain | undefined): ValidationResult {
-    if (!domain) return { isValid: false, errors: ['No domain'] };
-    if (!domain.name) return { isValid: false, errors: ['Missing name'] };
-    return { isValid: true, errors: [] };
-}
-```
-
-### Optional Chaining
-
-```typescript
-const name = document?.model?.contexts?.[0]?.name;
-const displayName = userName ?? 'Anonymous'; // ?? not ||
-```
-
-### Parallel Async
-
-```typescript
-// ✅ Parallel
-const results = await Promise.all(docs.map(process));
-
-// ❌ Sequential
-for (const doc of docs) await process(doc); // Slow
-```
-
-### Discriminated Unions
-
-```typescript
-type Expression =
-    | { kind: 'literal'; value: number }
-    | { kind: 'binary'; left: Expression; op: string; right: Expression };
-
-function evaluate(expr: Expression): number {
-    switch (expr.kind) {
-        case 'literal': return expr.value;
-        case 'binary': return evaluateBinary(expr);
-    }
-}
-```
-
-### Composition Over Inheritance
-
-```typescript
-// ✅ Interfaces
-interface Movable { move(): void; }
-interface Nameable { name: string; }
-const entity: Movable & Nameable = { name: 'Player', move: () => {} };
-
-// ❌ Deep class hierarchies
-class Animal {}
-class Mammal extends Animal {}
-class Dog extends Mammal {} // Avoid
-```
-
-## Anti-Patterns
-
-| ❌ Avoid | ✅ Prefer |
-|----------|----------|
-| `any` | `unknown` with guards |
-| `as` assertions | Type guards |
-| Enums | Const objects |
-| Utility classes | Functions |
-| Mutating params | New objects |
-| Magic numbers | Named constants |
-| Silent catches | Log or rethrow |
-| Deep nesting | Guard clauses |
-| Implicit deps | DI |
-
-## Validation
-
-```bash
-npm run build  # Type-check
-npm test       # Run tests
-npm run lint   # Check quality
-```
-
-## Decision Matrix
+## Decision matrix
 
 | Scenario | Use |
-|----------|-----|
+|---|---|
 | Data + behavior | Class (Langium service) |
 | Data transformation | Function |
 | Config/constants | Const object |

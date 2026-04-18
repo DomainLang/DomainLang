@@ -1,61 +1,50 @@
 ---
-description: 'Documentation standards for DomainLang including JSDoc, Markdown, and technical writing guidelines'
+description: 'Markdown / JSDoc / docs standards for DomainLang'
 applyTo: "**/*.md"
 ---
 
-# Documentation Standards
+# Documentation rules
 
-> Clear, accurate documentation for DomainLang users and contributors.
-> Use Google tech writing style: https://developers.google.com/style
+> Site rules in `.github/skills/site-maintainer/SKILL.md`. Writing voice in `technical-writer/SKILL.md`. Google tech writing style: https://developers.google.com/style.
 
-## Critical Rules
+## Hard rules
 
-- **Sentence casing:** All headings use sentence casing (`## Getting started`, not `## Getting Started`)
-- **Code accompanies docs:** Grammar/SDK/CLI changes MUST update `/site/` docs
-- **JSDoc on public APIs:** All exported functions, classes, methods documented
-- **Examples tested:** All code examples must work
+- **Sentence casing** for all headings (`## Getting started`, never `## Getting Started`).
+- Grammar/SDK/CLI changes **must** update `/site/` and the public agent skill (`skills/domainlang/`).
+- JSDoc on every exported function, class, and method.
+- All code examples must work — test them.
 
-## Document Types
+## Doc taxonomy
 
-| Type | Location | Purpose | Audience |
-|------|----------|---------|----------|
-| User guides | `/site/guide/` | How to use features | End users |
-| Reference | `/site/reference/` | Complete syntax/API | Developers |
-| READMEs | Package roots | Quick start, setup | Developers |
-| JSDoc | Code | API documentation | Library users |
-| ADRs | `/adr/` | Architecture decisions | Team |
-| PRSs | `/requirements/` | Feature requirements | Team |
+| Type | Location | Audience |
+|---|---|---|
+| User guide | `/site/guide/` | End users |
+| Reference | `/site/reference/` | Developers |
+| README | Package roots | Developers |
+| JSDoc | Code | Library users |
+| ADR | `/adr/` | Team |
+| PRS | `/requirements/` | Team |
 
-## Writing Style
+## Voice
 
-### Voice and Tone
-
-- **Second person:** "You can define" (not "One can")
-- **Active voice:** "Parser validates" (not "is validated")
-- **Present tense:** "Returns" (not "will return")
-- **Imperative instructions:** "Create a domain" (not "You should create")
-
-### Clarity
+Second person, active voice, present tense, imperative for instructions.
 
 ```markdown
 ❌ In order to create a domain, one must utilize the Domain keyword.
-
 ✅ Create a domain with the `Domain` keyword:
-\`\`\`dlang
-Domain Sales {}
-\`\`\`
+   ```dlang
+   Domain Sales {}
+   ```
 ```
 
-## JSDoc Standards
-
-### Template
+## JSDoc template
 
 ```typescript
 /**
  * Brief one-line description.
- * 
+ *
  * Optional longer explanation.
- * 
+ *
  * @param name - Parameter description
  * @returns Return value description
  * @throws {ErrorType} When error occurs
@@ -64,114 +53,64 @@ Domain Sales {}
  * const result = myFunction('input');
  * ```
  */
-export function myFunction(name: string): Result { }
+export function myFunction(name: string): Result {}
 ```
 
-### Best Practices
+Bad: `/** This function parses. */`, `/** TODO: Document later. */`. Good: `/** Parses a DomainLang document and returns the AST. */`.
 
-```typescript
-✅ /** Parses a DomainLang document and returns the AST. */
-✅ /** Validates domain names are unique within namespace. */
-
-❌ /** This function parses. */  // Too vague
-❌ /** TODO: Document later. */  // Not helpful
-```
-
-## README Structure
-
-```markdown
-# Project Title
-
-One-sentence description.
-
-## Features
-- Feature 1
-- Feature 2
-
-## Installation
-\`\`\`bash
-npm install package
-\`\`\`
-
-## Quick Start
-Minimal example.
-
-## Documentation
-Link to full docs.
-
-## License
-License info.
-```
-
-## Grammar Documentation
+## Grammar JSDoc
 
 ```langium
 /**
- * Represents a domain in strategic design.
- * 
- * Domains organize contexts hierarchically.
- * 
+ * Domain in strategic design. Hierarchies use `in`.
  * @example
  * ```dlang
  * Domain Sales in Commerce {}
  * ```
  */
-Domain:
-    'Domain' name=ID ('in' parent=[Domain:QualifiedName])?
-    '{' ... '}';
+Domain: 'Domain' name=ID ('in' parent=[Domain:QualifiedName])? '{' ... '}';
 ```
 
-## Common Patterns
+## README skeleton
 
-### Introducing Concepts
+Title → one-line description → Features → Installation → Quick start → Documentation link → License.
+
+## Concept page pattern
 
 ```markdown
-# Feature Name
+# Feature
 
 One-sentence definition.
 
-## Why Use This
+## Why use this
+Bulleted benefits.
 
-Benefits in bullet points.
-
-## Basic Example
-
-\`\`\`dlang
-// Minimal working code
-\`\`\`
-
-## See Also
-
-Links to related concepts.
+## Basic example
+```dlang
+// minimal working code
 ```
 
-### Documenting Options
+## See also
+Related links.
+```
 
-**Use tables:**
+Use tables for option lists (`Property | Type | Required | Description`).
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `name` | string | Yes | Unique identifier |
-| `vision` | string | No | Strategic purpose |
+## Quality checklist
 
-## Quality Checklist
-
-- [ ] Sentence casing on headings
+- [ ] Sentence casing
 - [ ] Code examples tested
-- [ ] Technical terms consistent
-- [ ] Links working
-- [ ] Grammar/spelling correct
-- [ ] Appropriate detail for audience
-- [ ] Examples show best practices
+- [ ] Terminology consistent
+- [ ] Links work
+- [ ] Right detail level for audience
 
-## Common Mistakes
+## Common mistakes
 
-| ❌ Avoid | ✅ Do |
-|----------|-------|
+| Avoid | Do |
+|---|---|
 | Title Casing | Sentence casing |
 | Future tense | Present tense |
 | Passive voice | Active voice |
-| Undefined jargon | Define terms first use |
-| Long paragraphs | Short, scannable text |
-| Missing examples | Include working code |
-| Outdated info | Keep synced with code |
+| Undefined jargon | Define on first use |
+| Long paragraphs | Short, scannable |
+| Missing examples | Working code |
